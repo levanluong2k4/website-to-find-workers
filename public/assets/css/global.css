@@ -1,0 +1,116 @@
+/* Nhúng Font Chữ Outfit (Sang trọng, cực kì hiện đại cho tên thương hiệu/heading) và Inter cho Body */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--bs-body-color);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6, .brand-font {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* =========================================
+   PREMIUM BOOTSTRAP OVERRIDES
+   ========================================= */
+
+/* Nút Bấm (Button) siêu mượt */
+.btn {
+  border-radius: var(--border-radius-md);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  padding: 0.8rem 1.5rem;
+  letter-spacing: 0.01em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  color: white; /* Chữ trắng trên nền cam vàng nhìn sang hơn */
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+.btn-warning:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+  color: white;
+}
+
+/* Glassmorphism Card (Thẻ Trong Suốt) */
+.card-glass {
+  background: var(--surface-color);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+}
+
+.card {
+  background: white;
+  border: none;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}
+
+/* Khung nhập liệu (Input) Hiện đại */
+.form-control, .form-select {
+  border-radius: var(--border-radius-sm);
+  padding: 0.8rem 1.2rem;
+  border: 1.5px solid #E2E8F0;
+  background-color: #F8FAFC;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+.form-control:focus, .form-select:focus {
+  background-color: #FFFFFF;
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+/* Utility Class */
+.text-muted-custom {
+  color: var(--text-muted) !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Animation mượt mà cho Auth Pages */
+.fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

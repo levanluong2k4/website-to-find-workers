@@ -9,8 +9,16 @@ class DanhGia extends Model
     protected $table = 'danh_gia';
 
     protected $fillable = [
-        'don_dat_lich_id', 'nguoi_danh_gia_id', 'nguoi_bi_danh_gia_id',
-        'so_sao', 'nhan_xet', 'chuyen_mon', 'thai_do', 'dung_gio', 'gia_ca'
+        'don_dat_lich_id',
+        'nguoi_danh_gia_id',
+        'nguoi_bi_danh_gia_id',
+        'so_sao',
+        'nhan_xet',
+        'so_lan_sua',
+        'chuyen_mon',
+        'thai_do',
+        'dung_gio',
+        'gia_ca'
     ];
 
     public function donDatLich()

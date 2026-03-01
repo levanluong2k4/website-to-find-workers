@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class BaoGiaController extends Controller
 {
-    /**
-     * WORKER: Nộp báo giá cho 1 bài đăng.
-     */
+  
     public function store(StoreBaoGiaRequest $request)
     {
         $validated = $request->validated();
@@ -133,6 +131,7 @@ class BaoGiaController extends Controller
                 'tho_id' => $baoGia->tho_id,
                 'dich_vu_id' => $baoGia->baiDang->dich_vu_id,
                 'bai_dang_id' => $baoGia->bai_dang_id,
+                'thoi_gian_hen' => now(), // Tạm thời dùng giờ hiện tại
                 'dia_chi' => $baoGia->baiDang->dia_chi,
                 'vi_do' => $baoGia->baiDang->vi_do,
                 'kinh_do' => $baoGia->baiDang->kinh_do,

@@ -50,4 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/don-dat-lich', [\App\Http\Controllers\Api\DonDatLichController::class, 'index']);
     Route::get('/don-dat-lich/{id}', [\App\Http\Controllers\Api\DonDatLichController::class, 'show']);
     Route::put('/don-dat-lich/{id}/status', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateStatus']);
+
+    // Quản lý Đánh Giá (Reviews)
+    Route::post('/danh-gia', [\App\Http\Controllers\Api\DanhGiaController::class, 'store']); // Khách hàng đánh giá
+    Route::put('/danh-gia/{id}', [\App\Http\Controllers\Api\DanhGiaController::class, 'update']); // Khách hàng sửa đánh giá
 });
+
+// Route công khai cho Đánh Giá (Ai cũng có thể coi)
+Route::get('/ho-so-tho/{id}/danh-gia', [\App\Http\Controllers\Api\DanhGiaController::class, 'indexByWorker']);
+Route::get('/ho-so-tho/{id}/danh-gia/summary', [\App\Http\Controllers\Api\DanhGiaController::class, 'summary']);

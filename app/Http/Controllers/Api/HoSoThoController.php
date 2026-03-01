@@ -14,10 +14,76 @@ class HoSoThoController extends Controller
      */
     public function index(Request $request)
     {
-        // Có thể thêm filter theo dịch vụ sau này
-        $query = HoSoTho::with('user:id,name,email,avatar,phone,address')
+        // Khởi tạo query Builder
+        $query = HoSoTho::with('user:id,name,email,avatar,phone,address', 'user.dichVus:id,ten_dich_vu')
             ->where('trang_thai_duyet', 'da_duyet')
             ->where('dang_hoat_dong', true);
+
+        // 1. Tích hợp Search Keyword (?q=...)
+        if ($request->filled('q')) {
+            $keyword = $request->q;
+            $query->whereHas('user', function ($q) use ($keyword) {
+                $q->where('name', 'LIKE', "%{$keyword}%")
+                    ->orWhereHas('dichVus', function ($q2) use ($keyword) {
+                        $q2->where('ten_dich_vu', 'LIKE', "%{$keyword}%");
+                    });
+            });
+        }
+
+        // 2. Tích hợp Lọc Danh mục (?category_id=...)
+        if ($request->filled('category_id')) {
+            $categoryId = $request->category_id;
+            $query->whereHas('user.dichVus', function ($q) use ($categoryId) {
+                $q->where('dich_vu_id', $categoryId);
+            });
+        }
+
+        // 3. Tích hợp Lọc Vị trí theo Tỉnh Thành (?province=...)
+        if ($request->filled('province')) {
+            $province = $request->province;
+            $query->whereHas('user', function ($q) use ($province) {
+                $q->where('address', 'LIKE', "%{$province}%");
+            });
+        }
+
+        // 4. Ưu tiên Geolocation: Nếu cấp vĩ độ/kinh độ, tính khoảng cách (?lat=...&lng=...)
+        $latitude = $request->lat;
+        $longitude = $request->lng;
+
+        if ($latitude && $longitude) {
+            // Công thức Haversine để tính khoảng cách vật lý (theo km)
+            $haversine = "(6371 * acos(cos(radians($latitude)) * cos(radians(vi_do)) * cos(radians(kinh_do) - radians($longitude)) + sin(radians($latitude)) * sin(radians(vi_do))))";
+
+            $query->selectRaw("*, {$haversine} AS distance");
+
+            // Có thể filter những thợ ở quá xa (ví dụ: > 50km thì loại)
+            // $query->whereRaw("{$haversine} <= ban_kinh_phuc_vu"); 
+        }
+
+        // 5. Tích hợp Sắp xếp Ưu tiên phân tầng (?sort=...)
+        // Mặc định luôn ưu tiên Trạng thái hoạt động trước:
+        // dang_hoat_dong (1) -> dang_ban (2) -> ngung_hoat_dong (3) -> tam_khoa (4)
+        $query->orderByRaw("
+            CASE trang_thai_hoat_dong
+                WHEN 'dang_hoat_dong' THEN 1
+                WHEN 'dang_ban' THEN 2
+                WHEN 'ngung_hoat_dong' THEN 3
+                WHEN 'tam_khoa' THEN 4
+                ELSE 5
+            END ASC
+        ");
+
+        if ($request->sort === 'nearest' && $latitude && $longitude) {
+            // Ưu tiên khoảng cách sau ưu tiên trạng thái
+            $query->orderBy('distance', 'ASC');
+        } elseif ($request->sort === 'rating') {
+            $query->orderBy('danh_gia_trung_binh', 'DESC');
+            $query->orderBy('tong_so_danh_gia', 'DESC');
+        } else {
+            // Mặc định (hoặc sort=jobs) ưu tiên điểm số & mức độ hoạt động
+            $query->orderBy('tong_so_danh_gia', 'DESC');
+            $query->orderBy('danh_gia_trung_binh', 'DESC');
+        }
 
         return response()->json($query->paginate(15));
     }

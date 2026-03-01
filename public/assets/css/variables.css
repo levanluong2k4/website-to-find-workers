@@ -1,0 +1,43 @@
+:root {
+  /* =========================================
+     FIND WORKER APP - PREMIUM DESIGN SYSTEM
+     ========================================= */
+
+  /* 1. Brand Colors (Màu chủ đạo Sang trọng) */
+  --bs-primary: #10B981; /* Nâng cấp lên Emerald Green sáng và hiện đại hơn */
+  --bs-primary-rgb: 16, 185, 129;
+  --bs-primary-hover: #059669;
+
+  --bs-secondary: #0F172A; /* Slate 900 cho các text nhấn mạnh */
+  
+  --bs-warning: #F59E0B; /* Amber 500 - Vàng cam rực rỡ, sang trọng hơn vàng tươi */
+  --bs-warning-rgb: 245, 158, 11;
+  --bs-warning-hover: #D97706;
+
+  --bs-success: #10B981;
+  --bs-danger: #EF4444;
+
+  /* 2. Premium Backgrounds & Surface */
+  /* Mesh gradient cực đẹp cho background nền */
+  --bg-gradient: linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 50%, #ECFDF5 100%);
+  
+  /* Glassmorphism Surface (Kính mờ) */
+  --surface-color: rgba(255, 255, 255, 0.85);
+  --surface-border: rgba(255, 255, 255, 0.5);
+
+  /* 3. Text Colors */
+  --bs-body-color: #1E293B; /* Slate 800 - Sắc nét và sang */
+  --text-muted: #64748B; /* Slate 500 */
+
+  /* 4. Elegant Shadow System (Đổ bóng mềm mại, sâu thẳm) */
+  --shadow-sm: 0 2px 4px rgba(16, 185, 129, 0.05);
+  --shadow-md: 0 10px 25px rgba(16, 185, 129, 0.08); /* Ám xanh nhẹ cho bóng */
+  --shadow-lg: 0 20px 40px rgba(16, 185, 129, 0.12);
+  --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.3); /* Glow cho nút Vàng */
+
+  /* 5. Border Radius (Bo góc App hiện đại Soft UI) */
+  --border-radius-sm: 10px;
+  --border-radius-md: 16px;
+  --border-radius-lg: 24px;
+  --border-radius-xl: 32px;
+}
