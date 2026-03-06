@@ -12,11 +12,16 @@ const BASE_URL = 'http://127.0.0.1:8000/api';
 export async function callApi(endpoint, method = 'GET', bodyData = null) {
     const token = localStorage.getItem('access_token');
 
-    // Cấu hình Headers (Luôn set JSON + dán Token nếu có)
+    // Cấu hình Headers mặc định
     const headers = {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
     };
+
+    // Nếu KHÔNG phải FormData thì ép gửi kiểu JSON
+    if (!(bodyData instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+    }
+
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
@@ -27,7 +32,7 @@ export async function callApi(endpoint, method = 'GET', bodyData = null) {
     };
 
     if (bodyData && (method === 'POST' || method === 'PUT')) {
-        options.body = JSON.stringify(bodyData);
+        options.body = (bodyData instanceof FormData) ? bodyData : JSON.stringify(bodyData);
     }
 
     try {
@@ -38,8 +43,8 @@ export async function callApi(endpoint, method = 'GET', bodyData = null) {
             localStorage.removeItem('access_token');
             localStorage.removeItem('user');
             // Chuyển hướng nhưng không văng lỗi khi đang đứng ở Login
-            if (!window.location.pathname.includes('login.html')) {
-                window.location.href = '/frontend/pages/login.html';
+            if (!window.location.pathname.includes('/login')) {
+                window.location.href = '/login';
             }
             throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!");
         }
@@ -79,5 +84,68 @@ export function getCurrentUser() {
 export function logout() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
-    window.location.href = '/frontend/pages/login.html';
+    window.location.href = '/login';
 }
+
+export function requireRole(role) {
+    const user = getCurrentUser();
+    if (!user) {
+        window.location.href = '/login';
+        return;
+    }
+
+    if (user.role !== role) {
+        // Có thể redirect dựa vào role hoặc về /
+        alert('Bạn không có quyền truy cập trang này!');
+        if (user.role === 'customer') window.location.href = '/customer/home';
+        else if (user.role === 'worker') window.location.href = '/worker/dashboard';
+        else if (user.role === 'admin') window.location.href = '/admin/dashboard';
+        else window.location.href = '/';
+    }
+}
+
+// Global Notification Helpers
+export const showToast = (message, type = 'success') => {
+    let bgColor = type === 'success' ? '#10b981' : '#ef4444';
+    if (typeof Toastify !== 'undefined') {
+        Toastify({
+            text: message,
+            duration: 3000,
+            close: true,
+            gravity: "top",
+            position: "right",
+            stopOnFocus: true,
+            style: {
+                background: bgColor,
+                borderRadius: '8px',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: '500',
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+            }
+        }).showToast();
+    } else {
+        alert(message);
+    }
+};
+
+export const confirmAction = async (title, text, confirmBtnText = 'Xác nhận') => {
+    if (typeof Swal !== 'undefined') {
+        return await Swal.fire({
+            title: title,
+            text: text,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#0f172a',
+            cancelButtonColor: '#e2e8f0',
+            confirmButtonText: confirmBtnText,
+            cancelButtonText: '<span style="color:#0f172a">Hủy</span>',
+            customClass: {
+                confirmButton: 'btn btn-primary px-4 border-0',
+                cancelButton: 'btn btn-light px-4 border ms-2 text-dark'
+            },
+            buttonsStyling: false
+        });
+    } else {
+        return { isConfirmed: confirm(text || title) };
+    }
+};

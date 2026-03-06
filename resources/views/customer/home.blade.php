@@ -1,549 +1,624 @@
 @extends('layouts.app')
 
-@section('title', 'Tìm Thợ Khắp Nơi - Find a Worker')
+@section('title', 'Thợ Tốt NTU - Sửa Đồ Điện Nhanh Tại Nha Trang')
 
 @push('styles')
-<style>
-    /* HERO SECTION */
-    .hero-section {
-        position: relative;
-        padding: 8rem 0 10rem 0;
-        min-height: 85vh;
-        display: flex;
-        align-items: center;
-        overflow: hidden;
-    }
-
-    /* Carousel Background styling */
-    .hero-carousel {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-    }
-
-    .hero-carousel .carousel-inner,
-    .hero-carousel .carousel-item {
-        height: 100%;
-    }
-
-    .hero-carousel img,
-    .hero-carousel video {
-        object-fit: cover;
-        width: 100%;
-        height: 100%;
-        object-position: center;
-    }
-
-    /* Overlay để làm nổi bật chữ Text */
-    .hero-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.4) 100%);
-        z-index: 1;
-    }
-
-    .hero-content {
-        position: relative;
-        z-index: 2;
-        text-align: center;
-        width: 100%;
-    }
-
-    /* BỘ TÌM KIẾM KHỔNG LỒ */
-    .search-container {
-        max-width: 800px;
-        margin: 0 auto;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        border-radius: 50px;
-        padding: 8px;
-        box-shadow: 0 20px 40px rgba(16, 185, 129, 0.12);
-        display: flex;
-        align-items: center;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .search-container:focus-within {
-        transform: translateY(-2px);
-        box-shadow: 0 25px 50px rgba(16, 185, 129, 0.2);
-        border-color: rgba(16, 185, 129, 0.3);
-    }
-
-    .search-input {
-        flex: 1;
-        border: none;
-        background: transparent;
-        padding: 15px 25px;
-        font-size: 1.1rem;
-        outline: none;
-        color: var(--bs-body-color);
-        font-family: 'Inter', sans-serif;
-    }
-
-    .search-input::placeholder {
-        color: #94A3B8;
-    }
-
-    .search-btn {
-        background: var(--bs-primary);
-        color: white;
-        border: none;
-        border-radius: 40px;
-        padding: 15px 35px;
-        font-weight: bold;
-        font-family: 'Outfit', sans-serif;
-        font-size: 1.1rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-    }
-
-    .search-btn:hover {
-        background: var(--bs-primary-hover);
-        transform: scale(1.02);
-        box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
-    }
-
-    /* GRID DANH MỤC DỊCH VỤ */
-    .service-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-        gap: 1.5rem;
-        margin-top: -3.5rem;
-        /* Kéo trồi lên đè phần Hero */
-        position: relative;
-        z-index: 2;
-    }
-
-    @media (min-width: 768px) {
-        .service-grid {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    corePlugins: { preflight: false },
+    theme: {
+        extend: {
+            colors: {
+                primary: '#BAF2E9',
+                'primary-dark': '#0EA5E9',
+                accent: '#0EA5E9',
+                'bg-light': '#f8fafc',
+                'slate-custom': '#64748b'
+            },
+            fontFamily: {
+                poppins: ['Poppins','sans-serif'],
+                inter: ['Inter','sans-serif']
+            }
         }
     }
+}
+</script>
+<style>
+.material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 24px; display: inline-block; line-height: 1; }
+.hover\:scale-\[1\.02\]:hover { transform: scale(1.02); }
+.active\:scale-\[0\.98\]:active { transform: scale(0.98); }
+.hero-gradient { background: linear-gradient(135deg, rgba(186,242,233,0.45) 0%, #fff 60%); }
+.soft-shadow { box-shadow: 0 4px 24px 0 rgba(14,165,233,0.08); }
+.booking-card { background: #fff; border-radius: 1.5rem; box-shadow: 0 20px 60px rgba(0,0,0,0.10); }
 
-    .service-card {
-        background: white;
-        border-radius: var(--border-radius-lg);
-        padding: 0;
-        text-align: center;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        text-decoration: none;
-        color: var(--bs-body-color);
-        border: 1px solid rgba(0, 0, 0, 0.02);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
+/* ====================================================
+   FIX: Bootstrap classes overridden by Tailwind CDN
+   ==================================================== */
 
-    .service-card:hover {
-        transform: translateY(-8px);
-        box-shadow: var(--shadow-xl);
-        border-color: rgba(16, 185, 129, 0.1);
-        color: var(--bs-primary);
-    }
+/* Restore Bootstrap navbar collapse behavior */
+app-navbar .navbar-collapse.collapse { visibility: visible !important; }
+app-navbar .navbar-expand-lg .navbar-collapse { display: flex !important; flex-basis: auto !important; }
 
-    .service-image-container {
-        width: 100%;
-        height: 130px;
-        overflow: hidden;
-        background: #f8fafc;
-    }
+/* Restore Bootstrap display utilities */
+app-navbar .d-flex { display: flex !important; }
+app-navbar .d-none { display: none !important; }
+app-navbar .d-md-block { display: none !important; }
+@media (min-width: 768px) {
+  app-navbar .d-md-block { display: block !important; }
+}
+app-navbar .d-none.d-md-block { display:none !important; }
+@media (min-width: 768px) {
+  app-navbar .d-none.d-md-block { display: block !important; }
+}
 
-    .service-image-container img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-    }
+/* Restore Bootstrap btn styles that Tailwind may break */
+app-navbar .btn { display: inline-block; font-weight: 400; text-align: center; white-space: nowrap; vertical-align: middle; cursor: pointer; border: 1px solid transparent; padding: 0.375rem 0.75rem; font-size: 1rem; border-radius: 0.375rem; text-decoration: none !important; }
+app-navbar .btn-primary { color: #fff !important; background-color: #0d6efd !important; border-color: #0d6efd !important; }
+app-navbar .btn-warning { color: #000 !important; background-color: #ffc107 !important; border-color: #ffc107 !important; }
 
-    .service-card:hover .service-image-container img {
-        transform: scale(1.1);
-    }
-
-    .service-card-body {
-        padding: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 1;
-    }
-
-    .service-card span {
-        font-weight: 700;
-        font-size: 1.05rem;
-    }
-
-    /* TOP WORKERS GRID */
-    .section-title {
-        font-family: 'Outfit', sans-serif;
-        font-weight: 800;
-        color: var(--bs-secondary);
-        font-size: 2.2rem;
-        letter-spacing: -0.02em;
-        margin-bottom: 2.5rem;
-    }
-
-    .section-title span {
-        color: var(--bs-primary);
-    }
+/* Fix baseline sizing for app-navbar */
+app-navbar { display: block; width: 100%; }
 </style>
 @endpush
 
 @section('content')
+<!-- ===================== STITCH NAVBAR ===================== -->
+<nav id="landingNav" style="position:sticky;top:0;z-index:1000;width:100%;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px);border-bottom:1px solid rgba(0,0,0,0.06);">
+  <div style="max-width:80rem;margin:0 auto;padding:0 1.5rem;height:5rem;display:flex;align-items:center;justify-content:space-between;">
 
-<!-- Web Component Navbar -->
-<app-navbar></app-navbar>
+    <!-- Logo -->
+    <a href="/customer/home" style="display:flex;align-items:center;gap:0.625rem;text-decoration:none;">
+      <div style="width:2.5rem;height:2.5rem;background:#BAF2E9;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-outlined" style="font-size:1.5rem;color:#0EA5E9;">home_repair_service</span>
+      </div>
+      <span style="font-size:1.2rem;font-weight:800;color:#0f172a;font-family:'Poppins',sans-serif;letter-spacing:-0.5px;">
+        Thợ Tốt <span style="color:#0EA5E9;">NTU</span>
+      </span>
+    </a>
 
-<!-- Hero Section -->
-<section class="hero-section">
-    <!-- Carousel Background -->
-    <div id="heroCarousel" class="carousel slide carousel-fade hero-carousel" data-bs-ride="carousel" data-bs-interval="4000">
-        <div class="carousel-inner">
-            <!-- Item 1: Video -->
-            <div class="carousel-item active">
-                <video autoplay muted loop playsinline poster="{{ asset('assets/images/banner.png') }}">
-                    <source src="{{ asset('assets/images/videobanner.mp4') }}" type="video/mp4">
-                </video>
-            </div>
+    <!-- Center Nav Links -->
+    <nav id="navLinks" style="display:none;gap:0.25rem;align-items:center;">
+      <a href="#services"    class="nav-link-item">Dịch vụ</a>
+      <a href="#workers"     class="nav-link-item">Thợ sửa</a>
+      <a href="#pricing"     class="nav-link-item">Bảng giá</a>
+      <a href="#ai-diagnosis" class="nav-link-item">AI Chẩn đoán</a>
+    </nav>
 
-        </div>
-
-        <!-- Controls (Tùy chọn hiển thị mờ đè lên) -->
-        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" style="z-index: 3; width: 5%;">
-            <span class="carousel-control-prev-icon" aria-hidden="true" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></span>
-            <span class="visually-hidden">Previous</span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" style="z-index: 3; width: 5%;">
-            <span class="carousel-control-next-icon" aria-hidden="true" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></span>
-            <span class="visually-hidden">Next</span>
-        </button>
+    <!-- Right Actions -->
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <button onclick="openBookingModal()" class="nav-cta-btn">
+        <span class="material-symbols-outlined" style="font-size:1.1rem;">event_upcoming</span>
+        Đặt lịch sửa
+      </button>
+      <div id="navUserAvatar" style="display:none;width:2.5rem;height:2.5rem;border-radius:50%;border:2px solid #BAF2E9;overflow:hidden;cursor:pointer;" onclick="window.location.href='/customer/my-bookings'">
+        <div id="navUserInitial" style="width:100%;height:100%;background:#0EA5E9;color:#fff;font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:center;">U</div>
+      </div>
+      <a id="navLoginBtn" href="{{ url('/') }}" style="display:none;background:#0EA5E9;color:#fff;font-weight:700;font-size:0.875rem;text-decoration:none;border-radius:0.75rem;padding:0.625rem 1.25rem;">Đăng nhập</a>
+      <button id="navHamburger" style="display:none;background:none;border:none;cursor:pointer;padding:0.5rem;" onclick="document.getElementById('mobileMenu').style.display=document.getElementById('mobileMenu').style.display==='none'?'block':'none'">
+        <span class="material-symbols-outlined" style="font-size:1.5rem;color:#475569;">menu</span>
+      </button>
     </div>
+  </div>
 
-    <!-- Dark Overlay -->
-    <div class="hero-overlay"></div>
+  <!-- Mobile Menu -->
+  <div id="mobileMenu" style="display:none;padding:1rem 1.5rem 1.5rem;border-top:1px solid #f1f5f9;background:#fff;">
+    <a href="#services"    style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;">Dịch vụ</a>
+    <a href="#workers"     style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">Thợ sửa</a>
+    <a href="#pricing"     style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">Bảng giá</a>
+    <a href="#ai-diagnosis" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">AI Chẩn đoán</a>
+  </div>
+</nav>
 
-    <div class="container hero-content">
-        <h1 class="brand-font fw-extrabold mb-3 text-white" style="font-size: 4rem; letter-spacing: -1.5px; text-shadow: 0 4px 15px rgba(0,0,0,0.6);">
-            Sửa Chữa Mọi Thứ<br>
-            <span style="color: var(--bs-warning);">Nhanh Chóng & An Toàn</span>
+<style>
+.nav-link-item { color:#475569; font-size:.875rem; font-weight:600; text-decoration:none; padding:.5rem .75rem; border-radius:.5rem; transition:color .15s; }
+.nav-link-item:hover { color:#0EA5E9; }
+.nav-cta-btn { display:flex; align-items:center; gap:.4rem; background:#BAF2E9; color:#0f172a; font-weight:700; font-size:.875rem; border:none; border-radius:.75rem; padding:.625rem 1.25rem; cursor:pointer; box-shadow:0 4px 16px rgba(14,165,233,0.14); transition:all .2s; font-family:'Inter',sans-serif; }
+.nav-cta-btn:hover { background:#0EA5E9; color:#fff; }
+</style>
+
+<script>
+(function(){
+  function applyNav(){
+    var links = document.getElementById('navLinks');
+    var ham   = document.getElementById('navHamburger');
+    if(!links||!ham) return;
+    if(window.innerWidth >= 768){
+      links.style.display='flex'; ham.style.display='none';
+    } else {
+      links.style.display='none'; ham.style.display='block';
+    }
+  }
+  window.addEventListener('resize', applyNav);
+  applyNav();
+
+  // Show user state
+  try {
+    var raw = localStorage.getItem('user') || localStorage.getItem('auth_user');
+    var user = raw ? JSON.parse(raw) : null;
+    if(user && user.name){
+      var av = document.getElementById('navUserAvatar');
+      var init = document.getElementById('navUserInitial');
+      if(av) av.style.display='flex';
+      if(init) init.textContent = user.name.charAt(0).toUpperCase();
+    } else {
+      var btn = document.getElementById('navLoginBtn');
+      if(btn) btn.style.display='inline-flex';
+    }
+  } catch(e) {
+    var btn2 = document.getElementById('navLoginBtn');
+    if(btn2) btn2.style.display='inline-flex';
+  }
+})();
+</script>
+
+<div class="font-inter bg-white text-slate-900 overflow-x-hidden">
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero-gradient relative pt-12 pb-24 px-6 overflow-hidden">
+    <div class="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12 items-center">
+
+      <!-- Left Content -->
+      <div class="lg:col-span-7 flex flex-col gap-8">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-dark/10 text-primary-dark text-xs font-bold uppercase tracking-wider w-fit">
+          <span class="material-symbols-outlined text-sm">verified</span>
+          Dịch vụ chuẩn 5 sao tại Nha Trang
+        </div>
+        <h1 class="text-5xl lg:text-[58px] font-extrabold leading-tight text-slate-900">
+          Sửa đồ điện nhanh tại Nha Trang<br>
+          <span class="text-primary-dark">Thợ uy tín</span> – Có cửa hàng – Sửa tận nhà
         </h1>
-        <p class="text-white opacity-75 fs-4 mb-5" style="max-width: 700px; margin: 0 auto; text-shadow: 0 2px 5px rgba(0,0,0,0.5);">Trải nghiệm dịch vụ chuyên nghiệp. Kết nối ngay lập tức với hàng nghìn thợ kỹ thuật uy tín tại khu vực của bạn.</p>
+        <p class="text-lg text-slate-600 max-w-2xl">
+          Chuyên sửa chữa thiết bị điện gia dụng và điện lạnh chuyên nghiệp. Minh bạch giá cả, bảo hành dài hạn.
+        </p>
 
-        <div class="search-container">
-            <!-- Location Picker Dropdown -->
-            <div class="dropdown location-dropdown border-end pe-2">
-                <button class="btn btn-link text-decoration-none dropdown-toggle text-dark d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 15px 15px; font-weight: 500;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="var(--bs-primary)" class="me-2" viewBox="0 0 16 16">
-                        <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" />
-                    </svg>
-                    <span id="selectedLocationText" class="text-truncate" style="max-width: 120px;">Toàn quốc</span>
-                </button>
-                <ul class="dropdown-menu shadow border-0" style="border-radius: 12px; min-width: 250px;">
-                    <!-- Get Current Location -->
-                    <li>
-                        <button class="dropdown-item py-2 fw-semibold text-primary d-flex align-items-center" id="btnGetLocation" type="button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-2" viewBox="0 0 16 16">
-                                <path d="M8 16a.5.5 0 0 1-.5-.5v-1.293l-4.146-4.147a.5.5 0 0 1 .708-.708L8 13.293l3.938-3.938a.5.5 0 0 1 .708.708L8.5 14.207V15.5a.5.5 0 0 1-.5.5zM1 7a.5.5 0 0 1 .5-.5h1.293l4.147-4.146a.5.5 0 1 1 .708.708L3.707 7H2a.5.5 0 0 1-.5-.5zm13.5.5a.5.5 0 0 1-.5.5h-1.293l-4.147 4.146a.5.5 0 0 1-.708-.708L12.293 8H14a.5.5 0 0 1 .5-.5zM8 1a.5.5 0 0 1 .5.5v1.293l4.146 4.147a.5.5 0 0 1-.708.708L8 3.707 4.062 7.645a.5.5 0 1 1-.708-.708L7.5 2.793V1.5A.5.5 0 0 1 8 1z" />
-                            </svg>
-                            Sử dụng vị trí hiện tại
-                        </button>
-                    </li>
-                    <li>
-                        <hr class="dropdown-divider">
-                    </li>
-                    <!-- Tỉnh thành (Tạm Mock tĩnh) -->
-                    <li>
-                        <h6 class="dropdown-header">Hoặc chọn tỉnh/thành có thợ</h6>
-                    </li>
-                    <li><button class="dropdown-item py-2 location-item" type="button" data-province="Hồ Chí Minh">TP. Hồ Chí Minh</button></li>
-                    <li><button class="dropdown-item py-2 location-item" type="button" data-province="Hà Nội">Hà Nội</button></li>
-                    <li><button class="dropdown-item py-2 location-item" type="button" data-province="Đà Nẵng">Đà Nẵng</button></li>
-                </ul>
+        <!-- Quick Booking Form -->
+        <div class="booking-card p-8 max-w-2xl">
+          <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-900">
+            <span class="material-symbols-outlined text-primary-dark">event_upcoming</span>
+            Đặt lịch nhanh
+          </h3>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-2">
+              <label class="text-sm font-semibold text-slate-700">Thiết bị cần sửa</label>
+              <div class="relative">
+                <select id="heroDevice" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 appearance-none text-sm">
+                  <option value="">Chọn loại thiết bị</option>
+                  <option>Tivi</option><option>Máy giặt</option><option>Tủ lạnh</option>
+                  <option>Điều hòa</option><option>Bếp điện</option><option>Lò vi sóng</option><option>Khác</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400 text-lg">expand_more</span>
+              </div>
             </div>
-
-            <span class="ps-3 text-muted">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-                </svg>
-            </span>
-            <input type="text" class="search-input" placeholder="Bạn đang cần thợ sửa gì? (VD: sửa máy lạnh...)">
-            <button class="search-btn d-none d-md-block">Tìm Thợ Ngay</button>
+            <div class="flex flex-col gap-2">
+              <label class="text-sm font-semibold text-slate-700">Địa chỉ tại Nha Trang</label>
+              <input id="heroAddress" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 text-sm" placeholder="Số nhà, tên đường..." type="text"/>
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-sm font-semibold text-slate-700">Ngày hẹn</label>
+              <input id="heroDate" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 text-sm" type="date"/>
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-sm font-semibold text-slate-700">Giờ hẹn</label>
+              <div class="relative">
+                <select id="heroTime" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 appearance-none text-sm">
+                  <option>Sáng (08:00 – 12:00)</option>
+                  <option>Chiều (13:30 – 17:30)</option>
+                  <option>Tối (18:00 – 20:00)</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400 text-lg">schedule</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-4 mt-6">
+            <button id="btnHeroBook" class="flex-1 min-w-[160px] h-14 rounded-xl bg-primary-dark text-white font-bold text-base shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined">send</span> Đặt lịch ngay
+            </button>
+            <button id="btnHeroAI" class="flex-1 min-w-[180px] h-14 rounded-xl bg-slate-100 text-slate-900 font-bold shadow-sm hover:bg-primary/60 transition-all flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-primary-dark">smart_toy</span> AI kiểm tra lỗi
+            </button>
+          </div>
         </div>
+      </div>
+
+      <!-- Right Illustration -->
+      <div class="lg:col-span-5 relative hidden lg:flex flex-col items-center">
+        <div class="absolute -inset-4 bg-primary/25 blur-3xl rounded-full -z-10"></div>
+        <div class="relative rounded-[2rem] overflow-hidden border-8 border-white shadow-2xl w-full">
+          <img class="w-full aspect-[4/5] object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAp1hAG6NXCS7wiHypSRullKGKHQyELgqoUFO6wz8Bqr-8RsTXmKhCKYB73RctveGIOWKUwUsrXwh0UM9SrLkDmbB3BN4_P9hpMcSPZE2HW9HiZVe0OzuBHY_ZV8JpaPdzAtFk-8P2SpKYi3QLyshg7bwptjpMk0yahKTfIiz8_QgPOADteX6hvqXFKIzeLIzhNTSWyqHmvRCHDw1rAG-MAOk8sZfXYguNRta-TBvqlYWU_G0DuwrU8I96S53ag31FLngEFFsm5wkMF" alt="Technician"/>
+          <div class="absolute bottom-6 left-4 right-4 bg-white/90 backdrop-blur p-4 rounded-2xl shadow-xl flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white shrink-0">
+              <span class="material-symbols-outlined">call</span>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase">Hỗ trợ 24/7</p>
+              <p class="text-lg font-extrabold text-slate-900">0905 123 456</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-</section>
+  </section>
 
-<!-- Service Categories (Nổi lên mấp mé mép) -->
-<section class="container mb-5">
-    <div class="service-grid" id="categoryContainer">
-        <!-- Render bằng AJAX API sau. Tạm thời MOCK tĩnh để xem Giao diện -->
-        <a href="#" class="service-card">
-            <div class="service-image-container">
-                <img src="{{ asset('assets/images/suamaylanh.png') }}" alt="Sửa Máy Lạnh">
-            </div>
-            <div class="service-card-body">
-                <span>Sửa Máy Lạnh</span>
-            </div>
-        </a>
-        <a href="#" class="service-card">
-            <div class="service-image-container">
-                <img src="{{ asset('assets/images/suaongnuoc.png') }}" alt="Sửa Ống Nước">
-            </div>
-            <div class="service-card-body">
-                <span>Sửa Ống Nước</span>
-            </div>
-        </a>
-        <a href="#" class="service-card">
-            <div class="service-image-container">
-                <img src="{{ asset('assets/images/suadien.png') }}" alt="Sửa Điện Gia Dụng">
-            </div>
-            <div class="service-card-body">
-                <span>Sửa Điện</span>
-            </div>
-        </a>
-        <a href="#" class="service-card">
-            <div class="service-image-container">
-                <img src="{{ asset('assets/images/suaxemay.png') }}" alt="Sửa Xe Máy">
-            </div>
-            <div class="service-card-body">
-                <span>Sửa Xe Máy</span>
-            </div>
-        </a>
-        <a href="#" class="service-card">
-            <div class="service-image-container">
-                <img src="{{ asset('assets/images/thoson.png') }}" alt="Thợ Sơn">
-            </div>
-            <div class="service-card-body">
-                <span>Thợ Sơn</span>
-            </div>
-        </a>
-        <a href="#" class="service-card">
-            <div class="service-image-container">
-                <img src="{{ asset('assets/images/xaydung.png') }}" alt="Xây Dựng">
-            </div>
-            <div class="service-card-body">
-                <span>Xây Dựng</span>
-            </div>
-        </a>
+  <!-- ===================== QUICK INFO ===================== -->
+  <section class="max-w-7xl mx-auto px-6 py-10">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+      @foreach([['bolt','Sửa nhanh 30\'','Có mặt ngay sau khi gọi'],['verified_user','Bảo hành 12th','Yên tâm sử dụng lâu dài'],['payments','Giá minh bạch','Báo giá trước khi sửa'],['store','Có cửa hàng','Địa chỉ uy tín, rõ ràng']] as [$icon, $title, $desc])
+      <div class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white soft-shadow border border-slate-100">
+        <span class="material-symbols-outlined text-4xl text-primary-dark">{{ $icon }}</span>
+        <h4 class="font-bold text-slate-900">{{ $title }}</h4>
+        <p class="text-sm text-slate-500">{{ $desc }}</p>
+      </div>
+      @endforeach
     </div>
-</section>
+  </section>
 
-<!-- Khối Giới thiệu Nhân sự chuyên nghiệp -->
-<section class="container mb-5 mt-5">
-    <div class="row align-items-center bg-white rounded-4 shadow-sm overflow-hidden" style="border: 1px solid rgba(0,0,0,0.05);">
-        <div class="col-lg-6 p-0">
-            <img src="{{ asset('assets/images/nhansu.png') }}" alt="Đội ngũ nhân sự chuyên nghiệp" class="img-fluid w-100 h-100 object-fit-cover" style="min-height: 400px;">
-        </div>
-        <div class="col-lg-6 p-5">
-            <h2 class="brand-font fw-bold mb-4" style="color: var(--bs-secondary); font-size: 2.2rem;">
-                Đội ngũ thợ chuẩn <span style="color: var(--bs-primary);">5 Sao</span>
-            </h2>
-            <p class="text-muted-custom fs-5 mb-4">
-                Tất cả đối tác kỹ thuật trên nền tảng FindWorker đều trải qua quy trình xác minh danh tính và kiểm tra tay nghề khắt khe ngặt nghèo nhất.
-            </p>
-            <ul class="list-unstyled mb-4">
-                <li class="mb-3 d-flex align-items-center">
-                    <svg class="me-3" width="24" height="24" fill="var(--bs-primary)" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
-                    </svg>
-                    <span class="fs-5 fw-semibold">100% Lý lịch tư pháp trong sạch.</span>
-                </li>
-                <li class="mb-3 d-flex align-items-center">
-                    <svg class="me-3" width="24" height="24" fill="var(--bs-primary)" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
-                    </svg>
-                    <span class="fs-5 fw-semibold">Thay thế linh kiện chính hãng.</span>
-                </li>
-                <li class="mb-3 d-flex align-items-center">
-                    <svg class="me-3" width="24" height="24" fill="var(--bs-primary)" viewBox="0 0 16 16">
-                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
-                    </svg>
-                    <span class="fs-5 fw-semibold">Thái độ phục vụ lễ phép, tận tâm.</span>
-                </li>
-            </ul>
-        </div>
+  <!-- ===================== SERVICES ===================== -->
+  <section id="services" class="max-w-7xl mx-auto px-6 py-16">
+    <div class="mb-10 flex items-end justify-between">
+      <div>
+        <h2 class="text-3xl font-black tracking-tight text-slate-900">Dịch vụ sửa chữa tại Nha Trang</h2>
+        <p class="mt-2 text-slate-500">Chuyên nghiệp - Tận tâm - Giá cả minh bạch niêm yết</p>
+      </div>
     </div>
-</section>
-
-<!-- Khối Quy mô Toàn Quốc -->
-<section class="container mb-5 mt-5">
-    <div class="row align-items-center justify-content-between flex-lg-row-reverse bg-white rounded-4 shadow-sm overflow-hidden" style="border: 1px solid rgba(0,0,0,0.05);">
-        <div class="col-lg-6 p-0 text-center bg-light">
-            <img src="{{ asset('assets/images/anhtho.png') }}" alt="Mạng lưới thợ toàn quốc" class="img-fluid" style="max-height: 450px; object-fit: contain;">
+    <div class="grid grid-cols-2 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      @php
+        $services = [
+          ['Sửa Tivi','Màn hình, bo mạch, nguồn','tv','https://lh3.googleusercontent.com/aida-public/AB6AXuAGs59IjpN8BuTi_P42ul7xeU4ScSQxhhyWHJQdhtNThD1TzNNCCeaOjhxQ7OJyZFPSsSm9Zo0Ytj7P59YNMjE3UsRaKzYzSnwuRRU4u2dbb9WwVpO0C0rlANN-hDnTTtzUzbm8A_cTV4I9SIjkPVsPmk9c4xBTlvtlJB3IFn0pNGnEe8jdV4UAxchUns7WBFS_rMd7iG5j9yXJ6mnVLZ0SFTjvmriFTGMvMaeDa3JdcNaQac2_7mOEkZ6l-ipnyaZGP5WYmHNmAkDo'],
+          ['Máy giặt','Rung lắc, không vắt, rò nước','local_laundry_service','https://lh3.googleusercontent.com/aida-public/AB6AXuCHPLh_yWZQJg6hb2UB5xQDXkxjgXrRPASn9OfkRlJkFHqWHpAGLRAv1Ghw5mH4AgGK1ls4ZzzU8CyTfdgfhOfLF-oSEzPSwxyrdx7SCPxIcMm3_987kE16-12v6zpZvnTs4nB8gtKHIjc_AOVApp4gG_OQ8eKrVXHezNg_DcOFmIf_sMT_Xqy1JP_1BP_PZIHpbtQvV5k8MuJiAIOx0qQ68n-dBDLssQTEXKUheLowvo2KxCbzhP2w4OQDAv5GjGfTumsqVaCWL1_V'],
+          ['Tủ lạnh','Kém lạnh, đóng tuyết, ồn','kitchen','https://lh3.googleusercontent.com/aida-public/AB6AXuDWQojltlBIIkMf_HWfaK_Eb1fl1c3GPKl3SiYSjlMm82vGFXDBIdY8mwCQFJIkztUP8YjV6pzry0O_0XLRuj8hg93xe9zgE0cGO4FvEBOGhhjkJ7SwyP-eRLY2sJVA6TRqP-YOh2dVvprmKzS9oHswnsPz854KLiZMF_B-4f4Ev7xwfTKn1Ra5q2HxJXWJGdA8CPneY20ZYv8OpO2wlzeW9HInKTv2LgGhVbGJJArLRLZK5mYyz_B7KB0tAS9fXmDX4BGqI7VTVn6v'],
+          ['Điều hòa','Vệ sinh, nạp gas, hỏng tụ','ac_unit','https://lh3.googleusercontent.com/aida-public/AB6AXuDFu5RMcmH-rgGmPc1LP9RsharSKQQtQ-OtPXt7Ckl25w0hXWExkajoUKHJeX-6wV617me7WqlGNlACzLg0Xqqsb-_xW18yra21oj00n4KPFlglb1-eV9izwznUsVNFrw2snvwlGt1kHQpJuk9ygANvSpBcfMwipWHUFbU31VK9bMrMJsTDUup74_T-J9kF_uBo6Ap4lKKx--dYJ-8LGuDGgagRppjLZKkMDZPkYbFCGX_OwNMMo0w_-g6TI3YCl_XLJC7qJC0kTIgc'],
+          ['Bếp điện','Lỗi E0-E9, không nhận nồi','cooking','https://lh3.googleusercontent.com/aida-public/AB6AXuCYQEnjZ_y1cBZ1m86jvD8BITprjx6Jdv8XfG1WH7chGibuPt5uQ39BanhdsxIv0C3LcZq-4VXQfgwynoWRp9-U_fwyh_hZvKXgQdxgjM2Z7uqHM5AI6jFsWQC5rgnKdbXuJtsNBcrOdI_SxL_hxe5LBakqgenKB1UwhbwM4ZTdNWWYTvHLaeWJBHVwDkW-f-Gyt22xeQtJubVLW7lhIf6ukfrh9Bu316gEhQZM_vjBHomkh8HzSloeLQCJm3-9Uaq1kFSPCuoxLvvN'],
+          ['Lò vi sóng','Không nóng, liệt phím','microwave','https://lh3.googleusercontent.com/aida-public/AB6AXuBfZqOziIaI11NmfXcoTrUOx68uh_i1jSdgkTok_7OFc41JTAnsMPCJZA-0k_twlly-r1H2TMHNCXcO7Ps5cfG9Ymt4ZZxks0kX04nfn2gR0igVaLdqGVJt49Yft5CsWKbJDjaumQ7uq7eDhbhAXVlFB8xuAfyo8xXA5eVL0kVezn-RBSbKEYEtREnZbL_J05F_f5hIuKvxXMCjON7kMefPPH_Hohc-JgTn7UPsQ0A3wcws608wUNy5ak03Up06t7xQiE8vGXcvqNrS'],
+          ['Nồi chiên KD','Hỏng quạt, cảm biến nhiệt','air_purifier','https://lh3.googleusercontent.com/aida-public/AB6AXuCQEDs1LOn5gumOwCjWfz4bZ6gA2xV0HaKakXrsFWFi4XBaK0WEcYR8ukrU-Im6Ie4Nxrm5wZ8jlE6KaEIKt1fKnz1H3ClTt83uqvV8GLQOsB_ZZUKwVYPMfp5hDjyw3QFGujVgBpPIXJotCxY-KjXoSQMOXYS0alUpkcQGp0U5YlVRBZEHC24rlsLQk0f2U3bIFE-lj3yyj_nkHV423Aj9mLLmnS9XzVPOnd-CEaoVecCK5E6wGV7cgg3RYdcvxP1h395vcSP72Ov3'],
+          ['Ấm siêu tốc','Không vào điện, cháy rơ le','kettle','https://lh3.googleusercontent.com/aida-public/AB6AXuD6j2AXxE-Yth4mDQQyIdsNk9MpIDOxV7Ccq2PZLiJFzE0n5NorcwrSkbMG2igDRiR6PrNxiW_wQMkn2688fvnhbqD0v-9kQHwk90AHXT31VlgdR7bZ-HcwnvnHdloooIxKraypSMo9o-pmJEVbJTAAJz-ufnC57vJ8YEA2_HbocFsZefZQh0vw_B_lk2asjClW_apGu2AafytDUd9sLPlW7S3tJahN1x8n2VgTVccBY8Mc4bhAE7DD-oKNa_cGQS93O2eIatQ_bYYt'],
+        ];
+      @endphp
+      @foreach($services as [$name, $desc, $icon, $img])
+      <div class="group flex flex-col rounded-2xl bg-white p-5 soft-shadow border border-transparent hover:border-primary-dark transition-all cursor-pointer" onclick="openBookingModal('{{ $name }}')">
+        <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/10">
+          <img class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" src="{{ $img }}" alt="{{ $name }}"/>
         </div>
-        <div class="col-lg-6 p-5">
-            <h2 class="brand-font fw-bold mb-4" style="color: var(--bs-secondary); font-size: 2.2rem;">
-                Mạng lưới phủ sóng <span style="color: var(--bs-warning);">Toàn Quốc</span>
-            </h2>
-            <p class="text-muted-custom fs-5 mb-4">
-                Từ Bắc chí Nam, tại bất kỳ ngõ ngách nào từ Hà Nội đến Cà Mau, chúng tôi luôn có những thợ lành nghề sẵn sàng phục vụ gia đình bạn 24/7.
-            </p>
-            <div class="d-flex gap-4">
-                <div>
-                    <h3 class="fw-extrabold brand-font text-primary mb-1">63+</h3>
-                    <p class="text-muted mb-0">Tỉnh thành</p>
-                </div>
-                <div>
-                    <h3 class="fw-extrabold brand-font text-success mb-1">10,000+</h3>
-                    <p class="text-muted mb-0">Thợ đối tác</p>
-                </div>
-                <div>
-                    <h3 class="fw-extrabold brand-font text-warning mb-1">500,000+</h3>
-                    <p class="text-muted mb-0">Hộ gia đình</p>
-                </div>
+        <div class="flex items-start justify-between">
+          <div>
+            <h3 class="font-bold text-slate-900">{{ $name }}</h3>
+            <p class="text-xs text-slate-500">{{ $desc }}</p>
+          </div>
+          <span class="material-symbols-outlined text-primary-dark">{{ $icon }}</span>
+        </div>
+        <button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark hover:text-white transition-colors">
+          Đặt sửa ngay
+        </button>
+      </div>
+      @endforeach
+    </div>
+  </section>
+
+  <!-- ===================== AI DIAGNOSIS ===================== -->
+  <section id="ai-diagnosis" class="max-w-7xl mx-auto px-6 pb-16">
+    <div class="rounded-3xl bg-white p-8 shadow-xl border border-primary/30 relative overflow-hidden">
+      <div class="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl"></div>
+      <div class="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl"></div>
+      <div class="relative z-10 grid grid-cols-1 gap-12 lg:grid-cols-2">
+        <div>
+          <div class="mb-6 flex items-center gap-3">
+            <span class="material-symbols-outlined text-4xl text-primary-dark">psychology</span>
+            <h2 class="text-3xl font-black text-slate-900">AI Trợ lý Chẩn đoán</h2>
+          </div>
+          <p class="mb-8 text-slate-500">Mô tả tình trạng lỗi của thiết bị, AI sẽ giúp bạn dự đoán nguyên nhân và chi phí ước tính.</p>
+          <div class="space-y-5">
+            <div>
+              <label class="mb-2 block text-sm font-bold">Thiết bị cần kiểm tra</label>
+              <select id="aiDevice" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm focus:border-primary-dark focus:ring-primary-dark">
+                <option value="">Chọn loại thiết bị...</option>
+                <option value="tv">Tivi</option><option value="wm">Máy giặt</option>
+                <option value="ref">Tủ lạnh / Tủ đông</option><option value="ac">Điều hòa</option>
+                <option value="stove">Bếp điện / Bếp từ</option>
+              </select>
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- Khối Chi tiết một số Dịch vụ chuyên dụng -->
-<section class="container mb-5 mt-5 py-5 text-center">
-    <h2 class="brand-font fw-bold mb-3 section-title">Dịch Vụ Nổi Bật Tận Nhà</h2>
-    <p class="text-muted-custom fs-5 mb-5 mx-auto" style="max-width: 700px;">Bắt bệnh chính xác, khắc phục triệt để mọi lỗi hỏng hóc thiết bị trong gia đình.</p>
-
-    <div class="row g-4 justify-content-center">
-        <!-- Dịch vụ Tủ lạnh -->
-        <div class="col-md-5">
-            <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden card-glass transition-all">
-                <img src="{{ asset('assets/images/gioithieusuatulanh.png') }}" class="card-img-top" alt="Sửa tủ lạnh tại nhà" style="height: 250px; object-fit: cover;">
-                <div class="card-body p-4 text-start">
-                    <h4 class="fw-bold mb-3 text-dark">Chuyên Gia Sửa Tủ Lạnh</h4>
-                    <p class="text-muted">Khắc phục nhanh tình trạng tủ lạnh không đông đá, rò rỉ nước, máy nén kêu to. Nạp gas, thay lốc chính hãng bảo hành dài hạn.</p>
-                </div>
+            <div>
+              <label class="mb-2 block text-sm font-bold">Mô tả hiện tượng lỗi</label>
+              <textarea id="aiDesc" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm focus:border-primary-dark" placeholder="Ví dụ: Tivi Samsung có tiếng nhưng không có hình, màn hình có các sọc kẻ ngang..." rows="4"></textarea>
             </div>
-        </div>
-
-        <!-- Dịch vụ Tivi -->
-        <div class="col-md-5">
-            <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden card-glass transition-all">
-                <img src="{{ asset('assets/images/gioithieusuativi.png') }}" class="card-img-top" alt="Sửa tivi tại nhà" style="height: 250px; object-fit: cover;">
-                <div class="card-body p-4 text-start">
-                    <h4 class="fw-bold mb-3 text-dark">Bệnh Việc Sửa Tivi</h4>
-                    <p class="text-muted">Thay màn hình tivi bị vỡ, sửa lỗi sọc màn hình, mất tiếng, không nhận tín hiệu. Hỗ trợ tất cả các dòng Samsung, Sony, LG đời mới nhất.</p>
-                </div>
+            <div class="flex flex-wrap gap-4">
+              <button class="flex items-center gap-2 rounded-xl border-2 border-dashed border-primary/40 px-6 py-4 text-sm font-bold text-slate-500 hover:bg-primary/10 transition-all">
+                <span class="material-symbols-outlined">add_a_photo</span> Tải ảnh/video lỗi
+              </button>
+              <button id="btnAIAnalyze" class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-dark py-4 text-base font-black text-white hover:opacity-90 shadow-lg transition-all">
+                <span class="material-symbols-outlined">analytics</span> Phân tích lỗi với AI
+              </button>
             </div>
+          </div>
         </div>
+        <div class="rounded-2xl bg-slate-50 p-6 border border-slate-100">
+          <h3 class="mb-6 flex items-center gap-2 font-bold">
+            <span class="material-symbols-outlined text-primary-dark">assignment_turned_in</span>
+            Kết quả chẩn đoán dự kiến
+          </h3>
+          <div id="aiResult" class="space-y-5">
+            <div class="rounded-xl bg-white p-4 shadow-sm border-l-4 border-primary-dark">
+              <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Nguyên nhân có thể</p>
+              <p class="mt-1 text-sm text-slate-600">Hệ thống đang chờ thông tin mô tả để phân tích...</p>
+            </div>
+            <div class="rounded-xl bg-white p-4 shadow-sm border-l-4 border-primary-dark">
+              <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Chi phí dự đoán</p>
+              <div class="mt-1 flex items-baseline gap-1">
+                <span class="text-lg font-black text-slate-900">---.--- ₫</span>
+                <span class="text-xs text-slate-400">(Ước tính linh kiện + công)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-</section>
+  </section>
 
-<!-- Footer Đơn giản -->
-<footer class="mt-5 pt-5 pb-3 border-top" style="background: white;">
-    <div class="container text-center text-muted-custom">
-        <h4 class="brand-font fw-bold" style="color: var(--bs-secondary);">FindWorker</h4>
-        <p>Nền tảng kết nối thợ chuyên nghiệp hàng đầu 2026</p>
-        <small>© 2026 DATN Project. All rights reserved.</small>
+  <!-- ===================== PROCESS ===================== -->
+  <section class="bg-slate-50 py-16 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold text-slate-900 mb-3">Quy trình dịch vụ chuyên nghiệp</h2>
+        <p class="text-slate-500">4 bước đơn giản để thiết bị của bạn hoạt động trở lại</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        @foreach([['edit_note','1. Mô tả lỗi','Cung cấp thông tin hư hỏng qua website.'],['person_search','2. Chọn thợ','Duyệt hồ sơ thợ giỏi và chọn người phù hợp.'],['build','3. Sửa chữa','Thợ đến tận nhà kiểm tra và khắc phục lỗi.'],['account_balance_wallet','4. Thanh toán','Nghiệm thu và thanh toán trực tiếp hoặc online.']] as [$i, $t, $d])
+        <div class="flex flex-col items-center text-center group">
+          <div class="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 border border-primary/30 group-hover:bg-primary-dark group-hover:text-white text-primary-dark transition-all duration-300">
+            <span class="material-symbols-outlined text-3xl">{{ $i }}</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-900 mb-2">{{ $t }}</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">{{ $d }}</p>
+        </div>
+        @endforeach
+      </div>
     </div>
-</footer>
+  </section>
+
+  <!-- ===================== TOP TECHNICIANS ===================== -->
+  <section id="workers" class="max-w-7xl mx-auto px-6 py-16">
+    <div class="flex items-end justify-between mb-10">
+      <div>
+        <h2 class="text-3xl font-bold text-slate-900">Thợ Nổi Bật</h2>
+        <p class="text-slate-500 mt-2">Những chuyên gia được đánh giá cao nhất trong khu vực</p>
+      </div>
+      <a class="text-primary-dark font-semibold flex items-center gap-1 hover:underline underline-offset-4" href="/customer/search">
+        Xem tất cả <span class="material-symbols-outlined text-sm">arrow_forward</span>
+      </a>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @php
+        $technicians = [
+          ['Nguyễn Văn An','Điện tử - Điện lạnh','8','120','4.9','https://lh3.googleusercontent.com/aida-public/AB6AXuCHlxvrKvXJRdgRmIN9C2gjJg1qrwrCqxFDxa2bJPdZdgcZdPhP2IAnIyD8EJbJQsufm7Hwx9GJEd__kWt-GI5kvbsrfDCj0RCJgNCXbmbEKfh3ppogjQbvjtwhPgxpxXRB-itoy8hfTGUdEOzaZlZ5DWdpLwRev5du1qe8YbUF2EhiYEfVe7w-ykXhGTKfid92jn3dFb8pyUuKukF-Q7HOIieNd9C8ixkDY8Djqc2A_0pp15e9lr4XOsYxJMP4oTTHneWTzDwYUtKF'],
+          ['Trần Thị Bình','Máy Lạnh - Tủ Lạnh','5','85','4.8','https://lh3.googleusercontent.com/aida-public/AB6AXuCZ6WPzDWa973i46Iti6WGzxatmssgABgRSSqC-Bq-Dg9PrkT3IemVoB5xMR0W8xtMgvpen_7iWNSZ60jEqetlvfgH79bfqqDetw3HyjFFL3SKiS8EBKTYV_IfyUUdyAssKz-Pe8GV5d5oCFwocnlXnhcN9jAAl6cix8iEJoZBkyb4e3uzX-EPXEcDDl_zcf5sb_UK3kljwBA3c7SpEU_IN8ephehzOc17So5u9TKGz1zW2LWZPxI3oU6Rdy7XamJK6XiMuzVWevocy'],
+          ['Lê Văn Cường','Điện Dân Dụng','10','200','5.0','https://lh3.googleusercontent.com/aida-public/AB6AXuBurEaN2EYTRrzaP5wlyCNx92vnsNABdb2VEmrH96QumpgHLW20UC1sn1-_gETRzNWmtDkaR8VHUH_d1nRMb7dAdHBCBsC8vQ-hXpMRDR6nZNLxLK30IedFWT-3HgwUfDnf2QO3d5gl2hUcHSoYdSRR9gmnWU2mjYtouypzW-zjkWan5Xj9ncctCPPOvaQxhxXZ5M3qs7l7cMIYkJDizcJg0Uq6umLx51rSyIXiy-59kz5UMjfH5h6tX_QQDw1lH9wEH86vNvITx3hg'],
+        ];
+      @endphp
+      @foreach($technicians as [$name,$specialty,$years,$jobs,$rating,$img])
+      <div class="bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
+        <div class="h-64 overflow-hidden relative">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
+          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="{{ $img }}" alt="{{ $name }}"/>
+          <div class="absolute bottom-4 left-4 z-20">
+            <span class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">{{ $specialty }}</span>
+          </div>
+        </div>
+        <div class="p-6">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-xl font-bold text-slate-900">{{ $name }}</h3>
+            <div class="flex items-center gap-1 text-yellow-500">
+              <span class="material-symbols-outlined text-sm">star</span>
+              <span class="text-sm font-bold">{{ $rating }}</span>
+            </div>
+          </div>
+          <div class="space-y-2 mb-6">
+            <div class="flex items-center gap-2 text-slate-500 text-sm">
+              <span class="material-symbols-outlined text-base">work_history</span>
+              <span>{{ $years }} năm kinh nghiệm</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-500 text-sm">
+              <span class="material-symbols-outlined text-base">check_circle</span>
+              <span>Đã hoàn thành {{ $jobs }}+ công việc</span>
+            </div>
+          </div>
+          <a href="/customer/search" class="w-full bg-slate-100 hover:bg-primary hover:text-slate-900 text-slate-900 font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+            Xem chi tiết <span class="material-symbols-outlined text-sm">open_in_new</span>
+          </a>
+        </div>
+      </div>
+      @endforeach
+    </div>
+  </section>
+
+  <!-- ===================== PRICING ===================== -->
+  <section id="pricing" class="bg-slate-50 py-16 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="mb-10">
+        <h2 class="text-3xl font-black text-slate-900 mb-3">Bảng Giá Dịch Vụ Tham Khảo</h2>
+        <div class="flex items-center gap-3 p-4 bg-primary/20 rounded-xl border border-primary/40 max-w-2xl">
+          <span class="material-symbols-outlined text-primary-dark">info</span>
+          <p class="text-slate-600 text-sm">Giá niêm yết là mức giá khởi điểm. Chi phí thực tế sẽ được thợ báo chính xác sau khi kiểm tra thiết bị.</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        @foreach([['tv','Sửa Tivi','150.000'],['local_laundry_service','Máy Giặt','200.000'],['kitchen','Tủ lạnh','250.000'],['ac_unit','Điều Hòa','300.000']] as [$icon,$name,$price])
+        <div class="group flex flex-col bg-white p-6 rounded-2xl border border-slate-200 hover:border-primary-dark transition-all shadow-sm hover:shadow-xl">
+          <div class="flex justify-between items-start mb-6">
+            <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary-dark">
+              <span class="material-symbols-outlined text-2xl">{{ $icon }}</span>
+            </div>
+            <span class="bg-primary-dark text-white text-xs font-bold px-2 py-1 rounded uppercase">Từ</span>
+          </div>
+          <h3 class="text-lg font-bold mb-2">{{ $name }}</h3>
+          <div class="flex items-baseline gap-1 mb-6">
+            <span class="text-3xl font-black text-primary-dark">{{ $price }}</span>
+            <span class="text-sm font-bold text-slate-500">đ</span>
+          </div>
+          <ul class="space-y-3 mb-8 flex-1 text-sm text-slate-600">
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-primary-dark text-base">check_circle</span> Kiểm tra tận nhà</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-primary-dark text-base">check_circle</span> Linh kiện chính hãng</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-primary-dark text-base">check_circle</span> Bảo hành 6 tháng</li>
+          </ul>
+          <button class="w-full bg-slate-100 group-hover:bg-primary-dark group-hover:text-white py-3 rounded-xl font-bold transition-colors" onclick="openBookingModal('{{ $name }}')">
+            Liên hệ ngay
+          </button>
+        </div>
+        @endforeach
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== MAP ===================== -->
+  <section class="py-16 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex flex-col md:flex-row gap-12 items-center">
+        <div class="md:w-1/3">
+          <h2 class="text-3xl font-bold mb-4">Tìm chúng tôi tại Nha Trang</h2>
+          <p class="text-slate-600 mb-6">Chúng tôi phục vụ toàn bộ khu vực thành phố Nha Trang, bao gồm các phường trung tâm và khu vực lân cận.</p>
+          <div class="flex items-center gap-3 mb-3">
+            <span class="material-symbols-outlined text-primary-dark">pin_drop</span>
+            <span class="text-slate-700">Trần Phú, Phường Lộc Thọ, Nha Trang</span>
+          </div>
+          <div class="flex items-center gap-3 mb-3">
+            <span class="material-symbols-outlined text-primary-dark">schedule</span>
+            <span class="text-slate-700">Thứ 2 – Chủ Nhật: 07:00 – 20:00</span>
+          </div>
+          <div class="flex items-center gap-3 mb-6">
+            <span class="material-symbols-outlined text-primary-dark">call</span>
+            <span class="text-slate-700 font-bold">0905 123 456</span>
+          </div>
+          <button class="bg-primary-dark text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg" onclick="openBookingModal()">
+            Đặt lịch đến cửa hàng
+          </button>
+        </div>
+        <div class="md:w-2/3 w-full h-96 rounded-3xl overflow-hidden shadow-2xl">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3900.1!2d109.195!3d12.238!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x316f6c12b8c63f8d%3A0x4a0a9fc44b5e1b75!2sTr%E1%BA%A7n%20Ph%C3%BA%2C%20Nha%20Trang!5e0!3m2!1svi!2svn!4v1700000000000"
+            width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+          </iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="bg-slate-900 text-white pt-12 pb-6 px-6">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+      <div>
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-slate-900">home_repair_service</span>
+          </div>
+          <span class="text-xl font-bold">Thợ Tốt <span class="text-primary-dark">NTU</span></span>
+        </div>
+        <p class="text-slate-400 text-sm leading-relaxed">Nền tảng kết nối thợ sửa chữa uy tín tại Nha Trang. Chuyên nghiệp – Tận tâm – Minh bạch.</p>
+        <div class="flex gap-3 mt-5">
+          <a href="#" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-primary-dark flex items-center justify-center transition-colors">
+            <span class="material-symbols-outlined text-base">public</span>
+          </a>
+          <a href="#" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-primary-dark flex items-center justify-center transition-colors">
+            <span class="material-symbols-outlined text-base">mail</span>
+          </a>
+          <a href="#" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-primary-dark flex items-center justify-center transition-colors">
+            <span class="material-symbols-outlined text-base">call</span>
+          </a>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-bold mb-4 text-white">Dịch vụ</h4>
+        <ul class="space-y-2 text-slate-400 text-sm">
+          @foreach(['Sửa Tivi','Sửa Máy giặt','Sửa Tủ lạnh','Sửa Điều hòa','Sửa Bếp điện'] as $sv)
+          <li><a href="#services" class="hover:text-primary transition-colors">{{ $sv }}</a></li>
+          @endforeach
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-bold mb-4 text-white">Thông tin liên hệ</h4>
+        <ul class="space-y-3 text-slate-400 text-sm">
+          <li class="flex gap-2"><span class="material-symbols-outlined text-primary-dark text-base mt-0.5">pin_drop</span> Trần Phú, Phường Lộc Thọ, Nha Trang</li>
+          <li class="flex gap-2"><span class="material-symbols-outlined text-primary-dark text-base">call</span> 0905 123 456</li>
+          <li class="flex gap-2"><span class="material-symbols-outlined text-primary-dark text-base">schedule</span> Thứ 2 – CN: 07:00 – 20:00</li>
+          <li class="flex gap-2"><span class="material-symbols-outlined text-primary-dark text-base">mail</span> hotro@thotot.ntu.vn</li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-slate-800 pt-6 text-center text-slate-500 text-sm">
+      © 2024 Thợ Tốt NTU Nha Trang. Tất cả các dịch vụ đều được bảo hành từ 3–12 tháng.
+    </div>
+  </footer>
+
+</div><!-- end font-inter wrapper -->
+
+<!-- Booking Modal -->
+<x-booking-modal />
 
 @endsection
 
 @push('scripts')
-<script type="module" src="{{ asset('assets/js/components/Navbar.js') }}"></script>
-<script type="module">
-    import {
-        callApi
-    } from "{{ asset('assets/js/api.js') }}";
+<script type="module" src="{{ asset('assets/js/components/booking-modal.js') }}"></script>
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const btnGetLocation = document.getElementById('btnGetLocation');
-        const locationText = document.getElementById('selectedLocationText');
-        const locationItems = document.querySelectorAll('.location-item');
+<script>
+// Helper to open booking modal and pre-fill service
+function openBookingModal(serviceName = '') {
+  const modal = document.getElementById('bookingModal');
+  if (!modal) return;
+  if (serviceName) {
+    const select = modal.querySelector('select[name="service_name"], #serviceSelect, select');
+    if (select) {
+      for (let opt of select.options) {
+        if (opt.text.toLowerCase().includes(serviceName.toLowerCase())) {
+          select.value = opt.value;
+          break;
+        }
+      }
+    }
+  }
+  const bsModal = new bootstrap.Modal(modal);
+  bsModal.show();
+}
 
-        // Handle Tỉnh/Thành selection
-        locationItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                const province = e.target.getAttribute('data-province');
-                locationText.textContent = province;
-                // Store selected province somewhere (e.g. data-attribute or localStorage) for later search
-                document.querySelector('.search-container').setAttribute('data-search-location', province);
-                document.querySelector('.search-container').removeAttribute('data-search-lat');
-                document.querySelector('.search-container').removeAttribute('data-search-lng');
-            });
-        });
+// Hero booking form quick submit
+document.getElementById('btnHeroBook')?.addEventListener('click', () => {
+  const device = document.getElementById('heroDevice')?.value;
+  const address = document.getElementById('heroAddress')?.value;
+  const date = document.getElementById('heroDate')?.value;
+  if (!device) { alert('Vui lòng chọn thiết bị cần sửa'); return; }
+  openBookingModal(device);
+});
 
-        // Handle Geolocation
-        btnGetLocation.addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert("Trình duyệt của bạn không hỗ trợ định vị vị trí.");
-                return;
-            }
+// AI Section button scroll
+document.getElementById('btnHeroAI')?.addEventListener('click', () => {
+  document.getElementById('ai-diagnosis')?.scrollIntoView({ behavior: 'smooth' });
+});
 
-            locationText.textContent = "Đang lấy vị trí...";
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-
-                    locationText.textContent = "Vị trí của bạn";
-                    locationText.classList.add('text-primary');
-
-                    // Store coordinates for the search API
-                    const searchContainer = document.querySelector('.search-container');
-                    searchContainer.setAttribute('data-search-lat', lat);
-                    searchContainer.setAttribute('data-search-lng', lng);
-                    searchContainer.removeAttribute('data-search-location');
-
-                    // Optional: Reverse geocoding to get actual street/city name here using Google Maps/Nominatim API
-                },
-                (error) => {
-                    console.error("Lỗi định vị:", error);
-                    let errMsg = "Không thể lấy vị trí. ";
-                    if (error.code == 1) errMsg += "Vui lòng cấp quyền truy cập vị trí.";
-                    else if (error.code == 2) errMsg += "Lạc tín hiệu GPS.";
-                    else if (error.code == 3) errMsg += "Hết thời gian chờ.";
-
-                    alert(errMsg);
-                    locationText.textContent = "Toàn quốc";
-                }, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        });
-
-        // Handle Search Button Click on Home Page
-        const btnSearch = document.querySelector('.search-btn');
-        const searchInput = document.querySelector('.search-input');
-        const searchContainer = document.querySelector('.search-container');
-
-        btnSearch.addEventListener('click', () => {
-            const keyword = searchInput.value.trim();
-            const province = searchContainer.getAttribute('data-search-location');
-            const lat = searchContainer.getAttribute('data-search-lat');
-            const lng = searchContainer.getAttribute('data-search-lng');
-
-            const params = new URLSearchParams();
-            if (keyword) params.append('q', keyword);
-
-            // Prefer lat/lng if available for "Nearest" sorting later, else province
-            if (lat && lng) {
-                params.append('lat', lat);
-                params.append('lng', lng);
-            } else if (province) {
-                params.append('province', province);
-            }
-
-            // Redirect to search page
-            window.location.href = `/customer/search?${params.toString()}`;
-        });
-
-        // Handle Enter key on input
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                btnSearch.click();
-            }
-        });
-    });
+// AI Analysis button (mock)
+document.getElementById('btnAIAnalyze')?.addEventListener('click', () => {
+  const device = document.getElementById('aiDevice')?.value;
+  const desc = document.getElementById('aiDesc')?.value;
+  const result = document.getElementById('aiResult');
+  if (!device || !desc) { alert('Vui lòng chọn thiết bị và mô tả lỗi'); return; }
+  result.innerHTML = `
+    <div class="rounded-xl bg-white p-4 shadow-sm border-l-4 border-primary-dark animate-pulse">
+      <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Đang phân tích...</p>
+      <p class="mt-1 text-sm text-slate-600">AI đang xử lý thông tin của bạn, vui lòng chờ...</p>
+    </div>`;
+  setTimeout(() => {
+    result.innerHTML = `
+      <div class="rounded-xl bg-white p-4 shadow-sm border-l-4 border-primary-dark">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Nguyên nhân có thể</p>
+        <p class="mt-1 text-sm text-slate-600">Dựa trên mô tả, thiết bị có thể bị hỏng bo mạch điều khiển hoặc lỗi cảm biến nhiệt độ. Nên kiểm tra nguồn điện và các kết nối.</p>
+      </div>
+      <div class="rounded-xl bg-white p-4 shadow-sm border-l-4 border-primary-dark">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Chi phí dự đoán</p>
+        <div class="mt-1 flex items-baseline gap-1">
+          <span class="text-lg font-black text-slate-900">350.000 – 800.000 ₫</span>
+          <span class="text-xs text-slate-400">(Ước tính linh kiện + công)</span>
+        </div>
+      </div>
+      <button class="w-full bg-primary-dark text-white py-3 rounded-xl font-bold hover:opacity-90 transition-all" onclick="openBookingModal()">
+        Đặt lịch với thợ
+      </button>`;
+  }, 1500);
+});
 </script>
-<!-- Import tooltips JS for Bootstrap -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 @endpush

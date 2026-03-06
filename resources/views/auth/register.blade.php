@@ -4,56 +4,76 @@
 
 @push('styles')
 <style>
-    /* Nền sang trọng với các quả cầu mờ (Blobs) */
-    .auth-bg {
+    body {
+        background-color: var(--bg-light);
+    }
+
+    .auth-wrapper {
         min-height: 100vh;
-        width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 3rem 1rem;
-        position: relative;
-        overflow: hidden;
-    }
-
-    /* Quả cầu trang trí 1 */
-    .blob-1 {
-        position: absolute;
-        top: -10%;
-        left: -10%;
-        width: 50vw;
-        height: 50vw;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(5, 150, 105, 0.1));
-        filter: blur(80px);
-        z-index: 0;
-        animation: float 10s ease-in-out infinite;
-    }
-
-    /* Quả cầu trang trí 2 */
-    .blob-2 {
-        position: absolute;
-        bottom: -20%;
-        right: -10%;
-        width: 60vw;
-        height: 60vw;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.1));
-        filter: blur(100px);
-        z-index: 0;
-        animation: float 12s ease-in-out infinite reverse;
-    }
-
-    @keyframes float {
-        0%, 100% { transform: translateY(0) scale(1); }
-        50% { transform: translateY(-30px) scale(1.05); }
+        padding: 2rem 1rem;
     }
 
     .auth-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
         width: 100%;
         max-width: 500px;
-        padding: 3rem;
-        z-index: 1; /* Nổi lên trên blobs */
+        padding: 2.5rem 2rem;
+    }
+
+    .form-control-custom {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-left: none;
+        border-radius: 0 0.75rem 0.75rem 0;
+        padding: 0.8rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        box-shadow: none !important;
+    }
+
+    .input-group-text-custom {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-right: none;
+        border-radius: 0.75rem 0 0 0.75rem;
+        color: #64748b;
+    }
+
+    .input-group:focus-within .form-control-custom,
+    .input-group:focus-within .input-group-text-custom {
+        border-color: var(--bs-primary);
+        background-color: #ffffff;
+    }
+
+    .btn-auth {
+        border-radius: 0.75rem;
+        padding: 0.9rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-auth:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(16, 185, 129, 0.2);
+    }
+
+    .logo-container {
+        width: 64px;
+        height: 64px;
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--bs-primary);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
     }
 
     .role-selector {
@@ -64,62 +84,58 @@
 
     .role-option {
         flex: 1;
-        background: rgba(255, 255, 255, 0.6);
-        border: 2px solid transparent;
-        border-radius: var(--border-radius-md);
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 1rem;
         padding: 1.25rem 1rem;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
 
     .role-option:hover {
-        transform: translateY(-2px);
-        background: rgba(255, 255, 255, 0.9);
-        box-shadow: var(--shadow-md);
+        background: #f1f5f9;
+        border-color: #cbd5e1;
     }
 
     .role-option.active {
-        background: white;
+        background: rgba(16, 185, 129, 0.05);
         border-color: var(--bs-primary);
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
     }
 
     .role-radio {
         display: none;
     }
-    
+
     .role-image-container {
-        height: 64px; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        margin-bottom: 15px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
         transition: transform 0.3s ease;
     }
+
     .role-option:hover .role-image-container {
         transform: scale(1.05);
     }
-
 </style>
 @endpush
 
 @section('content')
-<div class="auth-bg">
-    <!-- Blobs Trang trí nền -->
-    <div class="blob-1"></div>
-    <div class="blob-2"></div>
-
-    <div class="card-glass auth-card fade-in-up">
-        <div class="text-center mb-4">
-            <img src="{{ asset('assets/images/logo.png') }}" alt="Find Worker" style="height: 64px; object-fit: contain; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.1));">
+<div class="auth-wrapper">
+    <div class="auth-card fade-in-up">
+        <div class="text-center">
+            <div class="logo-container shadow-sm">
+                <span class="material-symbols-outlined" style="font-size: 36px;">person_add</span>
+            </div>
+            <h3 class="fw-bold text-dark mb-1 font-heading">Tạo Tài Khoản</h3>
+            <p class="text-muted mb-4 pb-2" style="font-size: 0.95rem;">Đăng ký để trải nghiệm dịch vụ</p>
         </div>
-        <h3 class="text-center fw-bold mb-2 brand-font" style="color: var(--bs-primary);">Tạo Tải Khoản</h3>
-        <p class="text-center text-muted-custom mb-4" style="font-size: 0.95rem;">Đăng ký để trải nghiệm dịch vụ tuyệt vời</p>
 
         <form id="registerForm">
-            <label class="form-label fw-semibold mb-3">Bạn tham gia với vai trò gì?</label>
+            <label class="form-label fw-semibold text-secondary small text-uppercase mb-3" style="letter-spacing: 0.5px;">Bạn tham gia với vai trò gì?</label>
             <div class="role-selector">
                 <!-- KHÁCH HÀNG -->
                 <label class="role-option active" id="labelCustomer">
@@ -128,49 +144,69 @@
                         <img src="{{ asset('assets/images/customer.png') }}" alt="Khách hàng" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                     </div>
                     <span class="fw-bold d-block text-dark">Khách hàng</span>
-                    <small class="text-muted-custom" style="font-size: 0.8rem;">Cần tìm thợ</small>
+                    <small class="text-muted" style="font-size: 0.8rem;">Cần tìm thợ</small>
                 </label>
 
-                <!-- THỢ / ĐỐI TÁC -->
+                <!-- THỢ -->
                 <label class="role-option" id="labelWorker">
                     <input type="radio" name="role" value="worker" class="role-radio">
                     <div class="role-image-container">
                         <img src="{{ asset('assets/images/worker.png') }}" alt="Thợ" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                     </div>
                     <span class="fw-bold d-block text-dark">Thợ sửa chữa</span>
-                    <small class="text-muted-custom" style="font-size: 0.8rem;">Tìm việc làm</small>
+                    <small class="text-muted" style="font-size: 0.8rem;">Đăng ký nhận việc</small>
                 </label>
             </div>
 
             <div class="mb-4">
-                <label for="hoTen" class="form-label fw-semibold">Họ và tên</label>
+                <label for="hoTen" class="form-label fw-semibold text-secondary small text-uppercase" style="letter-spacing: 0.5px;">Họ và tên</label>
                 <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0 text-muted" style="border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm); border-color: #E2E8F0;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+                    <span class="input-group-text input-group-text-custom">
+                        <span class="material-symbols-outlined fs-5">person</span>
                     </span>
-                    <input type="text" class="form-control border-start-0 ps-0" id="hoTen" placeholder="Nhập tên của bạn" required style="box-shadow: none;">
+                    <input type="text" class="form-control form-control-custom ps-0" id="hoTen" placeholder="Nhập tên của bạn" required>
                 </div>
             </div>
 
-            <div class="mb-5">
-                <label for="soDienThoai" class="form-label fw-semibold">Số điện thoại</label>
+            <div class="mb-4">
+                <label for="soDienThoai" class="form-label fw-semibold text-secondary small text-uppercase" style="letter-spacing: 0.5px;">Số điện thoại</label>
                 <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0 text-muted" style="border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm); border-color: #E2E8F0;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328z"/></svg>
+                    <span class="input-group-text input-group-text-custom">
+                        <span class="material-symbols-outlined fs-5">phone_iphone</span>
                     </span>
-                    <input type="tel" class="form-control border-start-0 ps-0" id="soDienThoai" placeholder="VD: 0987654321" required style="box-shadow: none;">
+                    <input type="tel" class="form-control form-control-custom ps-0" id="soDienThoai" placeholder="VD: 0987654321" required>
                 </div>
             </div>
 
-            <div class="d-grid mb-4">
-                <button type="submit" class="btn btn-warning btn-lg" id="btnSubmit">
-                    Tạo Tài Khoản
-                </button>
+            <div class="mb-4">
+                <label for="email" class="form-label fw-semibold text-secondary small text-uppercase" style="letter-spacing: 0.5px;">Email</label>
+                <div class="input-group">
+                    <span class="input-group-text input-group-text-custom">
+                        <span class="material-symbols-outlined fs-5">mail</span>
+                    </span>
+                    <input type="email" class="form-control form-control-custom ps-0" id="email" placeholder="VD: nguyenvan@gmail.com" required>
+                </div>
             </div>
-            
-            <div class="text-center mt-3">
-                <span class="text-muted-custom">Đã có tài khoản?</span>
-                <a href="{{ route('login') }}" class="text-decoration-none fw-bold" style="color: var(--bs-primary); margin-left: 5px;">Đăng nhập ngay</a>
+
+            <div class="mb-4 pb-2">
+                <label for="matKhau" class="form-label fw-semibold text-secondary small text-uppercase" style="letter-spacing: 0.5px;">Mật khẩu</label>
+                <div class="input-group">
+                    <span class="input-group-text input-group-text-custom">
+                        <span class="material-symbols-outlined fs-5">lock</span>
+                    </span>
+                    <input type="password" class="form-control form-control-custom ps-0" id="matKhau" placeholder="Tối thiểu 6 ký tự" required minlength="6">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-auth w-100 mb-4" id="btnSubmit">
+                Tạo Tài Khoản
+            </button>
+
+            <div class="text-center mt-2 pt-3 border-top">
+                <p class="text-muted mb-0" style="font-size: 0.95rem;">
+                    Đã có tài khoản?
+                    <a href="{{ route('login') }}" class="text-primary fw-bold text-decoration-none ms-1">Đăng nhập</a>
+                </p>
             </div>
         </form>
     </div>
@@ -179,11 +215,17 @@
 
 @push('scripts')
 <script type="module">
-    import { callApi, saveUserSession } from "{{ asset('assets/js/api.js') }}";
+    import {
+        callApi,
+        saveUserSession,
+        showToast
+    } from "{{ asset('assets/js/api.js') }}";
+
+    const baseUrl = '{{ url('/') }}';
 
     const urlParams = new URLSearchParams(window.location.search);
     const preselectedRole = urlParams.get('role');
-    
+
     if (preselectedRole === 'worker') {
         document.querySelector('input[name="role"][value="worker"]').checked = true;
         document.getElementById('labelWorker').classList.add('active');
@@ -210,34 +252,42 @@
 
         const name = document.getElementById('hoTen').value;
         const phone = document.getElementById('soDienThoai').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('matKhau').value;
         const role = document.querySelector('input[name="role"]:checked').value;
 
         const originalBtnText = btnSubmit.innerHTML;
-        btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
+        btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Đang xử lý...';
         btnSubmit.disabled = true;
 
         try {
-            const response = await callApi('/auth/register', 'POST', {
+            const response = await callApi('/register', 'POST', {
                 name: name,
-                so_dien_thoai: phone,
+                phone: phone,
+                email: email,
+                password: password,
                 role: role
             });
-            
+
             if (response.ok) {
-                Toastify({ text: "Đăng ký thành công!", duration: 2000, style: { background: "var(--bs-success)" } }).showToast();
-                saveUserSession(response.data.access_token, response.data.user);
+                if (response.data.debug_otp) {
+                    sessionStorage.setItem('debug_otp', response.data.debug_otp);
+                }
+                showToast("Đăng ký thành công! Hãy kiểm tra mã OTP trong Email của bạn.");
                 setTimeout(() => {
-                    window.location.href = role === 'worker' ? '/worker/dashboard' : '/customer/home';
-                }, 1000);
+                    window.location.href = baseUrl + `/otp?email=${response.data.email}&is_new=1`;
+                }, 1500);
             } else {
                 let errorMsg = response.data.message || "Đăng ký thất bại.";
-                if (response.data.errors && response.data.errors.so_dien_thoai) {
+                if (response.data.errors && response.data.errors.email) {
+                    errorMsg = "Email đã tồn tại!";
+                } else if (response.data.errors && response.data.errors.phone) {
                     errorMsg = "Số điện thoại bị trùng lập!";
                 }
-                Toastify({ text: errorMsg, style: { background: "var(--bs-danger)" } }).showToast();
+                showToast(errorMsg, 'error');
             }
         } catch (error) {
-            Toastify({ text: "Lỗi kết nối", style: { background: "var(--bs-danger)" } }).showToast();
+            showToast("Lỗi kết nối", 'error');
         } finally {
             btnSubmit.innerHTML = originalBtnText;
             btnSubmit.disabled = false;

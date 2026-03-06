@@ -1,0 +1,1 @@
+﻿Connection failed: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'find_workers.ho_so_thos' doesn't exist

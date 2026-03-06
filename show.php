@@ -1,0 +1,1 @@
+<?php require 'vendor/autoload.php'; require 'bootstrap/app.php'; \ = require 'bootstrap/app.php'; \->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo DB::select('SHOW CREATE TABLE don_dat_lich')[0]->{'Create Table'};

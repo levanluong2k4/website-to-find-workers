@@ -25,6 +25,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'phone' => $request->phone,
             'role' => $request->role,
         ]);
 
@@ -36,13 +37,26 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Generate OTP and Send Mail
+        $otp = sprintf("%06d", mt_rand(1, 999999));
 
-        return response()->json([
-            'message' => 'Đăng ký thành công',
-            'user' => $user,
-            'access_token' => $token,
-        ], 201);
+        OtpCode::updateOrCreate(
+            ['email' => $request->email],
+            ['code' => $otp, 'expires_at' => Carbon::now()->addMinutes(10)]
+        );
+
+        Mail::to($request->email)->send(new OtpMail($otp));
+
+        $responseData = [
+            'message' => 'Đăng ký thành công, vui lòng kiểm tra email để nhận mã OTP',
+            'email' => $user->email,
+        ];
+
+        if (config('app.env') === 'local') {
+            $responseData['debug_otp'] = $otp;
+        }
+
+        return response()->json($responseData, 201);
     }
 
     public function login(LoginRequest $request)
@@ -51,8 +65,8 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
-            return response()->json(['message' => 'Email không tồn tại'], 404);
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Email hoặc mật khẩu không đúng'], 401);
         }
 
         if (!$user->is_active) {
@@ -61,7 +75,7 @@ class AuthController extends Controller
 
         // Tạo OTP
         $otp = sprintf("%06d", mt_rand(1, 999999));
-        
+
         OtpCode::updateOrCreate(
             ['email' => $request->email],
             ['code' => $otp, 'expires_at' => Carbon::now()->addMinutes(10)]
@@ -70,7 +84,13 @@ class AuthController extends Controller
         // Send Email
         Mail::to($request->email)->send(new OtpMail($otp));
 
-        return response()->json(['message' => 'Mã OTP đã được gửi vào email của bạn']);
+        $responseData = ['message' => 'Mã OTP đã được gửi vào email của bạn'];
+
+        if (config('app.env') === 'local') {
+            $responseData['debug_otp'] = $otp;
+        }
+
+        return response()->json($responseData);
     }
 
     public function verifyOtp(VerifyOtpRequest $request)
@@ -97,5 +117,32 @@ class AuthController extends Controller
             'user' => $user,
             'access_token' => $token
         ]);
+    }
+
+    public function resendOtp(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Email không tồn tại'], 404);
+        }
+
+        $otp = sprintf("%06d", mt_rand(1, 999999));
+
+        OtpCode::updateOrCreate(
+            ['email' => $request->email],
+            ['code' => $otp, 'expires_at' => Carbon::now()->addMinutes(10)]
+        );
+
+        Mail::to($request->email)->send(new OtpMail($otp));
+
+        $responseData = ['message' => 'Mã OTP mới đã được gửi vào email của bạn'];
+
+        if (config('app.env') === 'local') {
+            $responseData['debug_otp'] = $otp;
+        }
+
+        return response()->json($responseData);
     }
 }

@@ -26,9 +26,9 @@ class WorkerSeeder extends Seeder
             // Nếu DB chưa có dịch vụ nào, tạo mock 5 dịch vụ
             for ($i = 1; $i <= 5; $i++) {
                 $dichVu = \App\Models\DanhMucDichVu::create([
-                    'ten_danh_muc' => "Dịch vụ $i",
-                    'mo_ta' => "Mô tả $i",
-                    'the_loai' => 'sua_chua'
+                    'ten_dich_vu' => "Dịch vụ điện lạnh $i",
+                    'mo_ta' => "Chuyên nhận sửa chữa sự cố $i",
+                    'trang_thai' => true
                 ]);
                 $dichVuIds[] = $dichVu->id;
             }

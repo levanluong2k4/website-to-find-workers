@@ -51,13 +51,28 @@ class HoSoThoController extends Controller
         $longitude = $request->lng;
 
         if ($latitude && $longitude) {
-            // Công thức Haversine để tính khoảng cách vật lý (theo km)
-            $haversine = "(6371 * acos(cos(radians($latitude)) * cos(radians(vi_do)) * cos(radians(kinh_do) - radians($longitude)) + sin(radians($latitude)) * sin(radians(vi_do))))";
+            // Tọa độ cửa hàng tĩnh (Ví dụ: 2 Đ. Nguyễn Đình Chiểu)
+            $storeLat = 12.2618;
+            $storeLng = 109.1995;
 
-            $query->selectRaw("*, {$haversine} AS distance");
+            // Công thức Haversine để tính khoảng cách vật lý (theo km) từ cửa hàng đến khách
+            $haversine = "(6371 * acos(cos(radians($latitude)) * cos(radians({$storeLat})) * cos(radians({$storeLng}) - radians($longitude)) + sin(radians($latitude)) * sin(radians({$storeLat}))))";
 
-            // Có thể filter những thợ ở quá xa (ví dụ: > 50km thì loại)
-            // $query->whereRaw("{$haversine} <= ban_kinh_phuc_vu"); 
+            $query->selectRaw("ho_so_tho.*, {$haversine} AS distance");
+        } else {
+            $query->select('ho_so_tho.*');
+        }
+
+        // 5. Lọc theo Khung giờ hẹn và Ngày hẹn (Nếu có truyền để tìm thợ rảnh)
+        if ($request->filled('ngay_hen') && $request->filled('khung_gio_hen')) {
+            $ngayHen = $request->ngay_hen;
+            $khungGioHen = $request->khung_gio_hen;
+
+            $query->whereDoesntHave('user.donDatLichAsTho', function ($q) use ($ngayHen, $khungGioHen) {
+                $q->where('ngay_hen', $ngayHen)
+                    ->where('khung_gio_hen', $khungGioHen)
+                    ->whereIn('trang_thai', ['cho_xac_nhan', 'da_xac_nhan', 'dang_lam', 'cho_hoan_thanh']);
+            });
         }
 
         // 5. Tích hợp Sắp xếp Ưu tiên phân tầng (?sort=...)
@@ -93,8 +108,12 @@ class HoSoThoController extends Controller
      */
     public function show(string $id)
     {
-        // Thay vì dùng HoSoTho ID, ta lấy theo User ID để URL thân thiện hơn (vd: /api/ho-so-tho/2)
-        $hoSo = HoSoTho::with(['user:id,name,email,avatar,phone,address', 'user.dichVus'])
+        // Lấy theo User ID để URL đồng bộ
+        $hoSo = HoSoTho::with([
+            'user:id,name,email,avatar,phone,address',
+            'user.dichVus',
+            'user.danhGiasNhan.khachHang:id,name,avatar'
+        ])
             ->where('user_id', $id)
             ->first();
 
@@ -143,6 +162,68 @@ class HoSoThoController extends Controller
         return response()->json([
             'message' => 'Cập nhật hồ sơ thành công',
             'data' => $hoSo
+        ]);
+    }
+
+    /**
+     * Lấy thống kê thu nhập và công việc cho thợ
+     */
+    public function stats(Request $request)
+    {
+        $user = $request->user();
+        if ($user->role !== 'worker') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $now = \Carbon\Carbon::now();
+        $thisMonth = $now->month;
+        $thisYear = $now->year;
+
+        // Base query for completed bookings
+        $completedBookings = \App\Models\DonDatLich::where('tho_id', $user->id)
+            ->where('trang_thai', 'da_xong');
+
+        $tongDoanhThu = (clone $completedBookings)->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(phi_di_lai, 0) + COALESCE(phi_linh_kien, 0)'));
+
+        $doanhThuThangNay = (clone $completedBookings)
+            ->whereMonth('created_at', $thisMonth)
+            ->whereYear('created_at', $thisYear)
+            ->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(phi_di_lai, 0) + COALESCE(phi_linh_kien, 0)'));
+
+        $soDonHoanThanhThangNay = (clone $completedBookings)
+            ->whereMonth('created_at', $thisMonth)
+            ->whereYear('created_at', $thisYear)
+            ->count();
+
+        $soDonHuyThangNay = \App\Models\DonDatLich::where('tho_id', $user->id)
+            ->where('trang_thai', 'da_huy')
+            ->whereMonth('created_at', $thisMonth)
+            ->whereYear('created_at', $thisYear)
+            ->count();
+
+        // Chart Data: Last 7 days
+        $chartData = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = $now->copy()->subDays($i);
+            $dateStr = $date->format('Y-m-d');
+
+            $dayRevenue = \App\Models\DonDatLich::where('tho_id', $user->id)
+                ->where('trang_thai', 'da_xong')
+                ->whereDate('created_at', $dateStr)
+                ->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(phi_di_lai, 0) + COALESCE(phi_linh_kien, 0)'));
+
+            $chartData[] = [
+                'date' => $date->format('d/m'),
+                'revenue' => (float) $dayRevenue
+            ];
+        }
+
+        return response()->json([
+            'tong_doanh_thu' => $tongDoanhThu,
+            'doanh_thu_thang_nay' => $doanhThuThangNay,
+            'don_hoan_thanh_thang_nay' => $soDonHoanThanhThangNay,
+            'don_huy_thang_nay' => $soDonHuyThangNay,
+            'chart_data' => $chartData
         ]);
     }
 }

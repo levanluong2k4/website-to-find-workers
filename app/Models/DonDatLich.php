@@ -9,13 +9,34 @@ class DonDatLich extends Model
     protected $table = 'don_dat_lich';
 
     protected $fillable = [
-        'khach_hang_id', 'tho_id', 'dich_vu_id', 'bai_dang_id',
-        'thoi_gian_hen', 'dia_chi', 'vi_do', 'kinh_do', 'mo_ta_van_de',
-        'trang_thai', 'ly_do_huy', 'tong_tien', 'phuong_thuc_thanh_toan', 'trang_thai_thanh_toan'
+        'khach_hang_id',
+        'tho_id',
+        'dich_vu_id',
+        'bai_dang_id',
+        'loai_dat_lich',
+        'thoi_gian_hen',
+        'ngay_hen',
+        'khung_gio_hen',
+        'dia_chi',
+        'vi_do',
+        'kinh_do',
+        'mo_ta_van_de',
+        'khoang_cach',
+        'phi_di_lai',
+        'phi_linh_kien',
+        'ghi_chu_linh_kien',
+        'thoi_gian_het_han_nhan',
+        'trang_thai',
+        'ly_do_huy',
+        'tong_tien',
+        'phuong_thuc_thanh_toan',
+        'trang_thai_thanh_toan'
     ];
 
     protected $casts = [
         'thoi_gian_hen' => 'datetime',
+        'ngay_hen' => 'date',
+        'thoi_gian_het_han_nhan' => 'datetime',
         'trang_thai_thanh_toan' => 'boolean',
     ];
 

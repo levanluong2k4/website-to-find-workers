@@ -1,0 +1,26 @@
+﻿
+   INFO  Seeding database.  
+
+  Database\Seeders\WorkerSeeder ............................................................ RUNNING  
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ten_danh_muc' in 'field list' (Connection: mysql, Host: 127.0.0.1, Port: 3306, Database: find_workers, SQL: insert into `danh_muc_dich_vu` (`ten_danh_muc`, `mo_ta`, `the_loai`, `updated_at`, `created_at`) values (Dß╗ïch vß╗Ñ 1, M├┤ tß║ú 1, sua_chua, 2026-03-03 03:04:35, 2026-03-03 03:04:35))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:838
+    834Γûò             $exceptionType = $this->isUniqueConstraintError($e)
+    835Γûò                 ? UniqueConstraintViolationException::class
+    836Γûò                 : QueryException::class;
+    837Γûò 
+  Γ₧£ 838Γûò             throw new $exceptionType(
+    839Γûò                 $this->getNameWithReadWriteType(),
+    840Γûò                 $query,
+    841Γûò                 $this->prepareBindings($bindings),
+    842Γûò                 $e,
+
+  1   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:47
+      PDOException::("SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ten_danh_muc' in 'field list'")
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:47
+      PDO::prepare("insert into `danh_muc_dich_vu` (`ten_danh_muc`, `mo_ta`, `the_loai`, `updated_at`, `created_at`) values (?, ?, ?, ?, ?)")
+

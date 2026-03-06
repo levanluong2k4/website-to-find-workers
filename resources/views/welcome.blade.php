@@ -166,7 +166,7 @@
 
     <div class="role-grid">
         <!-- Khách Hàng -->
-        <a href="{{ route('customer.home') }}" class="role-card fade-in-up" style="animation-delay: 0.2s;">
+        <a href="{{ route('login') }}?role=customer" class="role-card fade-in-up" style="animation-delay: 0.2s;">
             <div class="role-icon">
                 <img src="{{ asset('assets/images/customer.png') }}" alt="Khách hàng" style="height: 160px; object-fit: contain;">
             </div>

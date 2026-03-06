@@ -1,0 +1,1 @@
+<?php require 'vendor/autoload.php'; \ = require_once 'bootstrap/app.php'; \->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); file_put_contents('schema.txt', DB::select('SHOW CREATE TABLE don_dat_lich')[0]->{'Create Table'});

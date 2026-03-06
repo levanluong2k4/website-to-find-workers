@@ -1,4 +1,5 @@
 import { callApi } from '../api.js';
+import '../components/booking-modal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('searchInput');
@@ -8,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoryFiltersList = document.getElementById('categoryFiltersList');
     const paginationContainer = document.getElementById('paginationContainer');
     const sortRadios = document.querySelectorAll('input[name="sortOrder"]');
+    const filterDate = document.getElementById('filterDate');
+    const filterTimeSlot = document.getElementById('filterTimeSlot');
+    const btnApplyTimeFilter = document.getElementById('btnApplyTimeFilter');
 
     // State
     const searchParams = new URLSearchParams(window.location.search);
@@ -52,15 +56,31 @@ document.addEventListener('DOMContentLoaded', () => {
     sortRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
             searchParams.set('sort', e.target.value);
-            // If sort is 'nearest', check if we have lat/lng in URL
-            if (e.target.value === 'nearest' && !searchParams.get('lat')) {
-                alert('Vui lòng cấp quyền truy cập vị trí trên thanh tìm kiếm để sắp xếp theo khoảng cách.');
-                return;
-            }
             searchParams.set('page', 1);
             updateUrlAndFetch();
         });
     });
+
+    if (btnApplyTimeFilter) {
+        btnApplyTimeFilter.addEventListener('click', () => {
+            const dateVal = filterDate.value;
+            const timeVal = filterTimeSlot.value;
+
+            if (dateVal && timeVal) {
+                searchParams.set('ngay_hen', dateVal);
+                searchParams.set('khung_gio_hen', timeVal);
+            } else if (!dateVal && !timeVal) {
+                searchParams.delete('ngay_hen');
+                searchParams.delete('khung_gio_hen');
+            } else {
+                alert('Vui lòng chọn cả Ngày hẹn và Khung giờ để lọc thời gian rảnh.');
+                return;
+            }
+
+            searchParams.set('page', 1);
+            updateUrlAndFetch();
+        });
+    }
 
     function initSearchInput() {
         if (searchParams.has('q')) {
@@ -70,6 +90,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const sortVal = searchParams.get('sort');
             const radio = document.querySelector(`input[name="sortOrder"][value="${sortVal}"]`);
             if (radio) radio.checked = true;
+        }
+        if (searchParams.has('ngay_hen')) {
+            filterDate.value = searchParams.get('ngay_hen');
+        } else {
+            // Default to today
+            const today = new Date().toISOString().split('T')[0];
+            filterDate.value = today;
+        }
+        if (searchParams.has('khung_gio_hen')) {
+            filterTimeSlot.value = searchParams.get('khung_gio_hen');
         }
     }
 
@@ -155,32 +185,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentCategory = searchParams.get('category_id');
 
         // All category option
+        // All category option
         html += `
-            <div class="form-check mb-3">
-                <input class="form-check-input filter-category custom-control-input" type="radio" name="categoryId" id="cat_all" value="" ${!currentCategory ? 'checked' : ''} style="transform: scale(1.2); margin-top: 0.35rem;">
-                <label class="form-check-label custom-control-label fw-bold d-flex align-items-center" for="cat_all" style="cursor: pointer;">
-                    <span class="rounded bg-light d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px;">
-                        <svg width="16" height="16" fill="var(--bs-gray-600)" viewBox="0 0 16 16"><path d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
-                    </span>
-                    Tất cả Dịch vụ
+            <div class="category-filter-item ${!currentCategory ? 'active' : ''}">
+                <label class="custom-control-label fw-bold d-flex flex-grow-1" for="cat_all" style="cursor: pointer; margin: 0;">
+                    <input class="d-none filter-category custom-control-input" type="radio" name="categoryId" id="cat_all" value="" ${!currentCategory ? 'checked' : ''}>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">category</span>
+                        <span>Tất cả Dịch vụ</span>
+                    </div>
                 </label>
             </div>
         `;
 
         categories.forEach(cat => {
             const isChecked = currentCategory == cat.id ? 'checked' : '';
-            // Giao diện Danh mục xịn xò với Font đậm mượt mà
+            // Giao diện Danh mục xịn xò với Font đậm mượt mà theo Stitch Design System
             html += `
-                <div class="form-check mb-3">
-                    <input class="form-check-input filter-category custom-control-input" type="radio" name="categoryId" id="cat_${cat.id}" value="${cat.id}" ${isChecked} style="transform: scale(1.2); margin-top: 0.35rem;">
-                    <label class="form-check-label custom-control-label fw-bold d-flex align-items-center" for="cat_${cat.id}" style="cursor: pointer;">
-                        <span class="rounded bg-light d-flex align-items-center justify-content-center me-2 text-primary fw-bold" style="width: 30px; height: 30px; font-size: 12px;">
-                            ${cat.ten_danh_muc.charAt(0).toUpperCase()}
-                        </span>
-                        ${cat.ten_danh_muc}
+                <div class="category-filter-item ${isChecked ? 'active' : ''}">
+                    <label class="custom-control-label fw-bold d-flex flex-grow-1" for="cat_${cat.id}" style="cursor: pointer; margin: 0;">
+                        <input class="d-none filter-category" type="radio" name="categoryId" id="cat_${cat.id}" value="${cat.id}" ${isChecked}>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">hotel_class</span>
+                            <span>${cat.ten_dich_vu}</span>
+                        </div>
                     </label>
+                    <span class="material-symbols-outlined text-sm">chevron_right</span>
                 </div>
-            `;
+                `;
         });
 
         categoryFiltersList.innerHTML = html;
@@ -215,13 +247,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPagination(result.data);
             } else {
                 workersContainer.innerHTML = `
-                    <div class="col-12 text-center py-5">
-                        <img src="/assets/images/logo.png" style="width: 100px; opacity: 0.1; filter: grayscale(1); margin-bottom: 20px;">
+                <div class="col-12 text-center py-5">
+                    <img src="/assets/images/logo.png" style="width: 100px; opacity: 0.1; filter: grayscale(1); margin-bottom: 20px;">
                         <h4 class="text-muted fw-bold">Không tìm thấy thợ phù hợp</h4>
                         <p class="text-muted-custom">Vui lòng thử thay đổi từ khóa hoặc bộ lọc tìm kiếm.</p>
                         <button class="btn btn-outline-primary mt-3 px-4 rounded-pill" onclick="window.location.href='/customer/search'">Xóa bộ lọc</button>
                     </div>
-                `;
+            `;
                 resultsCount.textContent = '0 kết quả';
                 paginationContainer.innerHTML = '';
             }
@@ -263,28 +295,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     <a href="/customer/worker-profile/${worker.id}" class="text-decoration-none">
                         <div class="worker-card">
                             <div class="worker-banner">
-                                <img src="${avatarUrl}" class="worker-avatar" onerror="this.src='/assets/images/customer.png'">
+                                <div class="worker-avatar-container">
+                                    <img src="${avatarUrl}" class="worker-avatar" onerror="this.src='/assets/images/customer.png'" data-alt="Chuyên gia ${name}">
+                                </div>
                                 ${statusHtml}
                             </div>
-                            <div class="worker-info bg-white">
-                                <div class="worker-name">
+                            <div class="worker-info pt-5 px-3 pb-3"> <!-- Added padding-top to clear the absolute avatar -->
+                                <div class="worker-name mb-1">
                                     ${name}
-                                    <svg class="verified-badge" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg>
+                                    <span class="material-symbols-outlined text-blue-500 text-base ms-1" style="font-variation-settings: 'FILL' 1;">verified</span>
                                 </div>
-                                <p class="text-muted small mb-0 text-truncate" title="${services}">${services}</p>
-                                
+                                <p class="worker-service">${services}</p>
+
                                 <div class="worker-stats mt-auto">
-                                    <div class="stat-item text-warning fw-bold">
-                                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>
-                                        ${rating} <span class="text-muted fw-normal">(${worker.tong_so_danh_gia})</span>
+                                    <div class="stat-rating">
+                                        <span class="material-symbols-outlined text-warning" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
+                                        ${rating} <span class="text-secondary fw-normal ms-1" style="font-size: 12px">(${worker.tong_so_danh_gia})</span>
                                     </div>
-                                    ${distanceText}
+                                    ${distanceText ? `<div class="stat-distance"><span class="material-symbols-outlined" style="font-size: 16px;">location_on</span> ${parseFloat(worker.distance).toFixed(1)} km</div>` : ''}
                                 </div>
                             </div>
                         </div>
                     </a>
-                </div>
-            `;
+                </div >
+                `;
         });
         workersContainer.innerHTML = html;
     }
@@ -342,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                 </div>
-            `;
+                `;
         }
         return html;
     }
