@@ -60,6 +60,14 @@ Route::prefix('worker')->group(function () {
         return view('worker.my-bookings');
     })->name('worker.my-bookings');
 
+    Route::get('/jobs', function () {
+        return view('worker.jobs');
+    })->name('worker.jobs');
+
+    Route::get('/jobs/{id}', function ($id) {
+        return view('worker.job-details', ['id' => $id]);
+    })->name('worker.job-details');
+
     Route::get('/profile', function () {
         return view('worker.profile');
     })->name('worker.profile');

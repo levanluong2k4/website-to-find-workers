@@ -55,11 +55,6 @@ class DonDatLich extends Model
         return $this->belongsTo(DanhMucDichVu::class, 'dich_vu_id');
     }
 
-    public function baiDang()
-    {
-        return $this->belongsTo(BaiDang::class, 'bai_dang_id');
-    }
-
     public function danhGias()
     {
         return $this->hasMany(DanhGia::class, 'don_dat_lich_id');

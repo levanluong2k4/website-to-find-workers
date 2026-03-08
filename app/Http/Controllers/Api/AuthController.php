@@ -145,4 +145,13 @@ class AuthController extends Controller
 
         return response()->json($responseData);
     }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'message' => 'Đã đăng xuất thành công'
+        ]);
+    }
 }

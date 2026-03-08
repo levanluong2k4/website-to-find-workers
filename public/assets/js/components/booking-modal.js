@@ -138,17 +138,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Populate Dịch vụ và thiết lập ngày giờ when modal opens
     if (bookingModal && bookingDichVuSelect) {
         bookingModal.addEventListener('show.bs.modal', async () => {
-            // Load danh sách tỉnh thành ngay khi bấm mở modal (không đợi chọn tận nơi mới load để mượt hơn)
             loadAddressData();
 
-            // Cập nhật tho_id nếu có biến global (từ trang worker-profile)
             if (window.WORKER_ID) {
                 document.getElementById('booking_tho_id').value = window.WORKER_ID;
             } else {
                 document.getElementById('booking_tho_id').value = '';
             }
 
-            // Gán giới hạn ngày hiển thị
             const ngayHenInput = document.getElementById('booking_ngay_hen');
             if (ngayHenInput) {
                 const now = new Date();
@@ -157,15 +154,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 const maxDate = getLocalDateString(next2Days);
                 ngayHenInput.min = minDate;
                 ngayHenInput.max = maxDate;
-
-                // Nếu ngày hiện tại đang nhỏ hơn ngày quy định, set mặc định là ngày min
                 if (!ngayHenInput.value || ngayHenInput.value < minDate || ngayHenInput.value > maxDate) {
                     ngayHenInput.value = minDate;
                 }
             }
-            updateAvailableTimeSlots(); // check luôn lúc vừa bật modal
+            updateAvailableTimeSlots();
 
-            if (bookingDichVuSelect.options.length <= 1) { // Only loading option exists
+            // Helper: find option by partial text match (case-insensitive)
+            function preSelectService(keyword) {
+                if (!keyword) return;
+                const kw = keyword.toLowerCase();
+                for (let opt of bookingDichVuSelect.options) {
+                    if (opt.text.toLowerCase().includes(kw)) {
+                        bookingDichVuSelect.value = opt.value;
+                        bookingDichVuSelect.dispatchEvent(new Event('change'));
+                        break;
+                    }
+                }
+            }
+
+            if (bookingDichVuSelect.options.length <= 1) {
+                // Options not loaded yet — fetch then pre-select
                 try {
                     const result = await callApi('/danh-muc-dich-vu', 'GET');
                     if (result.data) {
@@ -179,6 +188,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     bookingDichVuSelect.innerHTML = '<option value="">Lỗi tải danh mục</option>';
                 }
             }
+
+            // Pre-select service after options are ready
+            preSelectService(window.PRESELECT_SERVICE);
         });
 
         bookingDichVuSelect.addEventListener('change', checkHeavyItemTransport);
@@ -435,28 +447,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await callApi('/don-dat-lich', 'POST', data);
 
                 if (!res.ok) {
-                    throw { response: res.data };
+                    // Show specific API error message (validation errors, distance error, etc.)
+                    const errData = res.data;
+                    if (errData && errData.errors) {
+                        alert(Object.values(errData.errors).flat().join('\n'));
+                    } else if (errData && errData.message) {
+                        alert(errData.message);
+                    } else {
+                        alert('Có lỗi xảy ra khi đặt lịch. (HTTP ' + res.status + ')');
+                    }
+                    return;
                 }
 
-                alert(`Đặt lịch thành công! Mã đơn: #${res.data.id}`);
+                // res.data = { message: '...', data: booking }
+                const booking = res.data.data ?? res.data;
+                alert(`Đặt lịch thành công! Mã đơn: #${booking.id}`);
                 bootstrap.Modal.getInstance(bookingModal).hide();
                 formBooking.reset();
                 atHomeGroup.classList.remove('d-none');
                 atStoreGroup.classList.add('d-none');
 
-                // Redirect to home or bookings list after success
                 setTimeout(() => {
                     window.location.href = '/customer/my-bookings';
                 }, 1000);
             } catch (err) {
-                console.error(err);
-                if (err.response && err.response.message) {
-                    alert(err.response.message);
-                } else if (err.response && err.response.errors) {
-                    alert(Object.values(err.response.errors).flat().join('\n'));
-                } else {
-                    alert('Có lỗi xảy ra khi đặt lịch.');
-                }
+                console.error('Booking error:', err);
+                alert(err.message || 'Mất kết nối đến máy chủ. Vui lòng thử lại.');
             } finally {
                 btnSubmitBooking.disabled = false;
                 btnSubmitBooking.innerHTML = 'Xác nhận Đặt Lịch';

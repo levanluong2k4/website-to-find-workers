@@ -31,6 +31,8 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
+    Route::post('/logout', [AuthController::class, 'logout']);
+
     // Quản lý ảnh đại diện
     Route::post('/user/avatar', [\App\Http\Controllers\Api\UserController::class, 'uploadAvatar']);
 

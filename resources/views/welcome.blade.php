@@ -1,207 +1,313 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chọn Vai Trò - Thợ Tốt NTU</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100vh; overflow:hidden; font-family:'Inter',sans-serif; display:flex; }
 
-@section('title', 'Chọn Vai Trò - Find a Worker')
-
-@push('styles')
-<style>
-    .welcome-bg {
-        min-height: 100vh;
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 4rem 2rem;
-        position: relative;
-        overflow: hidden;
+    /* ── LEFT ── */
+    .left-panel {
+      width: 44%; height: 100vh;
+      background: linear-gradient(145deg,#0EA5E9 0%,#0d9fdf 40%,#38bdf8 70%,#BAF2E9 100%);
+      display: flex; flex-direction: column;
+      padding: 1.25rem 1.75rem;
+      position: relative; overflow: hidden;
+    }
+    .left-panel::before {
+      content:''; position:absolute; width:300px; height:300px;
+      border-radius:50%; background:rgba(255,255,255,.07); top:-70px; left:-70px;
+    }
+    .left-panel::after {
+      content:''; position:absolute; width:200px; height:200px;
+      border-radius:50%; background:rgba(255,255,255,.05); bottom:-50px; right:-50px;
     }
 
-    .blob-1 {
-        position: absolute;
-        top: -10%;
-        left: -10%;
-        width: 50vw;
-        height: 50vw;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(5, 150, 105, 0.1));
-        filter: blur(80px);
-        z-index: 0;
-        animation: float 10s ease-in-out infinite;
+    .logo { display:flex; align-items:center; gap:.5rem; z-index:1; position:relative; flex-shrink:0; }
+    .logo-icon {
+      width:2.1rem; height:2.1rem; background:rgba(255,255,255,.2);
+      border-radius:.6rem; display:flex; align-items:center; justify-content:center;
+      backdrop-filter:blur(4px);
+    }
+    .logo-text { color:#fff; font-family:'Poppins',sans-serif; font-weight:800; font-size:1rem; }
+
+    .hero-content {
+      flex:1; display:flex; flex-direction:column; justify-content:flex-start;
+      padding-top:.75rem; z-index:1; position:relative; min-height:0;
+    }
+    .hero-tag {
+      display:inline-flex; align-items:center; gap:.3rem;
+      background:rgba(255,255,255,.15); backdrop-filter:blur(4px);
+      color:#fff; border-radius:2rem; padding:.25rem .7rem;
+      font-size:.72rem; font-weight:600; width:fit-content; margin-bottom:.5rem;
+    }
+    .hero-title {
+      font-family:'Poppins',sans-serif; font-weight:800;
+      font-size:1.45rem; color:#fff; line-height:1.2; margin-bottom:.35rem;
+    }
+    .hero-sub {
+      color:rgba(255,255,255,.85); font-size:.8rem;
+      line-height:1.5; margin-bottom:.65rem;
     }
 
-    .blob-2 {
-        position: absolute;
-        bottom: -20%;
-        right: -10%;
-        width: 60vw;
-        height: 60vw;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.1));
-        filter: blur(100px);
-        z-index: 0;
-        animation: float 12s ease-in-out infinite reverse;
+    /* ── CAROUSEL ── */
+    #heroCarousel {
+      flex:1; border-radius:1rem; overflow:hidden;
+      box-shadow:0 12px 40px rgba(0,0,0,.3); min-height:0; position:relative;
+    }
+    #heroCarousel .carousel-inner,
+    #heroCarousel .carousel-item { height:100%; }
+    #heroCarousel .carousel-item img {
+      width:100%; height:100%; object-fit:cover; object-position:center; display:block;
     }
 
-    @keyframes float {
-
-        0%,
-        100% {
-            transform: translateY(0) scale(1);
-        }
-
-        50% {
-            transform: translateY(-30px) scale(1.05);
-        }
+    /* Dark gradient overlay on each slide */
+    #heroCarousel .slide-overlay {
+      position:absolute; inset:0;
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,.72) 0%,
+        rgba(0,0,0,.25) 45%,
+        rgba(0,0,0,.05) 100%
+      );
+      pointer-events:none;
     }
 
-    .brand-header {
-        text-align: center;
-        margin-bottom: 4rem;
-        z-index: 1;
+    /* Caption text inside slide */
+    #heroCarousel .carousel-caption {
+      position:absolute; bottom:0; left:0; right:0;
+      padding:.75rem 1rem 1.5rem;
+      text-align:left; background:none;
+    }
+    #heroCarousel .caption-tag {
+      display:inline-flex; align-items:center; gap:.3rem;
+      background:rgba(14,165,233,.85); color:#fff;
+      border-radius:2rem; padding:.2rem .6rem;
+      font-size:.68rem; font-weight:700; margin-bottom:.35rem;
+    }
+    #heroCarousel .caption-title {
+      font-family:'Poppins',sans-serif; font-weight:800;
+      font-size:1.05rem; color:#fff; line-height:1.25;
+      margin-bottom:.2rem; text-shadow:0 1px 6px rgba(0,0,0,.4);
+    }
+    #heroCarousel .caption-sub {
+      font-size:.75rem; color:rgba(255,255,255,.85);
+      line-height:1.4; text-shadow:0 1px 4px rgba(0,0,0,.3);
     }
 
-    .role-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 2rem;
-        max-width: 900px;
-        width: 100%;
-        z-index: 1;
-    }
+    #heroCarousel .carousel-control-prev-icon,
+    #heroCarousel .carousel-control-next-icon { filter:drop-shadow(0 0 4px rgba(0,0,0,.6)); }
 
-    @media (min-width: 768px) {
-        .role-grid {
-            grid-template-columns: 1fr 1fr;
-        }
+    /* ── RIGHT ── */
+    .right-panel {
+      flex:1; height:100vh; overflow:hidden; background:#fff;
+      display:flex; align-items:center; justify-content:center;
+      padding:1.5rem 2rem;
     }
+    .right-inner { width:100%; max-width:480px; }
 
+    .right-heading {
+      font-family:'Poppins',sans-serif; font-weight:800;
+      font-size:1.45rem; color:#0f172a; margin-bottom:.3rem; line-height:1.2;
+    }
+    .right-sub { color:#64748b; font-size:.83rem; margin-bottom:1.25rem; }
+
+    /* Role cards — 2 columns */
+    .role-cards-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:.875rem; margin-bottom:.875rem;
+    }
     .role-card {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        border-radius: var(--border-radius-xl);
-        padding: 3rem 2.5rem;
-        text-align: center;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        text-decoration: none;
-        color: inherit;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        position: relative;
-        overflow: hidden;
+      border:2px solid #e2e8f0; border-radius:1rem;
+      padding:1.25rem .875rem;
+      cursor:pointer; transition:all .25s cubic-bezier(.4,0,.2,1);
+      text-decoration:none; display:flex; flex-direction:column;
+      align-items:center; text-align:center; background:#fff;
+    }
+    .role-card:hover { box-shadow:0 8px 28px rgba(14,165,233,.18); transform:translateY(-4px); }
+    .role-card.customer:hover { border-color:#0EA5E9; }
+    .role-card.worker:hover   { border-color:#0f172a; box-shadow:0 8px 28px rgba(15,23,42,.14); }
+
+    .role-img-wrap {
+      width:90px; height:90px; display:flex; align-items:center; justify-content:center;
+      margin-bottom:.65rem;
+    }
+    .role-img-wrap img { width:auto; height:90px; object-fit:contain; }
+
+    .role-title {
+      font-family:'Poppins',sans-serif; font-weight:700;
+      font-size:.95rem; color:#0f172a; margin-bottom:.25rem;
+    }
+    .role-desc { color:#64748b; font-size:.78rem; line-height:1.45; margin-bottom:.65rem; flex:1; }
+    .role-cta {
+      display:inline-flex; align-items:center; gap:.3rem;
+      font-weight:700; font-size:.8rem; border-radius:.5rem;
+      padding:.45rem .9rem; transition:all .2s; border:none; cursor:pointer;
+    }
+    .cta-customer { background:#0EA5E9; color:#fff; }
+    .cta-customer:hover { background:#0284c7; }
+    .cta-worker { background:#0f172a; color:#fff; }
+    .cta-worker:hover { background:#1e293b; }
+
+    .divider-or {
+      display:flex; align-items:center; gap:.5rem;
+      color:#cbd5e1; font-size:.72rem; margin-bottom:.875rem;
+    }
+    .divider-or::before, .divider-or::after {
+      content:''; flex:1; height:1px; background:#e2e8f0;
     }
 
-    .role-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%);
-        opacity: 0;
-        transition: opacity 0.4s ease;
+    .security-note {
+      display:flex; align-items:center; gap:.4rem;
+      justify-content:center; font-size:.72rem; color:#94a3b8;
     }
+  </style>
+</head>
+<body>
 
-    .role-card:hover {
-        transform: translateX(8px);
-        background: rgba(255, 255, 255, 0.95);
-        box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15);
-        border-color: var(--bs-primary);
-    }
+<!-- LEFT PANEL -->
+<div class="left-panel">
+  <div class="logo">
+    <div class="logo-icon">
+      <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;">home_repair_service</span>
+    </div>
+    <span class="logo-text">Thợ Tốt NTU</span>
+  </div>
 
-    .role-card.worker-card:hover {
-        border-color: var(--bs-warning);
-        box-shadow: 0 20px 40px rgba(245, 158, 11, 0.15);
-    }
+  <div class="hero-content">
+    <div class="hero-tag">
+      <span class="material-symbols-outlined" style="font-size:.85rem;">location_on</span>
+      Nha Trang, Khánh Hòa
+    </div>
+    <h1 class="hero-title">Nền tảng sửa chữa điện tử #1 Nha Trang</h1>
+    <p class="hero-sub">Kết nối nhanh chóng với thợ chuyên nghiệp – sửa chữa uy tín, bảo hành rõ ràng.</p>
 
-    .role-card:hover::before {
-        opacity: 1;
-    }
+    <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4500">
+      <div class="carousel-indicators">
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3" aria-label="Slide 4"></button>
+      </div>
 
-    .role-icon {
-        width: 100px;
-        height: 100px;
-        background: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 2rem;
-        box-shadow: var(--shadow-md);
-        position: relative;
-        z-index: 2;
-        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
+      <div class="carousel-inner">
 
-    .role-card:hover .role-icon {
-        transform: scale(1.1) rotate(5deg);
-    }
-
-    .role-text-content {
-        position: relative;
-        z-index: 2;
-    }
-</style>
-@endpush
-
-@section('content')
-<div class="welcome-bg">
-
-    <div class="blob-1"></div>
-    <div class="blob-2"></div>
-
-    <div class="brand-header fade-in-up">
-        <div class="mb-4">
-            <img src="{{ asset('assets/images/logo.png') }}" alt="Find Worker Logo" style="height: 90px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));">
+        {{-- Slide 1: Thợ --}}
+        <div class="carousel-item active">
+          <img src="/assets/images/carousel/tho.jpg" alt="Thợ chuyên nghiệp" loading="eager">
+          <div class="slide-overlay"></div>
+          <div class="carousel-caption">
+            <span class="caption-tag">
+              <span class="material-symbols-outlined" style="font-size:.75rem;">engineering</span>
+              Đội ngũ thợ lành nghề
+            </span>
+            <p class="caption-title">Thợ chuyên nghiệp tại nhà bạn</p>
+            <p class="caption-sub">Hơn 500 thợ được kiểm duyệt kỹ lưỡng, phục vụ tận nơi.</p>
+          </div>
         </div>
-        <h1 class="fw-extrabold brand-font" style="color: var(--bs-primary); font-size: 3rem; letter-spacing: -0.03em;">Find a Worker</h1>
-        <p class="text-muted-custom fs-5 mt-2" style="max-width: 500px; margin: 0 auto;">Nền tảng kết nối thợ chuyên nghiệp lớn nhất dành cho ngôi nhà của bạn.</p>
+
+        {{-- Slide 2: Tủ lạnh --}}
+        <div class="carousel-item">
+          <img src="/assets/images/carousel/tulanh.jpg" alt="Sửa tủ lạnh" loading="lazy">
+          <div class="slide-overlay"></div>
+          <div class="carousel-caption">
+            <span class="caption-tag">
+              <span class="material-symbols-outlined" style="font-size:.75rem;">kitchen</span>
+              Điện lạnh
+            </span>
+            <p class="caption-title">Sửa tủ lạnh – nhanh, đúng nguyên nhân</p>
+            <p class="caption-sub">Chẩn đoán chính xác, linh kiện chính hãng, bảo hành 6 tháng.</p>
+          </div>
+        </div>
+
+        {{-- Slide 3: Máy giặt --}}
+        <div class="carousel-item">
+          <img src="/assets/images/carousel/suamaygiat.jpg" alt="Sửa máy giặt" loading="lazy">
+          <div class="slide-overlay"></div>
+          <div class="carousel-caption">
+            <span class="caption-tag">
+              <span class="material-symbols-outlined" style="font-size:.75rem;">local_laundry_service</span>
+              Máy giặt
+            </span>
+            <p class="caption-title">Khắc phục máy giặt mọi hãng</p>
+            <p class="caption-sub">Samsung, LG, Electrolux, Panasonic... đều có thợ chuyên.</p>
+          </div>
+        </div>
+
+        {{-- Slide 4: Nồi chiên --}}
+        <div class="carousel-item">
+          <img src="/assets/images/carousel/noichien.jpg" alt="Sửa nồi chiên không khí" loading="lazy">
+          <div class="slide-overlay"></div>
+          <div class="carousel-caption">
+            <span class="caption-tag">
+              <span class="material-symbols-outlined" style="font-size:.75rem;">blender</span>
+              Đồ gia dụng
+            </span>
+            <p class="caption-title">Sửa đồ gia dụng – đặt lịch 1 phút</p>
+            <p class="caption-sub">Nồi chiên, lò vi sóng, máy xay... sửa tại nhà trong ngày.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Trước</span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Sau</span>
+      </button>
     </div>
-
-    <h4 class="fw-bold mb-4 text-center fade-in-up brand-font" style="animation-delay: 0.1s; z-index: 1;">Bạn muốn tham gia với vai trò gì?</h4>
-
-    <div class="role-grid">
-        <!-- Khách Hàng -->
-        <a href="{{ route('login') }}?role=customer" class="role-card fade-in-up" style="animation-delay: 0.2s;">
-            <div class="role-icon">
-                <img src="{{ asset('assets/images/customer.png') }}" alt="Khách hàng" style="height: 160px; object-fit: contain;">
-            </div>
-            <div class="role-text-content">
-                <h3 class="fw-bold mb-3 brand-font" style="color: var(--bs-body-color);">Tôi là Khách Hàng</h3>
-                <p class="text-muted-custom mb-0" style="font-size: 1.05rem; line-height: 1.6;">Tôi đang tìm thợ sửa chữa, bảo trì cho gia đình hoặc công ty.</p>
-            </div>
-            <div class="mt-4 fw-bold" style="color: var(--bs-primary); font-size: 0.95rem;">Tham gia ngay →</div>
-        </a>
-
-        <!-- Thợ / Đối Tác -->
-        <a href="{{ route('login') }}?role=worker" class="role-card worker-card fade-in-up" style="animation-delay: 0.3s;">
-            <div class="role-icon">
-                <img src="{{ asset('assets/images/worker.png') }}" alt="Thợ" style="height: 180px; object-fit: contain;">
-            </div>
-            <div class="role-text-content">
-                <h3 class="fw-bold mb-3 brand-font" style="color: var(--bs-body-color);">Tôi là Thợ Chuyên Nghiệp</h3>
-                <p class="text-muted-custom mb-0" style="font-size: 1.05rem; line-height: 1.6;">Tôi muốn nhận việc, báo giá và quản lý khách hàng thông minh.</p>
-            </div>
-            <div class="mt-4 fw-bold" style="color: var(--bs-warning); font-size: 0.95rem;">Đăng ký đối tác →</div>
-        </a>
-    </div>
-
+  </div>
 </div>
-@endsection
 
-@push('scripts')
-<script type="module">
-    import {
-        getCurrentUser
-    } from "{{ asset('assets/js/api.js') }}";
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+  <div class="right-inner">
+    <h2 class="right-heading">Bạn tham gia<br>với vai trò gì?</h2>
+    <p class="right-sub">Chọn vai trò phù hợp với bạn để tiếp tục</p>
 
-    const user = getCurrentUser();
-    if (user) {
-        window.location.replace(user.role === 'worker' ? "{{ route('worker.dashboard') }}" : "{{ route('customer.home') }}");
-    }
-</script>
-@endpush
+    <div class="role-cards-grid">
+      <!-- Customer -->
+      <a class="role-card customer" href="{{ route('login') }}?role=customer">
+        <div class="role-img-wrap">
+          <img src="{{ asset('assets/images/customer.png') }}" alt="Khách hàng" loading="eager">
+        </div>
+        <p class="role-title">Tôi là Khách Hàng</p>
+        <p class="role-desc">Tìm thợ sửa chữa tận nhà, nhanh chóng, uy tín và bảo hành rõ ràng.</p>
+        <button class="role-cta cta-customer">
+          Bắt đầu đặt lịch
+          <span class="material-symbols-outlined" style="font-size:.9rem;">arrow_forward</span>
+        </button>
+      </a>
+
+      <!-- Worker -->
+      <a class="role-card worker" href="{{ route('login') }}?role=worker">
+        <div class="role-img-wrap">
+          <img src="{{ asset('assets/images/worker2.png') }}" alt="Thợ chuyên nghiệp" loading="eager">
+        </div>
+        <p class="role-title">Tôi là Thợ</p>
+        <p class="role-desc">Nhận việc gần bạn, quản lý lịch làm việc và tăng thu nhập mỗi ngày.</p>
+        <button class="role-cta cta-worker">
+          Đăng ký làm thợ
+          <span class="material-symbols-outlined" style="font-size:.9rem;">arrow_forward</span>
+        </button>
+      </a>
+    </div>
+
+    <div class="divider-or">Thông tin bảo mật</div>
+
+    <div class="security-note">
+      <span class="material-symbols-outlined" style="font-size:.85rem;">shield</span>
+      Thông tin của bạn được bảo mật hoàn toàn bởi hệ thống mã hóa SSL
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -89,8 +89,8 @@ class DonDatLichController extends Controller
         $booking->khung_gio_hen = $validated['khung_gio_hen'];
 
         // Add thoi_gian_hen as datetime (combining ngay_hen and the start of khung_gio_hen)
-        $gioBatDau = explode('-', $validated['khung_gio_hen'])[0]; // ví dụ '10:00'
-        $booking->thoi_gian_hen = $validated['ngay_hen'] . ' ' . $gioBatDau . ':00';
+        $gioBatDau = trim(explode('-', $validated['khung_gio_hen'])[0]); // ví dụ '10:00'
+        $booking->thoi_gian_hen = \Illuminate\Support\Carbon::parse($validated['ngay_hen'] . ' ' . $gioBatDau . ':00');
         $booking->mo_ta_van_de = $validated['mo_ta_van_de'] ?? null;
         $booking->thue_xe_cho = $validated['thue_xe_cho'] ?? false;
         $booking->trang_thai = 'cho_xac_nhan';
@@ -98,7 +98,7 @@ class DonDatLichController extends Controller
 
         // Thời gian hết hạn nhận đơn (1 tiếng) cho đơn đặt đích danh thợ
         if ($booking->tho_id) {
-            $booking->thoi_gian_het_han_nhan = now()->addHour();
+            $booking->thoi_gian_het_han_nhan = \Illuminate\Support\Carbon::now()->addHour();
         }
 
         if ($validated['loai_dat_lich'] === 'at_home') {
@@ -190,8 +190,7 @@ class DonDatLichController extends Controller
         $booking = DonDatLich::with([
             'khachHang:id,name,avatar,phone,address',
             'tho:id,name,avatar,phone',
-            'dichVu',
-            'baiDang.hinhAnhs'
+            'dichVu'
         ])->find($id);
 
         if (!$booking) {
@@ -199,7 +198,11 @@ class DonDatLichController extends Controller
         }
 
         // Kiểm tra quyền xem
-        if ($booking->khach_hang_id !== $user->id && $booking->tho_id !== $user->id) {
+        $isOwner = ($booking->khach_hang_id === $user->id);
+        $isAssignedWorker = ($booking->tho_id === $user->id);
+        $isAvailableJobForWorker = ($user->role === 'worker' && $booking->tho_id === null && $booking->trang_thai === 'cho_xac_nhan');
+
+        if (!$isOwner && !$isAssignedWorker && !$isAvailableJobForWorker) {
             return response()->json(['message' => 'Bạn không có quyền xem đơn này'], 403);
         }
 

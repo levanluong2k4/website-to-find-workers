@@ -87,14 +87,43 @@ app-navbar { display: block; width: 100%; }
     </nav>
 
     <!-- Right Actions -->
-    <div style="display:flex;align-items:center;gap:0.75rem;">
+    <div style="display:flex;align-items:center;gap:0.75rem;position:relative;">
       <button onclick="openBookingModal()" class="nav-cta-btn">
         <span class="material-symbols-outlined" style="font-size:1.1rem;">event_upcoming</span>
         Đặt lịch sửa
       </button>
-      <div id="navUserAvatar" style="display:none;width:2.5rem;height:2.5rem;border-radius:50%;border:2px solid #BAF2E9;overflow:hidden;cursor:pointer;" onclick="window.location.href='/customer/my-bookings'">
-        <div id="navUserInitial" style="width:100%;height:100%;background:#0EA5E9;color:#fff;font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:center;">U</div>
+
+      <!-- Avatar + Dropdown -->
+      <div id="navUserAvatar" style="display:none;position:relative;">
+        <div id="navUserAvatarBtn"
+             style="width:2.5rem;height:2.5rem;border-radius:50%;border:2px solid #BAF2E9;overflow:hidden;cursor:pointer;"
+             onclick="toggleUserMenu(event)">
+          <div id="navUserInitial" style="width:100%;height:100%;background:#0EA5E9;color:#fff;font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:center;">U</div>
+        </div>
+        <!-- Dropdown menu -->
+        <div id="userDropdown" style="display:none;position:absolute;top:calc(100% + 10px);right:0;min-width:200px;background:#fff;border-radius:1rem;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1px solid #f1f5f9;z-index:9999;overflow:hidden;">
+          <!-- User info header -->
+          <div id="dropUserInfo" style="padding:.875rem 1rem .75rem;border-bottom:1px solid #f1f5f9;">
+            <p id="dropUserName" style="font-weight:700;font-size:.9rem;color:#0f172a;margin:0;">Người dùng</p>
+            <p id="dropUserEmail" style="font-size:.75rem;color:#64748b;margin:.1rem 0 0;"></p>
+          </div>
+          <!-- Menu items -->
+          <a href="/customer/my-bookings" style="display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;color:#334155;font-size:.875rem;font-weight:600;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <span class="material-symbols-outlined" style="font-size:1.1rem;color:#0EA5E9;">calendar_month</span>
+            Đơn đặt lịch
+          </a>
+          <a href="/customer/profile" style="display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;color:#334155;font-size:.875rem;font-weight:600;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <span class="material-symbols-outlined" style="font-size:1.1rem;color:#0EA5E9;">manage_accounts</span>
+            Tài khoản
+          </a>
+          <div style="height:1px;background:#f1f5f9;margin:0 .75rem;"></div>
+          <button onclick="logoutCustomer()" style="display:flex;align-items:center;gap:.6rem;width:100%;padding:.7rem 1rem;background:transparent;border:none;color:#ef4444;font-size:.875rem;font-weight:600;cursor:pointer;text-align:left;transition:background .15s;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
+            <span class="material-symbols-outlined" style="font-size:1.1rem;">logout</span>
+            Đăng xuất
+          </button>
+        </div>
       </div>
+
       <a id="navLoginBtn" href="{{ url('/') }}" style="display:none;background:#0EA5E9;color:#fff;font-weight:700;font-size:0.875rem;text-decoration:none;border-radius:0.75rem;padding:0.625rem 1.25rem;">Đăng nhập</a>
       <button id="navHamburger" style="display:none;background:none;border:none;cursor:pointer;padding:0.5rem;" onclick="document.getElementById('mobileMenu').style.display=document.getElementById('mobileMenu').style.display==='none'?'block':'none'">
         <span class="material-symbols-outlined" style="font-size:1.5rem;color:#475569;">menu</span>
@@ -133,15 +162,19 @@ app-navbar { display: block; width: 100%; }
   window.addEventListener('resize', applyNav);
   applyNav();
 
-  // Show user state
+  // Show user state & populate dropdown
   try {
-    var raw = localStorage.getItem('user') || localStorage.getItem('auth_user');
+    var raw = localStorage.getItem('user');
     var user = raw ? JSON.parse(raw) : null;
     if(user && user.name){
-      var av = document.getElementById('navUserAvatar');
+      var av   = document.getElementById('navUserAvatar');
       var init = document.getElementById('navUserInitial');
-      if(av) av.style.display='flex';
+      var dn   = document.getElementById('dropUserName');
+      var de   = document.getElementById('dropUserEmail');
+      if(av)   av.style.display='block';
       if(init) init.textContent = user.name.charAt(0).toUpperCase();
+      if(dn)   dn.textContent  = user.name;
+      if(de)   de.textContent  = user.email || '';
     } else {
       var btn = document.getElementById('navLoginBtn');
       if(btn) btn.style.display='inline-flex';
@@ -151,6 +184,34 @@ app-navbar { display: block; width: 100%; }
     if(btn2) btn2.style.display='inline-flex';
   }
 })();
+
+// Toggle user dropdown
+window.toggleUserMenu = function(e) {
+  e.stopPropagation();
+  var dd = document.getElementById('userDropdown');
+  if(!dd) return;
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+};
+// Close dropdown when clicking outside
+document.addEventListener('click', function() {
+  var dd = document.getElementById('userDropdown');
+  if(dd) dd.style.display = 'none';
+});
+
+// Logout customer
+window.logoutCustomer = async function() {
+  try {
+    var token = localStorage.getItem('access_token');
+    if(token && token !== 'undefined' && token !== 'null') {
+      await fetch('/api/logout', { method:'POST', headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json' } });
+    }
+  } catch(e) {}
+  finally {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+  }
+};
 </script>
 
 <div class="font-inter bg-white text-slate-900 overflow-x-hidden">
@@ -265,14 +326,14 @@ app-navbar { display: block; width: 100%; }
     <div class="grid grid-cols-2 gap-6 sm:grid-cols-2 lg:grid-cols-4">
       @php
         $services = [
-          ['Sửa Tivi','Màn hình, bo mạch, nguồn','tv','https://lh3.googleusercontent.com/aida-public/AB6AXuAGs59IjpN8BuTi_P42ul7xeU4ScSQxhhyWHJQdhtNThD1TzNNCCeaOjhxQ7OJyZFPSsSm9Zo0Ytj7P59YNMjE3UsRaKzYzSnwuRRU4u2dbb9WwVpO0C0rlANN-hDnTTtzUzbm8A_cTV4I9SIjkPVsPmk9c4xBTlvtlJB3IFn0pNGnEe8jdV4UAxchUns7WBFS_rMd7iG5j9yXJ6mnVLZ0SFTjvmriFTGMvMaeDa3JdcNaQac2_7mOEkZ6l-ipnyaZGP5WYmHNmAkDo'],
-          ['Máy giặt','Rung lắc, không vắt, rò nước','local_laundry_service','https://lh3.googleusercontent.com/aida-public/AB6AXuCHPLh_yWZQJg6hb2UB5xQDXkxjgXrRPASn9OfkRlJkFHqWHpAGLRAv1Ghw5mH4AgGK1ls4ZzzU8CyTfdgfhOfLF-oSEzPSwxyrdx7SCPxIcMm3_987kE16-12v6zpZvnTs4nB8gtKHIjc_AOVApp4gG_OQ8eKrVXHezNg_DcOFmIf_sMT_Xqy1JP_1BP_PZIHpbtQvV5k8MuJiAIOx0qQ68n-dBDLssQTEXKUheLowvo2KxCbzhP2w4OQDAv5GjGfTumsqVaCWL1_V'],
-          ['Tủ lạnh','Kém lạnh, đóng tuyết, ồn','kitchen','https://lh3.googleusercontent.com/aida-public/AB6AXuDWQojltlBIIkMf_HWfaK_Eb1fl1c3GPKl3SiYSjlMm82vGFXDBIdY8mwCQFJIkztUP8YjV6pzry0O_0XLRuj8hg93xe9zgE0cGO4FvEBOGhhjkJ7SwyP-eRLY2sJVA6TRqP-YOh2dVvprmKzS9oHswnsPz854KLiZMF_B-4f4Ev7xwfTKn1Ra5q2HxJXWJGdA8CPneY20ZYv8OpO2wlzeW9HInKTv2LgGhVbGJJArLRLZK5mYyz_B7KB0tAS9fXmDX4BGqI7VTVn6v'],
-          ['Điều hòa','Vệ sinh, nạp gas, hỏng tụ','ac_unit','https://lh3.googleusercontent.com/aida-public/AB6AXuDFu5RMcmH-rgGmPc1LP9RsharSKQQtQ-OtPXt7Ckl25w0hXWExkajoUKHJeX-6wV617me7WqlGNlACzLg0Xqqsb-_xW18yra21oj00n4KPFlglb1-eV9izwznUsVNFrw2snvwlGt1kHQpJuk9ygANvSpBcfMwipWHUFbU31VK9bMrMJsTDUup74_T-J9kF_uBo6Ap4lKKx--dYJ-8LGuDGgagRppjLZKkMDZPkYbFCGX_OwNMMo0w_-g6TI3YCl_XLJC7qJC0kTIgc'],
-          ['Bếp điện','Lỗi E0-E9, không nhận nồi','cooking','https://lh3.googleusercontent.com/aida-public/AB6AXuCYQEnjZ_y1cBZ1m86jvD8BITprjx6Jdv8XfG1WH7chGibuPt5uQ39BanhdsxIv0C3LcZq-4VXQfgwynoWRp9-U_fwyh_hZvKXgQdxgjM2Z7uqHM5AI6jFsWQC5rgnKdbXuJtsNBcrOdI_SxL_hxe5LBakqgenKB1UwhbwM4ZTdNWWYTvHLaeWJBHVwDkW-f-Gyt22xeQtJubVLW7lhIf6ukfrh9Bu316gEhQZM_vjBHomkh8HzSloeLQCJm3-9Uaq1kFSPCuoxLvvN'],
-          ['Lò vi sóng','Không nóng, liệt phím','microwave','https://lh3.googleusercontent.com/aida-public/AB6AXuBfZqOziIaI11NmfXcoTrUOx68uh_i1jSdgkTok_7OFc41JTAnsMPCJZA-0k_twlly-r1H2TMHNCXcO7Ps5cfG9Ymt4ZZxks0kX04nfn2gR0igVaLdqGVJt49Yft5CsWKbJDjaumQ7uq7eDhbhAXVlFB8xuAfyo8xXA5eVL0kVezn-RBSbKEYEtREnZbL_J05F_f5hIuKvxXMCjON7kMefPPH_Hohc-JgTn7UPsQ0A3wcws608wUNy5ak03Up06t7xQiE8vGXcvqNrS'],
-          ['Nồi chiên KD','Hỏng quạt, cảm biến nhiệt','air_purifier','https://lh3.googleusercontent.com/aida-public/AB6AXuCQEDs1LOn5gumOwCjWfz4bZ6gA2xV0HaKakXrsFWFi4XBaK0WEcYR8ukrU-Im6Ie4Nxrm5wZ8jlE6KaEIKt1fKnz1H3ClTt83uqvV8GLQOsB_ZZUKwVYPMfp5hDjyw3QFGujVgBpPIXJotCxY-KjXoSQMOXYS0alUpkcQGp0U5YlVRBZEHC24rlsLQk0f2U3bIFE-lj3yyj_nkHV423Aj9mLLmnS9XzVPOnd-CEaoVecCK5E6wGV7cgg3RYdcvxP1h395vcSP72Ov3'],
-          ['Ấm siêu tốc','Không vào điện, cháy rơ le','kettle','https://lh3.googleusercontent.com/aida-public/AB6AXuD6j2AXxE-Yth4mDQQyIdsNk9MpIDOxV7Ccq2PZLiJFzE0n5NorcwrSkbMG2igDRiR6PrNxiW_wQMkn2688fvnhbqD0v-9kQHwk90AHXT31VlgdR7bZ-HcwnvnHdloooIxKraypSMo9o-pmJEVbJTAAJz-ufnC57vJ8YEA2_HbocFsZefZQh0vw_B_lk2asjClW_apGu2AafytDUd9sLPlW7S3tJahN1x8n2VgTVccBY8Mc4bhAE7DD-oKNa_cGQS93O2eIatQ_bYYt'],
+          ['Sửa Tivi','Màn hình, bo mạch, nguồn','tv','/assets/images/suativi.png'],
+          ['Máy giặt','Rung lắc, không vắt, rò nước','local_laundry_service','/assets/images/suamaygiat.png'],
+          ['Tủ lạnh','Kém lạnh, đóng tuyết, ồn','kitchen','/assets/images/suatulanh.png'],
+          ['Điều hòa','Vệ sinh, nạp gas, hỏng tụ','ac_unit','/assets/images/suadieuhoa.png'],
+          ['Bếp điện','Lỗi E0-E9, không nhận nồi','cooking','/assets/images/suabeptu.png'],
+          ['Lò vi sóng','Không nóng, liệt phím','microwave','/assets/images/sualovisong.png'],
+          ['Nồi chiên KD','Hỏng quạt, cảm biến nhiệt','air_purifier','/assets/images/suanoichien.png'],
+          ['Ấm siêu tốc','Không vào điện, cháy rơ le','kettle','/assets/images/suaamsieutoc.png'],
         ];
       @endphp
       @foreach($services as [$name, $desc, $icon, $img])
@@ -283,7 +344,7 @@ app-navbar { display: block; width: 100%; }
         <div class="flex items-start justify-between">
           <div>
             <h3 class="font-bold text-slate-900">{{ $name }}</h3>
-            <p class="text-xs text-slate-500">{{ $desc }}</p>
+            <p class="text-xs text-slate-500" style="width: 101%;">{{ $desc }}</p>
           </div>
           <span class="material-symbols-outlined text-primary-dark">{{ $icon }}</span>
         </div>
@@ -562,17 +623,8 @@ app-navbar { display: block; width: 100%; }
 function openBookingModal(serviceName = '') {
   const modal = document.getElementById('bookingModal');
   if (!modal) return;
-  if (serviceName) {
-    const select = modal.querySelector('select[name="service_name"], #serviceSelect, select');
-    if (select) {
-      for (let opt of select.options) {
-        if (opt.text.toLowerCase().includes(serviceName.toLowerCase())) {
-          select.value = opt.value;
-          break;
-        }
-      }
-    }
-  }
+  // Store service to pre-select after async options load
+  window.PRESELECT_SERVICE = serviceName;
   const bsModal = new bootstrap.Modal(modal);
   bsModal.show();
 }
