@@ -5,130 +5,212 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tbody = document.getElementById('usersTableBody');
     const roleFilter = document.getElementById('roleFilter');
+    const approvalFilter = document.getElementById('approvalFilter');
     const btnRefresh = document.getElementById('btnRefresh');
+    const url = new URL(window.location.href);
 
-    const fetchUsers = async () => {
-        try {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="text-muted mt-2 mb-0">Đang tải danh sách...</p>
-                    </td>
-                </tr>`;
+    roleFilter.value = url.searchParams.get('role') || '';
+    approvalFilter.value = url.searchParams.get('approval_status') || '';
 
-            const role = roleFilter.value;
-            const query = role ? `?role=${role}` : '';
+    const escapeHtml = (value) => (value ?? '')
+        .toString()
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
 
-            const res = await callApi(`/admin/users${query}`);
-
-            if (res.ok && res.data && res.data.data) {
-                renderUsers(res.data.data);
-            } else if (res.ok && res.data) {
-                // Fallback in case Backend returns array directly
-                renderUsers(res.data.data || res.data);
-            }
-        } catch (error) {
-            console.error('Fetch users error:', error);
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Lỗi kết nối máy chủ!</td></tr>`;
+    const approvalLabel = (status) => {
+        if (status === 'da_duyet') {
+            return '<span class="chip bg-success-subtle text-success">Da duyet</span>';
         }
+        if (status === 'tu_choi') {
+            return '<span class="chip bg-danger-subtle text-danger">Tu choi</span>';
+        }
+        return '<span class="chip bg-warning-subtle text-warning">Cho duyet</span>';
     };
 
+    const roleLabel = (role) => {
+        if (role === 'worker') {
+            return '<span class="chip bg-success-subtle text-success">Tho</span>';
+        }
+        return '<span class="chip bg-primary-subtle text-primary">Khach hang</span>';
+    };
+
+    const accountLabel = (isActive) => isActive
+        ? '<span class="chip bg-success-subtle text-success">Hoat dong</span>'
+        : '<span class="chip bg-danger-subtle text-danger">Da khoa</span>';
+
     const renderUsers = (users) => {
-        if (!users || users.length === 0) {
+        const filteredUsers = users.filter((user) => {
+            if (approvalFilter.value === '' || user.role !== 'worker') {
+                return true;
+            }
+
+            return (user.ho_so_tho?.trang_thai_duyet || 'cho_duyet') === approvalFilter.value;
+        });
+
+        if (!filteredUsers.length) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center py-5 text-muted">
-                        <i class="fas fa-users-slash fs-1 opacity-25 mb-3"></i>
-                        <p class="mb-0 fw-semibold">Không tìm thấy người dùng nào.</p>
+                        Khong tim thay nguoi dung phu hop.
                     </td>
-                </tr>`;
+                </tr>
+            `;
             return;
         }
 
-        tbody.innerHTML = users.map(user => {
-            const roleBadge = user.role === 'worker'
-                ? '<span class="status-badge bg-success bg-opacity-10 text-success"><i class="fas fa-tools me-1"></i>Thợ Sửa Chữa</span>'
-                : '<span class="status-badge bg-primary bg-opacity-10 text-primary"><i class="fas fa-user me-1"></i>Khách Cài Đặt</span>';
+        tbody.innerHTML = filteredUsers.map((user) => {
+            const workerProfile = user.ho_so_tho;
+            const services = Array.isArray(user.dich_vus) ? user.dich_vus : [];
+            const serviceHtml = services.length
+                ? services.map((service) => `<span class="chip bg-light text-dark border">${escapeHtml(service.ten_dich_vu)}</span>`).join('')
+                : '<span class="text-muted">Chua gan dich vu</span>';
 
-            const activeBadge = user.is_active
-                ? '<span class="badge bg-success bg-opacity-25 text-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Hoạt động</span>'
-                : '<span class="badge bg-danger bg-opacity-25 text-danger px-3 py-2 rounded-pill"><i class="fas fa-ban me-1"></i>Đã Khóa</span>';
+            const workerInfo = user.role === 'worker'
+                ? `
+                    <div class="mb-2">${approvalLabel(workerProfile?.trang_thai_duyet)}</div>
+                    <div class="small text-muted mb-2">Dich vu:</div>
+                    <div>${serviceHtml}</div>
+                    <div class="small text-muted mt-2">Ghi chu admin: ${escapeHtml(workerProfile?.ghi_chu_admin || '--')}</div>
+                `
+                : '<span class="text-muted">Khong ap dung</span>';
 
-            const toggleBtnClass = user.is_active ? 'btn-outline-danger' : 'btn-outline-success';
-            const toggleIcon = user.is_active ? 'fa-lock' : 'fa-unlock';
-            const toggleText = user.is_active ? 'Khóa' : 'Mở Khóa';
+            const workerActions = user.role === 'worker'
+                ? `
+                    <button class="btn btn-sm btn-outline-success me-1 btn-approve" data-id="${user.id}">Duyet</button>
+                    <button class="btn btn-sm btn-outline-warning me-1 btn-pending" data-id="${user.id}">Cho duyet</button>
+                    <button class="btn btn-sm btn-outline-danger me-1 btn-reject" data-id="${user.id}">Tu choi</button>
+                `
+                : '';
+
+            const toggleText = user.is_active ? 'Khoa' : 'Mo khoa';
+            const toggleClass = user.is_active ? 'btn-outline-danger' : 'btn-outline-primary';
 
             return `
                 <tr>
-                    <td class="ps-4 text-muted fw-bold">#${user.id}</td>
+                    <td class="ps-4 fw-semibold text-muted">#${user.id}</td>
                     <td>
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 40px; height: 40px;">
-                                ${user.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                                <h6 class="mb-0 fw-bold" style="color: #0f172a;">${user.name}</h6>
-                                <small class="text-muted"><i class="fas fa-envelope me-1"></i>${user.email}</small><br>
-                                <small class="text-muted"><i class="fas fa-phone me-1"></i>${user.phone || 'Chưa cập nhật'}</small>
-                            </div>
-                        </div>
+                        <div class="fw-semibold">${escapeHtml(user.name)}</div>
+                        <div class="small text-muted">${escapeHtml(user.email)}</div>
+                        <div class="small text-muted">${escapeHtml(user.phone || '--')}</div>
+                        <div class="small text-muted mt-1">Tham gia: ${new Date(user.created_at).toLocaleDateString('vi-VN')}</div>
                     </td>
-                    <td>${roleBadge}</td>
-                    <td><small class="text-muted fw-semibold">${new Date(user.created_at).toLocaleDateString('vi-VN')}</small></td>
-                    <td>${activeBadge}</td>
+                    <td>${roleLabel(user.role)}</td>
+                    <td>${workerInfo}</td>
+                    <td>${accountLabel(user.is_active)}</td>
                     <td class="text-end pe-4">
-                        <button class="btn btn-sm ${toggleBtnClass} rounded-3 btn-toggle-status" data-id="${user.id}" data-name="${user.name}" data-action="${user.is_active ? 'lock' : 'unlock'}">
-                            <i class="fas ${toggleIcon} me-1"></i>${toggleText}
-                        </button>
+                        <div class="d-grid gap-2 justify-content-end">
+                            <button class="btn btn-sm ${toggleClass} btn-toggle-status" data-id="${user.id}">${toggleText}</button>
+                            ${workerActions}
+                        </div>
                     </td>
                 </tr>
             `;
         }).join('');
 
-        // Gắn sự kiện khóa / mở khóa
-        document.querySelectorAll('.btn-toggle-status').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = e.currentTarget.getAttribute('data-id');
-                const name = e.currentTarget.getAttribute('data-name');
-                const action = e.currentTarget.getAttribute('data-action');
-                const actionTxt = action === 'lock' ? 'KHÓA' : 'MỞ KHÓA';
-
-                Swal.fire({
-                    title: `Xác nhận ${actionTxt} tài khoản?`,
-                    text: `Bạn có chắc chắn muốn ${actionTxt.toLowerCase()} tài khoản của "${name}"?`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: action === 'lock' ? '#ef4444' : '#10b981',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: '<i class="fas fa-check me-2"></i>Đồng ý',
-                    cancelButtonText: 'Hủy'
-                }).then(async (result) => {
-                    if (result.isConfirmed) {
-                        try {
-                            const res = await callApi(`/admin/users/${id}/toggle-status`, 'PATCH');
-                            if (res.ok) {
-                                showToast(res.message, 'success');
-                                fetchUsers(); // reload table
-                            } else {
-                                showToast(res.message || 'Lỗi server', 'error');
-                            }
-                        } catch (err) {
-                            showToast('Lỗi mạng', 'error');
-                        }
-                    }
-                });
+        document.querySelectorAll('.btn-toggle-status').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const res = await callApi(`/admin/users/${button.dataset.id}/toggle-status`, 'PATCH');
+                if (!res.ok) {
+                    showToast(res.data?.message || 'Khong cap nhat duoc tai khoan', 'error');
+                    return;
+                }
+                showToast(res.data?.message || 'Da cap nhat tai khoan');
+                await fetchUsers();
             });
+        });
+
+        document.querySelectorAll('.btn-approve').forEach((button) => {
+            button.addEventListener('click', () => updateApproval(button.dataset.id, 'da_duyet'));
+        });
+        document.querySelectorAll('.btn-pending').forEach((button) => {
+            button.addEventListener('click', () => updateApproval(button.dataset.id, 'cho_duyet'));
+        });
+        document.querySelectorAll('.btn-reject').forEach((button) => {
+            button.addEventListener('click', () => updateApproval(button.dataset.id, 'tu_choi'));
         });
     };
 
-    roleFilter.addEventListener('change', fetchUsers);
-    btnRefresh.addEventListener('click', () => {
-        const icon = btnRefresh.querySelector('i');
-        icon.classList.add('fa-spin');
-        fetchUsers().finally(() => setTimeout(() => icon.classList.remove('fa-spin'), 500));
-    });
+    const updateApproval = async (userId, status) => {
+        const notePrompt = await Swal.fire({
+            title: 'Ghi chu admin',
+            input: 'textarea',
+            inputPlaceholder: 'Nhap ghi chu neu can',
+            inputValue: '',
+            showCancelButton: true,
+            confirmButtonText: 'Luu',
+            cancelButtonText: 'Huy',
+        });
 
-    // Tải dữ liệu lần đầu
+        if (!notePrompt.isConfirmed) {
+            return;
+        }
+
+        const res = await callApi(`/admin/worker-profiles/${userId}/approval`, 'PATCH', {
+            trang_thai_duyet: status,
+            ghi_chu_admin: notePrompt.value || '',
+        });
+
+        if (!res.ok) {
+            showToast(res.data?.message || 'Khong cap nhat duoc ho so tho', 'error');
+            return;
+        }
+
+        showToast(res.data?.message || 'Da cap nhat ho so tho');
+        await fetchUsers();
+    };
+
+    const fetchUsers = async () => {
+        syncFilterUrl();
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2 mb-0">Dang tai danh sach nguoi dung...</p>
+                </td>
+            </tr>
+        `;
+
+        const query = roleFilter.value ? `?role=${roleFilter.value}` : '';
+        const res = await callApi(`/admin/users${query}`);
+
+        if (!res.ok) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-danger">
+                        Khong tai duoc danh sach nguoi dung.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        renderUsers(Array.isArray(res.data?.data) ? res.data.data : []);
+    };
+
+    const syncFilterUrl = () => {
+        const nextUrl = new URL(window.location.href);
+
+        if (roleFilter.value) {
+            nextUrl.searchParams.set('role', roleFilter.value);
+        } else {
+            nextUrl.searchParams.delete('role');
+        }
+
+        if (approvalFilter.value) {
+            nextUrl.searchParams.set('approval_status', approvalFilter.value);
+        } else {
+            nextUrl.searchParams.delete('approval_status');
+        }
+
+        window.history.replaceState({}, '', nextUrl);
+    };
+
+    roleFilter.addEventListener('change', fetchUsers);
+    approvalFilter.addEventListener('change', fetchUsers);
+    btnRefresh.addEventListener('click', fetchUsers);
+
     fetchUsers();
 });

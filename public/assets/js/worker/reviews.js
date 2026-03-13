@@ -1,7 +1,7 @@
 import { callApi, getCurrentUser, logout } from '../api.js';
 
 const user = getCurrentUser();
-if (!user || user.role !== 'worker') {
+if (!user || !['worker', 'admin'].includes(user.role)) {
     logout();
 }
 

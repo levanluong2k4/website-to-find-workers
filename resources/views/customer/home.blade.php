@@ -69,7 +69,7 @@ app-navbar { display: block; width: 100%; }
   <div style="max-width:80rem;margin:0 auto;padding:0 1.5rem;height:5rem;display:flex;align-items:center;justify-content:space-between;">
 
     <!-- Logo -->
-    <a href="/customer/home" style="display:flex;align-items:center;gap:0.625rem;text-decoration:none;">
+    <a href="/" style="display:flex;align-items:center;gap:0.625rem;text-decoration:none;">
       <div style="width:2.5rem;height:2.5rem;background:#BAF2E9;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;">
         <span class="material-symbols-outlined" style="font-size:1.5rem;color:#0EA5E9;">home_repair_service</span>
       </div>
@@ -124,7 +124,7 @@ app-navbar { display: block; width: 100%; }
         </div>
       </div>
 
-      <a id="navLoginBtn" href="{{ url('/') }}" style="display:none;background:#0EA5E9;color:#fff;font-weight:700;font-size:0.875rem;text-decoration:none;border-radius:0.75rem;padding:0.625rem 1.25rem;">Đăng nhập</a>
+      <a id="navLoginBtn" href="/select-role" style="display:none;background:#0EA5E9;color:#fff;font-weight:700;font-size:0.875rem;text-decoration:none;border-radius:0.75rem;padding:0.625rem 1.25rem;">Đăng nhập</a>
       <button id="navHamburger" style="display:none;background:none;border:none;cursor:pointer;padding:0.5rem;" onclick="document.getElementById('mobileMenu').style.display=document.getElementById('mobileMenu').style.display==='none'?'block':'none'">
         <span class="material-symbols-outlined" style="font-size:1.5rem;color:#475569;">menu</span>
       </button>
@@ -209,7 +209,7 @@ window.logoutCustomer = async function() {
   finally {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
-    window.location.href = '/login';
+    window.location.href = '/';
   }
 };
 </script>

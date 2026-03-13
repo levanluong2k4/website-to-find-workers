@@ -146,7 +146,7 @@
 import { callApi, getCurrentUser, showToast } from "{{ asset('assets/js/api.js') }}";
 const baseUrl = '{{ url('/') }}';
 const user = getCurrentUser();
-if (!user || user.role !== 'worker') { window.location.href = baseUrl + '/login?role=worker'; }
+if (!user || !['worker', 'admin'].includes(user.role)) { window.location.href = baseUrl + '/login?role=worker'; }
 
 async function loadAvailableJobs() {
   const grid = document.getElementById('jobsGrid');

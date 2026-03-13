@@ -11,8 +11,7 @@ class UpdateDanhMucDichVuRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // TODO: Only admin can update service categories
-        return true;
+        return $this->user() && $this->user()->role === 'admin';
     }
 
     /**

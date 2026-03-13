@@ -11,7 +11,7 @@ class StoreDanhGiaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user() && $this->user()->role === 'customer';
+        return $this->user() && in_array($this->user()->role, ['customer', 'admin'], true);
     }
 
     /**

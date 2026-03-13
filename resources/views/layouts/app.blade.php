@@ -21,6 +21,12 @@
 <body>
 
     @yield('content')
+    @php
+        $showCustomerChatWidget = request()->routeIs('home') || request()->is('customer/*');
+    @endphp
+    @if($showCustomerChatWidget)
+        <x-customer-chat-widget />
+    @endif
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -28,6 +34,9 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script type="module" src="{{ asset('assets/js/api.js') }}"></script>
     <script type="module" src="{{ asset('assets/js/components/Navbar.js') }}"></script>
+    @if($showCustomerChatWidget)
+        <script type="module" src="{{ asset('assets/js/components/customer-chat-widget.js') }}"></script>
+    @endif
     @stack('scripts')
 </body>
 

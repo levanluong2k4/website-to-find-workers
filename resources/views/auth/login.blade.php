@@ -10,25 +10,99 @@
     *{margin:0;padding:0;box-sizing:border-box;}
     body{min-height:100vh;display:flex;font-family:'Inter',sans-serif;overflow:hidden;}
 
-    /* LEFT */
-    .left-panel{width:40%;min-height:100vh;background:linear-gradient(145deg,#0369a1 0%,#0EA5E9 50%,#BAF2E9 100%);display:flex;flex-direction:column;padding:2rem 2.5rem;position:relative;overflow:hidden;}
-    .left-panel::before{content:'';position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.07);top:-60px;right:-60px;}
-    .left-panel::after{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.05);bottom:-40px;left:-40px;}
-    .logo{display:flex;align-items:center;gap:.65rem;z-index:1;position:relative;}
-    .logo-icon{width:2.5rem;height:2.5rem;background:rgba(255,255,255,.2);border-radius:.75rem;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
-    .logo-text{color:#fff;font-family:'Poppins',sans-serif;font-weight:800;font-size:1.15rem;}
-    .hero-content{flex:1;display:flex;flex-direction:column;justify-content:center;z-index:1;position:relative;}
-    .hero-title{font-family:'Poppins',sans-serif;font-weight:800;font-size:2.1rem;color:#fff;line-height:1.2;margin-bottom:.875rem;}
-    .hero-sub{color:rgba(255,255,255,.85);font-size:.9rem;line-height:1.6;margin-bottom:2rem;}
-    .avatars-row{display:flex;align-items:center;gap:.5rem;margin-bottom:1.5rem;}
-    .avatar-circle{width:36px;height:36px;border-radius:50%;border:2px solid #fff;margin-left:-10px;font-size:1.25rem;display:flex;align-items:center;justify-content:center;background:#fff;}
-    .avatar-circle:first-child{margin-left:0;}
-    .trust-text{color:#fff;font-size:.8rem;font-weight:600;}
-    .feature-list{display:flex;flex-direction:column;gap:.75rem;}
-    .feature-item{display:flex;align-items:center;gap:.75rem;color:rgba(255,255,255,.9);font-size:.85rem;}
-    .feature-icon{width:1.75rem;height:1.75rem;background:rgba(255,255,255,.15);border-radius:.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-    .feature-icon .material-symbols-outlined{font-size:.95rem;color:#fff;}
-    .illustration{text-align:center;font-size:4.5rem;margin-top:2rem;filter:drop-shadow(0 8px 20px rgba(0,0,0,.2));}
+    
+    /* ── LEFT ── */
+    .left-panel {
+      width: 44%; height: 100vh;
+      background: linear-gradient(145deg,#0EA5E9 0%,#0d9fdf 40%,#38bdf8 70%,#BAF2E9 100%);
+      display: flex; flex-direction: column;
+      padding: 1.25rem 1.75rem;
+      position: relative; overflow: hidden;
+    }
+    .left-panel::before {
+      content:''; position:absolute; width:300px; height:300px;
+      border-radius:50%; background:rgba(255,255,255,.07); top:-70px; left:-70px;
+    }
+    .left-panel::after {
+      content:''; position:absolute; width:200px; height:200px;
+      border-radius:50%; background:rgba(255,255,255,.05); bottom:-50px; right:-50px;
+    }
+
+    .logo { display:flex; align-items:center; gap:.5rem; z-index:1; position:relative; flex-shrink:0; }
+    .logo-icon {
+      width:2.1rem; height:2.1rem; background:rgba(255,255,255,.2);
+      border-radius:.6rem; display:flex; align-items:center; justify-content:center;
+      backdrop-filter:blur(4px);
+    }
+    .logo-text { color:#fff; font-family:'Poppins',sans-serif; font-weight:800; font-size:1rem; }
+
+    .hero-content {
+      flex:1; display:flex; flex-direction:column; justify-content:flex-start;
+      padding-top:.75rem; z-index:1; position:relative; min-height:0;
+    }
+    .hero-tag {
+      display:inline-flex; align-items:center; gap:.3rem;
+      background:rgba(255,255,255,.15); backdrop-filter:blur(4px);
+      color:#fff; border-radius:2rem; padding:.25rem .7rem;
+      font-size:.72rem; font-weight:600; width:fit-content; margin-bottom:.5rem;
+    }
+    .hero-title {
+      font-family:'Poppins',sans-serif; font-weight:800;
+      font-size:1.45rem; color:#fff; line-height:1.2; margin-bottom:.35rem;
+    }
+    .hero-sub {
+      color:rgba(255,255,255,.85); font-size:.8rem;
+      line-height:1.5; margin-bottom:.65rem;
+    }
+
+    /* ── CAROUSEL ── */
+    #heroCarousel {
+      flex:1; border-radius:1rem; overflow:hidden;
+      box-shadow:0 12px 40px rgba(0,0,0,.3); min-height:0; position:relative;
+    }
+    #heroCarousel .carousel-inner,
+    #heroCarousel .carousel-item { height:100%; }
+    #heroCarousel .carousel-item img {
+      width:100%; height:100%; object-fit:cover; object-position:center; display:block;
+    }
+
+    /* Dark gradient overlay on each slide */
+    #heroCarousel .slide-overlay {
+      position:absolute; inset:0;
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,.72) 0%,
+        rgba(0,0,0,.25) 45%,
+        rgba(0,0,0,.05) 100%
+      );
+      pointer-events:none;
+    }
+
+    /* Caption text inside slide */
+    #heroCarousel .carousel-caption {
+      position:absolute; bottom:0; left:0; right:0;
+      padding:.75rem 1rem 1.5rem;
+      text-align:left; background:none;
+    }
+    #heroCarousel .caption-tag {
+      display:inline-flex; align-items:center; gap:.3rem;
+      background:rgba(14,165,233,.85); color:#fff;
+      border-radius:2rem; padding:.2rem .6rem;
+      font-size:.68rem; font-weight:700; margin-bottom:.35rem;
+    }
+    #heroCarousel .caption-title {
+      font-family:'Poppins',sans-serif; font-weight:800;
+      font-size:1.05rem; color:#fff; line-height:1.25;
+      margin-bottom:.2rem; text-shadow:0 1px 6px rgba(0,0,0,.4);
+    }
+    #heroCarousel .caption-sub {
+      font-size:.75rem; color:rgba(255,255,255,.85);
+      line-height:1.4; text-shadow:0 1px 4px rgba(0,0,0,.3);
+    }
+
+    #heroCarousel .carousel-control-prev-icon,
+    #heroCarousel .carousel-control-next-icon { filter:drop-shadow(0 0 4px rgba(0,0,0,.6)); }
+
 
     /* RIGHT */
     .right-panel{flex:1;background:linear-gradient(135deg,#f8fafc 0%,#f0f9ff 100%);display:flex;align-items:center;justify-content:center;padding:2rem;}
@@ -62,37 +136,97 @@
 <!-- LEFT PANEL -->
 <div class="left-panel">
   <div class="logo">
-    <div class="logo-icon"><span class="material-symbols-outlined" style="color:#fff;font-size:1.3rem;">home_repair_service</span></div>
+    <div class="logo-icon">
+      <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;">home_repair_service</span>
+    </div>
     <span class="logo-text">Thợ Tốt NTU</span>
   </div>
 
   <div class="hero-content">
-    <h2 class="hero-title">Chào mừng<br>trở lại! 👋</h2>
-    <p class="hero-sub">Đăng nhập để đặt lịch hoặc nhận việc ngay hôm nay – nhanh chóng và bảo mật.</p>
-
-    <div class="avatars-row">
-      <div class="avatar-circle">😊</div>
-      <div class="avatar-circle">👩</div>
-      <div class="avatar-circle">🧑</div>
-      <span class="trust-text" style="margin-left:.5rem;">+1,200 khách hàng tin tưởng</span>
+    <div class="hero-tag">
+      <span class="material-symbols-outlined" style="font-size:.85rem;">location_on</span>
+      Nha Trang, Khánh Hòa
     </div>
+    <h1 class="hero-title">Nền tảng sửa chữa điện tử #1 Nha Trang</h1>
+    <p class="hero-sub">Kết nối nhanh chóng với thợ chuyên nghiệp – sửa chữa uy tín, bảo hành rõ ràng.</p>
 
-    <div class="feature-list">
-      <div class="feature-item">
-        <div class="feature-icon"><span class="material-symbols-outlined">bolt</span></div>
-        Đặt lịch trong 60 giây
+    <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4500">
+      <div class="carousel-indicators">
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3" aria-label="Slide 4"></button>
       </div>
-      <div class="feature-item">
-        <div class="feature-icon"><span class="material-symbols-outlined">shield</span></div>
-        Thanh toán được bảo vệ
+
+      <div class="carousel-inner">
+
+        {{-- Slide 1: Thợ --}}
+        <div class="carousel-item active">
+          <img src="/assets/images/carousel/tho.jpg" alt="Thợ chuyên nghiệp" loading="eager">
+          <div class="slide-overlay"></div>
+          <div class="carousel-caption">
+            <span class="caption-tag">
+              <span class="material-symbols-outlined" style="font-size:.75rem;">engineering</span>
+              Đội ngũ thợ lành nghề
+            </span>
+            <p class="caption-title">Thợ chuyên nghiệp tại nhà bạn</p>
+            <p class="caption-sub">Hơn 500 thợ được kiểm duyệt kỹ lưỡng, phục vụ tận nơi.</p>
+          </div>
+        </div>
+
+        {{-- Slide 2: Tủ lạnh --}}
+        <div class="carousel-item">
+          <img src="/assets/images/carousel/tulanh.jpg" alt="Sửa tủ lạnh" loading="lazy">
+          <div class="slide-overlay"></div>
+          <div class="carousel-caption">
+            <span class="caption-tag">
+              <span class="material-symbols-outlined" style="font-size:.75rem;">kitchen</span>
+              Điện lạnh
+            </span>
+            <p class="caption-title">Sửa tủ lạnh – nhanh, đúng nguyên nhân</p>
+            <p class="caption-sub">Chẩn đoán chính xác, linh kiện chính hãng, bảo hành 6 tháng.</p>
+          </div>
+        </div>
+
+        {{-- Slide 3: Máy giặt --}}
+        <div class="carousel-item">
+          <img src="/assets/images/carousel/suamaygiat.jpg" alt="Sửa máy giặt" loading="lazy">
+          <div class="slide-overlay"></div>
+          <div class="carousel-caption">
+            <span class="caption-tag">
+              <span class="material-symbols-outlined" style="font-size:.75rem;">local_laundry_service</span>
+              Máy giặt
+            </span>
+            <p class="caption-title">Khắc phục máy giặt mọi hãng</p>
+            <p class="caption-sub">Samsung, LG, Electrolux, Panasonic... đều có thợ chuyên.</p>
+          </div>
+        </div>
+
+        {{-- Slide 4: Nồi chiên --}}
+        <div class="carousel-item">
+          <img src="/assets/images/carousel/noichien.jpg" alt="Sửa nồi chiên không khí" loading="lazy">
+          <div class="slide-overlay"></div>
+          <div class="carousel-caption">
+            <span class="caption-tag">
+              <span class="material-symbols-outlined" style="font-size:.75rem;">blender</span>
+              Đồ gia dụng
+            </span>
+            <p class="caption-title">Sửa đồ gia dụng – đặt lịch 1 phút</p>
+            <p class="caption-sub">Nồi chiên, lò vi sóng, máy xay... sửa tại nhà trong ngày.</p>
+          </div>
+        </div>
+
       </div>
-      <div class="feature-item">
-        <div class="feature-icon"><span class="material-symbols-outlined">verified</span></div>
-        Thợ được kiểm duyệt 100%
-      </div>
+
+      <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Trước</span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Sau</span>
+      </button>
     </div>
-
-    <div class="illustration">🏠✨</div>
   </div>
 </div>
 

@@ -177,6 +177,11 @@ document.getElementById('otpForm').addEventListener('submit', async e => {
     if (res.ok) {
       const { access_token, user } = res.data;
       saveUserSession(access_token, user);
+      try {
+        await callApi('/chat/sync-guest', 'POST', {});
+      } catch (syncErr) {
+        console.warn('Guest chat sync failed:', syncErr);
+      }
       showToast('Xác thực thành công!');
       setTimeout(() => {
         if (user.role === 'admin') window.location.href = baseUrl + '/admin/dashboard';

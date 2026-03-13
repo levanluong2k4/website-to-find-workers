@@ -36,7 +36,7 @@ export async function callApi(endpoint, method = 'GET', bodyData = null) {
         headers: headers,
     };
 
-    if (bodyData && (method === 'POST' || method === 'PUT')) {
+    if (bodyData && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {
         options.body = (bodyData instanceof FormData) ? bodyData : JSON.stringify(bodyData);
     }
 
@@ -109,7 +109,7 @@ export function requireRole(role) {
         return;
     }
 
-    if (user.role !== role) {
+    if (user.role !== role && user.role !== 'admin') {
         // Có thể redirect dựa vào role hoặc về /
         alert('Bạn không có quyền truy cập trang này!');
         if (user.role === 'customer') window.location.href = '/customer/home';

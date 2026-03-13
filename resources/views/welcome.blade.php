@@ -170,12 +170,12 @@
 
 <!-- LEFT PANEL -->
 <div class="left-panel">
-  <div class="logo">
+  <a href="/" class="logo" style="text-decoration:none;">
     <div class="logo-icon">
       <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;">home_repair_service</span>
     </div>
     <span class="logo-text">Thợ Tốt NTU</span>
-  </div>
+  </a>
 
   <div class="hero-content">
     <div class="hero-tag">

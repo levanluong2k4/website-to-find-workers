@@ -76,4 +76,14 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(DanhMucDichVu::class, 'tho_dich_vu', 'user_id', 'dich_vu_id');
     }
+
+    public function danhGiasNhan()
+    {
+        return $this->hasMany(DanhGia::class, 'nguoi_bi_danh_gia_id');
+    }
+
+    public function danhGiasDaGui()
+    {
+        return $this->hasMany(DanhGia::class, 'nguoi_danh_gia_id');
+    }
 }

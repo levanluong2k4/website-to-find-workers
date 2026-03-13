@@ -3,19 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Http\Requests\DonDatLich\UpdateTrangThaiRequest;
 use App\Models\DonDatLich;
 use App\Models\User;
 use App\Notifications\NewBookingNotification;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 
 class DonDatLichController extends Controller
 {
-    /**
-     * Display a listing of bookings for the logged-in user.
-     * Thợ thấy đơn của thợ, Khách thấy đơn của khách.
-     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -24,165 +20,201 @@ class DonDatLichController extends Controller
             'khachHang:id,name,avatar,phone',
             'tho:id,name,avatar,phone',
             'dichVu:id,ten_dich_vu',
-            'danhGias'
+            'danhGias',
         ]);
 
-        if ($user->role === 'customer') {
+        if ($this->canActAsCustomer($user) && !$this->isAdmin($user)) {
             $query->where('khach_hang_id', $user->id);
-        } elseif ($user->role === 'worker') {
+        } elseif ($this->canActAsWorker($user) && !$this->isAdmin($user)) {
             $query->where('tho_id', $user->id);
         }
 
-        $bookings = $query->latest()->paginate(15);
-
-        return response()->json($bookings);
+        return response()->json($query->latest()->paginate(15));
     }
-    /**
-     * Create a new booking (Khách hàng)
-     */
+
     public function store(\App\Http\Requests\DonDatLich\StoreDonDatLichRequest $request)
     {
         $user = $request->user();
-        if ($user->role !== 'customer') {
-            return response()->json(['message' => 'Chỉ khách hàng mới có quyền đặt lịch'], 403);
+        if (!$this->canActAsCustomer($user)) {
+            return response()->json(['message' => 'Chi khach hang moi co quyen dat lich'], 403);
         }
 
-        $validated = $request->validated();
+        try {
+            \Illuminate\Support\Facades\Log::info('Booking store started', ['request' => $request->all()]);
+            $validated = $request->validated();
+            \Illuminate\Support\Facades\Log::info('Validation passed', ['validated' => $validated]);
 
-        $khoangCach = null;
-        $phiDiLai = 0;
+            $khoangCach = null;
+            $phiDiLai = 0;
 
-        if ($validated['loai_dat_lich'] === 'at_home') {
-            // Tọa độ cửa hàng Tôn Thất Thuyết (Ví dụ: 2 Đ. Nguyễn Đình Chiểu)
-            $storeLat = 12.2618;
-            $storeLng = 109.1995;
+            if (($validated['loai_dat_lich'] ?? '') === 'at_home') {
+                $storeLat = 12.2618;
+                $storeLng = 109.1995;
 
-            $lat = $validated['vi_do'];
-            $lng = $validated['kinh_do'];
+                if (!empty($validated['tho_id'])) {
+                    $hoSoTho = \App\Models\HoSoTho::where('user_id', $validated['tho_id'])->first();
+                    if ($hoSoTho && $hoSoTho->vi_do && $hoSoTho->kinh_do) {
+                        $storeLat = $hoSoTho->vi_do;
+                        $storeLng = $hoSoTho->kinh_do;
+                        \Illuminate\Support\Facades\Log::info('Using worker coordinates for distance calculation', ['lat' => $storeLat, 'lng' => $storeLng]);
+                    }
+                }
 
-            // Tính khoảng cách Haversine function
-            $earthRadius = 6371;
-            $dLat = deg2rad($lat - $storeLat);
-            $dLng = deg2rad($lng - $storeLng);
-            $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($storeLat)) * cos(deg2rad($lat)) * sin($dLng / 2) * sin($dLng / 2);
-            $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-            $khoangCach = $earthRadius * $c;
+                $lat = $validated['vi_do'] ?? 0;
+                $lng = $validated['kinh_do'] ?? 0;
 
-            if ($khoangCach > 5) {
-                return response()->json([
-                    'message' => 'Địa chỉ của bạn quá xa cửa hàng (> 5km). Chúng tôi chỉ hỗ trợ sửa chữa tận nơi trong bán kính 5km. Vui lòng mang thiết bị đến cửa hàng hoặc chọn địa chỉ khác.',
-                    'current_distance' => round($khoangCach, 1)
-                ], 400);
+                $earthRadius = 6371;
+                $dLat = deg2rad($lat - $storeLat);
+                $dLng = deg2rad($lng - $storeLng);
+                $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($storeLat)) * cos(deg2rad($lat)) * sin($dLng / 2) * sin($dLng / 2);
+                $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+                $khoangCach = $earthRadius * $c;
+
+                $maxDistance = 20;
+                if (!empty($validated['tho_id']) && isset($hoSoTho) && $hoSoTho) {
+                    $maxDistance = $hoSoTho->ban_kinh_phuc_vu ?? 10;
+                }
+
+                if ($khoangCach > $maxDistance) {
+                    return response()->json([
+                        'message' => 'Dia chi cua ban qua xa khoang cach phuc vu (>' . $maxDistance . 'km). Khoang cach hien tai: ' . round($khoangCach, 1) . 'km. Vui long chon tho khac hoac mang den cua hang.',
+                        'current_distance' => round($khoangCach, 1),
+                    ], 400);
+                }
+
+                $phiDiLai = round($khoangCach * 5000);
             }
 
-            // Tính phí đi lại (ví dụ 5000đ/km)
-            $phiDiLai = round($khoangCach * 5000);
-        }
+            $booking = new DonDatLich();
+            $booking->khach_hang_id = $user->id;
+            $booking->tho_id = $validated['tho_id'] ?? null;
+            $booking->dich_vu_id = $validated['dich_vu_id'] ?? null;
+            $booking->loai_dat_lich = $validated['loai_dat_lich'] ?? 'at_store';
+            $booking->ngay_hen = $validated['ngay_hen'] ?? now()->toDateString();
+            $booking->khung_gio_hen = $validated['khung_gio_hen'] ?? '08:00-10:00';
 
-        // Tạo đơn
-        $booking = new DonDatLich();
-        $booking->khach_hang_id = $user->id;
-        $booking->tho_id = $validated['tho_id'] ?? null;
-        $booking->dich_vu_id = $validated['dich_vu_id'];
-        $booking->loai_dat_lich = $validated['loai_dat_lich'];
-        $booking->ngay_hen = $validated['ngay_hen'];
-        $booking->khung_gio_hen = $validated['khung_gio_hen'];
-
-        // Add thoi_gian_hen as datetime (combining ngay_hen and the start of khung_gio_hen)
-        $gioBatDau = trim(explode('-', $validated['khung_gio_hen'])[0]); // ví dụ '10:00'
-        $booking->thoi_gian_hen = \Illuminate\Support\Carbon::parse($validated['ngay_hen'] . ' ' . $gioBatDau . ':00');
-        $booking->mo_ta_van_de = $validated['mo_ta_van_de'] ?? null;
-        $booking->thue_xe_cho = $validated['thue_xe_cho'] ?? false;
-        $booking->trang_thai = 'cho_xac_nhan';
-        $booking->phuong_thuc_thanh_toan = 'cod';
-
-        // Thời gian hết hạn nhận đơn (1 tiếng) cho đơn đặt đích danh thợ
-        if ($booking->tho_id) {
-            $booking->thoi_gian_het_han_nhan = \Illuminate\Support\Carbon::now()->addHour();
-        }
-
-        if ($validated['loai_dat_lich'] === 'at_home') {
-            $booking->dia_chi = $validated['dia_chi'];
-            $booking->vi_do = $validated['vi_do'];
-            $booking->kinh_do = $validated['kinh_do'];
-            $booking->khoang_cach = round($khoangCach, 2);
-            $booking->phi_di_lai = $phiDiLai;
-        } else {
-            // Khách tự mang đến
-            $booking->dia_chi = '2 Đ. Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
-            $booking->phi_di_lai = 0;
-        }
-
-        $booking->save();
-
-        // Gửi thông báo cho thợ
-        if ($booking->tho_id) {
-            $tho = User::find($booking->tho_id);
-            if ($tho) {
-                $tho->notify(new NewBookingNotification($booking));
+            $khungGio = $validated['khung_gio_hen'] ?? '';
+            $gioBatDau = '08:00';
+            if (str_contains($khungGio, '-')) {
+                $parts = explode('-', $khungGio);
+                $gioBatDau = trim($parts[0]);
             }
-        } else {
-            $thoList = User::where('role', 'worker')->where('is_active', true)->get();
-            Notification::send($thoList, new NewBookingNotification($booking));
-        }
 
-        return response()->json([
-            'message' => 'Đặt lịch thành công',
-            'data' => $booking->load(['khachHang', 'tho', 'dichVu'])
-        ], 201);
+            $booking->thoi_gian_hen = \Illuminate\Support\Carbon::parse(($validated['ngay_hen'] ?? now()->toDateString()) . ' ' . $gioBatDau . ':00');
+            $booking->mo_ta_van_de = $validated['mo_ta_van_de'] ?? null;
+            $booking->thue_xe_cho = $validated['thue_xe_cho'] ?? false;
+            $booking->trang_thai = 'cho_xac_nhan';
+            $booking->phuong_thuc_thanh_toan = 'cod';
+
+            if ($booking->tho_id) {
+                $booking->thoi_gian_het_han_nhan = \Illuminate\Support\Carbon::now()->addHour();
+            }
+
+            if (($validated['loai_dat_lich'] ?? '') === 'at_home') {
+                $booking->dia_chi = $validated['dia_chi'] ?? '';
+                $booking->vi_do = $validated['vi_do'] ?? 0;
+                $booking->kinh_do = $validated['kinh_do'] ?? 0;
+                $booking->khoang_cach = round($khoangCach, 2);
+                $booking->phi_di_lai = $phiDiLai;
+            } else {
+                $booking->dia_chi = '2 Duong Nguyen Dinh Chieu, Vinh Tho, Nha Trang, Khanh Hoa';
+                $booking->phi_di_lai = 0;
+            }
+
+            \Illuminate\Support\Facades\Log::info('Preparing media upload');
+            if ($request->hasFile('hinh_anh_mo_ta')) {
+                $images = [];
+                foreach ($request->file('hinh_anh_mo_ta') as $file) {
+                    \Illuminate\Support\Facades\Log::info('Uploading image', ['name' => $file->getClientOriginalName()]);
+                    $uploadResult = \CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary::uploadApi()->upload($file->getRealPath(), [
+                        'folder' => 'bookings/images',
+                    ]);
+                    $images[] = $uploadResult['secure_url'];
+                }
+                $booking->hinh_anh_mo_ta = $images;
+            }
+
+            if ($request->hasFile('video_mo_ta')) {
+                \Illuminate\Support\Facades\Log::info('Uploading video');
+                $uploadResult = \CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary::uploadApi()->upload($request->file('video_mo_ta')->getRealPath(), [
+                    'folder' => 'bookings/videos',
+                    'resource_type' => 'video',
+                ]);
+                $booking->video_mo_ta = $uploadResult['secure_url'];
+            }
+
+            \Illuminate\Support\Facades\Log::info('Saving booking');
+            $booking->save();
+
+            if ($booking->tho_id) {
+                $tho = User::find($booking->tho_id);
+                if ($tho) {
+                    $tho->notify(new NewBookingNotification($booking));
+                }
+            } else {
+                $thoList = User::where('role', 'worker')->where('is_active', true)->get();
+                Notification::send($thoList, new NewBookingNotification($booking));
+            }
+
+            return response()->json([
+                'message' => 'Dat lich thanh cong',
+                'data' => $booking->load(['khachHang', 'tho', 'dichVu']),
+            ], 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error in DonDatLichController@store', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Co loi xay ra: ' . $e->getMessage(),
+                'debug_info' => $e->getFile() . ' L:' . $e->getLine(),
+            ], 500);
+        }
     }
 
-    /**
-     * Get available jobs for workers (tho_id is null)
-     */
     public function availableJobs(Request $request)
     {
         $user = $request->user();
-        if ($user->role !== 'worker') {
+        if (!$this->canActAsWorker($user)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         $jobs = DonDatLich::with([
             'khachHang:id,name,avatar,phone',
-            'dichVu:id,ten_dich_vu'
+            'dichVu:id,ten_dich_vu',
         ])
             ->whereNull('tho_id')
             ->where('trang_thai', 'cho_xac_nhan')
-            ->orderBy('created_at', 'desc')
+            ->orderByDesc('created_at')
             ->get();
 
         return response()->json($jobs);
     }
 
-    /**
-     * Worker claims a job
-     */
     public function claimJob(Request $request, $id)
     {
         $user = $request->user();
-        if ($user->role !== 'worker') {
+        if (!$this->canActAsWorker($user)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         $booking = DonDatLich::find($id);
         if (!$booking) {
-            return response()->json(['message' => 'Không tìm thấy đơn đặt lịch'], 404);
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
         }
 
         if ($booking->tho_id !== null || $booking->trang_thai !== 'cho_xac_nhan') {
-            return response()->json(['message' => 'Đơn này đã được thợ khác nhận hoặc không còn khả dụng'], 400);
+            return response()->json(['message' => 'Don nay da duoc tho khac nhan hoac khong con kha dung'], 400);
         }
 
         $booking->tho_id = $user->id;
         $booking->trang_thai = 'da_xac_nhan';
         $booking->save();
 
-        return response()->json(['message' => 'Nhận việc thành công', 'data' => $booking]);
+        return response()->json(['message' => 'Nhan viec thanh cong', 'data' => $booking]);
     }
 
-    /**
-     * Get details of a single booking.
-     */
     public function show(Request $request, string $id)
     {
         $user = $request->user();
@@ -190,57 +222,57 @@ class DonDatLichController extends Controller
         $booking = DonDatLich::with([
             'khachHang:id,name,avatar,phone,address',
             'tho:id,name,avatar,phone',
-            'dichVu'
+            'dichVu',
         ])->find($id);
 
         if (!$booking) {
-            return response()->json(['message' => 'Không tìm thấy đơn đặt lịch'], 404);
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
         }
 
-        // Kiểm tra quyền xem
-        $isOwner = ($booking->khach_hang_id === $user->id);
-        $isAssignedWorker = ($booking->tho_id === $user->id);
-        $isAvailableJobForWorker = ($user->role === 'worker' && $booking->tho_id === null && $booking->trang_thai === 'cho_xac_nhan');
+        $isOwner = $booking->khach_hang_id === $user->id;
+        $isAssignedWorker = $booking->tho_id === $user->id;
+        $isAvailableJobForWorker = $this->canActAsWorker($user) && $booking->tho_id === null && $booking->trang_thai === 'cho_xac_nhan';
 
-        if (!$isOwner && !$isAssignedWorker && !$isAvailableJobForWorker) {
-            return response()->json(['message' => 'Bạn không có quyền xem đơn này'], 403);
+        if (!$isOwner && !$isAssignedWorker && !$isAvailableJobForWorker && !$this->isAdmin($user)) {
+            return response()->json(['message' => 'Ban khong co quyen xem don nay'], 403);
         }
 
         return response()->json($booking);
     }
 
-    /**
-     * Update the status of the booking.
-     */
     public function updateStatus(UpdateTrangThaiRequest $request, string $id)
     {
         $user = $request->user();
         $booking = DonDatLich::find($id);
 
         if (!$booking) {
-            return response()->json(['message' => 'Không tìm thấy đơn đặt lịch'], 404);
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
         }
 
         $validated = $request->validated();
         $newStatus = $validated['trang_thai'];
 
-        // Logic phân quyền cập nhật trạng thái
-        // Khách hàng: Có thể 'da_huy' (nếu chưa đang làm) hoặc 'da_xong' (nếu thợ báo chờ hoàn thành)
-        // Thợ: Có thể 'da_xac_nhan', 'dang_lam', 'cho_hoan_thanh', 'da_huy' (nếu chưa nhận tiền)
-
-        if ($user->role === 'customer') {
-            if ($newStatus === 'da_huy' && in_array($booking->trang_thai, ['cho_xac_nhan', 'da_xac_nhan'])) {
+        if ($this->isAdmin($user)) {
+            $booking->trang_thai = $newStatus;
+            if ($newStatus === 'da_huy') {
+                $booking->ly_do_huy = $validated['ly_do_huy'] ?? null;
+            }
+            if ($newStatus === 'da_xong') {
+                $booking->trang_thai_thanh_toan = true;
+            }
+        } elseif ($this->canActAsCustomer($user)) {
+            if ($newStatus === 'da_huy' && in_array($booking->trang_thai, ['cho_xac_nhan', 'da_xac_nhan'], true)) {
                 $booking->trang_thai = $newStatus;
                 $booking->ly_do_huy = $validated['ly_do_huy'] ?? null;
             } elseif ($newStatus === 'da_xong' && $booking->trang_thai === 'cho_hoan_thanh') {
                 $booking->trang_thai = $newStatus;
-                $booking->trang_thai_thanh_toan = true; // Giả định thanh toán tiền mặt lúc thợ xong
+                $booking->trang_thai_thanh_toan = true;
             } else {
-                return response()->json(['message' => 'Khách hàng không thể đổi sang trạng thái này lúc này'], 400);
+                return response()->json(['message' => 'Khach hang khong the doi sang trang thai nay luc nay'], 400);
             }
-        } elseif ($user->role === 'worker') {
-            if ($booking->tho_id !== $user->id) {
-                return response()->json(['message' => 'Bạn không phải thợ của đơn này'], 403);
+        } elseif ($this->canActAsWorker($user)) {
+            if (!$this->isAdmin($user) && $booking->tho_id !== $user->id) {
+                return response()->json(['message' => 'Ban khong phai tho cua don nay'], 403);
             }
 
             if ($newStatus === 'da_xac_nhan' && $booking->trang_thai === 'cho_xac_nhan') {
@@ -249,11 +281,11 @@ class DonDatLichController extends Controller
                 $booking->trang_thai = $newStatus;
             } elseif ($newStatus === 'cho_hoan_thanh' && $booking->trang_thai === 'dang_lam') {
                 $booking->trang_thai = $newStatus;
-            } elseif ($newStatus === 'da_huy' && in_array($booking->trang_thai, ['cho_xac_nhan', 'da_xac_nhan'])) {
+            } elseif ($newStatus === 'da_huy' && in_array($booking->trang_thai, ['cho_xac_nhan', 'da_xac_nhan'], true)) {
                 $booking->trang_thai = $newStatus;
                 $booking->ly_do_huy = $validated['ly_do_huy'] ?? null;
             } else {
-                return response()->json(['message' => 'Thợ không thể nảy cóc trạng thái như vậy'], 400);
+                return response()->json(['message' => 'Tho khong the nhay coc trang thai nhu vay'], 400);
             }
         } else {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -262,33 +294,30 @@ class DonDatLichController extends Controller
         $booking->save();
 
         return response()->json([
-            'message' => 'Cập nhật trạng thái thành công',
-            'data' => $booking
+            'message' => 'Cap nhat trang thai thanh cong',
+            'data' => $booking,
         ]);
     }
 
-    /**
-     * Thêm phụ phí linh kiện trong quá trình sửa chữa (Dành cho thợ)
-     */
     public function updateCosts(\App\Http\Requests\DonDatLich\UpdateBookingCostsRequest $request, string $id)
     {
         $user = $request->user();
-        if ($user->role !== 'worker') {
-            return response()->json(['message' => 'Chỉ thợ mới được quyền thêm phí linh kiện'], 403);
+        if (!$this->canActAsWorker($user)) {
+            return response()->json(['message' => 'Chi tho moi duoc quyen them phi linh kien'], 403);
         }
 
         $booking = DonDatLich::find($id);
 
         if (!$booking) {
-            return response()->json(['message' => 'Không tìm thấy đơn đặt lịch'], 404);
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
         }
 
-        if ($booking->tho_id !== $user->id) {
-            return response()->json(['message' => 'Bạn không phải thợ của đơn này'], 403);
+        if (!$this->isAdmin($user) && $booking->tho_id !== $user->id) {
+            return response()->json(['message' => 'Ban khong phai tho cua don nay'], 403);
         }
 
         if ($booking->trang_thai !== 'dang_lam') {
-            return response()->json(['success' => false, 'message' => 'Trạng thái đơn không hợp lệ.'], 400);
+            return response()->json(['success' => false, 'message' => 'Trang thai don khong hop le.'], 400);
         }
 
         $validated = $request->validated();
@@ -299,78 +328,98 @@ class DonDatLichController extends Controller
         }
         $booking->phi_linh_kien = $validated['phi_linh_kien'];
         $booking->ghi_chu_linh_kien = $validated['ghi_chu_linh_kien'] ?? null;
-
         $booking->tong_tien = $booking->phi_di_lai + $booking->phi_linh_kien + $booking->tien_cong + $booking->tien_thue_xe;
-
         $booking->save();
 
         return response()->json([
-            'message' => 'Cập nhật phí linh kiện thành công',
-            'data' => $booking
+            'message' => 'Cap nhat phi linh kien thanh cong',
+            'data' => $booking,
         ]);
     }
 
-    /**
-     * WORKER: Yêu cầu thanh toán
-     */
     public function requestPayment(Request $request, $id)
     {
         $user = $request->user();
-        if ($user->role !== 'worker') {
+        if (!$this->canActAsWorker($user)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         $booking = DonDatLich::find($id);
-        if (!$booking || $booking->tho_id !== $user->id) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn.'], 404);
+        if (!$booking || (!$this->isAdmin($user) && $booking->tho_id !== $user->id)) {
+            return response()->json(['success' => false, 'message' => 'Khong tim thay don.'], 404);
         }
 
         if ($booking->trang_thai !== 'dang_lam') {
-            return response()->json(['success' => false, 'message' => 'Trạng thái đơn không hợp lệ.'], 400);
+            return response()->json(['success' => false, 'message' => 'Trang thai don khong hop le.'], 400);
         }
 
         $request->validate([
             'tien_cong' => 'nullable|numeric|min:0',
             'tien_thue_xe' => 'nullable|numeric|min:0',
+            'phuong_thuc_thanh_toan' => 'nullable|in:cod,transfer',
+            'hinh_anh_ket_qua.*' => 'nullable|image|max:5120',
+            'video_ket_qua' => 'nullable|mimes:mp4,mov,avi,wmv|max:20480',
         ]);
 
         $booking->trang_thai = 'cho_thanh_toan';
-        if ($request->has('tien_cong')) $booking->tien_cong = $request->tien_cong;
-        if ($request->has('tien_thue_xe')) $booking->tien_thue_xe = $request->tien_thue_xe;
+        if ($request->has('tien_cong')) {
+            $booking->tien_cong = $request->tien_cong;
+        }
+        if ($request->has('tien_thue_xe')) {
+            $booking->tien_thue_xe = $request->tien_thue_xe;
+        }
+        if ($request->has('phuong_thuc_thanh_toan')) {
+            $booking->phuong_thuc_thanh_toan = $request->phuong_thuc_thanh_toan;
+        }
+
+        if ($request->hasFile('hinh_anh_ket_qua')) {
+            $images = [];
+            foreach ($request->file('hinh_anh_ket_qua') as $file) {
+                $uploadResult = \CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary::uploadApi()->upload($file->getRealPath(), [
+                    'folder' => 'bookings/results/images',
+                ]);
+                $images[] = $uploadResult['secure_url'];
+            }
+            $booking->hinh_anh_ket_qua = $images;
+        }
+
+        if ($request->hasFile('video_ket_qua')) {
+            $uploadResult = \CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary::uploadApi()->upload($request->file('video_ket_qua')->getRealPath(), [
+                'folder' => 'bookings/results/videos',
+                'resource_type' => 'video',
+            ]);
+            $booking->video_ket_qua = $uploadResult['secure_url'];
+        }
+
         $booking->save();
 
-        if (class_exists(\App\Http\Controllers\Api\NotificationController::class)) {
-            app(\App\Http\Controllers\Api\NotificationController::class)->createNotification(
-                $booking->khach_hang_id,
-                "Thợ {$user->ho_ten} đã hoàn thành công việc. Vui lòng thanh toán đơn đặt lịch #{$booking->id}.",
-                'system'
-            );
-        }
+        $paymentTypeStr = $booking->phuong_thuc_thanh_toan === 'transfer' ? 'Chuyen khoan' : 'Tien mat';
+        $actorName = $user->name ?? 'He thong';
+        $booking->khachHang?->notify(new \App\Notifications\SimpleNotification(
+            "Tho {$actorName} da hoan thanh cong viec. Vui long thanh toan don dat lich #{$booking->id} bang {$paymentTypeStr}."
+        ));
 
         return response()->json([
             'success' => true,
-            'message' => 'Đã gửi yêu cầu thanh toán cho khách hàng.',
-            'booking' => $booking
+            'message' => 'Da gui yeu cau thanh toan cho khach hang.',
+            'booking' => $booking,
         ]);
     }
 
-    /**
-     * WORKER: Xác nhận đã nhận tiền mặt từ khách
-     */
     public function confirmCashPayment(Request $request, $id)
     {
         $user = $request->user();
-        if ($user->role !== 'worker') {
+        if (!$this->canActAsWorker($user)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         $booking = DonDatLich::find($id);
-        if (!$booking || $booking->tho_id !== $user->id) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy đơn.'], 404);
+        if (!$booking || (!$this->isAdmin($user) && $booking->tho_id !== $user->id)) {
+            return response()->json(['success' => false, 'message' => 'Khong tim thay don.'], 404);
         }
 
         if ($booking->trang_thai !== 'cho_thanh_toan' && $booking->trang_thai !== 'cho_hoan_thanh') {
-            return response()->json(['success' => false, 'message' => 'Khách chưa được yêu cầu thanh toán.'], 400);
+            return response()->json(['success' => false, 'message' => 'Khach chua duoc yeu cau thanh toan.'], 400);
         }
 
         $booking->trang_thai = 'da_xong';
@@ -381,21 +430,32 @@ class DonDatLichController extends Controller
             'so_tien' => ($booking->gia_tien ?? 0) + ($booking->tien_cong ?? 0) + ($booking->tien_thue_xe ?? 0),
             'phuong_thuc' => 'cash',
             'trang_thai' => 'success',
-            'ma_giao_dich' => 'CASH_' . time()
+            'ma_giao_dich' => 'CASH_' . time(),
         ]);
 
-        if (class_exists(\App\Http\Controllers\Api\NotificationController::class)) {
-            app(\App\Http\Controllers\Api\NotificationController::class)->createNotification(
-                $booking->khach_hang_id,
-                "Đơn sửa chữa #{$booking->id} đã hoàn tất thanh toán (Tiền mặt). Cảm ơn bạn đã sử dụng dịch vụ!",
-                'booking'
-            );
-        }
+        $booking->khachHang?->notify(new \App\Notifications\SimpleNotification(
+            "Don sua chua #{$booking->id} da hoan tat thanh toan (Tien mat). Cam on ban da su dung dich vu!"
+        ));
 
         return response()->json([
             'success' => true,
-            'message' => 'Đã thu tiền mặt và hoàn tất đơn.',
-            'booking' => $booking
+            'message' => 'Da thu tien mat va hoan tat don.',
+            'booking' => $booking,
         ]);
+    }
+
+    private function isAdmin(User $user): bool
+    {
+        return $user->role === 'admin';
+    }
+
+    private function canActAsCustomer(User $user): bool
+    {
+        return in_array($user->role, ['customer', 'admin'], true);
+    }
+
+    private function canActAsWorker(User $user): bool
+    {
+        return in_array($user->role, ['worker', 'admin'], true);
     }
 }

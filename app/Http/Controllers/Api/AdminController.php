@@ -3,31 +3,29 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\User;
+use App\Models\DanhMucDichVu;
 use App\Models\DonDatLich;
-use Illuminate\Support\Facades\DB;
+use App\Models\HoSoTho;
+use App\Models\User;
+use App\Services\Chat\AssistantSoulConfigService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
 {
-    /**
-     * Lấy thống kê tổng quan (Dashboard)
-     */
     public function getDashboardStats()
     {
-        // Khách hàng & Thợ
         $totalCustomers = User::where('role', 'customer')->count();
         $totalWorkers = User::where('role', 'worker')->count();
+        $pendingWorkerProfiles = HoSoTho::where('trang_thai_duyet', 'cho_duyet')->count();
 
-        // Đơn hàng
         $totalBookings = DonDatLich::count();
-        $completedBookings = DonDatLich::where('trang_thai', 'hoan_thanh')->count();
+        $completedBookings = DonDatLich::whereIn('trang_thai', ['hoan_thanh', 'da_xong'])->count();
         $canceledBookings = DonDatLich::where('trang_thai', 'da_huy')->count();
 
-        // Doanh thu (Tổng chi phí của các đơn hoàn thành)
-        $totalRevenue = DonDatLich::where('trang_thai', 'hoan_thanh')->sum('tong_chi_phi');
+        $totalRevenue = DonDatLich::whereIn('trang_thai', ['hoan_thanh', 'da_xong'])
+            ->sum('tong_tien');
 
-        // Hoa hồng (Giả sử hệ thống thu 10% trên tổng chi phí)
         $systemCommission = $totalRevenue * 0.10;
 
         return response()->json([
@@ -36,6 +34,7 @@ class AdminController extends Controller
                 'users' => [
                     'customers' => $totalCustomers,
                     'workers' => $totalWorkers,
+                    'pending_worker_profiles' => $pendingWorkerProfiles,
                 ],
                 'bookings' => [
                     'total' => $totalBookings,
@@ -45,46 +44,42 @@ class AdminController extends Controller
                 'revenue' => [
                     'total_revenue' => $totalRevenue,
                     'system_commission' => $systemCommission,
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 
-    /**
-     * Quản lý người dùng: Lấy danh sách Users
-     */
     public function getUsers(Request $request)
     {
         $role = $request->query('role');
 
-        $query = User::query();
+        $query = User::query()
+            ->with([
+                'hoSoTho',
+                'dichVus:id,ten_dich_vu',
+            ])
+            ->where('role', '!=', 'admin');
 
         if ($role) {
             $query->where('role', $role);
         }
 
-        // Không hiển thị admin ở danh sách quản lý
-        $query->where('role', '!=', 'admin');
-
-        $users = $query->orderBy('created_at', 'desc')->get();
+        $users = $query->orderByDesc('created_at')->get();
 
         return response()->json([
             'status' => 'success',
-            'data' => $users
+            'data' => $users,
         ]);
     }
 
-    /**
-     * Quản lý người dùng: Cập nhật trạng thái (Khóa/Mở khóa)
-     */
-    public function toggleUserStatus($id)
+    public function toggleUserStatus(string $id)
     {
         $user = User::findOrFail($id);
 
         if ($user->role === 'admin') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Không thể thay đổi trạng thái của Admin.'
+                'message' => 'Khong the thay doi trang thai cua admin.',
             ], 403);
         }
 
@@ -93,29 +88,310 @@ class AdminController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => $user->is_active ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản',
-            'data' => $user
+            'message' => $user->is_active ? 'Da mo khoa tai khoan' : 'Da khoa tai khoan',
+            'data' => $user,
         ]);
     }
 
-    /**
-     * Giám sát Đơn hàng: Lấy toàn bộ đơn
-     */
+    public function getWorkerProfiles(Request $request)
+    {
+        $approvalStatus = $request->query('approval_status');
+
+        $query = HoSoTho::query()
+            ->with([
+                'user:id,name,email,phone,avatar,is_active,created_at',
+                'user.dichVus:id,ten_dich_vu',
+            ])
+            ->latest('updated_at');
+
+        if ($approvalStatus) {
+            $query->where('trang_thai_duyet', $approvalStatus);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $query->get(),
+        ]);
+    }
+
+    public function updateWorkerApproval(Request $request, string $userId)
+    {
+        $validator = Validator::make($request->all(), [
+            'trang_thai_duyet' => 'required|in:cho_duyet,da_duyet,tu_choi',
+            'ghi_chu_admin' => 'nullable|string|max:2000',
+            'dang_hoat_dong' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $workerProfile = HoSoTho::query()
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$workerProfile) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay ho so tho',
+            ], 404);
+        }
+
+        $approvalStatus = (string) $request->input('trang_thai_duyet');
+        $isApproved = $approvalStatus === 'da_duyet';
+
+        $workerProfile->update([
+            'trang_thai_duyet' => $approvalStatus,
+            'ghi_chu_admin' => trim((string) $request->input('ghi_chu_admin', '')) ?: null,
+            'dang_hoat_dong' => $request->has('dang_hoat_dong')
+                ? (bool) $request->boolean('dang_hoat_dong')
+                : $isApproved,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $isApproved ? 'Da duyet ho so tho' : ($approvalStatus === 'tu_choi' ? 'Da tu choi ho so tho' : 'Da chuyen ho so ve cho duyet'),
+            'data' => $workerProfile->fresh([
+                'user:id,name,email,phone,avatar,is_active,created_at',
+                'user.dichVus:id,ten_dich_vu',
+            ]),
+        ]);
+    }
+
     public function getAllBookings(Request $request)
     {
         $status = $request->query('status');
 
-        $query = DonDatLich::with(['khachHang:id,name,phone', 'tho:id,name,phone', 'dichVu:id,ten_dich_vu']);
+        $query = DonDatLich::with([
+            'khachHang:id,name,phone',
+            'tho:id,name,phone',
+            'dichVu:id,ten_dich_vu',
+        ]);
 
         if ($status) {
             $query->where('trang_thai', $status);
         }
 
-        $bookings = $query->orderBy('created_at', 'desc')->get();
+        return response()->json([
+            'status' => 'success',
+            'data' => $query->orderByDesc('created_at')->get(),
+        ]);
+    }
+
+    public function getServices(Request $request)
+    {
+        $status = $request->query('status');
+
+        $query = DanhMucDichVu::query()->orderByDesc('id');
+
+        if ($status !== null && $status !== '') {
+            $query->where('trang_thai', (int) $status);
+        }
 
         return response()->json([
             'status' => 'success',
-            'data' => $bookings
+            'data' => $query->get(),
         ]);
+    }
+
+    public function storeService(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'ten_dich_vu' => 'required|string|max:255|unique:danh_muc_dich_vu,ten_dich_vu',
+            'mo_ta' => 'nullable|string',
+            'hinh_anh' => 'nullable|string|max:2048',
+            'trang_thai' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $service = DanhMucDichVu::query()->create([
+            'ten_dich_vu' => trim((string) $request->input('ten_dich_vu')),
+            'mo_ta' => trim((string) $request->input('mo_ta', '')) ?: null,
+            'hinh_anh' => trim((string) $request->input('hinh_anh', '')) ?: null,
+            'trang_thai' => $request->has('trang_thai') ? (int) $request->boolean('trang_thai') : 1,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da them dich vu',
+            'data' => $service,
+        ], 201);
+    }
+
+    public function updateService(Request $request, string $id)
+    {
+        $service = DanhMucDichVu::query()->find($id);
+
+        if (!$service) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay dich vu',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'ten_dich_vu' => 'required|string|max:255|unique:danh_muc_dich_vu,ten_dich_vu,' . $service->id,
+            'mo_ta' => 'nullable|string',
+            'hinh_anh' => 'nullable|string|max:2048',
+            'trang_thai' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $service->update([
+            'ten_dich_vu' => trim((string) $request->input('ten_dich_vu')),
+            'mo_ta' => trim((string) $request->input('mo_ta', '')) ?: null,
+            'hinh_anh' => trim((string) $request->input('hinh_anh', '')) ?: null,
+            'trang_thai' => $request->has('trang_thai') ? (int) $request->boolean('trang_thai') : (int) $service->trang_thai,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da cap nhat dich vu',
+            'data' => $service->fresh(),
+        ]);
+    }
+
+    public function destroyService(string $id)
+    {
+        $service = DanhMucDichVu::query()->find($id);
+
+        if (!$service) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay dich vu',
+            ], 404);
+        }
+
+        $service->update([
+            'trang_thai' => 0,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da xoa dich vu',
+            'data' => $service->fresh(),
+        ]);
+    }
+
+    public function getAssistantSoulConfig(AssistantSoulConfigService $assistantSoulConfigService)
+    {
+        return response()->json([
+            'status' => 'success',
+            'data' => $assistantSoulConfigService->getEditorState(),
+        ]);
+    }
+
+    public function updateAssistantSoulConfig(Request $request, AssistantSoulConfigService $assistantSoulConfigService)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'role' => 'required|string|max:5000',
+            'identity_rules' => 'required|array|min:1',
+            'identity_rules.*' => 'required|string|max:1000',
+            'required_rules' => 'required|array|min:1',
+            'required_rules.*' => 'required|string|max:2000',
+            'response_goals' => 'required|array|min:1',
+            'response_goals.*' => 'required|string|max:2000',
+            'assistant_text_order' => 'required|array|min:1',
+            'assistant_text_order.*' => 'required|string|max:1000',
+            'json_keys' => 'required|array|min:1',
+            'json_keys.*' => 'required|string|max:255',
+            'output_style' => 'required|string|max:2000',
+            'service_process' => 'required|array|min:1',
+            'service_process.*' => 'required|string|max:1000',
+            'emergency_keywords' => 'required|array|min:1',
+            'emergency_keywords.*' => 'required|string|max:255',
+            'emergency_response' => 'required|array',
+            'emergency_response.fallback_price_line' => 'required|string|max:1000',
+            'emergency_response.price_line_template' => 'required|string|max:1000',
+            'emergency_response.lines' => 'required|array|min:1',
+            'emergency_response.lines.*' => 'required|string|max:1500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $config = $this->normalizeAssistantSoulPayload($validator->validated());
+        $assistantSoulConfigService->updateConfig($config, $request->user());
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da cap nhat ASSISTANT SOUL',
+            'data' => $assistantSoulConfigService->getEditorState(),
+        ]);
+    }
+
+    public function resetAssistantSoulConfig(AssistantSoulConfigService $assistantSoulConfigService)
+    {
+        $assistantSoulConfigService->resetConfig();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da khoi phuc cau hinh mac dinh',
+            'data' => $assistantSoulConfigService->getEditorState(),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function normalizeAssistantSoulPayload(array $payload): array
+    {
+        return [
+            'name' => trim((string) $payload['name']),
+            'role' => trim((string) $payload['role']),
+            'identity_rules' => $this->normalizeStringList($payload['identity_rules'] ?? []),
+            'required_rules' => $this->normalizeStringList($payload['required_rules'] ?? []),
+            'response_goals' => $this->normalizeStringList($payload['response_goals'] ?? []),
+            'assistant_text_order' => $this->normalizeStringList($payload['assistant_text_order'] ?? []),
+            'json_keys' => $this->normalizeStringList($payload['json_keys'] ?? []),
+            'output_style' => trim((string) $payload['output_style']),
+            'service_process' => $this->normalizeStringList($payload['service_process'] ?? []),
+            'emergency_keywords' => $this->normalizeStringList($payload['emergency_keywords'] ?? []),
+            'emergency_response' => [
+                'fallback_price_line' => trim((string) data_get($payload, 'emergency_response.fallback_price_line', '')),
+                'price_line_template' => trim((string) data_get($payload, 'emergency_response.price_line_template', '')),
+                'lines' => $this->normalizeStringList(data_get($payload, 'emergency_response.lines', [])),
+            ],
+        ];
+    }
+
+    /**
+     * @param  mixed  $items
+     * @return array<int, string>
+     */
+    private function normalizeStringList(mixed $items): array
+    {
+        if (!is_array($items)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(static function ($item): string {
+            return trim((string) $item);
+        }, $items), static fn (string $item): bool => $item !== ''));
     }
 }

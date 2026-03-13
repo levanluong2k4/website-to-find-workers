@@ -11,8 +11,7 @@ class StoreDanhMucDichVuRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // TODO: Only admin can create service categories
-        return true;
+        return $this->user() && $this->user()->role === 'admin';
     }
 
     /**

@@ -2,7 +2,7 @@ import { callApi, getCurrentUser, logout, showToast, confirmAction } from '../ap
 
 // Kiểm tra quyền
 const user = getCurrentUser();
-if (!user || user.role !== 'worker') {
+if (!user || !['worker', 'admin'].includes(user.role)) {
     logout();
 }
 

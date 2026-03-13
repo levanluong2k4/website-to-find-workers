@@ -1,7 +1,7 @@
 import { callApi, getCurrentUser, showToast, confirmAction } from '../api.js';
 
 const user = getCurrentUser();
-if (!user || user.role !== 'customer') {
+if (!user || !['customer', 'admin'].includes(user.role)) {
     window.location.href = '/login';
 }
 
@@ -192,8 +192,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         
                         ${booking.mo_ta_van_de ? `
-                            <div class="bg-light rounded p-2 mb-3 text-secondary" style="font-size: 0.9rem; border-left: 3px solid var(--bs-gray-400);">
+                            <div class="bg-light rounded p-2 mb-2 text-secondary" style="font-size: 0.9rem; border-left: 3px solid var(--bs-gray-400);">
                                 "${booking.mo_ta_van_de}"
+                            </div>
+                        ` : ''}
+
+                        ${(booking.hinh_anh_mo_ta?.length > 0 || booking.video_mo_ta) ? `
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                ${booking.video_mo_ta ? `
+                                    <div class="rounded border bg-dark d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px; cursor: pointer;" onclick="window.open('${booking.video_mo_ta}', '_blank')">
+                                        <i class="fas fa-video small"></i>
+                                    </div>
+                                ` : ''}
+                                ${(booking.hinh_anh_mo_ta || []).map(img => `
+                                    <img src="${img}" class="rounded border object-cover" style="width: 40px; height: 40px; cursor: pointer;" onclick="window.open('${img}', '_blank')">
+                                `).join('')}
                             </div>
                         ` : ''}
 

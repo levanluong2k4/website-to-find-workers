@@ -197,7 +197,7 @@
 
   const baseUrl = '{{ url('/') }}';
   const user = getCurrentUser();
-  if (!user || user.role !== 'worker') {
+  if (!user || !['worker', 'admin'].includes(user.role)) {
     window.location.href = baseUrl + '/login?role=worker';
   }
 

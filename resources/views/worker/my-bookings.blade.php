@@ -139,6 +139,78 @@
   </div>
 </div>
 
+<!-- Modal Xem Chi Tiết -->
+<div class="modal fade" id="modalViewDetails" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:1rem;">
+      <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+        <h5 class="modal-title fw-bold text-dark">Chi Tiết Đơn Đặt Lịch</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 pt-3">
+        <div id="bookingDetailContent">
+            <div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm" role="status"></div> Đang tải...</div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Hoàn Thành & Yêu cầu thanh toán -->
+<div class="modal fade" id="modalCompleteBooking" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:1rem;">
+      <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+        <h5 class="modal-title fw-bold text-dark">Hoàn Thành Sửa Chữa</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 pt-3">
+        <div class="alert alert-info border-0 rounded-3 mb-4" style="font-size: 0.85rem; background:#f0f9ff; color:#0369a1;">
+            <i class="fas fa-info-circle me-1"></i> Vui lòng chụp ảnh/quay video thành quả sửa chữa để khách hàng xác nhận lại và chọn hình thức thu tiền.
+        </div>
+        <form id="formCompleteBooking">
+          <input type="hidden" id="completeBookingId">
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold text-dark small">Khách hàng chọn thanh toán qua</label>
+            <div class="d-flex gap-3">
+                <div class="form-check flex-grow-1 p-3 border rounded-3 position-relative" style="background-color: #f8fafc; border-color: #e2e8f0 !important; cursor: pointer;">
+                    <input class="form-check-input ms-1 mt-0 position-absolute top-50 translate-middle-y" type="radio" name="phuong_thuc_thanh_toan" id="pay_cod" value="cod" checked>
+                    <label class="form-check-label w-100 ms-4 d-flex flex-column" for="pay_cod">
+                        <span class="fw-bold text-dark"><i class="fas fa-money-bill-wave text-success me-1"></i> Tiền mặt</span>
+                    </label>
+                </div>
+                <div class="form-check flex-grow-1 p-3 border rounded-3 position-relative" style="background-color: #f8fafc; border-color: #e2e8f0 !important; cursor: pointer;">
+                    <input class="form-check-input ms-1 mt-0 position-absolute top-50 translate-middle-y" type="radio" name="phuong_thuc_thanh_toan" id="pay_transfer" value="transfer">
+                    <label class="form-check-label w-100 ms-4 d-flex flex-column" for="pay_transfer">
+                        <span class="fw-bold text-dark"><i class="fas fa-university text-primary me-1"></i> Chuyển khoản</span>
+                    </label>
+                </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold text-dark small">Hình ảnh kết quả (Tối đa 5 ảnh)</label>
+            <input type="file" class="form-control bg-light" id="inputHinhAnhKetQua" name="hinh_anh_ket_qua[]" multiple accept="image/*">
+            <small class="text-muted d-block mt-1">Nên chụp rõ linh kiện đã thay hoặc máy đã chạy tốt.</small>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-bold text-dark small">Video kết quả (Tùy chọn, max 20MB)</label>
+            <input type="file" class="form-control bg-light" id="inputVideoKetQua" name="video_ket_qua" accept="video/*">
+          </div>
+          
+          <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3" id="btnSubmitCompleteForm">
+            <i class="fas fa-check-circle me-1"></i> Gửi Yêu Cầu Thanh Toán
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -146,7 +218,7 @@
 import { callApi, getCurrentUser, showToast } from "{{ asset('assets/js/api.js') }}";
 const baseUrl = '{{ url('/') }}';
 const user = getCurrentUser();
-if (!user || user.role !== 'worker') { window.location.href = baseUrl + '/login?role=worker'; }
+if (!user || !['worker', 'admin'].includes(user.role)) { window.location.href = baseUrl + '/login?role=worker'; }
 
 window.currentStatus = 'all';
 window.allBookings = [];
@@ -188,11 +260,13 @@ function renderBookings(status) {
     const isInProgress = b.trang_thai === 'dang_lam';
     const timerHtml = isInProgress ? `<div class="repair-timer"><span class="material-symbols-outlined" style="font-size:.85rem;">timer</span> Đang sửa <span id="timer-${b.id}">00:00:00</span></div>` : '';
     const actionBtns = b.trang_thai === 'da_xac_nhan'
-      ? `<button onclick="updateStatus(${b.id},'dang_lam')" style="background:#BAF2E9;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:700;color:#0f172a;cursor:pointer;transition:.15s;" onmouseover="this.style.background='#0EA5E9';this.style.color='#fff';" onmouseout="this.style.background='#BAF2E9';this.style.color='#0f172a';">▶ Bắt đầu sửa</button>`
+      ? `<button onclick="updateStatus(${b.id},'dang_lam')" style="background:#BAF2E9;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:700;color:#0f172a;cursor:pointer;transition:.15s;" onmouseover="this.style.background='#0EA5E9';this.style.color='#fff';" onmouseout="this.style.background='#BAF2E9';this.style.color='#0f172a';">▶ Bắt đầu sửa</button>
+         <button onclick="openViewDetailsModal(${b.id})" style="background:#f1f5f9;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:600;color:#334155;cursor:pointer;margin-left:.35rem;"><span class="material-symbols-outlined" style="font-size:1rem;vertical-align:middle;">visibility</span> Xem chi tiết</button>`
       : b.trang_thai === 'dang_lam'
-      ? `<button onclick="updateStatus(${b.id},'cho_hoan_thanh')" style="background:#fef3c7;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:700;color:#92400e;cursor:pointer;">✓ Báo hoàn thành</button>
-         <button onclick="openCostModal(${b.id})" style="background:#f1f5f9;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:600;color:#334155;cursor:pointer;margin-left:.35rem;">💰 Cập nhật giá</button>`
-      : '';
+      ? `<button onclick="openCompleteModal(${b.id})" style="background:#fef3c7;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:700;color:#92400e;cursor:pointer;">✓ Báo hoàn thành</button>
+         <button onclick="openCostModal(${b.id})" style="background:#f1f5f9;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:600;color:#334155;cursor:pointer;margin-left:.35rem;">💰 Cập nhật giá</button>
+         <button onclick="openViewDetailsModal(${b.id})" style="background:#f1f5f9;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:600;color:#334155;cursor:pointer;margin-left:.35rem;"><span class="material-symbols-outlined" style="font-size:1rem;vertical-align:middle;">visibility</span> Chi tiết</button>`
+      : `<button onclick="openViewDetailsModal(${b.id})" style="background:#f1f5f9;border:none;border-radius:.5rem;padding:.45rem .9rem;font-size:.78rem;font-weight:600;color:#334155;cursor:pointer;"><span class="material-symbols-outlined" style="font-size:1rem;vertical-align:middle;">visibility</span> Xem chi tiết</button>`;
     return `<div class="booking-card-new">
       <div class="status-bar ${barClass}"></div>
       <div style="flex:1;">
@@ -256,26 +330,141 @@ window.updateStatus = async function(id, newStatus) {
   } catch(e) { showToast('Lỗi kết nối','error'); }
 };
 
-window.openCostModal = function(id) {
-  document.getElementById('costBookingId').value = id;
-  const modal = new bootstrap.Modal(document.getElementById('modalCosts'));
+window.openViewDetailsModal = function(id) {
+  const b = window.allBookings.find(x => x.id === id);
+  if(!b) return;
+  const content = document.getElementById('bookingDetailContent');
+  
+  const images = b.hinh_anh_mo_ta && b.hinh_anh_mo_ta.length > 0
+      ? `<div class="d-flex flex-wrap gap-2 mt-2">` + b.hinh_anh_mo_ta.map(img => `<img src="${img}" style="width:80px;height:80px;object-fit:cover;border-radius:.5rem;border:1px solid #e2e8f0;cursor:pointer;" onclick="window.open('${img}','_blank')">`).join('') + `</div>`
+      : `<p class="text-muted small mt-2 mb-0">Không có ảnh đính kèm</p>`;
+  
+  const video = b.video_mo_ta
+      ? `<video src="${b.video_mo_ta}" controls style="max-width:100%;height:150px;border-radius:.5rem;margin-top:10px;"></video>`
+      : '';
+      
+  const distanceInfo = b.loai_dat_lich === 'at_home' 
+      ? `<span><i class="fas fa-map-marked-alt text-primary me-1"></i> Khoảng cách đo được: <strong class="text-dark">${b.khoang_cach || '0'} km</strong></span>`
+      : `<span>Khách tự mang máy đến cửa hàng</span>`;
+
+  content.innerHTML = `
+    <div class="row g-4">
+        <div class="col-md-7 border-end">
+            <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-user-circle me-1"></i> Thông tin khách hàng</h6>
+            <div class="bg-light p-3 rounded-3 mb-3">
+                <p class="mb-1"><span class="text-secondary" style="width:90px;display:inline-block;">Họ tên:</span> <strong class="text-dark">${b.khach_hang ? b.khach_hang.name : 'N/A'}</strong></p>
+                <p class="mb-1"><span class="text-secondary" style="width:90px;display:inline-block;">Điện thoại:</span> <strong class="text-dark"><a href="tel:${b.khach_hang ? b.khach_hang.phone : ''}">${b.khach_hang ? b.khach_hang.phone : 'N/A'}</a></strong></p>
+                <p class="mb-0"><span class="text-secondary" style="width:90px;display:inline-block;">Địa chỉ:</span> <span class="text-dark">${b.dia_chi || 'N/A'}</span></p>
+            </div>
+            
+            <h6 class="fw-bold mb-3 mt-4 text-primary"><i class="fas fa-tools me-1"></i> Yêu cầu sửa chữa</h6>
+            <div class="bg-light p-3 rounded-3">
+                <p class="mb-2"><span class="text-secondary">Dịch vụ:</span> <strong class="text-dark">${b.dich_vu ? b.dich_vu.ten_dich_vu : 'N/A'}</strong></p>
+                <p class="mb-2"><span class="text-secondary">Thời gian:</span> <strong class="text-dark">${b.ngay_hen ? new Date(b.ngay_hen).toLocaleDateString('vi-VN') : ''} ${b.khung_gio_hen || ''}</strong></p>
+                <p class="mb-2"><span class="text-secondary">Mô tả lỗi:</span> <br><span class="text-dark">${b.mo_ta_van_de || 'Không có mô tả chi tiết'}</span></p>
+                ${b.thue_xe_cho ? '<div class="alert alert-warning py-2 px-3 mt-2 mb-0"><i class="fas fa-truck text-warning"></i> Khách có yêu cầu thuê xe/chở thiết bị cồng kềnh</div>' : ''}
+            </div>
+            
+            <h6 class="fw-bold mb-2 mt-4 text-primary"><i class="fas fa-images me-1"></i> Hình ảnh / Video từ khách</h6>
+            ${images}
+            ${video}
+        </div>
+        
+        <div class="col-md-5">
+            <h6 class="fw-bold mb-3 text-success"><i class="fas fa-money-bill-wave me-1"></i> Chi tiết chi phí</h6>
+            <div class="bg-light p-3 rounded-3 border border-success-subtle">
+                <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                    <span class="text-secondary">Phí đi lại</span>
+                    <strong class="text-dark">${parseInt(b.phi_di_lai||0).toLocaleString('vi-VN')} ₫</strong>
+                </div>
+                <div class="text-end mb-3" style="font-size:0.75rem; color:#64748b; margin-top:-8px;">
+                    ${distanceInfo}
+                </div>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Tiền công thợ</span>
+                    <strong class="text-dark">${parseInt(b.tien_cong||0).toLocaleString('vi-VN')} ₫</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Phụ phí linh kiện</span>
+                    <strong class="text-dark">${parseInt(b.phi_linh_kien||0).toLocaleString('vi-VN')} ₫</strong>
+                </div>
+                
+                ${b.thue_xe_cho ? `
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Phí chở thiết bị</span>
+                    <strong class="text-dark">${parseInt(b.tien_thue_xe||0).toLocaleString('vi-VN')} ₫</strong>
+                </div>` : ''}
+
+                <div class="d-flex justify-content-between mt-3 pt-3 border-top">
+                    <span class="text-dark fw-bold">Tổng chi phí dự kiến</span>
+                    <strong class="text-success fs-5">${parseInt((b.phi_di_lai||0)+(b.tien_cong||0)+(b.phi_linh_kien||0)+(b.tien_thue_xe||0)).toLocaleString('vi-VN')} ₫</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+  `;
+  const modal = new bootstrap.Modal(document.getElementById('modalViewDetails'));
   modal.show();
 };
 
-document.getElementById('formUpdateCosts').addEventListener('submit', async e => {
+window.openCompleteModal = function(id) {
+  document.getElementById('completeBookingId').value = id;
+  const modal = new bootstrap.Modal(document.getElementById('modalCompleteBooking'));
+  modal.show();
+};
+
+document.getElementById('formCompleteBooking').addEventListener('submit', async e => {
   e.preventDefault();
-  const id = document.getElementById('costBookingId').value;
-  const body = {
-    tien_cong: parseInt(document.getElementById('inputTienCong').value)||0,
-    phi_linh_kien: parseInt(document.getElementById('inputPhiLinhKien').value)||0,
-    ghi_chu_linh_kien: document.getElementById('inputGhiChuLinhKien').value,
-    tien_thue_xe: parseInt(document.getElementById('inputTienThueXe').value)||0
-  };
+  const id = document.getElementById('completeBookingId').value;
+  const btn = document.getElementById('btnSubmitCompleteForm');
+  const orgBtnHTML = btn.innerHTML;
+  
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang tải ảnh/video...';
+  btn.disabled = true;
+
   try {
-    const res = await callApi(`/don-dat-lich/${id}/update-costs`, 'PUT', body);
-    if(res.ok) { showToast('Đã cập nhật chi phí!'); bootstrap.Modal.getInstance(document.getElementById('modalCosts')).hide(); loadMyBookings(); }
-    else showToast(res.data.message||'Lỗi','error');
-  } catch(e) { showToast('Lỗi kết nối','error'); }
+      const formData = new FormData();
+      formData.append('_method', 'POST'); // Since we use POST for file uploads mapped to custom routes
+      
+      const ptt = document.querySelector('input[name="phuong_thuc_thanh_toan"]:checked').value;
+      formData.append('phuong_thuc_thanh_toan', ptt);
+      
+      const fileImages = document.getElementById('inputHinhAnhKetQua').files;
+      for (let i = 0; i < fileImages.length; i++) {
+          formData.append('hinh_anh_ket_qua[]', fileImages[i]);
+      }
+      
+      const fileVideo = document.getElementById('inputVideoKetQua').files[0];
+      if (fileVideo) {
+          formData.append('video_ket_qua', fileVideo);
+      }
+
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${baseUrl}/api/bookings/${id}/request-payment`, {
+          method: 'POST',
+          headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json'
+          },
+          body: formData
+      });
+      const data = await res.json();
+      
+      if(res.ok) { 
+          showToast('Đã báo khách hàng thanh toán thành công!'); 
+          bootstrap.Modal.getInstance(document.getElementById('modalCompleteBooking')).hide(); 
+          document.getElementById('formCompleteBooking').reset();
+          loadMyBookings(); 
+      } else {
+          showToast(data.message || 'Lỗi gửi yêu cầu','error');
+      }
+  } catch(e) { 
+      showToast('Lỗi kết nối','error'); 
+  } finally {
+      btn.innerHTML = orgBtnHTML;
+      btn.disabled = false;
+  }
 });
 
 loadMyBookings();

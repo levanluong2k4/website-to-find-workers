@@ -2,10 +2,15 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Trang chuyển hướng (Redirecting Page)
+// Trang chủ (Landing Page)
 Route::get('/', function () {
-    return view('welcome');
+    return view('customer.home');
 })->name('home');
+
+// Trang chọn vai trò (Role Selection)
+Route::get('/select-role', function () {
+    return view('welcome');
+})->name('select-role');
 
 Route::get('/debug-tho', function () {
     return \App\Models\HoSoTho::count();
@@ -98,6 +103,10 @@ Route::prefix('admin')->group(function () {
     Route::get('/services', function () {
         return view('admin.services');
     })->name('admin.services');
+
+    Route::get('/assistant-soul', function () {
+        return view('admin.assistant-soul');
+    })->name('admin.assistant-soul');
 
     Route::get('/bookings', function () {
         return view('admin.bookings');

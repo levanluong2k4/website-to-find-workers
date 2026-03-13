@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Admin Dashboard - Thợ Tốt')
+@section('title', 'Admin Dashboard - Tho Tot')
 
 @push('styles')
 <style>
@@ -77,8 +77,31 @@
         border-radius: 4px;
     }
 
-    @keyframes pulse {
+    .quick-card {
+        border-radius: 16px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    }
 
+    .quick-card.pending {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .pending-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        height: 34px;
+        padding: 0 0.75rem;
+        border-radius: 999px;
+        background: #f59e0b;
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.95rem;
+    }
+
+    @keyframes pulse {
         0%,
         100% {
             opacity: 1;
@@ -97,21 +120,20 @@
 <div class="container py-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold mb-1" style="color: #0f172a;">Tổng quan Hệ thống</h2>
-            <p class="text-muted mb-0">Theo dõi các chỉ số hoạt động kinh doanh (Real-time)</p>
+            <h2 class="fw-bold mb-1" style="color: #0f172a;">Tong quan he thong</h2>
+            <p class="text-muted mb-0">Theo doi nhanh chi so van hanh va di tat den cong viec admin can xu ly.</p>
         </div>
         <button class="btn btn-outline-primary shadow-sm" id="btnRefresh">
-            <i class="fas fa-sync-alt me-2"></i>Làm mới
+            <i class="fas fa-sync-alt me-2"></i>Lam moi
         </button>
     </div>
 
-    <!-- Stats Grid -->
     <div class="row g-4 mb-5">
         <div class="col-md-3">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Tổng Khách Hàng</p>
+                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Tong khach hang</p>
                         <h3 class="fw-bold mb-0" style="color: #0f172a;" id="statCustomers"><span class="loading-pulse px-4 py-1"></span></h3>
                     </div>
                     <div class="stat-icon bg-primary-light">
@@ -125,7 +147,7 @@
             <div class="stat-card" style="border-top-color: #10b981;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Đối Tác Thợ</p>
+                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Doi tac tho</p>
                         <h3 class="fw-bold mb-0" style="color: #0f172a;" id="statWorkers"><span class="loading-pulse px-4 py-1"></span></h3>
                     </div>
                     <div class="stat-icon bg-success-light">
@@ -139,9 +161,9 @@
             <div class="stat-card" style="border-top-color: #f59e0b;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Tổng Đơn Hàng</p>
+                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Tong don hang</p>
                         <h3 class="fw-bold mb-0" style="color: #0f172a;" id="statBookings"><span class="loading-pulse px-4 py-1"></span></h3>
-                        <small class="text-success fw-bold d-none" id="statCompletedBookings"><i class="fas fa-arrow-up me-1"></i></small>
+                        <small class="text-success fw-bold d-none" id="statCompletedBookings"><i class="fas fa-check-circle me-1"></i></small>
                     </div>
                     <div class="stat-icon bg-warning-light">
                         <i class="fas fa-clipboard-list"></i>
@@ -154,9 +176,9 @@
             <div class="stat-card" style="border-top-color: #ef4444;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Hoa Hồng (10%)</p>
+                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Hoa hong he thong</p>
                         <h3 class="fw-bold mb-0 text-danger" id="statCommission"><span class="loading-pulse px-4 py-1"></span></h3>
-                        <small class="text-muted" style="font-size: 0.75rem;">Trên tổng: <span id="statRevenue">0</span>đ</small>
+                        <small class="text-muted" style="font-size: 0.75rem;">Tren tong: <span id="statRevenue">0</span>đ</small>
                     </div>
                     <div class="stat-icon bg-danger-light">
                         <i class="fas fa-wallet"></i>
@@ -166,49 +188,71 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <h4 class="fw-bold mb-3" style="color: #0f172a;">Lối tắt Công cụ</h4>
+    <h4 class="fw-bold mb-3" style="color: #0f172a;">Loi tat cong cu</h4>
     <div class="row g-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <a href="/admin/users" class="text-decoration-none">
-                <div class="card border-0 shadow-sm h-100 p-4" style="border-radius: 16px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card border-0 shadow-sm h-100 p-4 quick-card">
                     <div class="d-flex align-items-center gap-3">
                         <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center shadow" style="width: 50px; height: 50px;">
                             <i class="fas fa-user-shield fs-5"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold mb-1 text-dark">Xét Duyệt Tài Khoản</h5>
-                            <p class="text-muted mb-0 small">Quản lý kích hoạt, khóa tài khoản thợ và khách hàng.</p>
+                            <h5 class="fw-bold mb-1 text-dark">Cong dong</h5>
+                            <p class="text-muted mb-0 small">Quan ly tai khoan khach hang va tho.</p>
                         </div>
                     </div>
                 </div>
             </a>
         </div>
-        <div class="col-md-4">
+
+        <div class="col-md-3">
+            <a href="/admin/users?role=worker&approval_status=cho_duyet" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 p-4 quick-card pending">
+                    <div class="d-flex justify-content-between align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-warning text-dark rounded-circle d-flex justify-content-center align-items-center shadow" style="width: 50px; height: 50px;">
+                                <i class="fas fa-user-clock fs-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-1 text-dark">Ho so tho cho duyet</h5>
+                                <p class="text-muted mb-0 small">Mo nhanh danh sach tho dang cho admin phe duyet.</p>
+                            </div>
+                        </div>
+                        <span class="pending-count" id="pendingWorkerProfilesCount">
+                            <span class="loading-pulse px-3 py-2"></span>
+                        </span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-3">
             <a href="/admin/services" class="text-decoration-none">
-                <div class="card border-0 shadow-sm h-100 p-4" style="border-radius: 16px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card border-0 shadow-sm h-100 p-4 quick-card">
                     <div class="d-flex align-items-center gap-3">
                         <div class="bg-success text-white rounded-circle d-flex justify-content-center align-items-center shadow" style="width: 50px; height: 50px;">
                             <i class="fas fa-list-alt fs-5"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold mb-1 text-dark">Cấu Hình Dịch Vụ</h5>
-                            <p class="text-muted mb-0 small">Thêm mới, chỉnh sửa giá tham khảo của các dịch vụ.</p>
+                            <h5 class="fw-bold mb-1 text-dark">Cau hinh dich vu</h5>
+                            <p class="text-muted mb-0 small">Them, sua, an hien va xoa mem dich vu.</p>
                         </div>
                     </div>
                 </div>
             </a>
         </div>
-        <div class="col-md-4">
+
+        <div class="col-md-3">
             <a href="/admin/bookings" class="text-decoration-none">
-                <div class="card border-0 shadow-sm h-100 p-4" style="border-radius: 16px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card border-0 shadow-sm h-100 p-4 quick-card">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="bg-warning text-dark rounded-circle d-flex justify-content-center align-items-center shadow" style="width: 50px; height: 50px;">
-                            <i class="fas fa-search-dollar fs-5"></i>
+                        <div class="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center shadow" style="width: 50px; height: 50px;">
+                            <i class="fas fa-receipt fs-5"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold mb-1 text-dark">Giám Sát Giao Dịch</h5>
-                            <p class="text-muted mb-0 small">Theo dõi luồng công việc, trạng thái thanh toán và hủy đơn.</p>
+                            <h5 class="fw-bold mb-1 text-dark">Giao dich</h5>
+                            <p class="text-muted mb-0 small">Theo doi don hang, thanh toan va huy don.</p>
                         </div>
                     </div>
                 </div>

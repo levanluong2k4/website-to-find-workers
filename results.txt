@@ -1,0 +1,35 @@
+Columns in don_dat_lich:
+Array
+(
+    [0] => id
+    [1] => khach_hang_id
+    [2] => tho_id
+    [3] => dich_vu_id
+    [4] => loai_dat_lich
+    [5] => thoi_gian_hen
+    [6] => ngay_hen
+    [7] => khung_gio_hen
+    [8] => khoang_cach
+    [9] => phi_di_lai
+    [10] => phi_linh_kien
+    [11] => thue_xe_cho
+    [12] => tien_thue_xe
+    [13] => ghi_chu_linh_kien
+    [14] => dia_chi
+    [15] => vi_do
+    [16] => kinh_do
+    [17] => mo_ta_van_de
+    [18] => hinh_anh_mo_ta
+    [19] => video_mo_ta
+    [20] => trang_thai
+    [21] => tien_cong
+    [22] => ly_do_huy
+    [23] => tong_tien
+    [24] => phuong_thuc_thanh_toan
+    [25] => trang_thai_thanh_toan
+    [26] => thoi_gian_het_han_nhan
+    [27] => created_at
+    [28] => updated_at
+)
+
+SUCCESS: Media columns found!

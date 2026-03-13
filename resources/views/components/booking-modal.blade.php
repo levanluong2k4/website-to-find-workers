@@ -119,6 +119,29 @@
                             <label class="form-label fw-bold" style="font-size: 0.9rem; color: #334155;">Mô tả vấn đề</label>
                             <textarea class="form-control border-0 shadow-sm" id="booking_mo_ta" name="mo_ta_van_de" rows="3" placeholder="Tủ lạnh không đông đá, máy giặt kêu to..." style="border-radius: 0.5rem; background-color: #f8fafc;"></textarea>
                         </div>
+
+                        <!-- Tải hình ảnh & Video -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold" style="font-size: 0.9rem; color: #334155;">Hình ảnh & Video mô tả</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="upload-box border rounded-3 p-2 text-center position-relative" style="background-color: #f8fafc; border-style: dashed !important; cursor: pointer;">
+                                        <input type="file" id="booking_images" name="hinh_anh_mo_ta[]" multiple accept="image/*" class="position-absolute top-0 start-0 w-100 h-100 opacity-0" style="cursor: pointer;">
+                                        <div class="text-primary"><i class="fas fa-images fs-4"></i></div>
+                                        <small class="d-block text-muted" style="font-size: 0.7rem;">Ảnh (Tối đa 5)</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="upload-box border rounded-3 p-2 text-center position-relative" style="background-color: #f8fafc; border-style: dashed !important; cursor: pointer;">
+                                        <input type="file" id="booking_video" name="video_mo_ta" accept="video/*" class="position-absolute top-0 start-0 w-100 h-100 opacity-0" style="cursor: pointer;">
+                                        <div class="text-danger"><i class="fas fa-video fs-4"></i></div>
+                                        <small class="d-block text-muted" style="font-size: 0.7rem;">Video (Tối đa 20s)</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="mediaPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                            <small class="text-muted mt-1 d-block" style="font-size: 0.7rem;">Gợi ý: Tải lên hình ảnh hoặc video ngắn giúp thợ nắm bắt lỗi tốt hơn.</small>
+                        </div>
                     </div>
 
                     <!-- Form actions -->

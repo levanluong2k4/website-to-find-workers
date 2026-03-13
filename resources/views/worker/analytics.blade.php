@@ -133,7 +133,7 @@
 import { callApi, getCurrentUser, showToast } from "{{ asset('assets/js/api.js') }}";
 const baseUrl = '{{ url('/') }}';
 const user = getCurrentUser();
-if (!user || user.role !== 'worker') { window.location.href = baseUrl + '/login?role=worker'; }
+if (!user || !['worker', 'admin'].includes(user.role)) { window.location.href = baseUrl + '/login?role=worker'; }
 if (user) {
   if(document.getElementById('sidebarName')) document.getElementById('sidebarName').textContent = user.name||'Thợ';
   if(document.getElementById('sidebarAvatar')) document.getElementById('sidebarAvatar').textContent = (user.name||'T').charAt(0).toUpperCase();

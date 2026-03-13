@@ -165,7 +165,7 @@
 import { callApi, getCurrentUser, showToast } from "{{ asset('assets/js/api.js') }}";
 const baseUrl = '{{ url('/') }}';
 const user = getCurrentUser();
-if (!user || user.role !== 'worker') { window.location.href = baseUrl + '/login?role=worker'; }
+if (!user || !['worker', 'admin'].includes(user.role)) { window.location.href = baseUrl + '/login?role=worker'; }
 
 const jobId = {{ $id }};
 
@@ -191,14 +191,28 @@ async function loadJobDetails() {
         avatar.textContent = (j.khach_hang ? j.khach_hang.name : 'K').charAt(0).toUpperCase();
       }
 
-      // Photos
+      // Media (Images & Video)
       const photosContainer = document.getElementById('jobPhotos');
-      if (j.bai_dang && j.bai_dang.hinh_anhs && j.bai_dang.hinh_anhs.length > 0) {
-        photosContainer.innerHTML = j.bai_dang.hinh_anhs.map(img => `
+      let mediaHtml = '';
+      
+      if (j.video_mo_ta) {
+        mediaHtml += `
+          <div class="rounded-xl overflow-hidden aspect-square bg-slate-900 flex items-center justify-center">
+            <video src="${j.video_mo_ta}" class="w-full h-full object-cover" controls></video>
+          </div>
+        `;
+      }
+
+      if (j.hinh_anh_mo_ta && j.hinh_anh_mo_ta.length > 0) {
+        mediaHtml += j.hinh_anh_mo_ta.map(img => `
           <div class="rounded-xl overflow-hidden aspect-square bg-slate-100">
-            <img src="${img.url}" class="w-full h-full object-cover">
+            <img src="${img}" class="w-full h-full object-cover cursor-pointer" onclick="window.open('${img}', '_blank')">
           </div>
         `).join('');
+      }
+
+      if (mediaHtml) {
+        photosContainer.innerHTML = mediaHtml;
       }
 
       // Hide loading, show content

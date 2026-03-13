@@ -21,6 +21,8 @@ class DonDatLich extends Model
         'vi_do',
         'kinh_do',
         'mo_ta_van_de',
+        'nguyen_nhan',
+        'giai_phap',
         'khoang_cach',
         'phi_di_lai',
         'phi_linh_kien',
@@ -30,7 +32,11 @@ class DonDatLich extends Model
         'ly_do_huy',
         'tong_tien',
         'phuong_thuc_thanh_toan',
-        'trang_thai_thanh_toan'
+        'trang_thai_thanh_toan',
+        'hinh_anh_mo_ta',
+        'video_mo_ta',
+        'hinh_anh_ket_qua',
+        'video_ket_qua'
     ];
 
     protected $casts = [
@@ -38,6 +44,8 @@ class DonDatLich extends Model
         'ngay_hen' => 'date',
         'thoi_gian_het_han_nhan' => 'datetime',
         'trang_thai_thanh_toan' => 'boolean',
+        'hinh_anh_mo_ta' => 'array',
+        'hinh_anh_ket_qua' => 'array',
     ];
 
     public function khachHang()

@@ -64,6 +64,7 @@ class AppNavbar extends HTMLElement {
                     ? `<li><a class="dropdown-item py-2" href="/admin/dashboard"><i class="fas fa-chart-pie me-2 text-muted"></i>Tổng quan</a></li>
                        <li><a class="dropdown-item py-2" href="/admin/users"><i class="fas fa-users-cog me-2 text-muted"></i>Thành viên</a></li>
                        <li><a class="dropdown-item py-2" href="/admin/services"><i class="fas fa-list me-2 text-muted"></i>Dịch vụ</a></li>
+                       <li><a class="dropdown-item py-2" href="/admin/assistant-soul"><i class="fas fa-robot me-2 text-muted"></i>ASSISTANT SOUL</a></li>
                        <li><a class="dropdown-item py-2" href="/admin/bookings"><i class="fas fa-clipboard-check me-2 text-muted"></i>Đơn hàng</a></li>`
                     : (user.role === 'customer'
                         ? `<li><a class="dropdown-item py-2" href="/customer/my-bookings"><i class="fas fa-history me-2 text-muted"></i>Lịch sử đặt thợ</a></li>`
@@ -102,6 +103,9 @@ class AppNavbar extends HTMLElement {
                 </li>
                 <li class="nav-item">
                     <a class="nav-link px-3" href="/admin/services" style="color: #64748B;">Dịch vụ</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3" href="/admin/assistant-soul" style="color: #64748B;">ASSISTANT SOUL</a>
                 </li>
             `;
         } else if (user && user.role === 'worker') {

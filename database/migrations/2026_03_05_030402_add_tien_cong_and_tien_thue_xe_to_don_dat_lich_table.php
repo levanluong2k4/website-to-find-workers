@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('don_dat_lich', function (Blueprint $table) {
-            $table->decimal('tien_cong', 15, 2)->default(0)->after('trang_thai');
-            $table->decimal('tien_thue_xe', 15, 2)->default(0)->after('thue_xe_cho');
+            if (!Schema::hasColumn('don_dat_lich', 'tien_cong')) {
+                $table->decimal('tien_cong', 15, 2)->default(0)->after('trang_thai');
+            }
+            if (!Schema::hasColumn('don_dat_lich', 'tien_thue_xe')) {
+                $table->decimal('tien_thue_xe', 15, 2)->default(0)->after('thue_xe_cho');
+            }
         });
     }
 

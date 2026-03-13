@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Quản lý Người Dùng - Thợ Tốt')
+@section('title', 'Quan ly Nguoi dung - Tho Tot')
 
 @push('styles')
 <style>
@@ -22,26 +22,24 @@
         text-transform: uppercase;
         font-size: 0.75rem;
         letter-spacing: 0.5px;
-        border-bottom: 2px solid #e2e8f0;
         padding: 1rem;
     }
 
     .table-custom td {
         padding: 1rem;
-        vertical-align: middle;
+        vertical-align: top;
         border-bottom: 1px solid #f1f5f9;
-        color: #1e293b;
+        color: #0f172a;
     }
 
-    .table-custom tbody tr:hover {
-        background-color: #f8fafc;
-    }
-
-    .status-badge {
-        padding: 0.35em 0.8em;
-        border-radius: 50px;
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.7rem;
+        border-radius: 999px;
         font-size: 0.75rem;
         font-weight: 600;
+        margin: 0 0.35rem 0.35rem 0;
     }
 </style>
 @endpush
@@ -50,47 +48,53 @@
 <app-navbar></app-navbar>
 
 <div class="container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-1">
                     <li class="breadcrumb-item"><a href="/admin/dashboard" class="text-decoration-none">Dashboard</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Người Dùng</li>
+                    <li class="breadcrumb-item active" aria-current="page">Nguoi dung</li>
                 </ol>
             </nav>
-            <h2 class="fw-bold mb-0" style="color: #0f172a;">Quản lý Cộng đồng</h2>
+            <h2 class="fw-bold mb-1" style="color:#0f172a;">Quan ly cong dong va duyet ho so tho</h2>
+            <p class="text-muted mb-0">Khoa/mo khoa tai khoan va duyet ho so doi tac tho ngay tai mot man hinh.</p>
         </div>
 
-        <div class="d-flex gap-2">
-            <select class="form-select form-select-sm shadow-sm" id="roleFilter" style="border-radius: 8px; width: 150px;">
-                <option value="">Tất cả vai trò</option>
-                <option value="customer">Khách hàng</option>
-                <option value="worker">Thợ sửa chữa</option>
+        <div class="d-flex align-items-center gap-2">
+            <select class="form-select shadow-sm" id="roleFilter" style="min-width: 160px;">
+                <option value="">Tat ca vai tro</option>
+                <option value="customer">Khach hang</option>
+                <option value="worker">Tho</option>
             </select>
-            <button class="btn btn-primary shadow-sm" id="btnRefresh">
+            <select class="form-select shadow-sm" id="approvalFilter" style="min-width: 180px;">
+                <option value="">Tat ca duyet ho so</option>
+                <option value="cho_duyet">Cho duyet</option>
+                <option value="da_duyet">Da duyet</option>
+                <option value="tu_choi">Tu choi</option>
+            </select>
+            <button class="btn btn-outline-primary shadow-sm" id="btnRefresh">
                 <i class="fas fa-sync-alt"></i>
             </button>
         </div>
     </div>
 
-    <!-- Table -->
     <div class="table-responsive table-custom">
         <table class="table mb-0 table-borderless">
             <thead>
                 <tr>
                     <th class="ps-4">UID</th>
-                    <th>Thông tin Cá nhân</th>
-                    <th>Vai trò</th>
-                    <th>Ngày tham gia</th>
-                    <th>Trạng thái</th>
-                    <th class="text-end pe-4">Thao tác</th>
+                    <th>Thong tin</th>
+                    <th>Vai tro</th>
+                    <th>Ho so tho</th>
+                    <th>Trang thai TK</th>
+                    <th class="text-end pe-4">Thao tac</th>
                 </tr>
             </thead>
             <tbody id="usersTableBody">
                 <tr>
                     <td colspan="6" class="text-center py-5">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="text-muted mt-2 mb-0">Đang tải danh sách...</p>
+                        <p class="text-muted mt-2 mb-0">Dang tai danh sach nguoi dung...</p>
                     </td>
                 </tr>
             </tbody>

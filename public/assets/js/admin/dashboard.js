@@ -35,13 +35,17 @@ async function fetchStats() {
     try {
         const response = await callApi('/admin/dashboard', 'GET');
 
-        if (response && response.status === 'success') {
-            const data = response.data;
+        if (response?.ok && response.data?.data) {
+            const data = response.data.data;
 
             // Animate number updates
             animateValue('statCustomers', data.users.customers);
             animateValue('statWorkers', data.users.workers);
             animateValue('statBookings', data.bookings.total);
+            const pendingWorkerProfiles = document.getElementById('pendingWorkerProfilesCount');
+            if (pendingWorkerProfiles) {
+                pendingWorkerProfiles.textContent = data.users.pending_worker_profiles ?? 0;
+            }
 
             // Format money dynamically
             document.getElementById('statCommission').innerHTML = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(data.revenue.system_commission);

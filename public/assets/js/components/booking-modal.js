@@ -268,6 +268,98 @@ document.addEventListener('DOMContentLoaded', () => {
         bookingNgayHen.addEventListener('change', updateAvailableTimeSlots);
     }
 
+    // Media Handling (Images & Video)
+    const bookingImages = document.getElementById('booking_images');
+    const bookingVideo = document.getElementById('booking_video');
+    const mediaPreview = document.getElementById('mediaPreview');
+
+    if (bookingImages) {
+        bookingImages.addEventListener('change', function() {
+            renderMediaPreview();
+        });
+    }
+
+    if (bookingVideo) {
+        bookingVideo.addEventListener('change', async function() {
+            if (this.files.length > 0) {
+                const duration = await getVideoDuration(this.files[0]);
+                if (duration > 20) {
+                    alert('Video không được vượt quá 20 giây. Vui lòng chọn video ngắn hơn.');
+                    this.value = '';
+                }
+            }
+            renderMediaPreview();
+        });
+    }
+
+    function renderMediaPreview() {
+        if (!mediaPreview) return;
+        mediaPreview.innerHTML = '';
+        
+        // Render Images
+        if (bookingImages && bookingImages.files.length > 0) {
+            Array.from(bookingImages.files).forEach((file, index) => {
+                if (index < 5) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const div = document.createElement('div');
+                        div.className = 'position-relative';
+                        div.style.width = '60px';
+                        div.style.height = '60px';
+                        div.innerHTML = `
+                            <img src="${e.target.result}" class="w-100 h-100 object-cover rounded border">
+                            <span class="position-absolute top-0 end-0 badge rounded-pill bg-danger" style="margin: -5px -5px 0 0; cursor: pointer; transform: scale(0.7);" onclick="removeImage(${index})">×</span>
+                        `;
+                        mediaPreview.appendChild(div);
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Render Video
+        if (bookingVideo && bookingVideo.files.length > 0) {
+            const div = document.createElement('div');
+            div.className = 'position-relative';
+            div.style.width = '60px';
+            div.style.height = '60px';
+            div.innerHTML = `
+                <div class="w-100 h-100 bg-dark rounded border d-flex align-items-center justify-content-center text-white">
+                    <i class="fas fa-video"></i>
+                </div>
+                <span class="position-absolute top-0 end-0 badge rounded-pill bg-danger" style="margin: -5px -5px 0 0; cursor: pointer; transform: scale(0.7);" onclick="removeVideo()">×</span>
+            `;
+            mediaPreview.appendChild(div);
+        }
+    }
+
+    window.removeImage = function(index) {
+        const dt = new DataTransfer();
+        const { files } = bookingImages;
+        for (let i = 0; i < files.length; i++) {
+            if (i !== index) dt.items.add(files[i]);
+        }
+        bookingImages.files = dt.files;
+        renderMediaPreview();
+    }
+
+    window.removeVideo = function() {
+        bookingVideo.value = '';
+        renderMediaPreview();
+    }
+
+    function getVideoDuration(file) {
+        return new Promise((resolve) => {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = function() {
+                window.URL.revokeObjectURL(video.src);
+                resolve(video.duration);
+            }
+            video.src = URL.createObjectURL(file);
+        });
+    }
+
     // Logic kiểm tra xe chở
     function checkHeavyItemTransport() {
         if (!bookingDichVuSelect || bookingDichVuSelect.selectedIndex === -1) return;
@@ -427,24 +519,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('booking_dia_chi').value = `${xa}, ${huyen}, ${tinh}`;
             }
 
+            // Media Validation
+            const imageInput = document.getElementById('booking_images');
+            if (imageInput.files.length > 5) {
+                alert('Bạn chỉ có thể chọn tối đa 5 hình ảnh.');
+                return;
+            }
+
+            const videoInput = document.getElementById('booking_video');
+            if (videoInput.files.length > 0) {
+                const videoFile = videoInput.files[0];
+                const videoDuration = await getVideoDuration(videoFile);
+                if (videoDuration > 20) {
+                    alert('Video không được vượt quá 20 giây. Vui lòng chọn video ngắn hơn.');
+                    return;
+                }
+            }
+
             btnSubmitBooking.disabled = true;
             btnSubmitBooking.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
 
             const formData = new FormData(formBooking);
-            const data = Object.fromEntries(formData.entries());
-            if (!data.tho_id) delete data.tho_id; // general booking
-
+            
             // Ép kiểu boolean cho checkbox tải xe
-            data.thue_xe_cho = document.getElementById('booking_thue_xe_cho').checked ? true : false;
+            const thueXe = document.getElementById('booking_thue_xe_cho').checked ? 1 : 0;
+            formData.set('thue_xe_cho', thueXe);
 
             // Xử lý gộp chuỗi địa chỉ
             if (document.getElementById('loai_hom').checked) {
-                data.dia_chi = `${data.so_nha}, ${data.dia_chi}`;
-                delete data.so_nha;
+                const diaChi = `${formData.get('so_nha')}, ${formData.get('dia_chi')}`;
+                formData.set('dia_chi', diaChi);
+                formData.delete('so_nha');
             }
 
+            if (!formData.get('tho_id')) formData.delete('tho_id');
+
             try {
-                const res = await callApi('/don-dat-lich', 'POST', data);
+                const res = await callApi('/don-dat-lich', 'POST', formData);
 
                 if (!res.ok) {
                     // Show specific API error message (validation errors, distance error, etc.)

@@ -3,23 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\HoSoTho;
 use App\Http\Requests\HoSoTho\UpdateHoSoThoRequest;
+use App\Models\HoSoTho;
+use Illuminate\Http\Request;
 
 class HoSoThoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
-        // Khởi tạo query Builder
         $query = HoSoTho::with('user:id,name,email,avatar,phone,address', 'user.dichVus:id,ten_dich_vu')
             ->where('trang_thai_duyet', 'da_duyet')
             ->where('dang_hoat_dong', true);
 
-        // 1. Tích hợp Search Keyword (?q=...)
         if ($request->filled('q')) {
             $keyword = $request->q;
             $query->whereHas('user', function ($q) use ($keyword) {
@@ -30,7 +25,6 @@ class HoSoThoController extends Controller
             });
         }
 
-        // 2. Tích hợp Lọc Danh mục (?category_id=...)
         if ($request->filled('category_id')) {
             $categoryId = $request->category_id;
             $query->whereHas('user.dichVus', function ($q) use ($categoryId) {
@@ -38,7 +32,6 @@ class HoSoThoController extends Controller
             });
         }
 
-        // 3. Tích hợp Lọc Vị trí theo Tỉnh Thành (?province=...)
         if ($request->filled('province')) {
             $province = $request->province;
             $query->whereHas('user', function ($q) use ($province) {
@@ -46,24 +39,18 @@ class HoSoThoController extends Controller
             });
         }
 
-        // 4. Ưu tiên Geolocation: Nếu cấp vĩ độ/kinh độ, tính khoảng cách (?lat=...&lng=...)
         $latitude = $request->lat;
         $longitude = $request->lng;
 
         if ($latitude && $longitude) {
-            // Tọa độ cửa hàng tĩnh (Ví dụ: 2 Đ. Nguyễn Đình Chiểu)
             $storeLat = 12.2618;
             $storeLng = 109.1995;
-
-            // Công thức Haversine để tính khoảng cách vật lý (theo km) từ cửa hàng đến khách
             $haversine = "(6371 * acos(cos(radians($latitude)) * cos(radians({$storeLat})) * cos(radians({$storeLng}) - radians($longitude)) + sin(radians($latitude)) * sin(radians({$storeLat}))))";
-
             $query->selectRaw("ho_so_tho.*, {$haversine} AS distance");
         } else {
             $query->select('ho_so_tho.*');
         }
 
-        // 5. Lọc theo Khung giờ hẹn và Ngày hẹn (Nếu có truyền để tìm thợ rảnh)
         if ($request->filled('ngay_hen') && $request->filled('khung_gio_hen')) {
             $ngayHen = $request->ngay_hen;
             $khungGioHen = $request->khung_gio_hen;
@@ -75,9 +62,6 @@ class HoSoThoController extends Controller
             });
         }
 
-        // 5. Tích hợp Sắp xếp Ưu tiên phân tầng (?sort=...)
-        // Mặc định luôn ưu tiên Trạng thái hoạt động trước:
-        // dang_hoat_dong (1) -> dang_ban (2) -> ngung_hoat_dong (3) -> tam_khoa (4)
         $query->orderByRaw("
             CASE trang_thai_hoat_dong
                 WHEN 'dang_hoat_dong' THEN 1
@@ -89,13 +73,11 @@ class HoSoThoController extends Controller
         ");
 
         if ($request->sort === 'nearest' && $latitude && $longitude) {
-            // Ưu tiên khoảng cách sau ưu tiên trạng thái
             $query->orderBy('distance', 'ASC');
         } elseif ($request->sort === 'rating') {
             $query->orderBy('danh_gia_trung_binh', 'DESC');
             $query->orderBy('tong_so_danh_gia', 'DESC');
         } else {
-            // Mặc định (hoặc sort=jobs) ưu tiên điểm số & mức độ hoạt động
             $query->orderBy('tong_so_danh_gia', 'DESC');
             $query->orderBy('danh_gia_trung_binh', 'DESC');
         }
@@ -103,39 +85,37 @@ class HoSoThoController extends Controller
         return response()->json($query->paginate(15));
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        // Lấy theo User ID để URL đồng bộ
         $hoSo = HoSoTho::with([
             'user:id,name,email,avatar,phone,address',
             'user.dichVus',
-            'user.danhGiasNhan.khachHang:id,name,avatar'
-        ])
-            ->where('user_id', $id)
-            ->first();
+            'user.danhGiasNhan.nguoiDanhGia:id,name,avatar',
+        ])->where('user_id', $id)->first();
 
         if (!$hoSo) {
-            return response()->json(['message' => 'Không tìm thấy hồ sơ thợ'], 404);
+            return response()->json(['message' => 'Khong tim thay ho so tho'], 404);
         }
 
         return response()->json($hoSo);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateHoSoThoRequest $request)
     {
         $user = $request->user();
-
-        // Vì user->role == 'worker' đã check ở FormRequest, chắc chắn user có hoSoTho
         $hoSo = $user->hoSoTho;
 
         if (!$hoSo) {
-            return response()->json(['message' => 'Không tìm thấy hồ sơ thợ'], 404);
+            if ($user->role === 'admin') {
+                $hoSo = HoSoTho::create([
+                    'user_id' => $user->id,
+                    'cccd' => 'ADMIN_PROFILE_' . $user->id,
+                    'trang_thai_duyet' => 'da_duyet',
+                    'dang_hoat_dong' => true,
+                ]);
+            } else {
+                return response()->json(['message' => 'Khong tim thay ho so tho'], 404);
+            }
         }
 
         $validated = $request->validated();
@@ -151,27 +131,22 @@ class HoSoThoController extends Controller
             'dang_hoat_dong' => $validated['dang_hoat_dong'] ?? $hoSo->dang_hoat_dong,
         ]);
 
-        // Cập nhật Danh mục dịch vụ cho thợ (Pivot table tho_dich_vu)
         if (isset($validated['dich_vu_ids'])) {
             $user->dichVus()->sync($validated['dich_vu_ids']);
         }
 
-        // Load lại relationship để trả về
         $hoSo->load('user.dichVus');
 
         return response()->json([
-            'message' => 'Cập nhật hồ sơ thành công',
-            'data' => $hoSo
+            'message' => 'Cap nhat ho so thanh cong',
+            'data' => $hoSo,
         ]);
     }
 
-    /**
-     * Lấy thống kê thu nhập và công việc cho thợ
-     */
     public function stats(Request $request)
     {
         $user = $request->user();
-        if ($user->role !== 'worker') {
+        if (!in_array($user->role, ['worker', 'admin'], true)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -179,7 +154,6 @@ class HoSoThoController extends Controller
         $thisMonth = $now->month;
         $thisYear = $now->year;
 
-        // Base query for completed bookings
         $completedBookings = \App\Models\DonDatLich::where('tho_id', $user->id)
             ->where('trang_thai', 'da_xong');
 
@@ -201,7 +175,6 @@ class HoSoThoController extends Controller
             ->whereYear('created_at', $thisYear)
             ->count();
 
-        // Chart Data: Last 7 days
         $chartData = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = $now->copy()->subDays($i);
@@ -214,7 +187,7 @@ class HoSoThoController extends Controller
 
             $chartData[] = [
                 'date' => $date->format('d/m'),
-                'revenue' => (float) $dayRevenue
+                'revenue' => (float) $dayRevenue,
             ];
         }
 
@@ -223,7 +196,7 @@ class HoSoThoController extends Controller
             'doanh_thu_thang_nay' => $doanhThuThangNay,
             'don_hoan_thanh_thang_nay' => $soDonHoanThanhThangNay,
             'don_huy_thang_nay' => $soDonHuyThangNay,
-            'chart_data' => $chartData
+            'chart_data' => $chartData,
         ]);
     }
 }

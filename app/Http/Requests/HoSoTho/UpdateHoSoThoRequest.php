@@ -11,8 +11,7 @@ class UpdateHoSoThoRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Require the user to be a worker to update their own profile
-        return $this->user() && $this->user()->role === 'worker';
+        return $this->user() && in_array($this->user()->role, ['worker', 'admin'], true);
     }
 
     /**

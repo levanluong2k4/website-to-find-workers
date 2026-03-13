@@ -201,7 +201,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
-    if (!user || user.role !== 'worker') {
+    if (!user || !['worker', 'admin'].includes(user.role)) {
       window.location.href = '/login?role=worker';
       return;
     }
