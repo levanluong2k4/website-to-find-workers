@@ -135,7 +135,7 @@ class AppNavbar extends HTMLElement {
             <nav class="navbar navbar-expand-lg sticky-top w-100" style="background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(0,0,0,0.05); z-index: 1000;">
                 <div class="container py-1">
                     <a class="navbar-brand d-flex align-items-center gap-2" href="${user ? (user.role === 'admin' ? '/admin/dashboard' : (user.role === 'worker' ? '/worker/dashboard' : '/customer/home')) : '/customer/home'}">
-                        <img src="/assets/images/logo.png" alt="Logo" height="40" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+                        <img src="/assets/images/logontu.png" alt="Logo NTU" height="48" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
                         <span class="fs-4 fw-bold brand-font" style="color: var(--bs-primary); letter-spacing: -1px;">Thợ Tốt</span>
                     </a>
                     

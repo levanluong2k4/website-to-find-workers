@@ -21,6 +21,12 @@
             justify-content: center;
         }
 
+        .chat-toggle-icon {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+        }
+
         #customerChatPanel {
             display: none;
             width: min(380px, calc(100vw - 24px));
@@ -67,15 +73,67 @@
             padding: 10px;
             margin-top: 8px;
         }
+
+        .chat-typing {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-typing-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            object-fit: cover;
+            border: 1px solid #bae6fd;
+            background: #fff;
+            padding: 4px;
+            flex-shrink: 0;
+        }
+
+        .chat-typing-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            min-height: 16px;
+        }
+
+        .chat-typing-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: #0ea5e9;
+            animation: chatTypingBounce 1.1s infinite ease-in-out;
+        }
+
+        .chat-typing-dot:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .chat-typing-dot:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        @keyframes chatTypingBounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+                opacity: 0.35;
+            }
+
+            40% {
+                transform: translateY(-4px);
+                opacity: 1;
+            }
+        }
     </style>
 
     <div id="customerChatPanel">
         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom bg-white">
             <div>
-                <div class="fw-bold" style="font-size:.92rem;color:#0f172a;">Trợ lý AI Điện Lạnh</div>
-                <small class="text-secondary">Phân tích lỗi và gợi ý thợ phù hợp</small>
+                <div class="fw-bold" style="font-size:.92rem;color:#0f172a;">Tro ly AI Dien Lanh</div>
+                <small class="text-secondary">Phan tich loi va goi y tho phu hop</small>
             </div>
-            <button id="customerChatClose" type="button" class="btn btn-sm btn-light border">✕</button>
+            <button id="customerChatClose" type="button" class="btn btn-sm btn-light border">x</button>
         </div>
         <div id="customerChatMessages" class="p-3"></div>
         <form id="customerChatForm" class="border-top bg-white p-2">
@@ -84,17 +142,16 @@
                     id="customerChatInput"
                     type="text"
                     class="form-control"
-                    placeholder="Nhập lỗi thiết bị... ví dụ: máy lạnh bị chảy nước"
+                    placeholder="Nhap loi thiet bi... vi du: may lanh bi chay nuoc"
                     maxlength="2000"
                     autocomplete="off"
                 >
-                <button id="customerChatSend" class="btn btn-primary" type="submit">Gửi</button>
+                <button id="customerChatSend" class="btn btn-primary" type="submit">Gui</button>
             </div>
         </form>
     </div>
 
-    <button id="customerChatToggle" type="button" aria-label="Mở chatbot">
-        <span class="material-symbols-outlined">forum</span>
+    <button id="customerChatToggle" type="button" aria-label="Mo chatbot">
+        <img src="/assets/images/robotAI.png" alt="AI Robot" class="chat-toggle-icon">
     </button>
 </div>
-

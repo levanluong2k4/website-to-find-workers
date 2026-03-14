@@ -2,10 +2,36 @@
 
 namespace App\Http\Requests\DonDatLich;
 
+use App\Models\HoSoTho;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreDonDatLichRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $serviceIds = $this->input('dich_vu_ids', []);
+
+        if (!is_array($serviceIds)) {
+            $serviceIds = [$serviceIds];
+        }
+
+        if (empty($serviceIds) && $this->filled('dich_vu_id')) {
+            $serviceIds = [$this->input('dich_vu_id')];
+        }
+
+        $serviceIds = collect($serviceIds)
+            ->filter(static fn ($value) => $value !== null && $value !== '')
+            ->map(static fn ($value) => (int) $value)
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->merge([
+            'dich_vu_ids' => $serviceIds,
+            'dich_vu_id' => $serviceIds[0] ?? $this->input('dich_vu_id'),
+        ]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -23,7 +49,9 @@ class StoreDonDatLichRequest extends FormRequest
     {
         return [
             'loai_dat_lich' => 'required|in:at_home,at_store',
-            'dich_vu_id' => 'required|exists:danh_muc_dich_vu,id',
+            'dich_vu_id' => 'nullable|exists:danh_muc_dich_vu,id',
+            'dich_vu_ids' => 'required|array|min:1',
+            'dich_vu_ids.*' => 'required|exists:danh_muc_dich_vu,id',
             'tho_id' => 'nullable|exists:users,id',
             'ngay_hen' => 'required|date|after_or_equal:today',
             'khung_gio_hen' => 'required|in:08:00-10:00,10:00-12:00,12:00-14:00,14:00-17:00,08:00 - 10:00,10:00 - 12:00,12:00 - 14:00,14:00 - 17:00',
@@ -35,5 +63,46 @@ class StoreDonDatLichRequest extends FormRequest
             'hinh_anh_mo_ta.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // max 5MB per image
             'video_mo_ta' => 'nullable|file|mimes:mp4,mov,avi,wmv|max:20480', // max 20MB
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $workerId = $this->input('tho_id');
+            $serviceIds = collect($this->input('dich_vu_ids', []))
+                ->map(static fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            if (!$workerId || $serviceIds->isEmpty()) {
+                return;
+            }
+
+            $hoSoTho = HoSoTho::with('user.dichVus:id')
+                ->where('user_id', $workerId)
+                ->first();
+
+            if (
+                !$hoSoTho ||
+                !$hoSoTho->user ||
+                !$hoSoTho->dang_hoat_dong ||
+                $hoSoTho->trang_thai_duyet !== 'da_duyet' ||
+                !$hoSoTho->user->is_active
+            ) {
+                $validator->errors()->add('tho_id', 'Tho duoc chon hien khong kha dung de nhan don.');
+                return;
+            }
+
+            $workerServiceIds = $hoSoTho->user->dichVus
+                ->pluck('id')
+                ->map(static fn ($id) => (int) $id);
+
+            $missingServiceIds = $serviceIds->diff($workerServiceIds);
+
+            if ($missingServiceIds->isNotEmpty()) {
+                $validator->errors()->add('dich_vu_ids', 'Danh sach dich vu da chon co muc thợ nay khong the sua.');
+            }
+        });
     }
 }

@@ -1,992 +1,1191 @@
-
 <div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
-<!-- Header / TopNavBar -->
-<header class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
-<div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-<!-- Logo -->
-<div class="flex items-center gap-3">
-<div class="size-10 bg-primary rounded-xl flex items-center justify-center text-white">
-<span class="material-symbols-outlined text-3xl">hvac</span>
-</div>
-<h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Thợ Tốt <span class="text-primary">NTU</span></h2>
-</div>
-<!-- Navigation -->
-<nav class="hidden md:flex items-center gap-10">
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Dịch vụ</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Thợ sửa</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Bảng giá</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Liên hệ</a>
-</nav>
-<!-- CTA -->
-<div class="flex items-center gap-4">
-<button class="hidden lg:flex items-center justify-center rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
-                        Đặt lịch sửa
-                    </button>
-<div class="size-10 rounded-full border-2 border-primary/20 p-0.5 overflow-hidden">
-<img class="w-full h-full object-cover" data-alt="User profile avatar icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7z3YTRww14XNlTgOD1RbdmOJp-uXtGsq4dUUDqjOz9uqU4jYAoOnp9BMiYNwU46cS-KTG1mVtWmoDQyUwl1eumxfZaYFLbek__0PYgUof-B7dp0lfoHotZvInykdYCGiPbLGaU_AUTN_AcQYHcn40mG4NLpS7DgfOUbY7ejmOe26MAZnxYkhw_UEYLYFYBLFTrDJ6XzHtSgQ-Og3oEQFF8wtct7Va1VYbKdXvin77jGbdQUBR0if4Whox8QXX4MQJBiaxZaBZd5bQ"/>
-</div>
-</div>
-</div>
-</header>
-<!-- Hero Section -->
-<main class="flex-1">
-<section class="relative pt-12 pb-24 px-6 overflow-hidden">
-<!-- Soft Gradient Background -->
-<div class="absolute inset-0 -z-10 bg-gradient-to-br from-[#BAF2E9]/40 via-white to-white dark:from-primary/10 dark:via-background-dark dark:to-background-dark"></div>
-<div class="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12 items-center">
-<!-- Hero Content -->
-<div class="lg:col-span-7 flex flex-col gap-8">
-<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider w-fit">
-<span class="material-symbols-outlined text-sm">verified</span>
-                            Dịch vụ chuẩn 5 sao tại Nha Trang
-                        </div>
-<h1 class="text-5xl lg:text-[60px] font-extrabold leading-[1.1] text-slate-900 dark:text-white">
-                            Sửa đồ điện nhanh tại Nha Trang - <span class="text-primary">Thợ uy tín</span>
-</h1>
-<p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
-                            Chuyên sửa chữa thiết bị điện gia dụng và điện lạnh chuyên nghiệp. Có cửa hàng cố định, nhận sửa tận nhà, minh bạch giá cả và bảo hành dài hạn.
-                        </p>
-<!-- Quick Booking Form Card -->
-<div class="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 max-w-2xl">
-<h3 class="text-xl font-bold mb-6 flex items-center gap-2">
-<span class="material-symbols-outlined text-primary">event_upcoming</span>
-                                Đặt lịch nhanh
-                            </h3>
-<div class="grid md:grid-cols-2 gap-4">
-<!-- Device Select -->
-<div class="flex flex-col gap-2">
-<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Thiết bị cần sửa</label>
-<div class="relative">
-<select class="w-full h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-primary focus:border-primary px-4 appearance-none">
-<option>Chọn loại thiết bị</option>
-<option>Máy giặt</option>
-<option>Tủ lạnh</option>
-<option>Điều hòa</option>
-<option>Lò vi sóng</option>
-<option>Khác</option>
-</select>
-<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400">expand_more</span>
-</div>
-</div>
-<!-- Address Input -->
-<div class="flex flex-col gap-2">
-<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Địa chỉ tại Nha Trang</label>
-<input class="w-full h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-primary focus:border-primary px-4" placeholder="Số nhà, tên đường..." type="text"/>
-</div>
-<!-- Date Selection -->
-<div class="flex flex-col gap-2">
-<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Ngày hẹn</label>
-<div class="relative">
-<input class="w-full h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-primary focus:border-primary px-4" type="date"/>
-</div>
-</div>
-<!-- Time Selection -->
-<div class="flex flex-col gap-2">
-<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Giờ hẹn</label>
-<div class="relative">
-<select class="w-full h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-primary focus:border-primary px-4 appearance-none">
-<option>Sáng (08:00 - 12:00)</option>
-<option>Chiều (13:30 - 17:30)</option>
-<option>Tối (18:00 - 20:00)</option>
-</select>
-<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400">schedule</span>
-</div>
-</div>
-</div>
-<div class="flex flex-wrap gap-4 mt-8">
-<button class="flex-1 min-w-[160px] h-14 rounded-xl bg-accent text-white font-bold text-lg shadow-lg shadow-accent/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-<span class="material-symbols-outlined">send</span>
-                                    Đặt lịch ngay
-                                </button>
-<button class="flex-1 min-w-[200px] h-14 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
-<span class="material-symbols-outlined text-primary">smart_toy</span>
-                                    AI kiểm tra lỗi
-                                </button>
-</div>
-</div>
-</div>
-<!-- Hero Image / Illustration -->
-<div class="lg:col-span-5 relative hidden lg:block">
-<div class="absolute -inset-4 bg-primary/20 blur-3xl rounded-full"></div>
-<div class="relative z-10 rounded-[2rem] overflow-hidden border-8 border-white dark:border-slate-800 shadow-2xl">
-<img class="w-full aspect-[4/5] object-cover" data-alt="Professional repair technician working on an electronic board" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAp1hAG6NXCS7wiHypSRullKGKHQyELgqoUFO6wz8Bqr-8RsTXmKhCKYB73RctveGIOWKUwUsrXwh0UM9SrLkDmbB3BN4_P9hpMcSPZE2HW9HiZVe0OzuBHY_ZV8JpaPdzAtFk-8P2SpKYi3QLyshg7bwptjpMk0yahKTfIiz8_QgPOADteX6hvqXFKIzeLIzhNTSWyqHmvRCHDw1rAG-MAOk8sZfXYguNRta-TBvqlYWU_G0DuwrU8I96S53ag31FLngEFFsm5wkMF"/>
-<!-- Floating Card 1 -->
-<div class="absolute bottom-6 left-6 right-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-2xl shadow-xl flex items-center gap-4">
-<div class="size-12 rounded-full bg-green-500 flex items-center justify-center text-white shrink-0">
-<span class="material-symbols-outlined">call</span>
-</div>
-<div>
-<p class="text-xs font-bold text-slate-500 uppercase tracking-tighter">Hỗ trợ 24/7</p>
-<p class="text-lg font-extrabold text-slate-900 dark:text-white">0905 123 456</p>
-</div>
-</div>
-</div>
-<!-- Floating Card 2 -->
-<div class="absolute -top-6 -right-6 bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 flex flex-col items-center gap-1 animate-bounce">
-<span class="material-symbols-outlined text-primary text-4xl">location_on</span>
-<span class="text-xs font-bold">Nha Trang</span>
-</div>
-</div>
-</div>
-</section>
-<!-- Quick Info / Features Section -->
-<section class="max-w-7xl mx-auto px-6 py-12">
-<div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-<div class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800">
-<span class="material-symbols-outlined text-4xl text-primary">bolt</span>
-<h4 class="font-bold">Sửa nhanh 30'</h4>
-<p class="text-sm text-slate-500">Có mặt ngay sau khi gọi</p>
-</div>
-<div class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800">
-<span class="material-symbols-outlined text-4xl text-primary">verified_user</span>
-<h4 class="font-bold">Bảo hành 12th</h4>
-<p class="text-sm text-slate-500">Yên tâm sử dụng lâu dài</p>
-</div>
-<div class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800">
-<span class="material-symbols-outlined text-4xl text-primary">payments</span>
-<h4 class="font-bold">Giá minh bạch</h4>
-<p class="text-sm text-slate-500">Báo giá trước khi sửa</p>
-</div>
-<div class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800">
-<span class="material-symbols-outlined text-4xl text-primary">store</span>
-<h4 class="font-bold">Có cửa hàng</h4>
-<p class="text-sm text-slate-500">Địa chỉ uy tín, rõ ràng</p>
-</div>
-</div>
-</section>
-</main>
-<!-- Map section for location context -->
-<section class="bg-slate-100 dark:bg-slate-950 py-16 px-6">
-<div class="max-w-7xl mx-auto">
-<div class="flex flex-col md:flex-row gap-12 items-center">
-<div class="md:w-1/3">
-<h2 class="text-3xl font-bold mb-4">Tìm chúng tôi tại Nha Trang</h2>
-<p class="text-slate-600 dark:text-slate-400 mb-6">Chúng tôi phục vụ toàn bộ khu vực thành phố Nha Trang, bao gồm các phường trung tâm và khu vực lân cận.</p>
-<div class="flex items-center gap-3 mb-4">
-<span class="material-symbols-outlined text-primary">pin_drop</span>
-<span>Trần Phú, Phường Lộc Thọ, Nha Trang</span>
-</div>
-<div class="size-full rounded-2xl overflow-hidden shadow-inner bg-slate-200 dark:bg-slate-800 h-48 flex items-center justify-center">
-<span class="text-slate-400 italic">Bản đồ khu vực phục vụ</span>
-</div>
-</div>
-<div class="md:w-2/3 w-full h-[400px] rounded-3xl overflow-hidden shadow-2xl relative">
-<div class="absolute inset-0 bg-slate-300 dark:bg-slate-800" data-location="Nha Trang" style="">
-<!-- In a real app, an iframe would go here -->
-<div class="w-full h-full bg-cover bg-center" data-alt="Map view of Nha Trang coastal city area" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCpN6jwCYJo_OQeMQyNF60yEtbKp5U8laaURFkSgpZf7NDHB3MnoKioofoeimgNH2XcwPVyj-DxFlX-P-S6fBmUXI7fHfEpMO-GARHFQUCYMcu-Xn2svuDy9EAGmzJa_zuYqKX9ng3o50lEMjkpbBnbP1HQNGC-eR5J8yFSyj_TG6wqMnmh02d6ZXQmO_4xKPVPGu2o8x60UEK6gIw85pQPy2N_YWKP36VD0Zjmy0Rl4lzg1mZC9GU_AhlpEWwt_6HnRG3nCzskqWOs')"></div>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- Simple Footer -->
-<footer class="bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 py-10 px-6">
-<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-<div class="flex items-center gap-2">
-<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-<span class="material-symbols-outlined text-xl">hvac</span>
-</div>
-<span class="font-bold text-lg">Thợ Tốt NTU</span>
-</div>
-<p class="text-slate-500 text-sm">© 2024 Thợ Tốt NTU. Thiết kế chuyên nghiệp cho người dân Nha Trang.</p>
-<div class="flex gap-4">
-<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">public</span></a>
-<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">mail</span></a>
-<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">call</span></a>
-</div>
-</div>
-</footer>
-</div>
-
-<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
-<header class="sticky top-0 z-50 w-full border-b border-primary/20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
-<div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-<div class="flex items-center gap-8">
-<div class="flex items-center gap-3">
-<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-slate-900">
-<span class="material-symbols-outlined text-2xl font-bold">build</span>
-</div>
-<h1 class="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white uppercase">Thợ Tốt <span class="text-primary-dark">NTU</span></h1>
-</div>
-<nav class="hidden md:flex items-center gap-6">
-<a class="text-sm font-semibold hover:text-primary-dark transition-colors" href="#">Trang chủ</a>
-<a class="text-sm font-semibold text-primary-dark underline underline-offset-4" href="#">Dịch vụ</a>
-<a class="text-sm font-semibold hover:text-primary-dark transition-colors" href="#">Chẩn đoán AI</a>
-<a class="text-sm font-semibold hover:text-primary-dark transition-colors" href="#">Liên hệ</a>
-</nav>
-</div>
-<div class="flex items-center gap-4">
-<div class="relative hidden sm:block">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-custom text-xl">search</span>
-<input class="h-10 w-64 rounded-full border-none bg-primary/10 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary" placeholder="Tìm dịch vụ..." type="text"/>
-</div>
-<button class="flex h-10 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-slate-900 hover:bg-primary-dark transition-all">
-                        Đăng nhập
-                    </button>
-</div>
-</div>
-</header>
-<main class="mx-auto w-full max-w-7xl px-6 py-12">
-<section class="mb-16">
-<div class="mb-10 flex items-end justify-between">
-<div>
-<h2 class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Dịch vụ sửa chữa tại Nha Trang</h2>
-<p class="mt-2 text-slate-custom dark:text-primary/60">Chuyên nghiệp - Tận tâm - Giá cả minh bạch niêm yết</p>
-</div>
-<button class="flex items-center gap-2 rounded-lg bg-white dark:bg-slate-800 px-4 py-2 text-sm font-bold shadow-sm hover:shadow-md transition-all border border-primary/20">
-                        Xem tất cả <span class="material-symbols-outlined text-base">arrow_forward</span>
-</button>
-</div>
-<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-<!-- Service Card 1 -->
-<div class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
-<div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
-<img class="h-full w-full object-cover group-hover:scale-105 transition-transform" data-alt="Modern flat screen television display" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGs59IjpN8BuTi_P42ul7xeU4ScSQxhhyWHJQdhtNThD1TzNNCCeaOjhxQ7OJyZFPSsSm9Zo0Ytj7P59YNMjE3UsRaKzYzSnwuRRU4u2dbb9WwVpO0C0rlANN-hDnTTtzUzbm8A_cTV4I9SIjkPVsPmk9c4xBTlvtlJB3IFn0pNGnEe8jdV4UAxchUns7WBFS_rMd7iG5j9yXJ6mnVLZ0SFTjvmriFTGMvMaeDa3JdcNaQac2_7mOEkZ6l-ipnyaZGP5WYmHNmAkDo"/>
-</div>
-<div class="flex items-start justify-between">
-<div>
-<h3 class="font-bold text-slate-900 dark:text-white">Sửa Tivi</h3>
-<p class="text-xs text-slate-custom dark:text-primary/50">Màn hình, bo mạch, nguồn</p>
-</div>
-<span class="material-symbols-outlined text-primary-dark">tv</span>
-</div>
-<button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
-                            Đặt sửa ngay
-                        </button>
-</div>
-<!-- Service Card 2 -->
-<div class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
-<div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
-<img class="h-full w-full object-cover group-hover:scale-105 transition-transform" data-alt="Modern front loading washing machine" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHPLh_yWZQJg6hb2UB5xQDXkxjgXrRPASn9OfkRlJkFHqWHpAGLRAv1Ghw5mH4AgGK1ls4ZzzU8CyTfdgfhOfLF-oSEzPSwxyrdx7SCPxIcMm3_987kE16-12v6zpZvnTs4nB8gtKHIjc_AOVApp4gG_OQ8eKrVXHezNg_DcOFmIf_sMT_Xqy1JP_1BP_PZIHpbtQvV5k8MuJiAIOx0qQ68n-dBDLssQTEXKUheLowvo2KxCbzhP2w4OQDAv5GjGfTumsqVaCWL1_V"/>
-</div>
-<div class="flex items-start justify-between">
-<div>
-<h3 class="font-bold text-slate-900 dark:text-white">Máy giặt</h3>
-<p class="text-xs text-slate-custom dark:text-primary/50">Rung lắc, không vắt, rò nước</p>
-</div>
-<span class="material-symbols-outlined text-primary-dark">local_laundry_service</span>
-</div>
-<button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
-                            Đặt sửa ngay
-                        </button>
-</div>
-<!-- Service Card 3 -->
-<div class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
-<div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
-<img class="h-full w-full object-cover group-hover:scale-105 transition-transform" data-alt="Open white refrigerator filled with food" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWQojltlBIIkMf_HWfaK_Eb1fl1c3GPKl3SiYSjlMm82vGFXDBIdY8mwCQFJIkztUP8YjV6pzry0O_0XLRuj8hg93xe9zgE0cGO4FvEBOGhhjkJ7SwyP-eRLY2sJVA6TRqP-YOh2dVvprmKzS9oHswnsPz854KLiZMF_B-4f4Ev7xwfTKn1Ra5q2HxJXWJGdA8CPneY20ZYv8OpO2wlzeW9HInKTv2LgGhVbGJJArLRLZK5mYyz_B7KB0tAS9fXmDX4BGqI7VTVn6v"/>
-</div>
-<div class="flex items-start justify-between">
-<div>
-<h3 class="font-bold text-slate-900 dark:text-white">Tủ lạnh</h3>
-<p class="text-xs text-slate-custom dark:text-primary/50">Kém lạnh, đóng tuyết, ồn</p>
-</div>
-<span class="material-symbols-outlined text-primary-dark">kitchen</span>
-</div>
-<button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
-                            Đặt sửa ngay
-                        </button>
-</div>
-<!-- Service Card 4 -->
-<div class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
-<div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
-<img class="h-full w-full object-cover group-hover:scale-105 transition-transform" data-alt="Wall mounted air conditioning unit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFu5RMcmH-rgGmPc1LP9RsharSKQQtQ-OtPXt7Ckl25w0hXWExkajoUKHJeX-6wL617me7WqlGNlACzLg0Xqqsb-_xW18yra21oj00n4KPFlglb1-eV9izwznUsVNFrw2snvwlGt1kHQpJuk9ygANvSpBcfMwipWHUFbU31VK9bMrMJsTDUup74_T-J9kF_uBo6Ap4lKKx--dYJ-8LGuDGgagRppjLZKkMDZPkYbFCGX_OwNMMo0w_-g6TI3YCl_XLJC7qJC0kTIgc"/>
-</div>
-<div class="flex items-start justify-between">
-<div>
-<h3 class="font-bold text-slate-900 dark:text-white">Điều hòa</h3>
-<p class="text-xs text-slate-custom dark:text-primary/50">Vệ sinh, nạp gas, hỏng tụ</p>
-</div>
-<span class="material-symbols-outlined text-primary-dark">ac_unit</span>
-</div>
-<button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
-                            Đặt sửa ngay
-                        </button>
-</div>
-<!-- Service Card 5 -->
-<div class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
-<div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
-<img class="h-full w-full object-cover group-hover:scale-105 transition-transform" data-alt="Modern induction electric cooktop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYQEnjZ_y1cBZ1m86jvD8BITprjx6Jdv8XfG1WH7chGibuPt5uQ39BanhdsxIv0C3LcZq-4VXQfgwynoWRp9-U_fwyh_hZvKXgQdxgjM2Z7uqHM5AI6jFsWQC5rgnKdbXuJtsNBcrOdI_SxL_hxe5LBakqgenKB1UwhbwM4ZTdNWWYTvHLaeWJBHVwDkW-f-Gyt22xeQtJubVLW7lhIf6ukfrh9Bu316gEhQZM_vjBHomkh8HzSloeLQCJm3-9Uaq1kFSPCuoxLvvN"/>
-</div>
-<div class="flex items-start justify-between">
-<div>
-<h3 class="font-bold text-slate-900 dark:text-white">Bếp điện</h3>
-<p class="text-xs text-slate-custom dark:text-primary/50">Lỗi E0-E9, không nhận nồi</p>
-</div>
-<span class="material-symbols-outlined text-primary-dark">cooking</span>
-</div>
-<button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
-                            Đặt sửa ngay
-                        </button>
-</div>
-<!-- Service Card 6 -->
-<div class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
-<div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
-<img class="h-full w-full object-cover group-hover:scale-105 transition-transform" data-alt="Black microwave oven on kitchen counter" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfZqOziIaI11NmfXcoTrUOx68uh_i1jSdgkTok_7OFc41JTAnsMPCJZA-0k_twlly-r1H2TMHNCXcO7Ps5cfG9Ymt4ZZxks0kX04nfn2gR0igVaLdqGVJt49Yft5CsWKbJDjaumQ7uq7eDhbhAXVlFB8xuAfyo8xXA5eVL0kVezn-RBSbKEYEtREnZbL_J05F_f5hIuKvxXMCjON7kMefPPH_Hohc-JgTn7UPsQ0A3wcws608wUNy5ak03Up06t7xQiE8vGXcvqNrS"/>
-</div>
-<div class="flex items-start justify-between">
-<div>
-<h3 class="font-bold text-slate-900 dark:text-white">Lò vi sóng</h3>
-<p class="text-xs text-slate-custom dark:text-primary/50">Không nóng, liệt phím</p>
-</div>
-<span class="material-symbols-outlined text-primary-dark">microwave</span>
-</div>
-<button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
-                            Đặt sửa ngay
-                        </button>
-</div>
-<!-- Service Card 7 -->
-<div class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
-<div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
-<img class="h-full w-full object-cover group-hover:scale-105 transition-transform" data-alt="Modern air fryer appliance" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQEDs1LOn5gumOwCjWfz4bZ6gA2xV0HaKakXrsFWFi4XBaK0WEcYR8ukrU-Im6Ie4Nxrm5wZ8jlE6KaEIKt1fKnz1H3ClTt83uqvV8GLQOsB_ZZUKwVYPMfp5hDjyw3QFGujVgBpPIXJotCxY-KjXoSQMOXYS0alUpkcQGp0U5YlVRBZEHC24rlsLQk0f2U3bIFE-lj3yyj_nkHV423Aj9mLLmnS9XzVPOnd-CEaoVecCK5E6wGV7cgg3RYdcvxP1h395vcSP72Ov3"/>
-</div>
-<div class="flex items-start justify-between">
-<div>
-<h3 class="font-bold text-slate-900 dark:text-white">Nồi chiên KD</h3>
-<p class="text-xs text-slate-custom dark:text-primary/50">Hỏng quạt, cảm biến nhiệt</p>
-</div>
-<span class="material-symbols-outlined text-primary-dark">air_purifier</span>
-</div>
-<button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
-                            Đặt sửa ngay
-                        </button>
-</div>
-<!-- Service Card 8 -->
-<div class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
-<div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
-<img class="h-full w-full object-cover group-hover:scale-105 transition-transform" data-alt="Electric water kettle on counter" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6j2AXxE-Yth4mDQQyIdsNk9MpIDOxV7Ccq2PZLiJFzE0n5NorcwrSkbMG2igDRiR6PrNxiW_wQMkn2688fvnhbqD0v-9kQHwk90AHXT31VlgdR7bZ-HcwnvnHdloooIxKraypSMo9o-pmJEVbJTAAJz-ufnC57vJ8YEA2_HbocFsZefZQh0vw_B_lk2asjClW_apGu2AafytDUd9sLPlW7S3tJahN1x8n2VgTVccBY8Mc4bhAE7DD-oKNa_cGQS93O2eIatQ_bYYt"/>
-</div>
-<div class="flex items-start justify-between">
-<div>
-<h3 class="font-bold text-slate-900 dark:text-white">Ấm siêu tốc</h3>
-<p class="text-xs text-slate-custom dark:text-primary/50">Không vào điện, cháy rơ le</p>
-</div>
-<span class="material-symbols-outlined text-primary-dark">kettle</span>
-</div>
-<button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
-                            Đặt sửa ngay
-                        </button>
-</div>
-</div>
-</section>
-<!-- AI Diagnosis Section -->
-<section class="rounded-3xl bg-white dark:bg-slate-800 p-8 shadow-xl border border-primary/30 relative overflow-hidden">
-<div class="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl"></div>
-<div class="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl"></div>
-<div class="relative z-10 grid grid-cols-1 gap-12 lg:grid-cols-2">
-<div>
-<div class="mb-6 flex items-center gap-3">
-<span class="material-symbols-outlined text-4xl text-primary-dark">psychology</span>
-<h2 class="text-3xl font-black text-slate-900 dark:text-white">AI Trợ lý Chẩn đoán</h2>
-</div>
-<p class="mb-8 text-slate-custom dark:text-primary/70">Mô tả tình trạng lỗi của thiết bị, AI sẽ giúp bạn dự đoán nguyên nhân và chi phí sửa chữa ước tính ngay lập tức.</p>
-<div class="space-y-6">
-<div>
-<label class="mb-2 block text-sm font-bold text-slate-900 dark:text-white">Thiết bị cần kiểm tra</label>
-<select class="w-full rounded-xl border-primary/20 bg-background-light dark:bg-slate-900 p-4 text-sm focus:border-primary focus:ring-primary dark:text-white">
-<option value="">Chọn loại thiết bị...</option>
-<option value="tv">Tivi (Màn hình/Âm thanh)</option>
-<option value="wm">Máy giặt</option>
-<option value="ref">Tủ lạnh / Tủ đông</option>
-<option value="ac">Điều hòa không khí</option>
-<option value="stove">Bếp điện / Bếp từ</option>
-</select>
-</div>
-<div>
-<label class="mb-2 block text-sm font-bold text-slate-900 dark:text-white">Mô tả hiện tượng lỗi</label>
-<textarea class="w-full rounded-xl border-primary/20 bg-background-light dark:bg-slate-900 p-4 text-sm focus:border-primary focus:ring-primary dark:text-white" placeholder="Ví dụ: Tivi Samsung có tiếng nhưng không có hình, màn hình có các sọc kẻ ngang..." rows="4"></textarea>
-</div>
-<div class="flex flex-wrap gap-4">
-<button class="flex items-center gap-2 rounded-xl border-2 border-dashed border-primary/40 px-6 py-4 text-sm font-bold text-slate-custom dark:text-primary-dark hover:bg-primary/5 transition-all">
-<span class="material-symbols-outlined">add_a_photo</span>
-                                    Tải ảnh/video lỗi
-                                </button>
-<button class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-black text-slate-900 hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all">
-<span class="material-symbols-outlined">analytics</span>
-                                    Phân tích lỗi với AI
-                                </button>
-</div>
-</div>
-</div>
-<div class="rounded-2xl bg-background-light/50 dark:bg-slate-900/50 p-6 border border-primary/10">
-<h3 class="mb-6 flex items-center gap-2 font-bold text-slate-900 dark:text-white">
-<span class="material-symbols-outlined text-primary-dark">assignment_turned_in</span>
-                            Kết quả chẩn đoán dự kiến
+    <!-- Header / TopNavBar -->
+    <header
+        class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-3">
+                <div class="size-10 bg-primary rounded-xl flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined text-3xl">hvac</span>
+                </div>
+                <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Thợ Tốt <span
+                        class="text-primary">NTU</span></h2>
+            </div>
+            <!-- Navigation -->
+            <nav class="hidden md:flex items-center gap-10">
+                <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Dịch vụ</a>
+                <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Thợ sửa</a>
+                <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Bảng giá</a>
+                <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Liên hệ</a>
+            </nav>
+            <!-- CTA -->
+            <div class="flex items-center gap-4">
+                <button
+                    class="hidden lg:flex items-center justify-center rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
+                    Đặt lịch sửa
+                </button>
+                <div class="size-10 rounded-full border-2 border-primary/20 p-0.5 overflow-hidden">
+                    <img class="w-full h-full object-cover" data-alt="User profile avatar icon"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7z3YTRww14XNlTgOD1RbdmOJp-uXtGsq4dUUDqjOz9uqU4jYAoOnp9BMiYNwU46cS-KTG1mVtWmoDQyUwl1eumxfZaYFLbek__0PYgUof-B7dp0lfoHotZvInykdYCGiPbLGaU_AUTN_AcQYHcn40mG4NLpS7DgfOUbY7ejmOe26MAZnxYkhw_UEYLYFYBLFTrDJ6XzHtSgQ-Og3oEQFF8wtct7Va1VYbKdXvin77jGbdQUBR0if4Whox8QXX4MQJBiaxZaBZd5bQ" />
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- Hero Section -->
+    <main class="flex-1">
+        <section class="relative pt-12 pb-24 px-6 overflow-hidden">
+            <!-- Soft Gradient Background -->
+            <div
+                class="absolute inset-0 -z-10 bg-gradient-to-br from-[#BAF2E9]/40 via-white to-white dark:from-primary/10 dark:via-background-dark dark:to-background-dark">
+            </div>
+            <div class="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12 items-center">
+                <!-- Hero Content -->
+                <div class="lg:col-span-7 flex flex-col gap-8">
+                    <div
+                        class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider w-fit">
+                        <span class="material-symbols-outlined text-sm">verified</span>
+                        Dịch vụ chuẩn 5 sao tại Nha Trang
+                    </div>
+                    <h1 class="text-5xl lg:text-[60px] font-extrabold leading-[1.1] text-slate-900 dark:text-white">
+                        Sửa đồ điện nhanh tại Nha Trang - <span class="text-primary">Thợ uy tín</span>
+                    </h1>
+                    <p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
+                        Chuyên sửa chữa thiết bị điện gia dụng và điện lạnh chuyên nghiệp. Có cửa hàng cố định, nhận sửa
+                        tận nhà, minh bạch giá cả và bảo hành dài hạn.
+                    </p>
+                    <!-- Quick Booking Form Card -->
+                    <div
+                        class="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 max-w-2xl">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">event_upcoming</span>
+                            Đặt lịch nhanh
                         </h3>
-<div class="space-y-6">
-<div class="rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm border-l-4 border-primary">
-<p class="text-xs font-bold uppercase tracking-wider text-slate-custom dark:text-primary/50">Nguyên nhân có thể</p>
-<p class="mt-1 text-sm text-slate-900 dark:text-white">Hệ thống đang chờ thông tin mô tả để phân tích...</p>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <!-- Device Select -->
+                            <div class="flex flex-col gap-2">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Thiết bị cần
+                                    sửa</label>
+                                <div class="relative">
+                                    <select
+                                        class="w-full h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-primary focus:border-primary px-4 appearance-none">
+                                        <option>Chọn loại thiết bị</option>
+                                        <option>Máy giặt</option>
+                                        <option>Tủ lạnh</option>
+                                        <option>Điều hòa</option>
+                                        <option>Lò vi sóng</option>
+                                        <option>Khác</option>
+                                    </select>
+                                    <span
+                                        class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400">expand_more</span>
+                                </div>
+                            </div>
+                            <!-- Address Input -->
+                            <div class="flex flex-col gap-2">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Địa chỉ tại Nha
+                                    Trang</label>
+                                <input
+                                    class="w-full h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-primary focus:border-primary px-4"
+                                    placeholder="Số nhà, tên đường..." type="text" />
+                            </div>
+                            <!-- Date Selection -->
+                            <div class="flex flex-col gap-2">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Ngày hẹn</label>
+                                <div class="relative">
+                                    <input
+                                        class="w-full h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-primary focus:border-primary px-4"
+                                        type="date" />
+                                </div>
+                            </div>
+                            <!-- Time Selection -->
+                            <div class="flex flex-col gap-2">
+                                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Giờ hẹn</label>
+                                <div class="relative">
+                                    <select
+                                        class="w-full h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-primary focus:border-primary px-4 appearance-none">
+                                        <option>Sáng (08:00 - 12:00)</option>
+                                        <option>Chiều (13:30 - 17:30)</option>
+                                        <option>Tối (18:00 - 20:00)</option>
+                                    </select>
+                                    <span
+                                        class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400">schedule</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-4 mt-8">
+                            <button
+                                class="flex-1 min-w-[160px] h-14 rounded-xl bg-accent text-white font-bold text-lg shadow-lg shadow-accent/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined">send</span>
+                                Đặt lịch ngay
+                            </button>
+                            <button
+                                class="flex-1 min-w-[200px] h-14 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-primary">smart_toy</span>
+                                AI kiểm tra lỗi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Hero Image / Illustration -->
+                <div class="lg:col-span-5 relative hidden lg:block">
+                    <div class="absolute -inset-4 bg-primary/20 blur-3xl rounded-full"></div>
+                    <div
+                        class="relative z-10 rounded-[2rem] overflow-hidden border-8 border-white dark:border-slate-800 shadow-2xl">
+                        <img class="w-full aspect-[4/5] object-cover"
+                            data-alt="Professional repair technician working on an electronic board"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAp1hAG6NXCS7wiHypSRullKGKHQyELgqoUFO6wz8Bqr-8RsTXmKhCKYB73RctveGIOWKUwUsrXwh0UM9SrLkDmbB3BN4_P9hpMcSPZE2HW9HiZVe0OzuBHY_ZV8JpaPdzAtFk-8P2SpKYi3QLyshg7bwptjpMk0yahKTfIiz8_QgPOADteX6hvqXFKIzeLIzhNTSWyqHmvRCHDw1rAG-MAOk8sZfXYguNRta-TBvqlYWU_G0DuwrU8I96S53ag31FLngEFFsm5wkMF" />
+                        <!-- Floating Card 1 -->
+                        <div
+                            class="absolute bottom-6 left-6 right-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-2xl shadow-xl flex items-center gap-4">
+                            <div
+                                class="size-12 rounded-full bg-green-500 flex items-center justify-center text-white shrink-0">
+                                <span class="material-symbols-outlined">call</span>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-500 uppercase tracking-tighter">Hỗ trợ 24/7</p>
+                                <p class="text-lg font-extrabold text-slate-900 dark:text-white">0905 123 456</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Floating Card 2 -->
+                    <div
+                        class="absolute -top-6 -right-6 bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 flex flex-col items-center gap-1 animate-bounce">
+                        <span class="material-symbols-outlined text-primary text-4xl">location_on</span>
+                        <span class="text-xs font-bold">Nha Trang</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- Quick Info / Features Section -->
+        <section class="max-w-7xl mx-auto px-6 py-12">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div
+                    class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <span class="material-symbols-outlined text-4xl text-primary">bolt</span>
+                    <h4 class="font-bold">Sửa nhanh 30'</h4>
+                    <p class="text-sm text-slate-500">Có mặt ngay sau khi gọi</p>
+                </div>
+                <div
+                    class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <span class="material-symbols-outlined text-4xl text-primary">verified_user</span>
+                    <h4 class="font-bold">Bảo hành 12th</h4>
+                    <p class="text-sm text-slate-500">Yên tâm sử dụng lâu dài</p>
+                </div>
+                <div
+                    class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <span class="material-symbols-outlined text-4xl text-primary">payments</span>
+                    <h4 class="font-bold">Giá minh bạch</h4>
+                    <p class="text-sm text-slate-500">Báo giá trước khi sửa</p>
+                </div>
+                <div
+                    class="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <span class="material-symbols-outlined text-4xl text-primary">store</span>
+                    <h4 class="font-bold">Có cửa hàng</h4>
+                    <p class="text-sm text-slate-500">Địa chỉ uy tín, rõ ràng</p>
+                </div>
+            </div>
+        </section>
+    </main>
+    <!-- Map section for location context -->
+    <section class="bg-slate-100 dark:bg-slate-950 py-16 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row gap-12 items-center">
+                <div class="md:w-1/3">
+                    <h2 class="text-3xl font-bold mb-4">Tìm chúng tôi tại Nha Trang</h2>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6">Chúng tôi phục vụ toàn bộ khu vực thành phố Nha
+                        Trang, bao gồm các phường trung tâm và khu vực lân cận.</p>
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="material-symbols-outlined text-primary">pin_drop</span>
+                        <span>Trần Phú, Phường Lộc Thọ, Nha Trang</span>
+                    </div>
+                    <div
+                        class="size-full rounded-2xl overflow-hidden shadow-inner bg-slate-200 dark:bg-slate-800 h-48 flex items-center justify-center">
+                        <span class="text-slate-400 italic">Bản đồ khu vực phục vụ</span>
+                    </div>
+                </div>
+                <div class="md:w-2/3 w-full h-[400px] rounded-3xl overflow-hidden shadow-2xl relative">
+                    <div class="absolute inset-0 bg-slate-300 dark:bg-slate-800" data-location="Nha Trang" style="">
+                        <!-- In a real app, an iframe would go here -->
+                        <div class="w-full h-full bg-cover bg-center" data-alt="Map view of Nha Trang coastal city area"
+                            style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCpN6jwCYJo_OQeMQyNF60yEtbKp5U8laaURFkSgpZf7NDHB3MnoKioofoeimgNH2XcwPVyj-DxFlX-P-S6fBmUXI7fHfEpMO-GARHFQUCYMcu-Xn2svuDy9EAGmzJa_zuYqKX9ng3o50lEMjkpbBnbP1HQNGC-eR5J8yFSyj_TG6wqMnmh02d6ZXQmO_4xKPVPGu2o8x60UEK6gIw85pQPy2N_YWKP36VD0Zjmy0Rl4lzg1mZC9GU_AhlpEWwt_6HnRG3nCzskqWOs')">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Simple Footer -->
+    <footer class="bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 py-10 px-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined text-xl">hvac</span>
+                </div>
+                <span class="font-bold text-lg">Thợ Tốt NTU</span>
+            </div>
+            <p class="text-slate-500 text-sm">© 2024 Thợ Tốt NTU. Thiết kế chuyên nghiệp cho người dân Nha Trang.</p>
+            <div class="flex gap-4">
+                <a class="text-slate-400 hover:text-primary transition-colors" href="#"><span
+                        class="material-symbols-outlined">public</span></a>
+                <a class="text-slate-400 hover:text-primary transition-colors" href="#"><span
+                        class="material-symbols-outlined">mail</span></a>
+                <a class="text-slate-400 hover:text-primary transition-colors" href="#"><span
+                        class="material-symbols-outlined">call</span></a>
+            </div>
+        </div>
+    </footer>
 </div>
-<div class="rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm border-l-4 border-primary">
-<p class="text-xs font-bold uppercase tracking-wider text-slate-custom dark:text-primary/50">Chi phí dự đoán</p>
-<div class="mt-1 flex items-baseline gap-1">
-<span class="text-lg font-black text-slate-900 dark:text-white">---.--- ₫</span>
-<span class="text-xs text-slate-custom">(Ước tính linh kiện + công)</span>
-</div>
-</div>
-<div>
-<p class="mb-3 text-sm font-bold text-slate-900 dark:text-white">Gợi ý thợ chuyên trách</p>
-<div class="space-y-3">
-<div class="flex items-center justify-between rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm border border-primary/5">
-<div class="flex items-center gap-3">
-<div class="h-10 w-10 overflow-hidden rounded-full bg-primary/20">
-<img class="h-full w-full object-cover" data-alt="Portrait of a professional technician" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaCzSX4bCrlEMBxyp5zbsprZaVmr01jTIHEOL-sUyGqxi08Qtqt2Vc_ep5hekvbbRGjeHnL2XXqB-fuzkmlGrEEykHF1gceuvo2Niw9VTQyg046vH-uroIf9ap7JBtsypig9KjVLqGGMfK-IEWe3rZK542YtN_dEzLuDp_oZrxLdLv2uQvvF7aQwveOkr_lYIlmODvZTTDgAuPNkyOBAvqwD7PSA9zqWx96xcmHgJC9rSlyOwCtXqL6AV9WNeB10FlJptTBN3X1JP6"/>
-</div>
-<div>
-<p class="text-sm font-bold">Thợ Văn Tuấn</p>
-<div class="flex items-center text-[10px] text-yellow-500">
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="material-symbols-outlined text-[12px] fill-current text-slate-300">star</span>
-<span class="ml-1 text-slate-custom">(120 đánh giá)</span>
-</div>
-</div>
-</div>
-<button class="rounded-lg bg-primary/20 px-3 py-1.5 text-xs font-bold text-slate-900 hover:bg-primary transition-colors">Kết nối</button>
-</div>
-<div class="flex items-center justify-between rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm border border-primary/5">
-<div class="flex items-center gap-3">
-<div class="h-10 w-10 overflow-hidden rounded-full bg-primary/20">
-<img class="h-full w-full object-cover" data-alt="Portrait of a male repair expert" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAmouTO3_6RHTky15WoKRL3veWFzMIWxPeiTrkOrVx536uAGeUWqre7KNRoI0Xx5cHOm5N1w0nu4amQIFlnv8nAa96vl07KzTEvKsW8LXCNUHaaCA3LDuAmRTAL6FX-TuVIFPReNY0VOIn3qfiozbArikIpTujtgj-ol0mdHnMuR7PGRI7-DemIc2XMOwbDlIBqseYzi2XuKw-PiU28WDhFj1f_eA_EL2ITr3yXAs6POYQQNGhRFuJEIkddNzIvZ_yh-5l_ZbEgyVy"/>
-</div>
-<div>
-<p class="text-sm font-bold">Thợ Minh Hoàng</p>
-<div class="flex items-center text-[10px] text-yellow-500">
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="material-symbols-outlined text-[12px] fill-current">star</span>
-<span class="ml-1 text-slate-custom">(85 đánh giá)</span>
-</div>
-</div>
-</div>
-<button class="rounded-lg bg-primary/20 px-3 py-1.5 text-xs font-bold text-slate-900 hover:bg-primary transition-colors">Kết nối</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</section>
-</main>
-<footer class="mt-auto border-t border-primary/10 bg-white dark:bg-background-dark py-10">
-<div class="mx-auto max-w-7xl px-6 text-center">
-<div class="flex items-center justify-center gap-2 mb-4">
-<span class="material-symbols-outlined text-primary-dark">verified</span>
-<span class="text-sm font-bold text-slate-custom uppercase tracking-widest">Thợ Tốt NTU - Uy tín là vàng</span>
-</div>
-<p class="text-xs text-slate-custom/60">© 2024 Thợ Tốt NTU Nha Trang. Tất cả các dịch vụ đều được bảo hành từ 3-12 tháng.</p>
-</div>
-</footer>
+
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+    <header
+        class="sticky top-0 z-50 w-full border-b border-primary/20 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+            <div class="flex items-center gap-8">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-slate-900">
+                        <span class="material-symbols-outlined text-2xl font-bold">build</span>
+                    </div>
+                    <h1 class="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white uppercase">Thợ Tốt
+                        <span class="text-primary-dark">NTU</span></h1>
+                </div>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a class="text-sm font-semibold hover:text-primary-dark transition-colors" href="#">Trang chủ</a>
+                    <a class="text-sm font-semibold text-primary-dark underline underline-offset-4" href="#">Dịch vụ</a>
+                    <a class="text-sm font-semibold hover:text-primary-dark transition-colors" href="#">Chẩn đoán AI</a>
+                    <a class="text-sm font-semibold hover:text-primary-dark transition-colors" href="#">Liên hệ</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="relative hidden sm:block">
+                    <span
+                        class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-custom text-xl">search</span>
+                    <input
+                        class="h-10 w-64 rounded-full border-none bg-primary/10 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary"
+                        placeholder="Tìm dịch vụ..." type="text" />
+                </div>
+                <button
+                    class="flex h-10 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-slate-900 hover:bg-primary-dark transition-all">
+                    Đăng nhập
+                </button>
+            </div>
+        </div>
+    </header>
+    <main class="mx-auto w-full max-w-7xl px-6 py-12">
+        <section class="mb-16">
+            <div class="mb-10 flex items-end justify-between">
+                <div>
+                    <h2 class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Dịch vụ sửa chữa tại
+                        Nha Trang</h2>
+                    <p class="mt-2 text-slate-custom dark:text-primary/60">Chuyên nghiệp - Tận tâm - Giá cả minh bạch
+                        niêm yết</p>
+                </div>
+                <button
+                    class="flex items-center gap-2 rounded-lg bg-white dark:bg-slate-800 px-4 py-2 text-sm font-bold shadow-sm hover:shadow-md transition-all border border-primary/20">
+                    Xem tất cả <span class="material-symbols-outlined text-base">arrow_forward</span>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <!-- Service Card 1 -->
+                <div
+                    class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
+                    <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
+                        <img class="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            data-alt="Modern flat screen television display"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGs59IjpN8BuTi_P42ul7xeU4ScSQxhhyWHJQdhtNThD1TzNNCCeaOjhxQ7OJyZFPSsSm9Zo0Ytj7P59YNMjE3UsRaKzYzSnwuRRU4u2dbb9WwVpO0C0rlANN-hDnTTtzUzbm8A_cTV4I9SIjkPVsPmk9c4xBTlvtlJB3IFn0pNGnEe8jdV4UAxchUns7WBFS_rMd7iG5j9yXJ6mnVLZ0SFTjvmriFTGMvMaeDa3JdcNaQac2_7mOEkZ6l-ipnyaZGP5WYmHNmAkDo" />
+                    </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">Sửa Tivi</h3>
+                            <p class="text-xs text-slate-custom dark:text-primary/50">Màn hình, bo mạch, nguồn</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary-dark">tv</span>
+                    </div>
+                    <button
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
+                        Sửa ngay
+                    </button>
+                </div>
+                <!-- Service Card 2 -->
+                <div
+                    class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
+                    <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
+                        <img class="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            data-alt="Modern front loading washing machine"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHPLh_yWZQJg6hb2UB5xQDXkxjgXrRPASn9OfkRlJkFHqWHpAGLRAv1Ghw5mH4AgGK1ls4ZzzU8CyTfdgfhOfLF-oSEzPSwxyrdx7SCPxIcMm3_987kE16-12v6zpZvnTs4nB8gtKHIjc_AOVApp4gG_OQ8eKrVXHezNg_DcOFmIf_sMT_Xqy1JP_1BP_PZIHpbtQvV5k8MuJiAIOx0qQ68n-dBDLssQTEXKUheLowvo2KxCbzhP2w4OQDAv5GjGfTumsqVaCWL1_V" />
+                    </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">Máy giặt</h3>
+                            <p class="text-xs text-slate-custom dark:text-primary/50">Rung lắc, không vắt, rò nước</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary-dark">local_laundry_service</span>
+                    </div>
+                    <button
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
+                        Sửa ngay
+                    </button>
+                </div>
+                <!-- Service Card 3 -->
+                <div
+                    class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
+                    <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
+                        <img class="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            data-alt="Open white refrigerator filled with food"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWQojltlBIIkMf_HWfaK_Eb1fl1c3GPKl3SiYSjlMm82vGFXDBIdY8mwCQFJIkztUP8YjV6pzry0O_0XLRuj8hg93xe9zgE0cGO4FvEBOGhhjkJ7SwyP-eRLY2sJVA6TRqP-YOh2dVvprmKzS9oHswnsPz854KLiZMF_B-4f4Ev7xwfTKn1Ra5q2HxJXWJGdA8CPneY20ZYv8OpO2wlzeW9HInKTv2LgGhVbGJJArLRLZK5mYyz_B7KB0tAS9fXmDX4BGqI7VTVn6v" />
+                    </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">Tủ lạnh</h3>
+                            <p class="text-xs text-slate-custom dark:text-primary/50">Kém lạnh, đóng tuyết, ồn</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary-dark">kitchen</span>
+                    </div>
+                    <button
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
+                        Sửa ngay
+                    </button>
+                </div>
+                <!-- Service Card 4 -->
+                <div
+                    class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
+                    <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
+                        <img class="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            data-alt="Wall mounted air conditioning unit"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFu5RMcmH-rgGmPc1LP9RsharSKQQtQ-OtPXt7Ckl25w0hXWExkajoUKHJeX-6wL617me7WqlGNlACzLg0Xqqsb-_xW18yra21oj00n4KPFlglb1-eV9izwznUsVNFrw2snvwlGt1kHQpJuk9ygANvSpBcfMwipWHUFbU31VK9bMrMJsTDUup74_T-J9kF_uBo6Ap4lKKx--dYJ-8LGuDGgagRppjLZKkMDZPkYbFCGX_OwNMMo0w_-g6TI3YCl_XLJC7qJC0kTIgc" />
+                    </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">Điều hòa</h3>
+                            <p class="text-xs text-slate-custom dark:text-primary/50">Vệ sinh, nạp gas, hỏng tụ</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary-dark">ac_unit</span>
+                    </div>
+                    <button
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
+                        Sửa ngay
+                    </button>
+                </div>
+                <!-- Service Card 5 -->
+                <div
+                    class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
+                    <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
+                        <img class="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            data-alt="Modern induction electric cooktop"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYQEnjZ_y1cBZ1m86jvD8BITprjx6Jdv8XfG1WH7chGibuPt5uQ39BanhdsxIv0C3LcZq-4VXQfgwynoWRp9-U_fwyh_hZvKXgQdxgjM2Z7uqHM5AI6jFsWQC5rgnKdbXuJtsNBcrOdI_SxL_hxe5LBakqgenKB1UwhbwM4ZTdNWWYTvHLaeWJBHVwDkW-f-Gyt22xeQtJubVLW7lhIf6ukfrh9Bu316gEhQZM_vjBHomkh8HzSloeLQCJm3-9Uaq1kFSPCuoxLvvN" />
+                    </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">Bếp điện</h3>
+                            <p class="text-xs text-slate-custom dark:text-primary/50">Lỗi E0-E9, không nhận nồi</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary-dark">cooking</span>
+                    </div>
+                    <button
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
+                        Sửa ngay
+                    </button>
+                </div>
+                <!-- Service Card 6 -->
+                <div
+                    class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
+                    <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
+                        <img class="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            data-alt="Black microwave oven on kitchen counter"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfZqOziIaI11NmfXcoTrUOx68uh_i1jSdgkTok_7OFc41JTAnsMPCJZA-0k_twlly-r1H2TMHNCXcO7Ps5cfG9Ymt4ZZxks0kX04nfn2gR0igVaLdqGVJt49Yft5CsWKbJDjaumQ7uq7eDhbhAXVlFB8xuAfyo8xXA5eVL0kVezn-RBSbKEYEtREnZbL_J05F_f5hIuKvxXMCjON7kMefPPH_Hohc-JgTn7UPsQ0A3wcws608wUNy5ak03Up06t7xQiE8vGXcvqNrS" />
+                    </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">Lò vi sóng</h3>
+                            <p class="text-xs text-slate-custom dark:text-primary/50">Không nóng, liệt phím</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary-dark">microwave</span>
+                    </div>
+                    <button
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
+                        Sửa ngay
+                    </button>
+                </div>
+                <!-- Service Card 7 -->
+                <div
+                    class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
+                    <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
+                        <img class="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            data-alt="Modern air fryer appliance"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQEDs1LOn5gumOwCjWfz4bZ6gA2xV0HaKakXrsFWFi4XBaK0WEcYR8ukrU-Im6Ie4Nxrm5wZ8jlE6KaEIKt1fKnz1H3ClTt83uqvV8GLQOsB_ZZUKwVYPMfp5hDjyw3QFGujVgBpPIXJotCxY-KjXoSQMOXYS0alUpkcQGp0U5YlVRBZEHC24rlsLQk0f2U3bIFE-lj3yyj_nkHV423Aj9mLLmnS9XzVPOnd-CEaoVecCK5E6wGV7cgg3RYdcvxP1h395vcSP72Ov3" />
+                    </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">Nồi chiên KD</h3>
+                            <p class="text-xs text-slate-custom dark:text-primary/50">Hỏng quạt, cảm biến nhiệt</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary-dark">air_purifier</span>
+                    </div>
+                    <button
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
+                        Sửa ngay
+                    </button>
+                </div>
+                <!-- Service Card 8 -->
+                <div
+                    class="group relative flex flex-col rounded-2xl bg-white dark:bg-slate-800 p-5 soft-shadow border border-transparent hover:border-primary transition-all">
+                    <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/5">
+                        <img class="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                            data-alt="Electric water kettle on counter"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6j2AXxE-Yth4mDQQyIdsNk9MpIDOxV7Ccq2PZLiJFzE0n5NorcwrSkbMG2igDRiR6PrNxiW_wQMkn2688fvnhbqD0v-9kQHwk90AHXT31VlgdR7bZ-HcwnvnHdloooIxKraypSMo9o-pmJEVbJTAAJz-ufnC57vJ8YEA2_HbocFsZefZQh0vw_B_lk2asjClW_apGu2AafytDUd9sLPlW7S3tJahN1x8n2VgTVccBY8Mc4bhAE7DD-oKNa_cGQS93O2eIatQ_bYYt" />
+                    </div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">Ấm siêu tốc</h3>
+                            <p class="text-xs text-slate-custom dark:text-primary/50">Không vào điện, cháy rơ le</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary-dark">kettle</span>
+                    </div>
+                    <button
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark">
+                        Sửa ngay
+                    </button>
+                </div>
+            </div>
+        </section>
+        <!-- AI Diagnosis Section -->
+        <section
+            class="rounded-3xl bg-white dark:bg-slate-800 p-8 shadow-xl border border-primary/30 relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl"></div>
+            <div class="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl"></div>
+            <div class="relative z-10 grid grid-cols-1 gap-12 lg:grid-cols-2">
+                <div>
+                    <div class="mb-6 flex items-center gap-3">
+                        <span class="material-symbols-outlined text-4xl text-primary-dark">psychology</span>
+                        <h2 class="text-3xl font-black text-slate-900 dark:text-white">AI Trợ lý Chẩn đoán</h2>
+                    </div>
+                    <p class="mb-8 text-slate-custom dark:text-primary/70">Mô tả tình trạng lỗi của thiết bị, AI sẽ giúp
+                        bạn dự đoán nguyên nhân và chi phí sửa chữa ước tính ngay lập tức.</p>
+                    <div class="space-y-6">
+                        <div>
+                            <label class="mb-2 block text-sm font-bold text-slate-900 dark:text-white">Thiết bị cần kiểm
+                                tra</label>
+                            <select
+                                class="w-full rounded-xl border-primary/20 bg-background-light dark:bg-slate-900 p-4 text-sm focus:border-primary focus:ring-primary dark:text-white">
+                                <option value="">Chọn loại thiết bị...</option>
+                                <option value="tv">Tivi (Màn hình/Âm thanh)</option>
+                                <option value="wm">Máy giặt</option>
+                                <option value="ref">Tủ lạnh / Tủ đông</option>
+                                <option value="ac">Điều hòa không khí</option>
+                                <option value="stove">Bếp điện / Bếp từ</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-bold text-slate-900 dark:text-white">Mô tả hiện tượng
+                                lỗi</label>
+                            <textarea
+                                class="w-full rounded-xl border-primary/20 bg-background-light dark:bg-slate-900 p-4 text-sm focus:border-primary focus:ring-primary dark:text-white"
+                                placeholder="Ví dụ: Tivi Samsung có tiếng nhưng không có hình, màn hình có các sọc kẻ ngang..."
+                                rows="4"></textarea>
+                        </div>
+                        <div class="flex flex-wrap gap-4">
+                            <button
+                                class="flex items-center gap-2 rounded-xl border-2 border-dashed border-primary/40 px-6 py-4 text-sm font-bold text-slate-custom dark:text-primary-dark hover:bg-primary/5 transition-all">
+                                <span class="material-symbols-outlined">add_a_photo</span>
+                                Tải ảnh/video lỗi
+                            </button>
+                            <button
+                                class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-black text-slate-900 hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all">
+                                <span class="material-symbols-outlined">analytics</span>
+                                Phân tích lỗi với AI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-2xl bg-background-light/50 dark:bg-slate-900/50 p-6 border border-primary/10">
+                    <h3 class="mb-6 flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+                        <span class="material-symbols-outlined text-primary-dark">assignment_turned_in</span>
+                        Kết quả chẩn đoán dự kiến
+                    </h3>
+                    <div class="space-y-6">
+                        <div class="rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm border-l-4 border-primary">
+                            <p
+                                class="text-xs font-bold uppercase tracking-wider text-slate-custom dark:text-primary/50">
+                                Nguyên nhân có thể</p>
+                            <p class="mt-1 text-sm text-slate-900 dark:text-white">Hệ thống đang chờ thông tin mô tả để
+                                phân tích...</p>
+                        </div>
+                        <div class="rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm border-l-4 border-primary">
+                            <p
+                                class="text-xs font-bold uppercase tracking-wider text-slate-custom dark:text-primary/50">
+                                Chi phí dự đoán</p>
+                            <div class="mt-1 flex items-baseline gap-1">
+                                <span class="text-lg font-black text-slate-900 dark:text-white">---.--- ₫</span>
+                                <span class="text-xs text-slate-custom">(Ước tính linh kiện + công)</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="mb-3 text-sm font-bold text-slate-900 dark:text-white">Gợi ý thợ chuyên trách</p>
+                            <div class="space-y-3">
+                                <div
+                                    class="flex items-center justify-between rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm border border-primary/5">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-10 w-10 overflow-hidden rounded-full bg-primary/20">
+                                            <img class="h-full w-full object-cover"
+                                                data-alt="Portrait of a professional technician"
+                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaCzSX4bCrlEMBxyp5zbsprZaVmr01jTIHEOL-sUyGqxi08Qtqt2Vc_ep5hekvbbRGjeHnL2XXqB-fuzkmlGrEEykHF1gceuvo2Niw9VTQyg046vH-uroIf9ap7JBtsypig9KjVLqGGMfK-IEWe3rZK542YtN_dEzLuDp_oZrxLdLv2uQvvF7aQwveOkr_lYIlmODvZTTDgAuPNkyOBAvqwD7PSA9zqWx96xcmHgJC9rSlyOwCtXqL6AV9WNeB10FlJptTBN3X1JP6" />
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold">Thợ Văn Tuấn</p>
+                                            <div class="flex items-center text-[10px] text-yellow-500">
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current text-slate-300">star</span>
+                                                <span class="ml-1 text-slate-custom">(120 đánh giá)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        class="rounded-lg bg-primary/20 px-3 py-1.5 text-xs font-bold text-slate-900 hover:bg-primary transition-colors">Kết
+                                        nối</button>
+                                </div>
+                                <div
+                                    class="flex items-center justify-between rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm border border-primary/5">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-10 w-10 overflow-hidden rounded-full bg-primary/20">
+                                            <img class="h-full w-full object-cover"
+                                                data-alt="Portrait of a male repair expert"
+                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAmouTO3_6RHTky15WoKRL3veWFzMIWxPeiTrkOrVx536uAGeUWqre7KNRoI0Xx5cHOm5N1w0nu4amQIFlnv8nAa96vl07KzTEvKsW8LXCNUHaaCA3LDuAmRTAL6FX-TuVIFPReNY0VOIn3qfiozbArikIpTujtgj-ol0mdHnMuR7PGRI7-DemIc2XMOwbDlIBqseYzi2XuKw-PiU28WDhFj1f_eA_EL2ITr3yXAs6POYQQNGhRFuJEIkddNzIvZ_yh-5l_ZbEgyVy" />
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold">Thợ Minh Hoàng</p>
+                                            <div class="flex items-center text-[10px] text-yellow-500">
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[12px] fill-current">star</span>
+                                                <span class="ml-1 text-slate-custom">(85 đánh giá)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        class="rounded-lg bg-primary/20 px-3 py-1.5 text-xs font-bold text-slate-900 hover:bg-primary transition-colors">Kết
+                                        nối</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="mt-auto border-t border-primary/10 bg-white dark:bg-background-dark py-10">
+        <div class="mx-auto max-w-7xl px-6 text-center">
+            <div class="flex items-center justify-center gap-2 mb-4">
+                <span class="material-symbols-outlined text-primary-dark">verified</span>
+                <span class="text-sm font-bold text-slate-custom uppercase tracking-widest">Thợ Tốt NTU - Uy tín là
+                    vàng</span>
+            </div>
+            <p class="text-xs text-slate-custom/60">© 2024 Thợ Tốt NTU Nha Trang. Tất cả các dịch vụ đều được bảo hành
+                từ 3-12 tháng.</p>
+        </div>
+    </footer>
 </div>
 
 <div class="relative flex min-h-screen flex-col overflow-x-hidden">
-<!-- Navigation Bar -->
-<header class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-6 lg:px-20 py-4">
-<div class="max-w-7xl mx-auto flex items-center justify-between">
-<div class="flex items-center gap-8">
-<div class="flex items-center gap-2">
-<div class="p-2 bg-primary rounded-lg text-slate-900">
-<span class="material-symbols-outlined block">home_repair_service</span>
-</div>
-<h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Thợ Tốt NTU</h1>
-</div>
-<nav class="hidden md:flex items-center gap-6">
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Quy trình</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Thợ nổi bật</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Dịch vụ</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Liên hệ</a>
-</nav>
-</div>
-<div class="flex items-center gap-4">
-<div class="relative hidden sm:block">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
-<input class="pl-10 pr-4 py-2 w-64 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary" placeholder="Tìm thợ hoặc dịch vụ..." type="text"/>
-</div>
-<button class="bg-primary hover:bg-primary/90 text-slate-900 px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">
-                        Đăng nhập
-                    </button>
-</div>
-</div>
-</header>
-<main class="max-w-7xl mx-auto w-full px-6 lg:px-20 py-12">
-<!-- Process Section -->
-<section class="mb-20">
-<div class="text-center mb-12">
-<h2 class="text-3xl font-bold text-slate-900 dark:text-white mb-4">Quy trình dịch vụ chuyên nghiệp</h2>
-<p class="text-slate-500 dark:text-slate-400">4 bước đơn giản để thiết bị của bạn hoạt động trở lại</p>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-<!-- Step 1 -->
-<div class="flex flex-col items-center text-center group">
-<div class="w-16 h-16 rounded-2xl bg-primary/10 dark:bg-primary/5 flex items-center justify-center mb-4 border border-primary/20 group-hover:bg-primary transition-all duration-300 group-hover:text-slate-900 text-primary">
-<span class="material-symbols-outlined text-3xl">edit_note</span>
-</div>
-<h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">1. Mô tả lỗi</h3>
-<p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Cung cấp thông tin hư hỏng và hình ảnh thiết bị qua website.</p>
-</div>
-<!-- Step 2 -->
-<div class="flex flex-col items-center text-center group">
-<div class="w-16 h-16 rounded-2xl bg-primary/10 dark:bg-primary/5 flex items-center justify-center mb-4 border border-primary/20 group-hover:bg-primary transition-all duration-300 group-hover:text-slate-900 text-primary">
-<span class="material-symbols-outlined text-3xl">person_search</span>
-</div>
-<h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">2. Chọn thợ</h3>
-<p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Duyệt hồ sơ thợ giỏi tại Nha Trang và chọn người phù hợp nhất.</p>
-</div>
-<!-- Step 3 -->
-<div class="flex flex-col items-center text-center group">
-<div class="w-16 h-16 rounded-2xl bg-primary/10 dark:bg-primary/5 flex items-center justify-center mb-4 border border-primary/20 group-hover:bg-primary transition-all duration-300 group-hover:text-slate-900 text-primary">
-<span class="material-symbols-outlined text-3xl">build</span>
-</div>
-<h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">3. Sửa chữa</h3>
-<p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Thợ đến tận nhà kiểm tra và tiến hành khắc phục lỗi thiết bị.</p>
-</div>
-<!-- Step 4 -->
-<div class="flex flex-col items-center text-center group">
-<div class="w-16 h-16 rounded-2xl bg-primary/10 dark:bg-primary/5 flex items-center justify-center mb-4 border border-primary/20 group-hover:bg-primary transition-all duration-300 group-hover:text-slate-900 text-primary">
-<span class="material-symbols-outlined text-3xl">account_balance_wallet</span>
-</div>
-<h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">4. Thanh toán</h3>
-<p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Nghiệm thu dịch vụ và thanh toán trực tiếp hoặc qua ứng dụng.</p>
-</div>
-</div>
-</section>
-<!-- Featured Technicians Section -->
-<section>
-<div class="flex items-end justify-between mb-8">
-<div>
-<h2 class="text-3xl font-bold text-slate-900 dark:text-white">Thợ Nổi Bật</h2>
-<p class="text-slate-500 dark:text-slate-400 mt-2">Những chuyên gia được đánh giá cao nhất trong khu vực</p>
-</div>
-<a class="text-primary font-semibold flex items-center gap-1 hover:underline underline-offset-4" href="#">
-                        Xem tất cả thợ
-                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
-</a>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-<!-- Technician Card 1 -->
-<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
-<div class="h-64 overflow-hidden relative">
-<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
-<img alt="Thợ điện máy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A professional male technician in a uniform holding a screwdriver" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHlxvrKvXJRdgRmIN9C2gjJg1qrwrCqxFDxa2bJPdZdgcZdPhP2IAnIyD8EJbJQsufm7Hwx9GJEd__kWt-GI5kvbsrfDCj0RCJgNCXbmbEKfh3ppogjQbvjtwhPgxpxXRB-itoy8hfTGUdEOzaZlZ5DWdpLwRev5du1qe8YbUF2EhiYEfVe7w-ykXhGTKfid92jn3dFb8pyUuKukF-Q7HOIieNd9C8ixkDY8Djqc2A_0pp15e9lr4XOsYxJMP4oTTHneWTzDwYUtKF"/>
-<div class="absolute bottom-4 left-4 z-20">
-<span class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Điện tử - Điện lạnh</span>
-</div>
-</div>
-<div class="p-6">
-<div class="flex justify-between items-start mb-2">
-<h3 class="text-xl font-bold text-slate-900 dark:text-white">Nguyễn Văn An</h3>
-<div class="flex items-center gap-1 text-yellow-500">
-<span class="material-symbols-outlined text-sm fill-1">star</span>
-<span class="text-sm font-bold">4.9</span>
-</div>
-</div>
-<div class="space-y-2 mb-6">
-<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-<span class="material-symbols-outlined text-lg">work_history</span>
-<span>8 năm kinh nghiệm</span>
-</div>
-<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-<span class="material-symbols-outlined text-lg">check_circle</span>
-<span>Đã hoàn thành 120+ công việc</span>
-</div>
-</div>
-<button class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-slate-900 text-slate-900 dark:text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
-                                Xem chi tiết
-                                <span class="material-symbols-outlined text-sm">open_in_new</span>
-</button>
-</div>
-</div>
-<!-- Technician Card 2 -->
-<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
-<div class="h-64 overflow-hidden relative">
-<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
-<img alt="Thợ điều hòa" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A smiling technician working on an outdoor air conditioning unit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZ6WPzDWa973i46Iti6WGzxatmssgABgRSSqC-Bq-Dg9PrkT3IemVoB5xMR0W8xtMgvpen_7iWNSZ60jEqetlvfgH79bfqqDetw3HyjFFL3SKiS8EBKTYV_IfyUUdyAssKz-Pe8GV5d5oCFwocnlXnhcN9jAAl6cix8iEJoZBkyb4e3uzX-EPXEcDDl_zcf5sb_UK3kljwBA3c7SpEU_IN8ephehzOc17So5u9TKGz1zW2LWZPxI3oU6Rdy7XamJK6XiMuzVWevocy"/>
-<div class="absolute bottom-4 left-4 z-20">
-<span class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Máy Lạnh - Tủ Lạnh</span>
-</div>
-</div>
-<div class="p-6">
-<div class="flex justify-between items-start mb-2">
-<h3 class="text-xl font-bold text-slate-900 dark:text-white">Trần Thị Bình</h3>
-<div class="flex items-center gap-1 text-yellow-500">
-<span class="material-symbols-outlined text-sm fill-1">star</span>
-<span class="text-sm font-bold">4.8</span>
-</div>
-</div>
-<div class="space-y-2 mb-6">
-<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-<span class="material-symbols-outlined text-lg">work_history</span>
-<span>5 năm kinh nghiệm</span>
-</div>
-<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-<span class="material-symbols-outlined text-lg">check_circle</span>
-<span>Đã hoàn thành 85+ công việc</span>
-</div>
-</div>
-<button class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-slate-900 text-slate-900 dark:text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
-                                Xem chi tiết
-                                <span class="material-symbols-outlined text-sm">open_in_new</span>
-</button>
-</div>
-</div>
-<!-- Technician Card 3 -->
-<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
-<div class="h-64 overflow-hidden relative">
-<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
-<img alt="Thợ kỹ thuật" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Senior technician expert examining a complex electronic motherboard" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBurEaN2EYTRrzaP5wlyCNx92vnsNABdb2VEmrH96QumpgHLW20UC1sn1-_gETRzNWmtDkaR8VHUH_d1nRMb7dAdHBCBsC8vQ-hXpMRDR6nZNLxLK30IedFWT-3HgwUfDnf2QO3d5gl2hUcHSoYdSRR9gmnWU2mjYtouypzW-zjkWan5Xj9ncctCPPOvaQxhxXZ5M3qs7l7cMIYkJDizcJg0Uq6umLx51rSyIXiy-59kz5UMjfH5h6tX_QQDw1lH9wEH86vNvITx3hg"/>
-<div class="absolute bottom-4 left-4 z-20">
-<span class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Điện Dân Dụng</span>
-</div>
-</div>
-<div class="p-6">
-<div class="flex justify-between items-start mb-2">
-<h3 class="text-xl font-bold text-slate-900 dark:text-white">Lê Văn Cường</h3>
-<div class="flex items-center gap-1 text-yellow-500">
-<span class="material-symbols-outlined text-sm fill-1">star</span>
-<span class="text-sm font-bold">5.0</span>
-</div>
-</div>
-<div class="space-y-2 mb-6">
-<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-<span class="material-symbols-outlined text-lg">work_history</span>
-<span>10 năm kinh nghiệm</span>
-</div>
-<div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-<span class="material-symbols-outlined text-lg">check_circle</span>
-<span>Đã hoàn thành 200+ công việc</span>
-</div>
-</div>
-<button class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-slate-900 text-slate-900 dark:text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
-                                Xem chi tiết
-                                <span class="material-symbols-outlined text-sm">open_in_new</span>
-</button>
-</div>
-</div>
-</div>
-</section>
-</main>
-<footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-10 px-6 lg:px-20 text-center">
-<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-<div class="flex items-center gap-2">
-<div class="p-1.5 bg-primary/20 rounded-md text-primary">
-<span class="material-symbols-outlined text-lg block">home_repair_service</span>
-</div>
-<span class="font-bold text-slate-900 dark:text-white">Thợ Tốt NTU</span>
-</div>
-<p class="text-sm text-slate-500 dark:text-slate-400">© 2024 Thợ Tốt NTU. Nền tảng kết nối thợ sửa chữa uy tín tại Nha Trang.</p>
-<div class="flex gap-4">
-<a class="text-slate-400 hover:text-primary" href="#"><span class="material-symbols-outlined">public</span></a>
-<a class="text-slate-400 hover:text-primary" href="#"><span class="material-symbols-outlined">alternate_email</span></a>
-<a class="text-slate-400 hover:text-primary" href="#"><span class="material-symbols-outlined">call</span></a>
-</div>
-</div>
-</footer>
+    <!-- Navigation Bar -->
+    <header
+        class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-6 lg:px-20 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-8">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-primary rounded-lg text-slate-900">
+                        <span class="material-symbols-outlined block">home_repair_service</span>
+                    </div>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Thợ Tốt NTU</h1>
+                </div>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Quy trình</a>
+                    <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Thợ nổi bật</a>
+                    <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Dịch vụ</a>
+                    <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Liên hệ</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="relative hidden sm:block">
+                    <span
+                        class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                    <input
+                        class="pl-10 pr-4 py-2 w-64 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary"
+                        placeholder="Tìm thợ hoặc dịch vụ..." type="text" />
+                </div>
+                <button
+                    class="bg-primary hover:bg-primary/90 text-slate-900 px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">
+                    Đăng nhập
+                </button>
+            </div>
+        </div>
+    </header>
+    <main class="max-w-7xl mx-auto w-full px-6 lg:px-20 py-12">
+        <!-- Process Section -->
+        <section class="mb-20">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-900 dark:text-white mb-4">Quy trình dịch vụ chuyên nghiệp</h2>
+                <p class="text-slate-500 dark:text-slate-400">4 bước đơn giản để thiết bị của bạn hoạt động trở lại</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
+                <!-- Step 1 -->
+                <div class="flex flex-col items-center text-center group">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-primary/10 dark:bg-primary/5 flex items-center justify-center mb-4 border border-primary/20 group-hover:bg-primary transition-all duration-300 group-hover:text-slate-900 text-primary">
+                        <span class="material-symbols-outlined text-3xl">edit_note</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">1. Mô tả lỗi</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Cung cấp thông tin hư hỏng và
+                        hình ảnh thiết bị qua website.</p>
+                </div>
+                <!-- Step 2 -->
+                <div class="flex flex-col items-center text-center group">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-primary/10 dark:bg-primary/5 flex items-center justify-center mb-4 border border-primary/20 group-hover:bg-primary transition-all duration-300 group-hover:text-slate-900 text-primary">
+                        <span class="material-symbols-outlined text-3xl">person_search</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">2. Chọn thợ</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Duyệt hồ sơ thợ giỏi tại Nha
+                        Trang và chọn người phù hợp nhất.</p>
+                </div>
+                <!-- Step 3 -->
+                <div class="flex flex-col items-center text-center group">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-primary/10 dark:bg-primary/5 flex items-center justify-center mb-4 border border-primary/20 group-hover:bg-primary transition-all duration-300 group-hover:text-slate-900 text-primary">
+                        <span class="material-symbols-outlined text-3xl">build</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">3. Sửa chữa</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Thợ đến tận nhà kiểm tra và
+                        tiến hành khắc phục lỗi thiết bị.</p>
+                </div>
+                <!-- Step 4 -->
+                <div class="flex flex-col items-center text-center group">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-primary/10 dark:bg-primary/5 flex items-center justify-center mb-4 border border-primary/20 group-hover:bg-primary transition-all duration-300 group-hover:text-slate-900 text-primary">
+                        <span class="material-symbols-outlined text-3xl">account_balance_wallet</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">4. Thanh toán</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Nghiệm thu dịch vụ và thanh
+                        toán trực tiếp hoặc qua ứng dụng.</p>
+                </div>
+            </div>
+        </section>
+        <!-- Featured Technicians Section -->
+        <section>
+            <div class="flex items-end justify-between mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-slate-900 dark:text-white">Thợ Nổi Bật</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-2">Những chuyên gia được đánh giá cao nhất trong khu
+                        vực</p>
+                </div>
+                <a class="text-primary font-semibold flex items-center gap-1 hover:underline underline-offset-4"
+                    href="#">
+                    Xem tất cả thợ
+                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                </a>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Technician Card 1 -->
+                <div
+                    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                    <div class="h-64 overflow-hidden relative">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
+                        <img alt="Thợ điện máy"
+                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            data-alt="A professional male technician in a uniform holding a screwdriver"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHlxvrKvXJRdgRmIN9C2gjJg1qrwrCqxFDxa2bJPdZdgcZdPhP2IAnIyD8EJbJQsufm7Hwx9GJEd__kWt-GI5kvbsrfDCj0RCJgNCXbmbEKfh3ppogjQbvjtwhPgxpxXRB-itoy8hfTGUdEOzaZlZ5DWdpLwRev5du1qe8YbUF2EhiYEfVe7w-ykXhGTKfid92jn3dFb8pyUuKukF-Q7HOIieNd9C8ixkDY8Djqc2A_0pp15e9lr4XOsYxJMP4oTTHneWTzDwYUtKF" />
+                        <div class="absolute bottom-4 left-4 z-20">
+                            <span
+                                class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Điện
+                                tử - Điện lạnh</span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-bold text-slate-900 dark:text-white">Nguyễn Văn An</h3>
+                            <div class="flex items-center gap-1 text-yellow-500">
+                                <span class="material-symbols-outlined text-sm fill-1">star</span>
+                                <span class="text-sm font-bold">4.9</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 mb-6">
+                            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                                <span class="material-symbols-outlined text-lg">work_history</span>
+                                <span>8 năm kinh nghiệm</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                                <span class="material-symbols-outlined text-lg">check_circle</span>
+                                <span>Đã hoàn thành 120+ công việc</span>
+                            </div>
+                        </div>
+                        <button
+                            class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-slate-900 text-slate-900 dark:text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                            Xem chi tiết
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Technician Card 2 -->
+                <div
+                    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                    <div class="h-64 overflow-hidden relative">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
+                        <img alt="Thợ điều hòa"
+                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            data-alt="A smiling technician working on an outdoor air conditioning unit"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZ6WPzDWa973i46Iti6WGzxatmssgABgRSSqC-Bq-Dg9PrkT3IemVoB5xMR0W8xtMgvpen_7iWNSZ60jEqetlvfgH79bfqqDetw3HyjFFL3SKiS8EBKTYV_IfyUUdyAssKz-Pe8GV5d5oCFwocnlXnhcN9jAAl6cix8iEJoZBkyb4e3uzX-EPXEcDDl_zcf5sb_UK3kljwBA3c7SpEU_IN8ephehzOc17So5u9TKGz1zW2LWZPxI3oU6Rdy7XamJK6XiMuzVWevocy" />
+                        <div class="absolute bottom-4 left-4 z-20">
+                            <span
+                                class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Máy
+                                Lạnh - Tủ Lạnh</span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-bold text-slate-900 dark:text-white">Trần Thị Bình</h3>
+                            <div class="flex items-center gap-1 text-yellow-500">
+                                <span class="material-symbols-outlined text-sm fill-1">star</span>
+                                <span class="text-sm font-bold">4.8</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 mb-6">
+                            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                                <span class="material-symbols-outlined text-lg">work_history</span>
+                                <span>5 năm kinh nghiệm</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                                <span class="material-symbols-outlined text-lg">check_circle</span>
+                                <span>Đã hoàn thành 85+ công việc</span>
+                            </div>
+                        </div>
+                        <button
+                            class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-slate-900 text-slate-900 dark:text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                            Xem chi tiết
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Technician Card 3 -->
+                <div
+                    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                    <div class="h-64 overflow-hidden relative">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
+                        <img alt="Thợ kỹ thuật"
+                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            data-alt="Senior technician expert examining a complex electronic motherboard"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBurEaN2EYTRrzaP5wlyCNx92vnsNABdb2VEmrH96QumpgHLW20UC1sn1-_gETRzNWmtDkaR8VHUH_d1nRMb7dAdHBCBsC8vQ-hXpMRDR6nZNLxLK30IedFWT-3HgwUfDnf2QO3d5gl2hUcHSoYdSRR9gmnWU2mjYtouypzW-zjkWan5Xj9ncctCPPOvaQxhxXZ5M3qs7l7cMIYkJDizcJg0Uq6umLx51rSyIXiy-59kz5UMjfH5h6tX_QQDw1lH9wEH86vNvITx3hg" />
+                        <div class="absolute bottom-4 left-4 z-20">
+                            <span
+                                class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Điện
+                                Dân Dụng</span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-bold text-slate-900 dark:text-white">Lê Văn Cường</h3>
+                            <div class="flex items-center gap-1 text-yellow-500">
+                                <span class="material-symbols-outlined text-sm fill-1">star</span>
+                                <span class="text-sm font-bold">5.0</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 mb-6">
+                            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                                <span class="material-symbols-outlined text-lg">work_history</span>
+                                <span>10 năm kinh nghiệm</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                                <span class="material-symbols-outlined text-lg">check_circle</span>
+                                <span>Đã hoàn thành 200+ công việc</span>
+                            </div>
+                        </div>
+                        <button
+                            class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-slate-900 text-slate-900 dark:text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                            Xem chi tiết
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer
+        class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-10 px-6 lg:px-20 text-center">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="p-1.5 bg-primary/20 rounded-md text-primary">
+                    <span class="material-symbols-outlined text-lg block">home_repair_service</span>
+                </div>
+                <span class="font-bold text-slate-900 dark:text-white">Thợ Tốt NTU</span>
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">© 2024 Thợ Tốt NTU. Nền tảng kết nối thợ sửa chữa uy
+                tín tại Nha Trang.</p>
+            <div class="flex gap-4">
+                <a class="text-slate-400 hover:text-primary" href="#"><span
+                        class="material-symbols-outlined">public</span></a>
+                <a class="text-slate-400 hover:text-primary" href="#"><span
+                        class="material-symbols-outlined">alternate_email</span></a>
+                <a class="text-slate-400 hover:text-primary" href="#"><span
+                        class="material-symbols-outlined">call</span></a>
+            </div>
+        </div>
+    </footer>
 </div>
 
 <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
-<!-- Navigation Bar -->
-<header class="sticky top-0 z-50 w-full bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-<div class="flex h-16 items-center justify-between">
-<div class="flex items-center gap-3">
-<div class="flex items-center justify-center size-10 bg-primary rounded-lg text-white">
-<span class="material-symbols-outlined">home_repair_service</span>
-</div>
-<h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Thợ Tốt <span class="text-primary">NTU</span></h1>
-</div>
-<nav class="hidden md:flex items-center gap-8">
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Trang chủ</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors text-primary" href="#">Dịch vụ</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Bảng giá</a>
-<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Liên hệ</a>
-</nav>
-<div class="flex items-center gap-4">
-<button class="hidden lg:flex items-center gap-2 bg-secondary/30 text-slate-800 px-4 py-2 rounded-full text-sm font-bold">
-<span class="material-symbols-outlined text-sm">call</span>
-                            090xxxxxxx
-                        </button>
-<div class="size-10 rounded-full border-2 border-primary overflow-hidden">
-<img class="w-full h-full object-cover" data-alt="User profile avatar repairman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDD_FnE4DMk39f4R6Xs9bMW8YsQ7ub5CBcDHEAQeVq3-0Qf2XEuAMdFD3LkZ3b4GLa7wZ0kM378CNV-6LwYxcBBkXowWmmUNYGmrHMIlSPolxo-gD7EE9nsZtEQFOzY7l_pqStuCPNBM62AEwMX6ps-qmr8mhrBlYCmT9Aj8Iok2x7PRuwreBQKVj7Ga1ZGB9G-dnxpPhI6EjXerc6loR3VCoE5Wd6YO9pHSAdhc0sa92ctJ4MpHjkPVAgTjcZpzMjgcUPeA2ZrXGjg"/>
-</div>
-</div>
-</div>
-</div>
-</header>
-<main class="flex-1">
-<!-- Pricing Section -->
-<section class="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-<div class="mb-12 text-center md:text-left">
-<h2 class="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-4">Bảng Giá Dịch Vụ Tham Khảo</h2>
-<div class="flex items-center gap-3 p-4 bg-secondary/20 rounded-xl border border-secondary/50 max-w-2xl">
-<span class="material-symbols-outlined text-primary">info</span>
-<p class="text-slate-600 dark:text-slate-400 text-sm">
-                            Giá niêm yết là mức giá khởi điểm. Chi phí thực tế sẽ được thợ báo chính xác sau khi kiểm tra tình trạng hư hỏng của thiết bị.
+    <!-- Navigation Bar -->
+    <header
+        class="sticky top-0 z-50 w-full bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center size-10 bg-primary rounded-lg text-white">
+                        <span class="material-symbols-outlined">home_repair_service</span>
+                    </div>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Thợ Tốt <span
+                            class="text-primary">NTU</span></h1>
+                </div>
+                <nav class="hidden md:flex items-center gap-8">
+                    <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Trang chủ</a>
+                    <a class="text-sm font-semibold hover:text-primary transition-colors text-primary" href="#">Dịch
+                        vụ</a>
+                    <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Bảng giá</a>
+                    <a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Liên hệ</a>
+                </nav>
+                <div class="flex items-center gap-4">
+                    <button
+                        class="hidden lg:flex items-center gap-2 bg-secondary/30 text-slate-800 px-4 py-2 rounded-full text-sm font-bold">
+                        <span class="material-symbols-outlined text-sm">call</span>
+                        090xxxxxxx
+                    </button>
+                    <div class="size-10 rounded-full border-2 border-primary overflow-hidden">
+                        <img class="w-full h-full object-cover" data-alt="User profile avatar repairman"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDD_FnE4DMk39f4R6Xs9bMW8YsQ7ub5CBcDHEAQeVq3-0Qf2XEuAMdFD3LkZ3b4GLa7wZ0kM378CNV-6LwYxcBBkXowWmmUNYGmrHMIlSPolxo-gD7EE9nsZtEQFOzY7l_pqStuCPNBM62AEwMX6ps-qmr8mhrBlYCmT9Aj8Iok2x7PRuwreBQKVj7Ga1ZGB9G-dnxpPhI6EjXerc6loR3VCoE5Wd6YO9pHSAdhc0sa92ctJ4MpHjkPVAgTjcZpzMjgcUPeA2ZrXGjg" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <main class="flex-1">
+        <!-- Pricing Section -->
+        <section class="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <div class="mb-12 text-center md:text-left">
+                <h2 class="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-4">Bảng Giá Dịch Vụ Tham
+                    Khảo</h2>
+                <div
+                    class="flex items-center gap-3 p-4 bg-secondary/20 rounded-xl border border-secondary/50 max-w-2xl">
+                    <span class="material-symbols-outlined text-primary">info</span>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm">
+                        Giá niêm yết là mức giá khởi điểm. Chi phí thực tế sẽ được thợ báo chính xác sau khi kiểm tra
+                        tình trạng hư hỏng của thiết bị.
+                    </p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Service Card 1 -->
+                <div
+                    class="group flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all shadow-sm hover:shadow-xl">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined text-3xl">tv</span>
+                        </div>
+                        <span
+                            class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Từ</span>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">Sửa Tivi</h3>
+                    <div class="flex items-baseline gap-1 mb-6">
+                        <span class="text-3xl font-black text-primary">150.000</span>
+                        <span class="text-sm font-bold text-slate-500">đ</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 flex-1">
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Kiểm tra tận nhà
+                        </li>
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Linh kiện chính hãng
+                        </li>
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Bảo hành 6 tháng
+                        </li>
+                    </ul>
+                    <button
+                        class="w-full bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:text-white py-3 rounded-xl font-bold transition-colors">
+                        Liên hệ ngay
+                    </button>
+                </div>
+                <!-- Service Card 2 -->
+                <div
+                    class="group flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all shadow-sm hover:shadow-xl">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined text-3xl">laundry</span>
+                        </div>
+                        <span
+                            class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Từ</span>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">Sửa Máy Giặt</h3>
+                    <div class="flex items-baseline gap-1 mb-6">
+                        <span class="text-3xl font-black text-primary">200.000</span>
+                        <span class="text-sm font-bold text-slate-500">đ</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 flex-1">
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Vệ sinh lồng giặt
+                        </li>
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Sửa bo mạch
+                        </li>
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Thay dây curoa
+                        </li>
+                    </ul>
+                    <button
+                        class="w-full bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:text-white py-3 rounded-xl font-bold transition-colors">
+                        Liên hệ ngay
+                    </button>
+                </div>
+                <!-- Service Card 3 -->
+                <div
+                    class="group flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all shadow-sm hover:shadow-xl">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined text-3xl">kitchen</span>
+                        </div>
+                        <span
+                            class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Từ</span>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">Sửa Tủ Lạnh</h3>
+                    <div class="flex items-baseline gap-1 mb-6">
+                        <span class="text-3xl font-black text-primary">250.000</span>
+                        <span class="text-sm font-bold text-slate-500">đ</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 flex-1">
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Nạp gas tủ lạnh
+                        </li>
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Sửa block
+                        </li>
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Thay gioăng cửa
+                        </li>
+                    </ul>
+                    <button
+                        class="w-full bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:text-white py-3 rounded-xl font-bold transition-colors">
+                        Liên hệ ngay
+                    </button>
+                </div>
+                <!-- Service Card 4 -->
+                <div
+                    class="group flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all shadow-sm hover:shadow-xl">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined text-3xl">ac_unit</span>
+                        </div>
+                        <span
+                            class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Từ</span>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">Sửa Máy Lạnh</h3>
+                    <div class="flex items-baseline gap-1 mb-6">
+                        <span class="text-3xl font-black text-primary">300.000</span>
+                        <span class="text-sm font-bold text-slate-500">đ</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 flex-1">
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Vệ sinh máy lạnh
+                        </li>
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Sửa xì gas
+                        </li>
+                        <li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-primary text-lg">check_circle</span>
+                            Lắp đặt máy lạnh
+                        </li>
+                    </ul>
+                    <button
+                        class="w-full bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:text-white py-3 rounded-xl font-bold transition-colors">
+                        Liên hệ ngay
+                    </button>
+                </div>
+            </div>
+        </section>
+        <!-- Store Location & Hours Section -->
+        <section class="py-16 bg-white dark:bg-slate-950">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-6">Vị Trí Cửa Hàng &amp; Giờ Hoạt Động</h2>
+                        <p class="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+                            Chúng tôi luôn sẵn sàng phục vụ quý khách tại cửa hàng hoặc hỗ trợ kỹ thuật tận nơi trong
+                            khu vực Nha Trang.
                         </p>
-</div>
-</div>
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-<!-- Service Card 1 -->
-<div class="group flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all shadow-sm hover:shadow-xl">
-<div class="flex justify-between items-start mb-6">
-<div class="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-3xl">tv</span>
-</div>
-<span class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Từ</span>
-</div>
-<h3 class="text-lg font-bold mb-2">Sửa Tivi</h3>
-<div class="flex items-baseline gap-1 mb-6">
-<span class="text-3xl font-black text-primary">150.000</span>
-<span class="text-sm font-bold text-slate-500">đ</span>
-</div>
-<ul class="space-y-3 mb-8 flex-1">
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Kiểm tra tận nhà
-                            </li>
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Linh kiện chính hãng
-                            </li>
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Bảo hành 6 tháng
-                            </li>
-</ul>
-<button class="w-full bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:text-white py-3 rounded-xl font-bold transition-colors">
-                            Liên hệ ngay
-                        </button>
-</div>
-<!-- Service Card 2 -->
-<div class="group flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all shadow-sm hover:shadow-xl">
-<div class="flex justify-between items-start mb-6">
-<div class="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-3xl">laundry</span>
-</div>
-<span class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Từ</span>
-</div>
-<h3 class="text-lg font-bold mb-2">Sửa Máy Giặt</h3>
-<div class="flex items-baseline gap-1 mb-6">
-<span class="text-3xl font-black text-primary">200.000</span>
-<span class="text-sm font-bold text-slate-500">đ</span>
-</div>
-<ul class="space-y-3 mb-8 flex-1">
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Vệ sinh lồng giặt
-                            </li>
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Sửa bo mạch
-                            </li>
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Thay dây curoa
-                            </li>
-</ul>
-<button class="w-full bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:text-white py-3 rounded-xl font-bold transition-colors">
-                            Liên hệ ngay
-                        </button>
-</div>
-<!-- Service Card 3 -->
-<div class="group flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all shadow-sm hover:shadow-xl">
-<div class="flex justify-between items-start mb-6">
-<div class="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-3xl">kitchen</span>
-</div>
-<span class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Từ</span>
-</div>
-<h3 class="text-lg font-bold mb-2">Sửa Tủ Lạnh</h3>
-<div class="flex items-baseline gap-1 mb-6">
-<span class="text-3xl font-black text-primary">250.000</span>
-<span class="text-sm font-bold text-slate-500">đ</span>
-</div>
-<ul class="space-y-3 mb-8 flex-1">
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Nạp gas tủ lạnh
-                            </li>
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Sửa block
-                            </li>
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Thay gioăng cửa
-                            </li>
-</ul>
-<button class="w-full bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:text-white py-3 rounded-xl font-bold transition-colors">
-                            Liên hệ ngay
-                        </button>
-</div>
-<!-- Service Card 4 -->
-<div class="group flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all shadow-sm hover:shadow-xl">
-<div class="flex justify-between items-start mb-6">
-<div class="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-3xl">ac_unit</span>
-</div>
-<span class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Từ</span>
-</div>
-<h3 class="text-lg font-bold mb-2">Sửa Máy Lạnh</h3>
-<div class="flex items-baseline gap-1 mb-6">
-<span class="text-3xl font-black text-primary">300.000</span>
-<span class="text-sm font-bold text-slate-500">đ</span>
-</div>
-<ul class="space-y-3 mb-8 flex-1">
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Vệ sinh máy lạnh
-                            </li>
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Sửa xì gas
-                            </li>
-<li class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-<span class="material-symbols-outlined text-primary text-lg">check_circle</span>
-                                Lắp đặt máy lạnh
-                            </li>
-</ul>
-<button class="w-full bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:text-white py-3 rounded-xl font-bold transition-colors">
-                            Liên hệ ngay
-                        </button>
-</div>
-</div>
-</section>
-<!-- Store Location & Hours Section -->
-<section class="py-16 bg-white dark:bg-slate-950">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-<div>
-<h2 class="text-3xl font-bold mb-6">Vị Trí Cửa Hàng &amp; Giờ Hoạt Động</h2>
-<p class="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-                                Chúng tôi luôn sẵn sàng phục vụ quý khách tại cửa hàng hoặc hỗ trợ kỹ thuật tận nơi trong khu vực Nha Trang.
-                            </p>
-<div class="space-y-6">
-<div class="flex gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-<div class="flex-shrink-0 size-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-<span class="material-symbols-outlined">schedule</span>
-</div>
-<div>
-<h4 class="font-bold text-slate-900 dark:text-white">Giờ mở cửa</h4>
-<p class="text-slate-600 dark:text-slate-400">Thứ 2 - Chủ Nhật: 07:30 - 20:00</p>
-</div>
-</div>
-<div class="flex gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-<div class="flex-shrink-0 size-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-<span class="material-symbols-outlined">location_on</span>
-</div>
-<div>
-<h4 class="font-bold text-slate-900 dark:text-white">Địa chỉ</h4>
-<p class="text-slate-600 dark:text-slate-400">Đại học Nha Trang, Vĩnh Thọ, Nha Trang, Khánh Hòa</p>
-</div>
-</div>
-</div>
-<button class="mt-10 inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95">
-<span class="material-symbols-outlined">event_available</span>
-                                Đặt lịch đến cửa hàng
-                            </button>
-</div>
-<div class="relative group">
-<div class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-<div class="relative w-full aspect-video rounded-2xl overflow-hidden border-4 border-white dark:border-slate-800 shadow-2xl bg-slate-200">
-<div class="w-full h-full bg-cover bg-center grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="Map view of Nha Trang city center" data-location="Nha Trang City" style="background-image: url('https://placeholder.pics/svg/300')"></div>
-<div class="absolute inset-0 flex items-center justify-center">
-<div class="bg-white/90 backdrop-blur px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
-<span class="material-symbols-outlined text-primary">pin_drop</span>
-<span class="text-sm font-bold text-slate-900">Xem trên bản đồ</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</section>
-</main>
-<!-- Footer -->
-<footer class="bg-slate-900 text-slate-300 pt-16 pb-8">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-<!-- Brand -->
-<div class="col-span-1 lg:col-span-1">
-<div class="flex items-center gap-3 mb-6">
-<div class="size-8 bg-primary rounded flex items-center justify-center text-white">
-<span class="material-symbols-outlined text-xl">home_repair_service</span>
-</div>
-<h2 class="text-xl font-bold text-white tracking-tight">Thợ Tốt NTU</h2>
-</div>
-<p class="text-sm leading-relaxed mb-6">
-                            Dịch vụ sửa chữa điện tử, điện lạnh uy tín hàng đầu tại Nha Trang. Đội ngũ thợ tay nghề cao, phục vụ nhanh chóng 24/7.
-                        </p>
-<div class="flex gap-4">
-<a aria-label="Facebook" class="size-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors text-white" href="#">
-<svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"></path></svg>
-</a>
-<a class="size-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors font-bold text-white text-xs" href="#">
-                                Zalo
-                            </a>
-</div>
-</div>
-<!-- Services -->
-<div>
-<h3 class="text-white font-bold mb-6">Dịch vụ chính</h3>
-<ul class="space-y-4 text-sm">
-<li><a class="hover:text-primary transition-colors" href="#">Sửa chữa Tivi</a></li>
-<li><a class="hover:text-primary transition-colors" href="#">Sửa chữa Máy lạnh</a></li>
-<li><a class="hover:text-primary transition-colors" href="#">Sửa chữa Tủ lạnh</a></li>
-<li><a class="hover:text-primary transition-colors" href="#">Vệ sinh Máy giặt</a></li>
-<li><a class="hover:text-primary transition-colors" href="#">Lắp đặt thiết bị</a></li>
-</ul>
-</div>
-<!-- Contact -->
-<div>
-<h3 class="text-white font-bold mb-6">Thông tin liên hệ</h3>
-<ul class="space-y-4 text-sm">
-<li class="flex gap-3">
-<span class="material-symbols-outlined text-primary text-sm">phone_in_talk</span>
-                                090xxxxxxx
-                            </li>
-<li class="flex gap-3">
-<span class="material-symbols-outlined text-primary text-sm">mail</span>
-                                contact@thototntu.vn
-                            </li>
-<li class="flex gap-3">
-<span class="material-symbols-outlined text-primary text-sm">location_on</span>
-                                Nha Trang, Khánh Hòa
-                            </li>
-</ul>
-</div>
-<!-- Work Hours -->
-<div>
-<h3 class="text-white font-bold mb-6">Giờ hoạt động</h3>
-<div class="space-y-2 text-sm">
-<div class="flex justify-between">
-<span>Thứ 2 - Thứ 6:</span>
-<span class="text-white">07:30 - 20:00</span>
-</div>
-<div class="flex justify-between">
-<span>Thứ 7:</span>
-<span class="text-white">08:00 - 18:00</span>
-</div>
-<div class="flex justify-between">
-<span>Chủ nhật:</span>
-<span class="text-white">09:00 - 16:00</span>
-</div>
-<div class="mt-4 p-3 bg-primary/10 rounded-lg text-primary text-xs font-bold border border-primary/20">
-                                Sẵn sàng hỗ trợ sự cố khẩn cấp 24/7 qua hotline
+                        <div class="space-y-6">
+                            <div
+                                class="flex gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                                <div
+                                    class="flex-shrink-0 size-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined">schedule</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-900 dark:text-white">Giờ mở cửa</h4>
+                                    <p class="text-slate-600 dark:text-slate-400">Thứ 2 - Chủ Nhật: 07:30 - 20:00</p>
+                                </div>
                             </div>
-</div>
-</div>
-</div>
-<div class="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-<p>© 2024 Thợ Tốt NTU. Thiết kế bởi UI Designer.</p>
-<div class="flex gap-6">
-<a class="hover:text-white transition-colors" href="#">Chính sách bảo hành</a>
-<a class="hover:text-white transition-colors" href="#">Chính sách bảo mật</a>
-</div>
-</div>
-</div>
-</footer>
+                            <div
+                                class="flex gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                                <div
+                                    class="flex-shrink-0 size-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                    <span class="material-symbols-outlined">location_on</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-900 dark:text-white">Địa chỉ</h4>
+                                    <p class="text-slate-600 dark:text-slate-400">Đại học Nha Trang, Vĩnh Thọ, Nha
+                                        Trang, Khánh Hòa</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            class="mt-10 inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95">
+                            <span class="material-symbols-outlined">event_available</span>
+                            Đặt lịch đến cửa hàng
+                        </button>
+                    </div>
+                    <div class="relative group">
+                        <div
+                            class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200">
+                        </div>
+                        <div
+                            class="relative w-full aspect-video rounded-2xl overflow-hidden border-4 border-white dark:border-slate-800 shadow-2xl bg-slate-200">
+                            <div class="w-full h-full bg-cover bg-center grayscale group-hover:grayscale-0 transition-all duration-500"
+                                data-alt="Map view of Nha Trang city center" data-location="Nha Trang City"
+                                style="background-image: url('https://placeholder.pics/svg/300')"></div>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div
+                                    class="bg-white/90 backdrop-blur px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">pin_drop</span>
+                                    <span class="text-sm font-bold text-slate-900">Xem trên bản đồ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-300 pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+                <!-- Brand -->
+                <div class="col-span-1 lg:col-span-1">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="size-8 bg-primary rounded flex items-center justify-center text-white">
+                            <span class="material-symbols-outlined text-xl">home_repair_service</span>
+                        </div>
+                        <h2 class="text-xl font-bold text-white tracking-tight">Thợ Tốt NTU</h2>
+                    </div>
+                    <p class="text-sm leading-relaxed mb-6">
+                        Dịch vụ sửa chữa điện tử, điện lạnh uy tín hàng đầu tại Nha Trang. Đội ngũ thợ tay nghề cao,
+                        phục vụ nhanh chóng 24/7.
+                    </p>
+                    <div class="flex gap-4">
+                        <a aria-label="Facebook"
+                            class="size-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors text-white"
+                            href="#">
+                            <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24">
+                                <path
+                                    d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z">
+                                </path>
+                            </svg>
+                        </a>
+                        <a class="size-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors font-bold text-white text-xs"
+                            href="#">
+                            Zalo
+                        </a>
+                    </div>
+                </div>
+                <!-- Services -->
+                <div>
+                    <h3 class="text-white font-bold mb-6">Dịch vụ chính</h3>
+                    <ul class="space-y-4 text-sm">
+                        <li><a class="hover:text-primary transition-colors" href="#">Sửa chữa Tivi</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="#">Sửa chữa Máy lạnh</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="#">Sửa chữa Tủ lạnh</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="#">Vệ sinh Máy giặt</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="#">Lắp đặt thiết bị</a></li>
+                    </ul>
+                </div>
+                <!-- Contact -->
+                <div>
+                    <h3 class="text-white font-bold mb-6">Thông tin liên hệ</h3>
+                    <ul class="space-y-4 text-sm">
+                        <li class="flex gap-3">
+                            <span class="material-symbols-outlined text-primary text-sm">phone_in_talk</span>
+                            090xxxxxxx
+                        </li>
+                        <li class="flex gap-3">
+                            <span class="material-symbols-outlined text-primary text-sm">mail</span>
+                            contact@thototntu.vn
+                        </li>
+                        <li class="flex gap-3">
+                            <span class="material-symbols-outlined text-primary text-sm">location_on</span>
+                            Nha Trang, Khánh Hòa
+                        </li>
+                    </ul>
+                </div>
+                <!-- Work Hours -->
+                <div>
+                    <h3 class="text-white font-bold mb-6">Giờ hoạt động</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span>Thứ 2 - Thứ 6:</span>
+                            <span class="text-white">07:30 - 20:00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Thứ 7:</span>
+                            <span class="text-white">08:00 - 18:00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Chủ nhật:</span>
+                            <span class="text-white">09:00 - 16:00</span>
+                        </div>
+                        <div
+                            class="mt-4 p-3 bg-primary/10 rounded-lg text-primary text-xs font-bold border border-primary/20">
+                            Sẵn sàng hỗ trợ sự cố khẩn cấp 24/7 qua hotline
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
+                <p>© 2024 Thợ Tốt NTU. Thiết kế bởi UI Designer.</p>
+                <div class="flex gap-6">
+                    <a class="hover:text-white transition-colors" href="#">Chính sách bảo hành</a>
+                    <a class="hover:text-white transition-colors" href="#">Chính sách bảo mật</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 </div>

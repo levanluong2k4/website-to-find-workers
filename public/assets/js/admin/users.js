@@ -40,6 +40,18 @@ document.addEventListener('DOMContentLoaded', () => {
         ? '<span class="chip bg-success-subtle text-success">Hoat dong</span>'
         : '<span class="chip bg-danger-subtle text-danger">Da khoa</span>';
 
+    const renderWorkerActions = (approvalStatus, userId) => {
+        const normalizedStatus = approvalStatus || 'cho_duyet';
+        const actions = [];
+
+        if (normalizedStatus === 'cho_duyet') {
+            actions.push(`<button class="btn btn-sm btn-outline-success me-1 btn-approve" data-id="${userId}">Duyet</button>`);
+            actions.push(`<button class="btn btn-sm btn-outline-danger me-1 btn-reject" data-id="${userId}">Tu choi</button>`);
+        }
+
+        return actions.join('');
+    };
+
     const renderUsers = (users) => {
         const filteredUsers = users.filter((user) => {
             if (approvalFilter.value === '' || user.role !== 'worker') {
@@ -77,11 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : '<span class="text-muted">Khong ap dung</span>';
 
             const workerActions = user.role === 'worker'
-                ? `
-                    <button class="btn btn-sm btn-outline-success me-1 btn-approve" data-id="${user.id}">Duyet</button>
-                    <button class="btn btn-sm btn-outline-warning me-1 btn-pending" data-id="${user.id}">Cho duyet</button>
-                    <button class="btn btn-sm btn-outline-danger me-1 btn-reject" data-id="${user.id}">Tu choi</button>
-                `
+                ? renderWorkerActions(workerProfile?.trang_thai_duyet, user.id)
                 : '';
 
             const toggleText = user.is_active ? 'Khoa' : 'Mo khoa';

@@ -8,6 +8,7 @@ use App\Models\DonDatLich;
 use App\Models\User;
 use App\Notifications\NewBookingNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification;
 
 class DonDatLichController extends Controller
@@ -20,6 +21,7 @@ class DonDatLichController extends Controller
             'khachHang:id,name,avatar,phone',
             'tho:id,name,avatar,phone',
             'dichVu:id,ten_dich_vu',
+            'dichVus:id,ten_dich_vu,hinh_anh',
             'danhGias',
         ]);
 
@@ -43,6 +45,7 @@ class DonDatLichController extends Controller
             \Illuminate\Support\Facades\Log::info('Booking store started', ['request' => $request->all()]);
             $validated = $request->validated();
             \Illuminate\Support\Facades\Log::info('Validation passed', ['validated' => $validated]);
+            $serviceIds = $this->normalizeValidatedServiceIds($validated);
 
             $khoangCach = null;
             $phiDiLai = 0;
@@ -88,7 +91,7 @@ class DonDatLichController extends Controller
             $booking = new DonDatLich();
             $booking->khach_hang_id = $user->id;
             $booking->tho_id = $validated['tho_id'] ?? null;
-            $booking->dich_vu_id = $validated['dich_vu_id'] ?? null;
+            $booking->dich_vu_id = $serviceIds[0] ?? ($validated['dich_vu_id'] ?? null);
             $booking->loai_dat_lich = $validated['loai_dat_lich'] ?? 'at_store';
             $booking->ngay_hen = $validated['ngay_hen'] ?? now()->toDateString();
             $booking->khung_gio_hen = $validated['khung_gio_hen'] ?? '08:00-10:00';
@@ -145,6 +148,7 @@ class DonDatLichController extends Controller
 
             \Illuminate\Support\Facades\Log::info('Saving booking');
             $booking->save();
+            $booking->dichVus()->sync($serviceIds);
 
             if ($booking->tho_id) {
                 $tho = User::find($booking->tho_id);
@@ -152,13 +156,13 @@ class DonDatLichController extends Controller
                     $tho->notify(new NewBookingNotification($booking));
                 }
             } else {
-                $thoList = User::where('role', 'worker')->where('is_active', true)->get();
+                $thoList = $this->getEligibleWorkersForServiceIds($serviceIds);
                 Notification::send($thoList, new NewBookingNotification($booking));
             }
 
             return response()->json([
                 'message' => 'Dat lich thanh cong',
-                'data' => $booking->load(['khachHang', 'tho', 'dichVu']),
+                'data' => $booking->load(['khachHang', 'tho', 'dichVu', 'dichVus']),
             ], 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error in DonDatLichController@store', [
@@ -183,9 +187,24 @@ class DonDatLichController extends Controller
         $jobs = DonDatLich::with([
             'khachHang:id,name,avatar,phone',
             'dichVu:id,ten_dich_vu',
+            'dichVus:id,ten_dich_vu,hinh_anh',
         ])
             ->whereNull('tho_id')
             ->where('trang_thai', 'cho_xac_nhan')
+            ->when(
+                $user->dichVus()->exists(),
+                function ($query) use ($user) {
+                    $workerServiceIds = $user->dichVus()->pluck('danh_muc_dich_vu.id')->all();
+
+                    $query->whereHas('dichVus')
+                        ->whereDoesntHave('dichVus', function ($serviceQuery) use ($workerServiceIds) {
+                            $serviceQuery->whereNotIn('danh_muc_dich_vu.id', $workerServiceIds);
+                        });
+                },
+                function ($query) {
+                    $query->whereRaw('1 = 0');
+                }
+            )
             ->orderByDesc('created_at')
             ->get();
 
@@ -208,6 +227,10 @@ class DonDatLichController extends Controller
             return response()->json(['message' => 'Don nay da duoc tho khac nhan hoac khong con kha dung'], 400);
         }
 
+        if (!$this->workerSupportsBookingServices($user, $booking)) {
+            return response()->json(['message' => 'Ban chi co the nhan don nam trong nhom dich vu minh co the sua'], 400);
+        }
+
         $booking->tho_id = $user->id;
         $booking->trang_thai = 'da_xac_nhan';
         $booking->save();
@@ -223,6 +246,7 @@ class DonDatLichController extends Controller
             'khachHang:id,name,avatar,phone,address',
             'tho:id,name,avatar,phone',
             'dichVu',
+            'dichVus:id,ten_dich_vu,hinh_anh',
         ])->find($id);
 
         if (!$booking) {
@@ -457,5 +481,77 @@ class DonDatLichController extends Controller
     private function canActAsWorker(User $user): bool
     {
         return in_array($user->role, ['worker', 'admin'], true);
+    }
+
+    private function normalizeValidatedServiceIds(array $validated): array
+    {
+        $serviceIds = $validated['dich_vu_ids'] ?? [];
+
+        if (!is_array($serviceIds)) {
+            $serviceIds = [$serviceIds];
+        }
+
+        if (empty($serviceIds) && !empty($validated['dich_vu_id'])) {
+            $serviceIds = [$validated['dich_vu_id']];
+        }
+
+        return collect($serviceIds)
+            ->filter(static fn ($id) => $id !== null && $id !== '')
+            ->map(static fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function getEligibleWorkersForServiceIds(array $serviceIds): Collection
+    {
+        $serviceIds = collect($serviceIds)
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($serviceIds)) {
+            return collect();
+        }
+
+        $query = User::query()
+            ->where('role', 'worker')
+            ->where('is_active', true)
+            ->whereHas('hoSoTho', function ($profileQuery) {
+                $profileQuery
+                    ->where('trang_thai_duyet', 'da_duyet')
+                    ->where('dang_hoat_dong', true);
+            });
+
+        foreach ($serviceIds as $serviceId) {
+            $query->whereHas('dichVus', function ($serviceQuery) use ($serviceId) {
+                $serviceQuery->whereKey($serviceId);
+            });
+        }
+
+        return $query->get();
+    }
+
+    private function workerSupportsBookingServices(User $worker, DonDatLich $booking): bool
+    {
+        $bookingServiceIds = $booking->dichVus()
+            ->pluck('danh_muc_dich_vu.id')
+            ->map(static fn ($id) => (int) $id);
+
+        if ($bookingServiceIds->isEmpty() && $booking->dich_vu_id) {
+            $bookingServiceIds = collect([(int) $booking->dich_vu_id]);
+        }
+
+        if ($bookingServiceIds->isEmpty()) {
+            return false;
+        }
+
+        $workerServiceIds = $worker->dichVus()
+            ->pluck('danh_muc_dich_vu.id')
+            ->map(static fn ($id) => (int) $id);
+
+        return $bookingServiceIds->diff($workerServiceIds)->isEmpty();
     }
 }

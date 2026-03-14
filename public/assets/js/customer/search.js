@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 workersContainer.innerHTML = `
                 <div class="col-12 text-center py-5">
-                    <img src="/assets/images/logo.png" style="width: 100px; opacity: 0.1; filter: grayscale(1); margin-bottom: 20px;">
+                    <img src="/assets/images/logontu.png" style="width: 100px; opacity: 0.1; filter: grayscale(1); margin-bottom: 20px;">
                         <h4 class="text-muted fw-bold">Không tìm thấy thợ phù hợp</h4>
                         <p class="text-muted-custom">Vui lòng thử thay đổi từ khóa hoặc bộ lọc tìm kiếm.</p>
                         <button class="btn btn-outline-primary mt-3 px-4 rounded-pill" onclick="window.location.href='/customer/search'">Xóa bộ lọc</button>

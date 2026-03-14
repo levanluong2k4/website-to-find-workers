@@ -4,6 +4,19 @@ const path = window.location.pathname;
 const isCustomerScope = path === '/' || path.startsWith('/customer');
 
 if (isCustomerScope) {
+    const typingIndicatorHtml = `
+        <div class="chat-bubble chat-bubble-assistant">
+            <div class="chat-typing">
+                <img src="/assets/images/robotAI.png" alt="AI Robot" class="chat-typing-avatar">
+                <div class="chat-typing-dots" aria-label="AI dang soan tin">
+                    <span class="chat-typing-dot"></span>
+                    <span class="chat-typing-dot"></span>
+                    <span class="chat-typing-dot"></span>
+                </div>
+            </div>
+        </div>
+    `;
+
     const widget = document.getElementById('customerChatWidget');
     const panel = document.getElementById('customerChatPanel');
     const toggleButton = document.getElementById('customerChatToggle');
@@ -139,7 +152,7 @@ if (isCustomerScope) {
             const typingWrap = document.createElement('div');
             typingWrap.id = loadingId;
             typingWrap.className = 'd-flex justify-content-start mb-2';
-            typingWrap.innerHTML = '<div class="chat-bubble chat-bubble-assistant"><span class="text-secondary small">AI dang phan tich...</span></div>';
+            typingWrap.innerHTML = typingIndicatorHtml;
             messagesContainer.appendChild(typingWrap);
             scrollBottom();
 

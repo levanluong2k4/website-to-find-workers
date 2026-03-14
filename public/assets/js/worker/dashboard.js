@@ -49,6 +49,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateObj = new Date(job.ngay_hen);
             const dateString = dateObj.toLocaleDateString('vi-VN');
             const createdString = new Date(job.created_at).toLocaleString('vi-VN');
+            const bookingServices = Array.isArray(job.dich_vus) && job.dich_vus.length > 0
+                ? job.dich_vus
+                : (job.dich_vu ? [job.dich_vu] : []);
+            const serviceTitle = bookingServices.length > 0
+                ? bookingServices.map(service => service.ten_dich_vu).join(', ')
+                : (job.dich_vu?.ten_dich_vu || 'Sửa chữa điện máy');
+            const serviceBadges = bookingServices.length > 0
+                ? bookingServices.map(service => `<span class="badge rounded-pill text-bg-light border">${service.ten_dich_vu}</span>`).join('')
+                : '';
 
             // Format Tiền tệ
             const distanceFeeStr = job.phi_di_lai
@@ -64,7 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="d-flex align-items-center gap-3">
                             <img src="${job.khach_hang?.avatar || '/assets/images/user-default.png'}" alt="Customer Avatar" class="rounded-circle" width="48" height="48" style="object-fit:cover;">
                             <div>
-                                <h6 class="fw-bold text-dark mb-1 fs-5">${job.dich_vu?.ten_dich_vu || 'Sửa chữa điện máy'}</h6>
+                                <h6 class="fw-bold text-dark mb-1 fs-5">${serviceTitle}</h6>
+                                ${serviceBadges ? `<div class="d-flex flex-wrap gap-2 mt-2">${serviceBadges}</div>` : ''}
                                 <p class="text-muted mb-0 lh-1" style="font-size: 0.85rem;">Khách: <strong class="text-dark">${job.khach_hang?.name || 'Khách Hàng'}</strong></p>
                             </div>
                         </div>

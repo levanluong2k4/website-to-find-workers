@@ -6,60 +6,206 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined" rel="stylesheet" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-tailwind.config = {
-    corePlugins: { preflight: false },
+  tailwind.config = {
+    corePlugins: {
+      preflight: false
+    },
     theme: {
-        extend: {
-            colors: {
-                primary: '#BAF2E9',
-                'primary-dark': '#0EA5E9',
-                accent: '#0EA5E9',
-                'bg-light': '#f8fafc',
-                'slate-custom': '#64748b'
-            },
-            fontFamily: {
-                poppins: ['Poppins','sans-serif'],
-                inter: ['Inter','sans-serif']
-            }
+      extend: {
+        colors: {
+          primary: '#BAF2E9',
+          'primary-dark': '#0EA5E9',
+          accent: '#0EA5E9',
+          'bg-light': '#f8fafc',
+          'slate-custom': '#64748b'
+        },
+        fontFamily: {
+          poppins: ['Poppins', 'sans-serif'],
+          inter: ['Inter', 'sans-serif']
         }
+      }
     }
-}
+  }
 </script>
 <style>
-.material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 24px; display: inline-block; line-height: 1; }
-.hover\:scale-\[1\.02\]:hover { transform: scale(1.02); }
-.active\:scale-\[0\.98\]:active { transform: scale(0.98); }
-.hero-gradient { background: linear-gradient(135deg, rgba(186,242,233,0.45) 0%, #fff 60%); }
-.soft-shadow { box-shadow: 0 4px 24px 0 rgba(14,165,233,0.08); }
-.booking-card { background: #fff; border-radius: 1.5rem; box-shadow: 0 20px 60px rgba(0,0,0,0.10); }
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    display: inline-block;
+    line-height: 1;
+  }
 
-/* ====================================================
+  .hover\:scale-\[1\.02\]:hover {
+    transform: scale(1.02);
+  }
+
+  .active\:scale-\[0\.98\]:active {
+    transform: scale(0.98);
+  }
+
+  .hero-gradient {
+    background: linear-gradient(135deg, rgba(186, 242, 233, 0.45) 0%, #fff 60%);
+  }
+
+  .soft-shadow {
+    box-shadow: 0 4px 24px 0 rgba(14, 165, 233, 0.08);
+  }
+
+  .booking-card {
+    background: #fff;
+    border-radius: 1.5rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.10);
+  }
+
+  .c-button {
+    color: #000;
+    font-weight: 700;
+    font-size: 16px;
+    text-decoration: none;
+    padding: 0.9em 1.6em;
+    cursor: pointer;
+    display: inline-block;
+    vertical-align: middle;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .c-button--gooey {
+    color: #06c8d9;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border: 4px solid #06c8d9;
+    border-radius: 0;
+    position: relative;
+    transition: all 700ms ease;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  .c-button--gooey .c-button__blobs {
+    height: 100%;
+    filter: url(#goo);
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: -3px;
+    right: -1px;
+    z-index: -1;
+  }
+
+  .c-button--gooey .c-button__blobs div {
+    background-color: #06c8d9;
+    width: 34%;
+    height: 100%;
+    border-radius: 100%;
+    position: absolute;
+    transform: scale(1.4) translateY(125%) translateZ(0);
+    transition: all 700ms ease;
+  }
+
+  .c-button--gooey .c-button__blobs div:nth-child(1) {
+    left: -5%;
+  }
+
+  .c-button--gooey .c-button__blobs div:nth-child(2) {
+    left: 30%;
+    transition-delay: 60ms;
+  }
+
+  .c-button--gooey .c-button__blobs div:nth-child(3) {
+    left: 66%;
+    transition-delay: 25ms;
+  }
+
+  .c-button--gooey:hover {
+    color: #fff;
+  }
+
+  .c-button--gooey:hover .c-button__blobs div {
+    transform: scale(1.4) translateY(0) translateZ(0);
+  }
+
+  /* ====================================================
    FIX: Bootstrap classes overridden by Tailwind CDN
    ==================================================== */
 
-/* Restore Bootstrap navbar collapse behavior */
-app-navbar .navbar-collapse.collapse { visibility: visible !important; }
-app-navbar .navbar-expand-lg .navbar-collapse { display: flex !important; flex-basis: auto !important; }
+  /* Restore Bootstrap navbar collapse behavior */
+  app-navbar .navbar-collapse.collapse {
+    visibility: visible !important;
+  }
 
-/* Restore Bootstrap display utilities */
-app-navbar .d-flex { display: flex !important; }
-app-navbar .d-none { display: none !important; }
-app-navbar .d-md-block { display: none !important; }
-@media (min-width: 768px) {
-  app-navbar .d-md-block { display: block !important; }
-}
-app-navbar .d-none.d-md-block { display:none !important; }
-@media (min-width: 768px) {
-  app-navbar .d-none.d-md-block { display: block !important; }
-}
+  app-navbar .navbar-expand-lg .navbar-collapse {
+    display: flex !important;
+    flex-basis: auto !important;
+  }
 
-/* Restore Bootstrap btn styles that Tailwind may break */
-app-navbar .btn { display: inline-block; font-weight: 400; text-align: center; white-space: nowrap; vertical-align: middle; cursor: pointer; border: 1px solid transparent; padding: 0.375rem 0.75rem; font-size: 1rem; border-radius: 0.375rem; text-decoration: none !important; }
-app-navbar .btn-primary { color: #fff !important; background-color: #0d6efd !important; border-color: #0d6efd !important; }
-app-navbar .btn-warning { color: #000 !important; background-color: #ffc107 !important; border-color: #ffc107 !important; }
+  /* Restore Bootstrap display utilities */
+  app-navbar .d-flex {
+    display: flex !important;
+  }
 
-/* Fix baseline sizing for app-navbar */
-app-navbar { display: block; width: 100%; }
+  app-navbar .d-none {
+    display: none !important;
+  }
+
+  app-navbar .d-md-block {
+    display: none !important;
+  }
+
+  @media (min-width: 768px) {
+    app-navbar .d-md-block {
+      display: block !important;
+    }
+  }
+
+  app-navbar .d-none.d-md-block {
+    display: none !important;
+  }
+
+  @media (min-width: 768px) {
+    app-navbar .d-none.d-md-block {
+      display: block !important;
+    }
+  }
+
+  /* Restore Bootstrap btn styles that Tailwind may break */
+  app-navbar .btn {
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: pointer;
+    border: 1px solid transparent;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    border-radius: 0.375rem;
+    text-decoration: none !important;
+  }
+
+  app-navbar .btn-primary {
+    color: #fff !important;
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+  }
+
+  app-navbar .btn-warning {
+    color: #000 !important;
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+  }
+
+  /* Fix baseline sizing for app-navbar */
+  app-navbar {
+    display: block;
+    width: 100%;
+  }
 </style>
 @endpush
 
@@ -70,9 +216,7 @@ app-navbar { display: block; width: 100%; }
 
     <!-- Logo -->
     <a href="/" style="display:flex;align-items:center;gap:0.625rem;text-decoration:none;">
-      <div style="width:2.5rem;height:2.5rem;background:#BAF2E9;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;">
-        <span class="material-symbols-outlined" style="font-size:1.5rem;color:#0EA5E9;">home_repair_service</span>
-      </div>
+      <img src="/assets/images/logontu.png" alt="Logo NTU" style="width:3.3rem;height:3.3rem;object-fit:contain;border-radius:0.9rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.08));">
       <span style="font-size:1.2rem;font-weight:800;color:#0f172a;font-family:'Poppins',sans-serif;letter-spacing:-0.5px;">
         Thợ Tốt <span style="color:#0EA5E9;">NTU</span>
       </span>
@@ -80,9 +224,9 @@ app-navbar { display: block; width: 100%; }
 
     <!-- Center Nav Links -->
     <nav id="navLinks" style="display:none;gap:0.25rem;align-items:center;">
-      <a href="#services"    class="nav-link-item">Dịch vụ</a>
-      <a href="#workers"     class="nav-link-item">Thợ sửa</a>
-      <a href="#pricing"     class="nav-link-item">Bảng giá</a>
+      <a href="#services" class="nav-link-item">Dịch vụ</a>
+      <a href="#workers" class="nav-link-item">Thợ sửa</a>
+      <a href="#pricing" class="nav-link-item">Bảng giá</a>
       <a href="#ai-diagnosis" class="nav-link-item">AI Chẩn đoán</a>
     </nav>
 
@@ -96,8 +240,8 @@ app-navbar { display: block; width: 100%; }
       <!-- Avatar + Dropdown -->
       <div id="navUserAvatar" style="display:none;position:relative;">
         <div id="navUserAvatarBtn"
-             style="width:2.5rem;height:2.5rem;border-radius:50%;border:2px solid #BAF2E9;overflow:hidden;cursor:pointer;"
-             onclick="toggleUserMenu(event)">
+          style="width:2.5rem;height:2.5rem;border-radius:50%;border:2px solid #BAF2E9;overflow:hidden;cursor:pointer;"
+          onclick="toggleUserMenu(event)">
           <div id="navUserInitial" style="width:100%;height:100%;background:#0EA5E9;color:#fff;font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:center;">U</div>
         </div>
         <!-- Dropdown menu -->
@@ -133,88 +277,135 @@ app-navbar { display: block; width: 100%; }
 
   <!-- Mobile Menu -->
   <div id="mobileMenu" style="display:none;padding:1rem 1.5rem 1.5rem;border-top:1px solid #f1f5f9;background:#fff;">
-    <a href="#services"    style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;">Dịch vụ</a>
-    <a href="#workers"     style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">Thợ sửa</a>
-    <a href="#pricing"     style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">Bảng giá</a>
+    <a href="#services" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;">Dịch vụ</a>
+    <a href="#workers" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">Thợ sửa</a>
+    <a href="#pricing" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">Bảng giá</a>
     <a href="#ai-diagnosis" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">AI Chẩn đoán</a>
   </div>
 </nav>
 
 <style>
-.nav-link-item { color:#475569; font-size:.875rem; font-weight:600; text-decoration:none; padding:.5rem .75rem; border-radius:.5rem; transition:color .15s; }
-.nav-link-item:hover { color:#0EA5E9; }
-.nav-cta-btn { display:flex; align-items:center; gap:.4rem; background:#BAF2E9; color:#0f172a; font-weight:700; font-size:.875rem; border:none; border-radius:.75rem; padding:.625rem 1.25rem; cursor:pointer; box-shadow:0 4px 16px rgba(14,165,233,0.14); transition:all .2s; font-family:'Inter',sans-serif; }
-.nav-cta-btn:hover { background:#0EA5E9; color:#fff; }
+  .nav-link-item {
+    color: #475569;
+    font-size: .875rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: .5rem .75rem;
+    border-radius: .5rem;
+    transition: color .15s;
+  }
+
+  .nav-link-item:hover {
+    color: #0EA5E9;
+  }
+
+  .nav-cta-btn {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    background: #BAF2E9;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: .875rem;
+    border: none;
+    border-radius: .75rem;
+    padding: .625rem 1.25rem;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(14, 165, 233, 0.14);
+    transition: all .2s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .nav-cta-btn:hover {
+    background: #0EA5E9;
+    color: #fff;
+  }
 </style>
 
 <script>
-(function(){
-  function applyNav(){
-    var links = document.getElementById('navLinks');
-    var ham   = document.getElementById('navHamburger');
-    if(!links||!ham) return;
-    if(window.innerWidth >= 768){
-      links.style.display='flex'; ham.style.display='none';
-    } else {
-      links.style.display='none'; ham.style.display='block';
+  (function() {
+    function applyNav() {
+      var links = document.getElementById('navLinks');
+      var ham = document.getElementById('navHamburger');
+      if (!links || !ham) return;
+      if (window.innerWidth >= 768) {
+        links.style.display = 'flex';
+        ham.style.display = 'none';
+      } else {
+        links.style.display = 'none';
+        ham.style.display = 'block';
+      }
     }
-  }
-  window.addEventListener('resize', applyNav);
-  applyNav();
+    window.addEventListener('resize', applyNav);
+    applyNav();
 
-  // Show user state & populate dropdown
-  try {
-    var raw = localStorage.getItem('user');
-    var user = raw ? JSON.parse(raw) : null;
-    if(user && user.name){
-      var av   = document.getElementById('navUserAvatar');
-      var init = document.getElementById('navUserInitial');
-      var dn   = document.getElementById('dropUserName');
-      var de   = document.getElementById('dropUserEmail');
-      if(av)   av.style.display='block';
-      if(init) init.textContent = user.name.charAt(0).toUpperCase();
-      if(dn)   dn.textContent  = user.name;
-      if(de)   de.textContent  = user.email || '';
-    } else {
-      var btn = document.getElementById('navLoginBtn');
-      if(btn) btn.style.display='inline-flex';
+    // Show user state & populate dropdown
+    try {
+      var raw = localStorage.getItem('user');
+      var user = raw ? JSON.parse(raw) : null;
+      if (user && user.name) {
+        var av = document.getElementById('navUserAvatar');
+        var init = document.getElementById('navUserInitial');
+        var dn = document.getElementById('dropUserName');
+        var de = document.getElementById('dropUserEmail');
+        if (av) av.style.display = 'block';
+        if (init) init.textContent = user.name.charAt(0).toUpperCase();
+        if (dn) dn.textContent = user.name;
+        if (de) de.textContent = user.email || '';
+      } else {
+        var btn = document.getElementById('navLoginBtn');
+        if (btn) btn.style.display = 'inline-flex';
+      }
+    } catch (e) {
+      var btn2 = document.getElementById('navLoginBtn');
+      if (btn2) btn2.style.display = 'inline-flex';
     }
-  } catch(e) {
-    var btn2 = document.getElementById('navLoginBtn');
-    if(btn2) btn2.style.display='inline-flex';
-  }
-})();
+  })();
 
-// Toggle user dropdown
-window.toggleUserMenu = function(e) {
-  e.stopPropagation();
-  var dd = document.getElementById('userDropdown');
-  if(!dd) return;
-  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
-};
-// Close dropdown when clicking outside
-document.addEventListener('click', function() {
-  var dd = document.getElementById('userDropdown');
-  if(dd) dd.style.display = 'none';
-});
+  // Toggle user dropdown
+  window.toggleUserMenu = function(e) {
+    e.stopPropagation();
+    var dd = document.getElementById('userDropdown');
+    if (!dd) return;
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+  };
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function() {
+    var dd = document.getElementById('userDropdown');
+    if (dd) dd.style.display = 'none';
+  });
 
-// Logout customer
-window.logoutCustomer = async function() {
-  try {
-    var token = localStorage.getItem('access_token');
-    if(token && token !== 'undefined' && token !== 'null') {
-      await fetch('/api/logout', { method:'POST', headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json' } });
+  // Logout customer
+  window.logoutCustomer = async function() {
+    try {
+      var token = localStorage.getItem('access_token');
+      if (token && token !== 'undefined' && token !== 'null') {
+        await fetch('/api/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (e) {} finally {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
     }
-  } catch(e) {}
-  finally {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
-  }
-};
+  };
 </script>
 
 <div class="font-inter bg-white text-slate-900 overflow-x-hidden">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;pointer-events:none;">
+    <defs>
+      <filter id="goo">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 21 -7" result="goo" />
+        <feBlend in="SourceGraphic" in2="goo" />
+      </filter>
+    </defs>
+  </svg>
 
   <!-- ===================== HERO ===================== -->
   <section class="hero-gradient relative pt-12 pb-24 px-6 overflow-hidden">
@@ -246,19 +437,24 @@ window.logoutCustomer = async function() {
               <div class="relative">
                 <select id="heroDevice" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 appearance-none text-sm">
                   <option value="">Chọn loại thiết bị</option>
-                  <option>Tivi</option><option>Máy giặt</option><option>Tủ lạnh</option>
-                  <option>Điều hòa</option><option>Bếp điện</option><option>Lò vi sóng</option><option>Khác</option>
+                  <option>Tivi</option>
+                  <option>Máy giặt</option>
+                  <option>Tủ lạnh</option>
+                  <option>Điều hòa</option>
+                  <option>Bếp điện</option>
+                  <option>Lò vi sóng</option>
+                  <option>Khác</option>
                 </select>
                 <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400 text-lg">expand_more</span>
               </div>
             </div>
             <div class="flex flex-col gap-2">
               <label class="text-sm font-semibold text-slate-700">Địa chỉ tại Nha Trang</label>
-              <input id="heroAddress" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 text-sm" placeholder="Số nhà, tên đường..." type="text"/>
+              <input id="heroAddress" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 text-sm" placeholder="Số nhà, tên đường..." type="text" />
             </div>
             <div class="flex flex-col gap-2">
               <label class="text-sm font-semibold text-slate-700">Ngày hẹn</label>
-              <input id="heroDate" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 text-sm" type="date"/>
+              <input id="heroDate" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 text-sm" type="date" />
             </div>
             <div class="flex flex-col gap-2">
               <label class="text-sm font-semibold text-slate-700">Giờ hẹn</label>
@@ -285,9 +481,50 @@ window.logoutCustomer = async function() {
 
       <!-- Right Illustration -->
       <div class="lg:col-span-5 relative hidden lg:flex flex-col items-center">
+        @php
+        $heroSlides = [
+        ['/assets/images/carousel/Gemini_Generated_Image_7a95157a95157a95.png', 'Tiếp nhận yêu cầu nhanh', 'Thợ trực hệ thống, xác nhận thông tin và điều phối lịch hẹn ngay cho khách.'],
+        ['/assets/images/suamaylanh.png', 'Chuyên sửa máy lạnh', 'Xử lý chảy nước, kém lạnh, vệ sinh dàn lạnh và nạp gas tại nhà.'],
+        ['/assets/images/carousel/noichien.jpg', 'Sửa đồ gia dụng nhỏ', 'Nhận sửa nồi chiên, nồi cơm, bếp điện và các thiết bị gia dụng nhỏ tại cửa hàng.'],
+        ['/assets/images/carousel/suatulanhj.jpg', 'Kiểm tra tủ lạnh tại xưởng', 'Tập kết, phân loại và xử lý các lỗi tủ lạnh, tủ mát và thiết bị lạnh kích thước lớn.'],
+        ['/assets/images/carousel/suamaygiat.jpg', 'Hỗ trợ nhận vận chuyển thiết bị', 'Nhận máy giặt, tủ lạnh và thiết bị lớn về xưởng khi khách cần hỗ trợ vận chuyển.'],
+        ];
+        @endphp
         <div class="absolute -inset-4 bg-primary/25 blur-3xl rounded-full -z-10"></div>
-        <div class="relative rounded-[2rem] overflow-hidden border-8 border-white shadow-2xl w-full">
-          <img class="w-full aspect-[4/5] object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAp1hAG6NXCS7wiHypSRullKGKHQyELgqoUFO6wz8Bqr-8RsTXmKhCKYB73RctveGIOWKUwUsrXwh0UM9SrLkDmbB3BN4_P9hpMcSPZE2HW9HiZVe0OzuBHY_ZV8JpaPdzAtFk-8P2SpKYi3QLyshg7bwptjpMk0yahKTfIiz8_QgPOADteX6hvqXFKIzeLIzhNTSWyqHmvRCHDw1rAG-MAOk8sZfXYguNRta-TBvqlYWU_G0DuwrU8I96S53ag31FLngEFFsm5wkMF" alt="Technician"/>
+        <div id="heroCarousel" class="relative rounded-[2rem] overflow-hidden border-8 border-white shadow-2xl w-full">
+          <div class="relative aspect-[4/5] overflow-hidden bg-slate-100">
+            @foreach($heroSlides as [$img, $title, $desc])
+            <img
+              class="hero-carousel-slide absolute inset-0 h-full w-full object-cover transition-opacity duration-700 {{ $loop->first ? 'opacity-100' : 'opacity-0' }}"
+              src="{{ $img }}"
+              alt="{{ $title }}"
+              data-title="{{ $title }}"
+              data-desc="{{ $desc }}" />
+            @endforeach
+
+            <div class="absolute inset-x-0 top-0 p-5 bg-gradient-to-b from-slate-950/45 to-transparent">
+              <div class="inline-flex items-center gap-2 rounded-full bg-white/85 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-slate-700 shadow">
+                <span class="material-symbols-outlined text-base text-primary-dark">home_repair_service</span>
+                Dịch vụ nổi bật
+              </div>
+            </div>
+
+            <div class="absolute inset-x-0 bottom-24 p-6 bg-gradient-to-t from-slate-950/75 to-transparent text-white">
+              <p id="heroCarouselTitle" class="text-2xl font-black leading-tight">{{ $heroSlides[0][1] }}</p>
+              <p id="heroCarouselDesc" class="mt-2 max-w-sm text-sm text-white/85">{{ $heroSlides[0][2] }}</p>
+            </div>
+          </div>
+
+          <div class="absolute left-1/2 top-5 z-10 flex -translate-x-1/2 gap-2">
+            @foreach($heroSlides as [$img, $title, $desc])
+            <button
+              type="button"
+              class="hero-carousel-dot h-2.5 rounded-full bg-white/60 transition-all {{ $loop->first ? 'w-8 bg-white' : 'w-2.5' }}"
+              data-index="{{ $loop->index }}"
+              aria-label="Chuyển ảnh {{ $loop->iteration }}"></button>
+            @endforeach
+          </div>
+
           <div class="absolute bottom-6 left-4 right-4 bg-white/90 backdrop-blur p-4 rounded-2xl shadow-xl flex items-center gap-4">
             <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white shrink-0">
               <span class="material-symbols-outlined">call</span>
@@ -325,21 +562,21 @@ window.logoutCustomer = async function() {
     </div>
     <div class="grid grid-cols-2 gap-6 sm:grid-cols-2 lg:grid-cols-4">
       @php
-        $services = [
-          ['Sửa Tivi','Màn hình, bo mạch, nguồn','tv','/assets/images/suativi.png'],
-          ['Máy giặt','Rung lắc, không vắt, rò nước','local_laundry_service','/assets/images/suamaygiat.png'],
-          ['Tủ lạnh','Kém lạnh, đóng tuyết, ồn','kitchen','/assets/images/suatulanh.png'],
-          ['Điều hòa','Vệ sinh, nạp gas, hỏng tụ','ac_unit','/assets/images/suadieuhoa.png'],
-          ['Bếp điện','Lỗi E0-E9, không nhận nồi','cooking','/assets/images/suabeptu.png'],
-          ['Lò vi sóng','Không nóng, liệt phím','microwave','/assets/images/sualovisong.png'],
-          ['Nồi chiên KD','Hỏng quạt, cảm biến nhiệt','air_purifier','/assets/images/suanoichien.png'],
-          ['Ấm siêu tốc','Không vào điện, cháy rơ le','kettle','/assets/images/suaamsieutoc.png'],
-        ];
+      $services = [
+      ['Sửa Tivi','Màn hình, bo mạch, nguồn','tv','/assets/images/suativi.png'],
+      ['Máy giặt','Rung lắc, không vắt, rò nước','local_laundry_service','/assets/images/suamaygiat.png'],
+      ['Tủ lạnh','Kém lạnh, đóng tuyết, ồn','kitchen','/assets/images/suatulanh.png'],
+      ['Điều hòa','Vệ sinh, nạp gas, hỏng tụ','ac_unit','/assets/images/suadieuhoa.png'],
+      ['Bếp điện','Lỗi E0-E9, không nhận nồi','cooking','/assets/images/suabeptu.png'],
+      ['Lò vi sóng','Không nóng, liệt phím','microwave','/assets/images/sualovisong.png'],
+      ['Nồi chiên KD','Hỏng quạt, cảm biến nhiệt','air_purifier','/assets/images/suanoichien.png'],
+      ['Ấm siêu tốc','Không vào điện, cháy rơ le','kettle','/assets/images/suaamsieutoc.png'],
+      ];
       @endphp
       @foreach($services as [$name, $desc, $icon, $img])
       <div class="group flex flex-col rounded-2xl bg-white p-5 soft-shadow border border-transparent hover:border-primary-dark transition-all cursor-pointer" onclick="openBookingModal('{{ $name }}')">
         <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/10">
-          <img class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" src="{{ $img }}" alt="{{ $name }}"/>
+          <img class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" src="{{ $img }}" alt="{{ $name }}" />
         </div>
         <div class="flex items-start justify-between">
           <div>
@@ -348,8 +585,13 @@ window.logoutCustomer = async function() {
           </div>
           <span class="material-symbols-outlined text-primary-dark">{{ $icon }}</span>
         </div>
-        <button class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-slate-900 hover:bg-primary-dark hover:text-white transition-colors">
-          Đặt sửa ngay
+        <button type="button" class="c-button c-button--gooey mt-4">
+          <span class="c-button__blobs">
+            <div></div>
+            <div></div>
+            <div></div>
+          </span>
+          Sửa ngay
         </button>
       </div>
       @endforeach
@@ -373,8 +615,10 @@ window.logoutCustomer = async function() {
               <label class="mb-2 block text-sm font-bold">Thiết bị cần kiểm tra</label>
               <select id="aiDevice" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm focus:border-primary-dark focus:ring-primary-dark">
                 <option value="">Chọn loại thiết bị...</option>
-                <option value="tv">Tivi</option><option value="wm">Máy giặt</option>
-                <option value="ref">Tủ lạnh / Tủ đông</option><option value="ac">Điều hòa</option>
+                <option value="tv">Tivi</option>
+                <option value="wm">Máy giặt</option>
+                <option value="ref">Tủ lạnh / Tủ đông</option>
+                <option value="ac">Điều hòa</option>
                 <option value="stove">Bếp điện / Bếp từ</option>
               </select>
             </div>
@@ -449,17 +693,17 @@ window.logoutCustomer = async function() {
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       @php
-        $technicians = [
-          ['Nguyễn Văn An','Điện tử - Điện lạnh','8','120','4.9','https://lh3.googleusercontent.com/aida-public/AB6AXuCHlxvrKvXJRdgRmIN9C2gjJg1qrwrCqxFDxa2bJPdZdgcZdPhP2IAnIyD8EJbJQsufm7Hwx9GJEd__kWt-GI5kvbsrfDCj0RCJgNCXbmbEKfh3ppogjQbvjtwhPgxpxXRB-itoy8hfTGUdEOzaZlZ5DWdpLwRev5du1qe8YbUF2EhiYEfVe7w-ykXhGTKfid92jn3dFb8pyUuKukF-Q7HOIieNd9C8ixkDY8Djqc2A_0pp15e9lr4XOsYxJMP4oTTHneWTzDwYUtKF'],
-          ['Trần Thị Bình','Máy Lạnh - Tủ Lạnh','5','85','4.8','https://lh3.googleusercontent.com/aida-public/AB6AXuCZ6WPzDWa973i46Iti6WGzxatmssgABgRSSqC-Bq-Dg9PrkT3IemVoB5xMR0W8xtMgvpen_7iWNSZ60jEqetlvfgH79bfqqDetw3HyjFFL3SKiS8EBKTYV_IfyUUdyAssKz-Pe8GV5d5oCFwocnlXnhcN9jAAl6cix8iEJoZBkyb4e3uzX-EPXEcDDl_zcf5sb_UK3kljwBA3c7SpEU_IN8ephehzOc17So5u9TKGz1zW2LWZPxI3oU6Rdy7XamJK6XiMuzVWevocy'],
-          ['Lê Văn Cường','Điện Dân Dụng','10','200','5.0','https://lh3.googleusercontent.com/aida-public/AB6AXuBurEaN2EYTRrzaP5wlyCNx92vnsNABdb2VEmrH96QumpgHLW20UC1sn1-_gETRzNWmtDkaR8VHUH_d1nRMb7dAdHBCBsC8vQ-hXpMRDR6nZNLxLK30IedFWT-3HgwUfDnf2QO3d5gl2hUcHSoYdSRR9gmnWU2mjYtouypzW-zjkWan5Xj9ncctCPPOvaQxhxXZ5M3qs7l7cMIYkJDizcJg0Uq6umLx51rSyIXiy-59kz5UMjfH5h6tX_QQDw1lH9wEH86vNvITx3hg'],
-        ];
+      $technicians = [
+      ['Nguyễn Văn An','Điện tử - Điện lạnh','8','120','4.9','https://lh3.googleusercontent.com/aida-public/AB6AXuCHlxvrKvXJRdgRmIN9C2gjJg1qrwrCqxFDxa2bJPdZdgcZdPhP2IAnIyD8EJbJQsufm7Hwx9GJEd__kWt-GI5kvbsrfDCj0RCJgNCXbmbEKfh3ppogjQbvjtwhPgxpxXRB-itoy8hfTGUdEOzaZlZ5DWdpLwRev5du1qe8YbUF2EhiYEfVe7w-ykXhGTKfid92jn3dFb8pyUuKukF-Q7HOIieNd9C8ixkDY8Djqc2A_0pp15e9lr4XOsYxJMP4oTTHneWTzDwYUtKF'],
+      ['Trần Thị Bình','Máy Lạnh - Tủ Lạnh','5','85','4.8','https://lh3.googleusercontent.com/aida-public/AB6AXuCZ6WPzDWa973i46Iti6WGzxatmssgABgRSSqC-Bq-Dg9PrkT3IemVoB5xMR0W8xtMgvpen_7iWNSZ60jEqetlvfgH79bfqqDetw3HyjFFL3SKiS8EBKTYV_IfyUUdyAssKz-Pe8GV5d5oCFwocnlXnhcN9jAAl6cix8iEJoZBkyb4e3uzX-EPXEcDDl_zcf5sb_UK3kljwBA3c7SpEU_IN8ephehzOc17So5u9TKGz1zW2LWZPxI3oU6Rdy7XamJK6XiMuzVWevocy'],
+      ['Lê Văn Cường','Điện Dân Dụng','10','200','5.0','https://lh3.googleusercontent.com/aida-public/AB6AXuBurEaN2EYTRrzaP5wlyCNx92vnsNABdb2VEmrH96QumpgHLW20UC1sn1-_gETRzNWmtDkaR8VHUH_d1nRMb7dAdHBCBsC8vQ-hXpMRDR6nZNLxLK30IedFWT-3HgwUfDnf2QO3d5gl2hUcHSoYdSRR9gmnWU2mjYtouypzW-zjkWan5Xj9ncctCPPOvaQxhxXZ5M3qs7l7cMIYkJDizcJg0Uq6umLx51rSyIXiy-59kz5UMjfH5h6tX_QQDw1lH9wEH86vNvITx3hg'],
+      ];
       @endphp
       @foreach($technicians as [$name,$specialty,$years,$jobs,$rating,$img])
       <div class="bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
         <div class="h-64 overflow-hidden relative">
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
-          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="{{ $img }}" alt="{{ $name }}"/>
+          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="{{ $img }}" alt="{{ $name }}" />
           <div class="absolute bottom-4 left-4 z-20">
             <span class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">{{ $specialty }}</span>
           </div>
@@ -567,9 +811,7 @@ window.logoutCustomer = async function() {
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
       <div>
         <div class="flex items-center gap-2 mb-4">
-          <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-slate-900">home_repair_service</span>
-          </div>
+          <img src="/assets/images/logontu.png" alt="Logo NTU" class="w-12 h-12 rounded-xl object-contain bg-white p-1 shadow-sm">
           <span class="text-xl font-bold">Thợ Tốt <span class="text-primary-dark">NTU</span></span>
         </div>
         <p class="text-slate-400 text-sm leading-relaxed">Nền tảng kết nối thợ sửa chữa uy tín tại Nha Trang. Chuyên nghiệp – Tận tâm – Minh bạch.</p>
@@ -619,43 +861,113 @@ window.logoutCustomer = async function() {
 <script type="module" src="{{ asset('assets/js/components/booking-modal.js') }}"></script>
 
 <script>
-// Helper to open booking modal and pre-fill service
-function openBookingModal(serviceName = '') {
-  const modal = document.getElementById('bookingModal');
-  if (!modal) return;
-  // Store service to pre-select after async options load
-  window.PRESELECT_SERVICE = serviceName;
-  const bsModal = new bootstrap.Modal(modal);
-  bsModal.show();
-}
+  // Helper to open booking modal and pre-fill service
+  function openBookingModal(serviceName = '') {
+    const modal = document.getElementById('bookingModal');
+    if (!modal) return;
+    // Store service to pre-select after async options load
+    window.PRESELECT_SERVICE = serviceName;
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+  }
 
-// Hero booking form quick submit
-document.getElementById('btnHeroBook')?.addEventListener('click', () => {
-  const device = document.getElementById('heroDevice')?.value;
-  const address = document.getElementById('heroAddress')?.value;
-  const date = document.getElementById('heroDate')?.value;
-  if (!device) { alert('Vui lòng chọn thiết bị cần sửa'); return; }
-  openBookingModal(device);
-});
+  // Hero booking form quick submit
+  document.getElementById('btnHeroBook')?.addEventListener('click', () => {
+    const device = document.getElementById('heroDevice')?.value;
+    const address = document.getElementById('heroAddress')?.value;
+    const date = document.getElementById('heroDate')?.value;
+    if (!device) {
+      alert('Vui lòng chọn thiết bị cần sửa');
+      return;
+    }
+    openBookingModal(device);
+  });
 
-// AI Section button scroll
-document.getElementById('btnHeroAI')?.addEventListener('click', () => {
-  document.getElementById('ai-diagnosis')?.scrollIntoView({ behavior: 'smooth' });
-});
+  // AI Section button scroll
+  document.getElementById('btnHeroAI')?.addEventListener('click', () => {
+    document.getElementById('ai-diagnosis')?.scrollIntoView({
+      behavior: 'smooth'
+    });
+  });
 
-// AI Analysis button (mock)
-document.getElementById('btnAIAnalyze')?.addEventListener('click', () => {
-  const device = document.getElementById('aiDevice')?.value;
-  const desc = document.getElementById('aiDesc')?.value;
-  const result = document.getElementById('aiResult');
-  if (!device || !desc) { alert('Vui lòng chọn thiết bị và mô tả lỗi'); return; }
-  result.innerHTML = `
+  // Hero carousel
+  (() => {
+    const carousel = document.getElementById('heroCarousel');
+    if (!carousel) return;
+
+    const slides = Array.from(carousel.querySelectorAll('.hero-carousel-slide'));
+    const dots = Array.from(carousel.querySelectorAll('.hero-carousel-dot'));
+    const title = document.getElementById('heroCarouselTitle');
+    const desc = document.getElementById('heroCarouselDesc');
+
+    if (!slides.length || !dots.length || !title || !desc) return;
+
+    let activeIndex = 0;
+    let intervalId = null;
+
+    const renderSlide = (index) => {
+      activeIndex = index;
+
+      slides.forEach((slide, slideIndex) => {
+        slide.classList.toggle('opacity-100', slideIndex === index);
+        slide.classList.toggle('opacity-0', slideIndex !== index);
+      });
+
+      dots.forEach((dot, dotIndex) => {
+        dot.classList.toggle('w-8', dotIndex === index);
+        dot.classList.toggle('bg-white', dotIndex === index);
+        dot.classList.toggle('w-2.5', dotIndex !== index);
+        dot.classList.toggle('bg-white/60', dotIndex !== index);
+      });
+
+      title.textContent = slides[index].dataset.title || '';
+      desc.textContent = slides[index].dataset.desc || '';
+    };
+
+    const startAutoPlay = () => {
+      intervalId = window.setInterval(() => {
+        renderSlide((activeIndex + 1) % slides.length);
+      }, 3500);
+    };
+
+    const stopAutoPlay = () => {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    dots.forEach((dot, index) => {
+      dot.addEventListener('click', () => {
+        renderSlide(index);
+        stopAutoPlay();
+        startAutoPlay();
+      });
+    });
+
+    carousel.addEventListener('mouseenter', stopAutoPlay);
+    carousel.addEventListener('mouseleave', startAutoPlay);
+
+    renderSlide(0);
+    startAutoPlay();
+  })();
+
+  // AI Analysis button (mock)
+  document.getElementById('btnAIAnalyze')?.addEventListener('click', () => {
+    const device = document.getElementById('aiDevice')?.value;
+    const desc = document.getElementById('aiDesc')?.value;
+    const result = document.getElementById('aiResult');
+    if (!device || !desc) {
+      alert('Vui lòng chọn thiết bị và mô tả lỗi');
+      return;
+    }
+    result.innerHTML = `
     <div class="rounded-xl bg-white p-4 shadow-sm border-l-4 border-primary-dark animate-pulse">
       <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Đang phân tích...</p>
       <p class="mt-1 text-sm text-slate-600">AI đang xử lý thông tin của bạn, vui lòng chờ...</p>
     </div>`;
-  setTimeout(() => {
-    result.innerHTML = `
+    setTimeout(() => {
+      result.innerHTML = `
       <div class="rounded-xl bg-white p-4 shadow-sm border-l-4 border-primary-dark">
         <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Nguyên nhân có thể</p>
         <p class="mt-1 text-sm text-slate-600">Dựa trên mô tả, thiết bị có thể bị hỏng bo mạch điều khiển hoặc lỗi cảm biến nhiệt độ. Nên kiểm tra nguồn điện và các kết nối.</p>
@@ -670,7 +982,7 @@ document.getElementById('btnAIAnalyze')?.addEventListener('click', () => {
       <button class="w-full bg-primary-dark text-white py-3 rounded-xl font-bold hover:opacity-90 transition-all" onclick="openBookingModal()">
         Đặt lịch với thợ
       </button>`;
-  }, 1500);
-});
+    }, 1500);
+  });
 </script>
 @endpush

@@ -63,6 +63,12 @@ class DonDatLich extends Model
         return $this->belongsTo(DanhMucDichVu::class, 'dich_vu_id');
     }
 
+    public function dichVus()
+    {
+        return $this->belongsToMany(DanhMucDichVu::class, 'don_dat_lich_dich_vu', 'don_dat_lich_id', 'dich_vu_id')
+            ->withTimestamps();
+    }
+
     public function danhGias()
     {
         return $this->hasMany(DanhGia::class, 'don_dat_lich_id');

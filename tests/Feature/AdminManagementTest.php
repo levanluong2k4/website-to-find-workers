@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -182,6 +183,170 @@ class AdminManagementTest extends TestCase
 
         $profileUpdateResponse->assertOk()
             ->assertJsonPath('data.user_id', $admin->id);
+    }
+
+    public function test_booking_with_selected_worker_rejects_service_outside_worker_skills(): void
+    {
+        Notification::fake();
+
+        $customer = User::query()->create([
+            'name' => 'Customer Booking',
+            'email' => 'customer-booking@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'customer',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $worker = User::query()->create([
+            'name' => 'Worker Booking',
+            'email' => 'worker-booking@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'worker',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('ho_so_tho')->insert([
+            'user_id' => $worker->id,
+            'cccd' => '012345678999',
+            'trang_thai_duyet' => 'da_duyet',
+            'ghi_chu_admin' => null,
+            'dang_hoat_dong' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $workerServiceId = DB::table('danh_muc_dich_vu')->insertGetId([
+            'ten_dich_vu' => 'Sua lo vi song',
+            'mo_ta' => 'Worker co the sua',
+            'hinh_anh' => null,
+            'trang_thai' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $otherServiceId = DB::table('danh_muc_dich_vu')->insertGetId([
+            'ten_dich_vu' => 'Sua tu lanh',
+            'mo_ta' => 'Ngoai chuyen mon',
+            'hinh_anh' => null,
+            'trang_thai' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('tho_dich_vu')->insert([
+            'user_id' => $worker->id,
+            'dich_vu_id' => $workerServiceId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $token = $customer->createToken('customer-booking-test')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson('/api/don-dat-lich', [
+                'tho_id' => $worker->id,
+                'loai_dat_lich' => 'at_store',
+                'dich_vu_id' => $otherServiceId,
+                'ngay_hen' => now()->addDay()->toDateString(),
+                'khung_gio_hen' => '08:00-10:00',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['dich_vu_id']);
+
+        $this->assertDatabaseCount('don_dat_lich', 0);
+    }
+
+    public function test_booking_with_selected_worker_is_assigned_immediately(): void
+    {
+        Notification::fake();
+
+        $customer = User::query()->create([
+            'name' => 'Customer Private Booking',
+            'email' => 'customer-private@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'customer',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $chosenWorker = User::query()->create([
+            'name' => 'Chosen Worker',
+            'email' => 'chosen-worker@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'worker',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $otherWorker = User::query()->create([
+            'name' => 'Other Worker',
+            'email' => 'other-worker@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'worker',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([$chosenWorker->id, $otherWorker->id] as $workerId) {
+            DB::table('ho_so_tho')->insert([
+                'user_id' => $workerId,
+                'cccd' => 'CCCD_' . $workerId,
+                'trang_thai_duyet' => 'da_duyet',
+                'ghi_chu_admin' => null,
+                'dang_hoat_dong' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $serviceId = DB::table('danh_muc_dich_vu')->insertGetId([
+            'ten_dich_vu' => 'Dien nuoc dan dung',
+            'mo_ta' => 'Dich vu worker co the nhan',
+            'hinh_anh' => null,
+            'trang_thai' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('tho_dich_vu')->insert([
+            'user_id' => $chosenWorker->id,
+            'dich_vu_id' => $serviceId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $customerToken = $customer->createToken('customer-private-booking')->plainTextToken;
+
+        $storeResponse = $this->withHeader('Authorization', 'Bearer ' . $customerToken)
+            ->postJson('/api/don-dat-lich', [
+                'tho_id' => $chosenWorker->id,
+                'loai_dat_lich' => 'at_store',
+                'dich_vu_id' => $serviceId,
+                'ngay_hen' => now()->addDay()->toDateString(),
+                'khung_gio_hen' => '10:00-12:00',
+            ]);
+
+        $storeResponse->assertCreated()
+            ->assertJsonPath('data.tho_id', $chosenWorker->id);
+        $bookingId = (int) $storeResponse->json('data.id');
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'tho_id' => $chosenWorker->id,
+            'trang_thai' => 'cho_xac_nhan',
+        ]);
+
+        $this->assertNotNull(
+            DB::table('don_dat_lich')->where('id', $bookingId)->value('thoi_gian_het_han_nhan')
+        );
     }
 
     private function createAdmin(): User

@@ -1,27 +1,343 @@
 import { callApi } from '../api.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Xử lý Đặt Lịch Chung (Booking Modal) ---
     const bookingModal = document.getElementById('bookingModal');
     const formBooking = document.getElementById('formBooking');
     const loaiDatLichRadios = document.querySelectorAll('input[name="loai_dat_lich"]');
     const atHomeGroup = document.getElementById('atHomeGroup');
     const atStoreGroup = document.getElementById('atStoreGroup');
-    const bookingDichVuSelect = document.getElementById('booking_dich_vu_id');
+    const bookingThoInput = document.getElementById('booking_tho_id');
+    const bookingSelectedWorkerCard = document.getElementById('bookingSelectedWorkerCard');
+    const bookingSelectedWorkerAvatar = document.getElementById('bookingSelectedWorkerAvatar');
+    const bookingSelectedWorkerName = document.getElementById('bookingSelectedWorkerName');
+    const bookingSelectedWorkerServices = document.getElementById('bookingSelectedWorkerServices');
     const btnBookingGetLocation = document.getElementById('btnBookingGetLocation');
     const bookingLocationStatus = document.getElementById('bookingLocationStatus');
     const btnSubmitBooking = document.getElementById('btnSubmitBooking');
+    const bookingServiceTrigger = document.getElementById('bookingServiceTrigger');
+    const bookingServiceDropdown = document.getElementById('bookingServiceDropdown');
+    const bookingServiceSummary = document.getElementById('bookingServiceSummary');
+    const bookingDichVuList = document.getElementById('bookingDichVuList');
+    const bookingSelectedServices = document.getElementById('bookingSelectedServices');
+    const bookingServiceClear = document.getElementById('bookingServiceClear');
+    const bookingServiceIdsContainer = document.getElementById('booking_service_ids_container');
 
-    // Toggle loại đặt lịch
+    let allBookingServices = [];
+    let selectedServiceIds = new Set();
+    let addressData = [];
+
+    const tinhSelect = document.getElementById('booking_tinh');
+    const huyenSelect = document.getElementById('booking_huyen');
+    const xaSelect = document.getElementById('booking_xa');
+    const bookingImages = document.getElementById('booking_images');
+    const bookingVideo = document.getElementById('booking_video');
+    const mediaPreview = document.getElementById('mediaPreview');
+    const bookingNgayHen = document.getElementById('booking_ngay_hen');
+
+    function normalizeText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    }
+
+    function closeServiceDropdown() {
+        if (!bookingServiceDropdown || !bookingServiceTrigger) return;
+        bookingServiceDropdown.classList.add('d-none');
+        bookingServiceTrigger.classList.remove('is-open');
+        bookingServiceTrigger.setAttribute('aria-expanded', 'false');
+    }
+
+    function openServiceDropdown() {
+        if (!bookingServiceDropdown || !bookingServiceTrigger || bookingServiceTrigger.disabled) return;
+        bookingServiceDropdown.classList.remove('d-none');
+        bookingServiceTrigger.classList.add('is-open');
+        bookingServiceTrigger.setAttribute('aria-expanded', 'true');
+    }
+
+    function toggleServiceDropdown() {
+        if (!bookingServiceDropdown) return;
+        if (bookingServiceDropdown.classList.contains('d-none')) {
+            openServiceDropdown();
+        } else {
+            closeServiceDropdown();
+        }
+    }
+
+    function getSelectedServices() {
+        return allBookingServices.filter((service) => selectedServiceIds.has(Number(service.id)));
+    }
+
+    function syncServiceInputs() {
+        if (!bookingServiceIdsContainer) return;
+
+        bookingServiceIdsContainer.innerHTML = '';
+        Array.from(selectedServiceIds).forEach((serviceId) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'dich_vu_ids[]';
+            input.value = String(serviceId);
+            bookingServiceIdsContainer.appendChild(input);
+        });
+    }
+
+    function renderSelectedServiceChips() {
+        if (!bookingSelectedServices) return;
+
+        const selectedServices = getSelectedServices();
+        if (selectedServices.length === 0) {
+            bookingSelectedServices.classList.add('d-none');
+            bookingSelectedServices.innerHTML = '';
+            return;
+        }
+
+        bookingSelectedServices.classList.remove('d-none');
+        bookingSelectedServices.innerHTML = selectedServices.map((service) => `
+            <span class="booking-selected-chip">
+                <span class="material-symbols-outlined" style="font-size: 1rem;">build_circle</span>
+                ${service.ten_dich_vu}
+                <button
+                    type="button"
+                    class="booking-selected-chip-remove"
+                    data-service-id="${service.id}"
+                    aria-label="Xóa ${service.ten_dich_vu}"
+                    title="Xóa ${service.ten_dich_vu}"
+                >
+                    <span class="material-symbols-outlined" style="font-size: 0.85rem;">close</span>
+                </button>
+            </span>
+        `).join('');
+
+        bookingSelectedServices.querySelectorAll('.booking-selected-chip-remove').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const serviceId = Number(button.dataset.serviceId);
+                selectedServiceIds.delete(serviceId);
+                handleSelectedServicesChange();
+            });
+        });
+    }
+
+    function updateServiceSummary() {
+        if (!bookingServiceSummary) return;
+
+        const selectedServices = getSelectedServices();
+        if (selectedServices.length === 0) {
+            bookingServiceSummary.textContent = 'Nhấn để mở danh sách dịch vụ kèm hình ảnh.';
+            return;
+        }
+
+        if (selectedServices.length === 1) {
+            bookingServiceSummary.textContent = `Đã chọn: ${selectedServices[0].ten_dich_vu}`;
+            return;
+        }
+
+        bookingServiceSummary.textContent = `Đã chọn ${selectedServices.length} dịch vụ: ${selectedServices.map((service) => service.ten_dich_vu).join(', ')}`;
+    }
+
+    function handleSelectedServicesChange() {
+        renderSelectedServiceChips();
+        updateServiceSummary();
+        syncServiceInputs();
+        checkHeavyItemTransport();
+
+        if (!bookingDichVuList) return;
+
+        bookingDichVuList.querySelectorAll('.booking-service-option').forEach((option) => {
+            const serviceId = Number(option.dataset.serviceId);
+            const isChecked = selectedServiceIds.has(serviceId);
+            option.classList.toggle('is-checked', isChecked);
+
+            const checkbox = option.querySelector('input[type="checkbox"]');
+            if (checkbox) {
+                checkbox.checked = isChecked;
+            }
+        });
+    }
+
+    function setSelectedServiceIds(nextIds) {
+        selectedServiceIds = new Set(
+            Array.from(nextIds)
+                .map((id) => Number(id))
+                .filter((id) => Number.isInteger(id) && allBookingServices.some((service) => Number(service.id) === id))
+        );
+
+        handleSelectedServicesChange();
+    }
+
+    function getServiceImage(service) {
+        return service.hinh_anh || '/assets/images/logontu.png';
+    }
+
+    function getServiceDescription(service) {
+        return service.mo_ta || 'Chọn để thêm dịch vụ này vào cùng lịch hẹn.';
+    }
+
+    function renderServiceOptions(services, emptyLabel = 'Không có dịch vụ khả dụng') {
+        allBookingServices = Array.isArray(services) ? services : [];
+
+        if (bookingServiceTrigger) {
+            bookingServiceTrigger.disabled = allBookingServices.length === 0;
+        }
+
+        if (!bookingDichVuList) return;
+
+        if (allBookingServices.length === 0) {
+            bookingDichVuList.innerHTML = `<div class="booking-service-empty">${emptyLabel}</div>`;
+            setSelectedServiceIds([]);
+            closeServiceDropdown();
+            return;
+        }
+
+        const availableServiceIds = new Set(allBookingServices.map((service) => Number(service.id)));
+        setSelectedServiceIds(Array.from(selectedServiceIds).filter((id) => availableServiceIds.has(id)));
+
+        bookingDichVuList.innerHTML = allBookingServices.map((service) => {
+            const serviceId = Number(service.id);
+            const isChecked = selectedServiceIds.has(serviceId);
+
+            return `
+                <div class="booking-service-option ${isChecked ? 'is-checked' : ''}" data-service-id="${serviceId}">
+                    <img class="booking-service-thumb" src="${getServiceImage(service)}" alt="${service.ten_dich_vu}" onerror="this.src='/assets/images/logontu.png'">
+                    <div class="booking-service-meta">
+                        <strong>${service.ten_dich_vu}</strong>
+                        <small>${getServiceDescription(service)}</small>
+                    </div>
+                    <label class="container mb-0">
+                        <input type="checkbox" value="${serviceId}" ${isChecked ? 'checked' : ''}>
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+            `;
+        }).join('');
+
+        bookingDichVuList.querySelectorAll('.booking-service-option').forEach((option) => {
+            option.addEventListener('click', (event) => {
+                const checkbox = option.querySelector('input[type="checkbox"]');
+                if (!checkbox) return;
+
+                if (!event.target.closest('.container')) {
+                    checkbox.checked = !checkbox.checked;
+                }
+
+                const serviceId = Number(option.dataset.serviceId);
+                if (checkbox.checked) {
+                    selectedServiceIds.add(serviceId);
+                } else {
+                    selectedServiceIds.delete(serviceId);
+                }
+
+                handleSelectedServicesChange();
+            });
+        });
+
+        if (allBookingServices.length === 1 && selectedServiceIds.size === 0) {
+            setSelectedServiceIds([Number(allBookingServices[0].id)]);
+        } else {
+            handleSelectedServicesChange();
+        }
+    }
+
+    function preSelectService(keywordOrList) {
+        if (!keywordOrList || allBookingServices.length === 0) return;
+
+        const keywords = Array.isArray(keywordOrList) ? keywordOrList : [keywordOrList];
+        const normalizedKeywords = keywords.map(normalizeText).filter(Boolean);
+        if (normalizedKeywords.length === 0) return;
+
+        const nextIds = new Set(selectedServiceIds);
+        allBookingServices.forEach((service) => {
+            const normalizedName = normalizeText(service.ten_dich_vu);
+            if (normalizedKeywords.some((keyword) => normalizedName.includes(keyword) || keyword.includes(normalizedName))) {
+                nextIds.add(Number(service.id));
+            }
+        });
+
+        setSelectedServiceIds(nextIds);
+    }
+
+    function renderSelectedWorker(worker) {
+        if (!bookingSelectedWorkerCard) return;
+
+        const user = worker?.user ?? {};
+        const services = user.dich_vus ?? user.dichVus ?? [];
+        const serviceNames = services.map((service) => service.ten_dich_vu).filter(Boolean);
+
+        bookingSelectedWorkerAvatar.src = user.avatar || '/assets/images/user-default.png';
+        bookingSelectedWorkerName.textContent = user.name || 'Thợ sửa chữa';
+        bookingSelectedWorkerServices.textContent = serviceNames.length > 0
+            ? `Chuyên môn: ${serviceNames.join(', ')}`
+            : 'Chưa cập nhật dịch vụ chuyên môn.';
+        bookingSelectedWorkerCard.classList.remove('d-none');
+    }
+
+    function hideSelectedWorker() {
+        if (!bookingSelectedWorkerCard) return;
+
+        bookingSelectedWorkerCard.classList.add('d-none');
+        bookingSelectedWorkerAvatar.src = '/assets/images/user-default.png';
+        bookingSelectedWorkerName.textContent = 'Đang tải thông tin thợ...';
+        bookingSelectedWorkerServices.textContent = 'Đang tải chuyên môn...';
+    }
+
+    async function loadBookingServices() {
+        if (bookingDichVuList) {
+            bookingDichVuList.innerHTML = '<div class="booking-service-empty">Đang tải danh mục...</div>';
+        }
+        if (bookingServiceTrigger) {
+            bookingServiceTrigger.disabled = true;
+        }
+
+        try {
+            const workerId = bookingThoInput?.value;
+
+            if (workerId) {
+                const result = await callApi(`/ho-so-tho/${workerId}`, 'GET');
+                renderSelectedWorker(result.data);
+                const services = result.data?.user?.dich_vus ?? result.data?.user?.dichVus ?? [];
+
+                if (services.length === 0) {
+                    renderServiceOptions([], 'Thợ này chưa có dịch vụ khả dụng');
+                    return;
+                }
+
+                renderServiceOptions(services);
+            } else {
+                hideSelectedWorker();
+                const result = await callApi('/danh-muc-dich-vu', 'GET');
+                renderServiceOptions(result.data ?? []);
+            }
+
+            preSelectService(window.PRESELECT_SERVICE);
+        } catch (error) {
+            hideSelectedWorker();
+            renderServiceOptions([], 'Lỗi tải danh mục');
+        }
+    }
+
+    if (bookingServiceTrigger) {
+        bookingServiceTrigger.addEventListener('click', toggleServiceDropdown);
+    }
+
+    if (bookingServiceClear) {
+        bookingServiceClear.addEventListener('click', () => {
+            setSelectedServiceIds([]);
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        const picker = document.getElementById('bookingServicePicker');
+        if (!picker || picker.contains(event.target)) return;
+        closeServiceDropdown();
+    });
+
     if (loaiDatLichRadios.length > 0) {
-        loaiDatLichRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const tinhSelect = document.getElementById('booking_tinh');
-                const huyenSelect = document.getElementById('booking_huyen');
-                const xaSelect = document.getElementById('booking_xa');
+        loaiDatLichRadios.forEach((radio) => {
+            radio.addEventListener('change', (event) => {
                 const soNha = document.getElementById('booking_so_nha');
 
-                if (e.target.value === 'at_home') {
+                if (event.target.value === 'at_home') {
                     atHomeGroup.classList.remove('d-none');
                     atStoreGroup.classList.add('d-none');
                     if (tinhSelect) tinhSelect.required = true;
@@ -38,40 +354,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('booking_vi_do').value = '';
                     document.getElementById('booking_kinh_do').value = '';
                     document.getElementById('booking_dia_chi').value = '';
-                    bookingLocationStatus.textContent = 'Vui lòng ấn nút lấy vị trí tự động hoặc chọn thao tác tay từ trên xuống.';
+                    bookingLocationStatus.textContent = 'Vui lòng lấy vị trí tự động hoặc chọn địa chỉ thủ công.';
                 }
-                checkHeavyItemTransport();
 
-                // Cập nhật lại list giờ khả dụng khi hình thức thay đổi
-                if (typeof updateAvailableTimeSlots === 'function') {
-                    updateAvailableTimeSlots();
-                }
+                checkHeavyItemTransport();
+                updateAvailableTimeSlots();
             });
         });
     }
 
-    // Load dữ liệu Tỉnh/Thành Việt Nam
-    let addressData = [];
-    const tinhSelect = document.getElementById('booking_tinh');
-    const huyenSelect = document.getElementById('booking_huyen');
-    const xaSelect = document.getElementById('booking_xa');
-
     async function loadAddressData() {
-        if (addressData.length > 0) return; // Da load
+        if (addressData.length > 0) return;
+
         try {
             const res = await fetch('https://provinces.open-api.vn/api/?depth=3');
             addressData = await res.json();
 
             if (tinhSelect) {
                 let html = '<option value="">Tỉnh/Thành phố</option>';
-                addressData.forEach(tinh => {
+                addressData.forEach((tinh) => {
                     html += `<option value="${tinh.name}" data-code="${tinh.code}">${tinh.name}</option>`;
                 });
                 tinhSelect.innerHTML = html;
             }
         } catch (error) {
-            console.error("Lỗi khi tải dữ liệu tỉnh thành:", error);
-            if (bookingLocationStatus) bookingLocationStatus.textContent = "Lỗi khi tải dữ liệu địa chỉ. Vui lòng thử lại sau.";
+            console.error('Lỗi khi tải dữ liệu tỉnh thành:', error);
+            if (bookingLocationStatus) {
+                bookingLocationStatus.textContent = 'Lỗi khi tải dữ liệu địa chỉ. Vui lòng thử lại sau.';
+            }
         }
     }
 
@@ -88,11 +398,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const code = selectedOption.getAttribute('data-code');
-            const tinh = addressData.find(t => t.code == code);
+            const tinh = addressData.find((item) => item.code == code);
             if (tinh && tinh.districts) {
                 let html = '<option value="">Quận/Huyện</option>';
-                tinh.districts.forEach(h => {
-                    html += `<option value="${h.name}" data-code="${h.code}">${h.name}</option>`;
+                tinh.districts.forEach((huyen) => {
+                    html += `<option value="${huyen.name}" data-code="${huyen.code}">${huyen.name}</option>`;
                 });
                 huyenSelect.innerHTML = html;
                 huyenSelect.disabled = false;
@@ -111,14 +421,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const tinhCode = tinhSelect.options[tinhSelect.selectedIndex].getAttribute('data-code');
-            const tinh = addressData.find(t => t.code == tinhCode);
+            const tinh = addressData.find((item) => item.code == tinhCode);
             if (tinh) {
                 const code = selectedOption.getAttribute('data-code');
-                const huyen = tinh.districts.find(d => d.code == code);
+                const huyen = tinh.districts.find((district) => district.code == code);
                 if (huyen && huyen.wards) {
                     let html = '<option value="">Phường/Xã</option>';
-                    huyen.wards.forEach(x => {
-                        html += `<option value="${x.name}">${x.name}</option>`;
+                    huyen.wards.forEach((xa) => {
+                        html += `<option value="${xa.name}">${xa.name}</option>`;
                     });
                     xaSelect.innerHTML = html;
                     xaSelect.disabled = false;
@@ -127,7 +437,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Helper: format YYYY-MM-DD from Date objects with local timezone
     function getLocalDateString(dateObj) {
         const y = dateObj.getFullYear();
         const m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -135,98 +444,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${y}-${m}-${d}`;
     }
 
-    // Populate Dịch vụ và thiết lập ngày giờ when modal opens
-    if (bookingModal && bookingDichVuSelect) {
-        bookingModal.addEventListener('show.bs.modal', async () => {
-            loadAddressData();
-
-            if (window.WORKER_ID) {
-                document.getElementById('booking_tho_id').value = window.WORKER_ID;
-            } else {
-                document.getElementById('booking_tho_id').value = '';
-            }
-
-            const ngayHenInput = document.getElementById('booking_ngay_hen');
-            if (ngayHenInput) {
-                const now = new Date();
-                const minDate = getLocalDateString(now);
-                const next2Days = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
-                const maxDate = getLocalDateString(next2Days);
-                ngayHenInput.min = minDate;
-                ngayHenInput.max = maxDate;
-                if (!ngayHenInput.value || ngayHenInput.value < minDate || ngayHenInput.value > maxDate) {
-                    ngayHenInput.value = minDate;
-                }
-            }
-            updateAvailableTimeSlots();
-
-            // Helper: find option by partial text match (case-insensitive)
-            function preSelectService(keyword) {
-                if (!keyword) return;
-                const kw = keyword.toLowerCase();
-                for (let opt of bookingDichVuSelect.options) {
-                    if (opt.text.toLowerCase().includes(kw)) {
-                        bookingDichVuSelect.value = opt.value;
-                        bookingDichVuSelect.dispatchEvent(new Event('change'));
-                        break;
-                    }
-                }
-            }
-
-            if (bookingDichVuSelect.options.length <= 1) {
-                // Options not loaded yet — fetch then pre-select
-                try {
-                    const result = await callApi('/danh-muc-dich-vu', 'GET');
-                    if (result.data) {
-                        let html = '<option value="">-- Chọn dịch vụ --</option>';
-                        result.data.forEach(cat => {
-                            html += `<option value="${cat.id}">${cat.ten_dich_vu}</option>`;
-                        });
-                        bookingDichVuSelect.innerHTML = html;
-                    }
-                } catch (e) {
-                    bookingDichVuSelect.innerHTML = '<option value="">Lỗi tải danh mục</option>';
-                }
-            }
-
-            // Pre-select service after options are ready
-            preSelectService(window.PRESELECT_SERVICE);
-        });
-
-        bookingDichVuSelect.addEventListener('change', checkHeavyItemTransport);
-    }
-
-    // Logic kiểm soát danh sách khung giờ trống theo Hình thức hẹn & Thời gian thực
     function updateAvailableTimeSlots() {
-        const ngayHenInput = document.getElementById('booking_ngay_hen');
         const khungGioSelect = document.getElementById('booking_khung_gio_hen');
-        const isAtHome = document.getElementById('loai_hom') && document.getElementById('loai_hom').checked;
-        if (!ngayHenInput || !khungGioSelect) return;
+        const isAtHome = document.getElementById('loai_hom')?.checked;
+        if (!bookingNgayHen || !khungGioSelect) return;
 
-        // Reset all options
         Array.from(khungGioSelect.options).forEach((opt, idx) => {
-            if (idx > 0) { // Bỏ qua option đầu tiên placeholder
+            if (idx > 0) {
                 opt.disabled = false;
                 opt.hidden = false;
             }
         });
 
-        const dateVal = ngayHenInput.value; // format YYYY-MM-DD
+        const dateVal = bookingNgayHen.value;
         if (!dateVal) return;
 
         const now = new Date();
         const todayStr = getLocalDateString(now);
-
-        // Nếu ngày hẹn là tương lai (> hôm nay) thì luôn cho chọn mọi khung giờ
         if (dateVal > todayStr) {
             return;
         }
 
-        // Nếu ngày hẹn <= hôm nay, tính toán khung giờ phù hợp
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-        // Target Index: Xác định khung giờ kế tiếp hiện tại
-        // 0: 08:00 (480), 1: 10:00 (600), 2: 12:00 (720), 3: 14:00 (840), 4: Hết giờ đặt
         let targetIndex = 0;
         if (currentMinutes < 480) targetIndex = 0;
         else if (currentMinutes < 600) targetIndex = 1;
@@ -234,15 +473,14 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (currentMinutes < 840) targetIndex = 3;
         else targetIndex = 4;
 
-        // "nếu đặt thợ tới nhà thì cách một khung giờ" (So với khung giờ kế tiếp)
         if (isAtHome) {
             targetIndex += 1;
         }
 
-        let firstEnableValue = "";
+        let firstEnableValue = '';
         Array.from(khungGioSelect.options).forEach((opt, idx) => {
             if (idx > 0) {
-                const actualIndex = idx - 1; // mapping sang index 0->3 logic của khung giờ
+                const actualIndex = idx - 1;
                 if (actualIndex < targetIndex) {
                     opt.disabled = true;
                     opt.hidden = true;
@@ -252,72 +490,42 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Tự động clear value nếu đang chọn phải khung giờ đã bị disable
         if (khungGioSelect.selectedIndex > 0 && khungGioSelect.options[khungGioSelect.selectedIndex].disabled) {
             khungGioSelect.value = firstEnableValue;
-            // Nếu không còn khung giờ hợp lệ nào, gán rỗng báo cho user biết.
             if (!firstEnableValue && targetIndex >= 4) {
-                khungGioSelect.value = "";
+                khungGioSelect.value = '';
             }
         }
     }
 
-    // Gắn listener lắng nghe sửa đổi ngày hẹn
-    const bookingNgayHen = document.getElementById('booking_ngay_hen');
     if (bookingNgayHen) {
         bookingNgayHen.addEventListener('change', updateAvailableTimeSlots);
-    }
-
-    // Media Handling (Images & Video)
-    const bookingImages = document.getElementById('booking_images');
-    const bookingVideo = document.getElementById('booking_video');
-    const mediaPreview = document.getElementById('mediaPreview');
-
-    if (bookingImages) {
-        bookingImages.addEventListener('change', function() {
-            renderMediaPreview();
-        });
-    }
-
-    if (bookingVideo) {
-        bookingVideo.addEventListener('change', async function() {
-            if (this.files.length > 0) {
-                const duration = await getVideoDuration(this.files[0]);
-                if (duration > 20) {
-                    alert('Video không được vượt quá 20 giây. Vui lòng chọn video ngắn hơn.');
-                    this.value = '';
-                }
-            }
-            renderMediaPreview();
-        });
     }
 
     function renderMediaPreview() {
         if (!mediaPreview) return;
         mediaPreview.innerHTML = '';
-        
-        // Render Images
+
         if (bookingImages && bookingImages.files.length > 0) {
             Array.from(bookingImages.files).forEach((file, index) => {
-                if (index < 5) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const div = document.createElement('div');
-                        div.className = 'position-relative';
-                        div.style.width = '60px';
-                        div.style.height = '60px';
-                        div.innerHTML = `
-                            <img src="${e.target.result}" class="w-100 h-100 object-cover rounded border">
-                            <span class="position-absolute top-0 end-0 badge rounded-pill bg-danger" style="margin: -5px -5px 0 0; cursor: pointer; transform: scale(0.7);" onclick="removeImage(${index})">×</span>
-                        `;
-                        mediaPreview.appendChild(div);
-                    }
-                    reader.readAsDataURL(file);
-                }
+                if (index >= 5) return;
+
+                const reader = new FileReader();
+                reader.onload = function (loadEvent) {
+                    const div = document.createElement('div');
+                    div.className = 'position-relative';
+                    div.style.width = '60px';
+                    div.style.height = '60px';
+                    div.innerHTML = `
+                        <img src="${loadEvent.target.result}" class="w-100 h-100 object-cover rounded border">
+                        <span class="position-absolute top-0 end-0 badge rounded-pill bg-danger" style="margin: -5px -5px 0 0; cursor: pointer; transform: scale(0.7);" onclick="removeImage(${index})">×</span>
+                    `;
+                    mediaPreview.appendChild(div);
+                };
+                reader.readAsDataURL(file);
             });
         }
 
-        // Render Video
         if (bookingVideo && bookingVideo.files.length > 0) {
             const div = document.createElement('div');
             div.className = 'position-relative';
@@ -333,41 +541,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    window.removeImage = function(index) {
-        const dt = new DataTransfer();
-        const { files } = bookingImages;
-        for (let i = 0; i < files.length; i++) {
-            if (i !== index) dt.items.add(files[i]);
-        }
-        bookingImages.files = dt.files;
-        renderMediaPreview();
-    }
-
-    window.removeVideo = function() {
-        bookingVideo.value = '';
-        renderMediaPreview();
-    }
-
     function getVideoDuration(file) {
         return new Promise((resolve) => {
             const video = document.createElement('video');
             video.preload = 'metadata';
-            video.onloadedmetadata = function() {
+            video.onloadedmetadata = function () {
                 window.URL.revokeObjectURL(video.src);
                 resolve(video.duration);
-            }
+            };
             video.src = URL.createObjectURL(file);
         });
     }
 
-    // Logic kiểm tra xe chở
     function checkHeavyItemTransport() {
-        if (!bookingDichVuSelect || bookingDichVuSelect.selectedIndex === -1) return;
-        const text = bookingDichVuSelect.options[bookingDichVuSelect.selectedIndex].text.toLowerCase();
-        const keywords = ['máy giặt', 'tủ lạnh', 'tivi', 'máy lạnh', 'điều hòa'];
-        const isHeavy = keywords.some(k => text.includes(k));
+        const selectedNames = getSelectedServices().map((service) => normalizeText(service.ten_dich_vu));
+        const keywords = ['may giat', 'tu lanh', 'tivi', 'may lanh', 'dieu hoa'];
+        const isHeavy = selectedNames.some((name) => keywords.some((keyword) => name.includes(keyword)));
 
-        const isAtStore = document.getElementById('loai_store') && document.getElementById('loai_store').checked;
+        const isAtStore = document.getElementById('loai_store')?.checked;
         const transportGroup = document.getElementById('transportRentalGroup');
         const transportCheckbox = document.getElementById('booking_thue_xe_cho');
 
@@ -381,47 +572,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Auto string similarity comparison helper
     function findBestMatch(targetStr, listStr) {
         if (!targetStr || !listStr || listStr.length === 0) return null;
-        let match = "";
+        let match = '';
         let maxMatchCount = 0;
 
-        targetStr = targetStr.toLowerCase();
-        const targetWords = targetStr.replace(/(tỉnh|thành phố|quận|huyện|thị xã|phường|xã|thị trấn)/gi, "").trim();
+        const targetWords = normalizeText(targetStr).replace(/(tinh|thanh pho|quan|huyen|thi xa|phuong|xa|thi tran)/g, '').trim();
 
-        listStr.forEach(str => {
-            let itemWords = str.toLowerCase().replace(/(tỉnh|thành phố|quận|huyện|thị xã|phường|xã|thị trấn)/gi, "").trim();
-            if (itemWords === targetWords || targetStr.includes(itemWords) || itemWords.includes(targetWords)) {
+        listStr.forEach((str) => {
+            const itemWords = normalizeText(str).replace(/(tinh|thanh pho|quan|huyen|thi xa|phuong|xa|thi tran)/g, '').trim();
+            if (itemWords === targetWords || targetWords.includes(itemWords) || itemWords.includes(targetWords)) {
                 if (itemWords.length > maxMatchCount) {
                     match = str;
                     maxMatchCount = itemWords.length;
                 }
             }
         });
-        return match || listStr[0]; // fallback to first item
+
+        return match || listStr[0];
     }
 
-    // Function chọn tự động option select dựa trên text
     function autoSelectOptionByText(selectEl, textToFind) {
         if (!selectEl || !textToFind) return;
-        const optionsList = Array.from(selectEl.options).map(o => o.value).filter(val => val !== "");
+        const optionsList = Array.from(selectEl.options).map((option) => option.value).filter((value) => value !== '');
         const matchedVal = findBestMatch(textToFind, optionsList);
         if (matchedVal) {
             selectEl.value = matchedVal;
-            // Xóa required nếu auto select dc (phòng ngừa user touch thủ công lỗi)
             selectEl.dispatchEvent(new Event('change'));
         }
     }
 
-    // Lấy vị trí Booking
+    if (bookingImages) {
+        bookingImages.addEventListener('change', renderMediaPreview);
+    }
+
+    if (bookingVideo) {
+        bookingVideo.addEventListener('change', async function () {
+            if (this.files.length > 0) {
+                const duration = await getVideoDuration(this.files[0]);
+                if (duration > 20) {
+                    alert('Video không được vượt quá 20 giây. Vui lòng chọn video ngắn hơn.');
+                    this.value = '';
+                }
+            }
+            renderMediaPreview();
+        });
+    }
+
+    window.removeImage = function (index) {
+        const dt = new DataTransfer();
+        const { files } = bookingImages;
+        for (let i = 0; i < files.length; i += 1) {
+            if (i !== index) {
+                dt.items.add(files[i]);
+            }
+        }
+        bookingImages.files = dt.files;
+        renderMediaPreview();
+    };
+
+    window.removeVideo = function () {
+        bookingVideo.value = '';
+        renderMediaPreview();
+    };
+
     if (btnBookingGetLocation) {
         btnBookingGetLocation.addEventListener('click', () => {
             if (!navigator.geolocation) {
-                alert("Trình duyệt không hỗ trợ định vị.");
+                alert('Trình duyệt không hỗ trợ định vị.');
                 return;
             }
-            bookingLocationStatus.textContent = "Đang lấy tọa độ GPS...";
+
+            bookingLocationStatus.textContent = 'Đang lấy tọa độ GPS...';
             btnBookingGetLocation.disabled = true;
 
             navigator.geolocation.getCurrentPosition(
@@ -431,30 +653,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('booking_vi_do').value = lat;
                     document.getElementById('booking_kinh_do').value = lng;
 
-                    // Simple Reverse Geocoding via Nominatim (Free)
                     try {
                         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`);
                         const data = await res.json();
 
                         if (data && data.address) {
-                            bookingLocationStatus.innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> Đã lấy vị trí thành công</span>`;
+                            bookingLocationStatus.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> Đã lấy vị trí thành công</span>';
                             const addr = data.address;
-
-                            // 1. Tự động set Tỉnh
                             const pName = addr.city || addr.state || addr.province;
+
                             if (pName) {
                                 autoSelectOptionByText(tinhSelect, pName);
-
-                                // Đợi 100ms để gen Huyện
                                 setTimeout(() => {
-                                    // 2. Tự động set Huyện
                                     const dName = addr.county || addr.district || addr.suburb || addr.town;
                                     if (dName) {
                                         autoSelectOptionByText(huyenSelect, dName);
-
-                                        // Đợi 100ms gen Xã
                                         setTimeout(() => {
-                                            // 3. Tự động set Xã
                                             const wName = addr.village || addr.suburb || addr.quarter || addr.hamlet || addr.neighbourhood;
                                             if (wName) {
                                                 autoSelectOptionByText(xaSelect, wName);
@@ -464,38 +678,69 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }, 100);
                             }
 
-                            // Lấy số nhà/đường nếu có
-                            let streetAddress = "";
-                            if (addr.house_number) streetAddress += addr.house_number + " ";
+                            let streetAddress = '';
+                            if (addr.house_number) streetAddress += `${addr.house_number} `;
                             if (addr.road) streetAddress += addr.road;
                             if (streetAddress) {
                                 document.getElementById('booking_so_nha').value = streetAddress.trim();
                             }
-
                         } else {
-                            // Fallback
-                            bookingLocationStatus.textContent = "Không thể phân giải cụ thể địa chỉ JSON. Vui lòng chọn tay.";
+                            bookingLocationStatus.textContent = 'Không thể phân giải địa chỉ. Vui lòng chọn thủ công.';
                         }
-                    } catch (e) {
-                        bookingLocationStatus.textContent = "Không kết nối API lấy địa chỉ. Vui lòng chọn tay.";
+                    } catch (error) {
+                        bookingLocationStatus.textContent = 'Không kết nối API địa chỉ. Vui lòng chọn thủ công.';
                     }
+
                     btnBookingGetLocation.disabled = false;
                 },
-                (err) => {
-                    bookingLocationStatus.textContent = "Không lấy được vị trí. Vui lòng chọn địa chỉ thủ công.";
+                () => {
+                    bookingLocationStatus.textContent = 'Không lấy được vị trí. Vui lòng chọn địa chỉ thủ công.';
                     btnBookingGetLocation.disabled = false;
                 }
             );
         });
     }
 
-    // Submit Booking
-    if (formBooking) {
-        formBooking.addEventListener('submit', async (e) => {
-            e.preventDefault();
+    if (bookingModal) {
+        bookingModal.addEventListener('show.bs.modal', async () => {
+            loadAddressData();
 
-            // Validation
-            if (document.getElementById('loai_hom') && document.getElementById('loai_hom').checked) {
+            if (window.WORKER_ID) {
+                bookingThoInput.value = window.WORKER_ID;
+            } else {
+                bookingThoInput.value = '';
+            }
+
+            if (bookingNgayHen) {
+                const now = new Date();
+                const minDate = getLocalDateString(now);
+                const next2Days = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+                const maxDate = getLocalDateString(next2Days);
+                bookingNgayHen.min = minDate;
+                bookingNgayHen.max = maxDate;
+                if (!bookingNgayHen.value || bookingNgayHen.value < minDate || bookingNgayHen.value > maxDate) {
+                    bookingNgayHen.value = minDate;
+                }
+            }
+
+            updateAvailableTimeSlots();
+            await loadBookingServices();
+        });
+
+        bookingModal.addEventListener('hidden.bs.modal', closeServiceDropdown);
+    }
+
+    if (formBooking) {
+        formBooking.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (selectedServiceIds.size === 0) {
+                alert('Vui lòng chọn ít nhất một dịch vụ cần sửa.');
+                openServiceDropdown();
+                return;
+            }
+
+            if (document.getElementById('loai_hom')?.checked) {
                 const soNha = document.getElementById('booking_so_nha').value;
                 const lat = document.getElementById('booking_vi_do').value;
                 const tinh = document.getElementById('booking_tinh').value;
@@ -503,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const xa = document.getElementById('booking_xa').value;
 
                 if (!lat) {
-                    alert('Vui lòng ấn [Tự động lấy vị trí hiện tại] để hệ thống tính khoảng cách (Yêu cầu bắt buộc < 5km).');
+                    alert('Vui lòng dùng tính năng lấy vị trí hiện tại để hệ thống tính khoảng cách phục vụ.');
                     return;
                 }
                 if (!tinh || !huyen || !xa) {
@@ -511,25 +756,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 if (!soNha) {
-                    alert('Vui lòng điền chi tiết Số nhà, Tên Đường/Ngõ.');
+                    alert('Vui lòng điền số nhà và tên đường cụ thể.');
                     return;
                 }
 
-                // Append address text string
                 document.getElementById('booking_dia_chi').value = `${xa}, ${huyen}, ${tinh}`;
             }
 
-            // Media Validation
-            const imageInput = document.getElementById('booking_images');
-            if (imageInput.files.length > 5) {
+            if (bookingImages && bookingImages.files.length > 5) {
                 alert('Bạn chỉ có thể chọn tối đa 5 hình ảnh.');
                 return;
             }
 
-            const videoInput = document.getElementById('booking_video');
-            if (videoInput.files.length > 0) {
-                const videoFile = videoInput.files[0];
-                const videoDuration = await getVideoDuration(videoFile);
+            if (bookingVideo && bookingVideo.files.length > 0) {
+                const videoDuration = await getVideoDuration(bookingVideo.files[0]);
                 if (videoDuration > 20) {
                     alert('Video không được vượt quá 20 giây. Vui lòng chọn video ngắn hơn.');
                     return;
@@ -540,53 +780,60 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSubmitBooking.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
 
             const formData = new FormData(formBooking);
-            
-            // Ép kiểu boolean cho checkbox tải xe
+            formData.delete('dich_vu_id');
+            formData.delete('dich_vu_ids[]');
+            Array.from(selectedServiceIds).forEach((serviceId, index) => {
+                formData.append('dich_vu_ids[]', String(serviceId));
+                if (index === 0) {
+                    formData.set('dich_vu_id', String(serviceId));
+                }
+            });
+
             const thueXe = document.getElementById('booking_thue_xe_cho').checked ? 1 : 0;
             formData.set('thue_xe_cho', thueXe);
 
-            // Xử lý gộp chuỗi địa chỉ
             if (document.getElementById('loai_hom').checked) {
                 const diaChi = `${formData.get('so_nha')}, ${formData.get('dia_chi')}`;
                 formData.set('dia_chi', diaChi);
                 formData.delete('so_nha');
             }
 
-            if (!formData.get('tho_id')) formData.delete('tho_id');
+            if (!formData.get('tho_id')) {
+                formData.delete('tho_id');
+            }
 
             try {
                 const res = await callApi('/don-dat-lich', 'POST', formData);
 
                 if (!res.ok) {
-                    // Show specific API error message (validation errors, distance error, etc.)
                     const errData = res.data;
-                    if (errData && errData.errors) {
+                    if (errData?.errors) {
                         alert(Object.values(errData.errors).flat().join('\n'));
-                    } else if (errData && errData.message) {
+                    } else if (errData?.message) {
                         alert(errData.message);
                     } else {
-                        alert('Có lỗi xảy ra khi đặt lịch. (HTTP ' + res.status + ')');
+                        alert(`Có lỗi xảy ra khi đặt lịch. (HTTP ${res.status})`);
                     }
                     return;
                 }
 
-                // res.data = { message: '...', data: booking }
                 const booking = res.data.data ?? res.data;
                 alert(`Đặt lịch thành công! Mã đơn: #${booking.id}`);
                 bootstrap.Modal.getInstance(bookingModal).hide();
                 formBooking.reset();
+                setSelectedServiceIds([]);
                 atHomeGroup.classList.remove('d-none');
                 atStoreGroup.classList.add('d-none');
 
                 setTimeout(() => {
                     window.location.href = '/customer/my-bookings';
                 }, 1000);
-            } catch (err) {
-                console.error('Booking error:', err);
-                alert(err.message || 'Mất kết nối đến máy chủ. Vui lòng thử lại.');
+            } catch (error) {
+                console.error('Booking error:', error);
+                alert(error.message || 'Mất kết nối đến máy chủ. Vui lòng thử lại.');
             } finally {
                 btnSubmitBooking.disabled = false;
-                btnSubmitBooking.innerHTML = 'Xác nhận Đặt Lịch';
+                btnSubmitBooking.innerHTML = 'Xác nhận đặt lịch';
             }
         });
     }

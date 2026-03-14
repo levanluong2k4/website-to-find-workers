@@ -91,6 +91,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderBookings = (bookings) => {
         bookingsContainer.innerHTML = '';
 
+        const getBookingServices = (booking) => {
+            if (Array.isArray(booking.dich_vus) && booking.dich_vus.length > 0) {
+                return booking.dich_vus;
+            }
+            if (booking.dichVu) {
+                return [booking.dichVu];
+            }
+            if (booking.dich_vu) {
+                return [booking.dich_vu];
+            }
+            return [];
+        };
+
         if (bookings.length === 0) {
             bookingsContainer.innerHTML = `
                 <div class="col-12">
@@ -111,6 +124,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateObj = new Date(booking.ngay_hen);
             const dateString = dateObj.toLocaleDateString('vi-VN');
             const formatMoney = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
+            const bookingServices = getBookingServices(booking);
+            const serviceTitle = bookingServices.length > 0
+                ? bookingServices.map(service => service.ten_dich_vu).join(', ')
+                : 'Sửa chữa điện máy';
+            const serviceBadges = bookingServices.length > 0
+                ? bookingServices.map(service => `<span class="badge rounded-pill text-bg-light border">${service.ten_dich_vu}</span>`).join('')
+                : '';
 
             let statusLabel = '';
             let statusClass = `status-${booking.trang_thai}`;
@@ -179,7 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="mb-3 flex-grow-1">
                         ${booking.thue_xe_cho ? '<div class="mb-2"><span class="badge bg-info text-dark border border-info-subtle"><i class="fas fa-truck me-1"></i> Có yêu cầu tự thuê xe chở</span></div>' : ''}
                         
-                        <h5 class="fw-bold text-primary mb-3">${booking.dichVu?.ten_dich_vu || 'Sửa chữa điện máy'}</h5>
+                        <h5 class="fw-bold text-primary mb-2">${serviceTitle}</h5>
+                        ${serviceBadges ? `<div class="d-flex flex-wrap gap-2 mb-3">${serviceBadges}</div>` : ''}
                         
                         <div class="d-flex align-items-center mb-2 text-secondary" style="font-size: 0.95rem;">
                             <i class="fas fa-calendar-alt text-muted me-2" style="width: 20px;"></i>

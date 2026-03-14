@@ -32,6 +32,24 @@ class HoSoThoController extends Controller
             });
         }
 
+        $serviceIds = $request->input('service_ids', []);
+        if (is_string($serviceIds)) {
+            $serviceIds = array_filter(explode(',', $serviceIds));
+        }
+
+        $serviceIds = collect($serviceIds)
+            ->filter(static fn ($value) => $value !== null && $value !== '')
+            ->map(static fn ($value) => (int) $value)
+            ->unique()
+            ->values()
+            ->all();
+
+        foreach ($serviceIds as $serviceId) {
+            $query->whereHas('user.dichVus', function ($serviceQuery) use ($serviceId) {
+                $serviceQuery->whereKey($serviceId);
+            });
+        }
+
         if ($request->filled('province')) {
             $province = $request->province;
             $query->whereHas('user', function ($q) use ($province) {

@@ -68,6 +68,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderBookings = (bookings) => {
         bookingsContainer.innerHTML = '';
 
+        const getBookingServices = (booking) => {
+            if (Array.isArray(booking.dich_vus) && booking.dich_vus.length > 0) {
+                return booking.dich_vus;
+            }
+            if (booking.dich_vu) {
+                return [booking.dich_vu];
+            }
+            if (booking.dichVu) {
+                return [booking.dichVu];
+            }
+            return [];
+        };
+
         if (bookings.length === 0) {
             bookingsContainer.innerHTML = `
                 <div class="col-12">
@@ -88,6 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateString = dateObj.toLocaleDateString('vi-VN');
 
             const formatMoney = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
+            const bookingServices = getBookingServices(booking);
+            const serviceTitle = bookingServices.length > 0
+                ? bookingServices.map(service => service.ten_dich_vu).join(', ')
+                : 'Dịch vụ';
+            const serviceBadges = bookingServices.length > 0
+                ? bookingServices.map(service => `<span class="badge rounded-pill text-bg-light border">${service.ten_dich_vu}</span>`).join('')
+                : '';
 
             let statusLabel = '';
             let statusClass = `status-${booking.trang_thai}`;
@@ -137,7 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <div class="mb-3 flex-grow-1">
                         ${booking.thue_xe_cho ? '<div class="mb-2"><span class="badge bg-info text-dark px-2 py-1 border border-info-subtle shadow-sm"><i class="fas fa-truck me-1"></i> Khách yêu cầu thuê xe tải chở thiết bị</span></div>' : ''}
-                        <h6 class="fw-bold text-dark mb-2">${booking.dich_vu?.ten_dich_vu || 'Dịch vụ'}</h6>
+                        <h6 class="fw-bold text-dark mb-2">${serviceTitle}</h6>
+                        ${serviceBadges ? `<div class="d-flex flex-wrap gap-2 mb-2">${serviceBadges}</div>` : ''}
                         <div class="d-flex align-items-center mb-2 text-secondary" style="font-size: 0.9rem;">
                             <span class="material-symbols-outlined me-2 fs-5">event</span> ${dateString} • ${booking.khung_gio_hen}
                         </div>
