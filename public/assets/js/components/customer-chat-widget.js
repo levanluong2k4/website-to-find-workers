@@ -8,7 +8,7 @@ if (isCustomerScope) {
         <div class="chat-bubble chat-bubble-assistant">
             <div class="chat-typing">
                 <img src="/assets/images/robotAI.png" alt="AI Robot" class="chat-typing-avatar">
-                <div class="chat-typing-dots" aria-label="AI dang soan tin">
+                <div class="chat-typing-dots" aria-label="AI \u0111ang so\u1ea1n tin">
                     <span class="chat-typing-dot"></span>
                     <span class="chat-typing-dot"></span>
                     <span class="chat-typing-dot"></span>
@@ -49,10 +49,10 @@ if (isCustomerScope) {
 
             const caseHtml = cases.map((item) => `
                 <div class="chat-card">
-                    <div class="fw-semibold mb-1">${escapeHtml(item.service_type || 'Ca sua chua')}</div>
-                    <div class="small text-secondary mb-1"><strong>Loi:</strong> ${escapeHtml(item.problem_description || '')}</div>
-                    <div class="small text-secondary mb-1"><strong>Nguyen nhan:</strong> ${escapeHtml(item.cause || 'Dang cap nhat')}</div>
-                    <div class="small text-secondary"><strong>Huong xu ly:</strong> ${escapeHtml(item.solution || 'Can tho kiem tra chi tiet tai hien truong.')}</div>
+                    <div class="fw-semibold mb-1">${escapeHtml(item.service_type || 'Ca s\u1eeda ch\u1eefa')}</div>
+                    <div class="small text-secondary mb-1"><strong>L\u1ed7i:</strong> ${escapeHtml(item.problem_description || '')}</div>
+                    <div class="small text-secondary mb-1"><strong>Nguy\u00ean nh\u00e2n:</strong> ${escapeHtml(item.cause || '\u0110ang c\u1eadp nh\u1eadt')}</div>
+                    <div class="small text-secondary"><strong>H\u01b0\u1edbng x\u1eed l\u00fd:</strong> ${escapeHtml(item.solution || 'C\u1ea7n th\u1ee3 ki\u1ec3m tra chi ti\u1ebft t\u1ea1i hi\u1ec7n tr\u01b0\u1eddng.')}</div>
                     <div class="d-flex gap-2 mt-2">
                         ${item.before_image ? `<img src="${escapeHtml(item.before_image)}" alt="before" style="width:70px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">` : ''}
                         ${item.after_image ? `<img src="${escapeHtml(item.after_image)}" alt="after" style="width:70px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">` : ''}
@@ -62,13 +62,13 @@ if (isCustomerScope) {
 
             const techHtml = technicians.map((item) => `
                 <div class="chat-card">
-                    <div class="fw-semibold">${escapeHtml(item.name || 'Tho')}</div>
-                    <div class="small text-secondary">Ky nang: ${escapeHtml(item.skills || 'Tong hop')}</div>
-                    <div class="small text-secondary">Danh gia: ${escapeHtml(item.rating ?? '--')} · Da xong: ${escapeHtml(item.completed_jobs_count ?? 0)} viec</div>
-                    ${item.reference_price ? `<div class="small text-secondary">Gia tham khao: ${escapeHtml(item.reference_price)}</div>` : ''}
+                    <div class="fw-semibold">${escapeHtml(item.name || 'Th\u1ee3')}</div>
+                    <div class="small text-secondary">K\u1ef9 n\u0103ng: ${escapeHtml(item.skills || 'T\u1ed5ng h\u1ee3p')}</div>
+                    <div class="small text-secondary">\u0110\u00e1nh gi\u00e1: ${escapeHtml(item.rating ?? '--')} \u00b7 \u0110\u00e3 xong: ${escapeHtml(item.completed_jobs_count ?? 0)} vi\u1ec7c</div>
+                    ${item.reference_price ? `<div class="small text-secondary">Gi\u00e1 tham kh\u1ea3o: ${escapeHtml(item.reference_price)}</div>` : ''}
                     <div class="d-flex gap-2 mt-2">
-                        ${item.profile_url ? `<a href="${escapeHtml(item.profile_url)}" class="btn btn-sm btn-outline-primary">Xem ho so</a>` : ''}
-                        ${item.booking_url ? `<a href="${escapeHtml(item.booking_url)}" class="btn btn-sm btn-primary">Dat lich</a>` : ''}
+                        ${item.profile_url ? `<a href="${escapeHtml(item.profile_url)}" class="btn btn-sm btn-outline-primary">Xem h\u1ed3 s\u01a1</a>` : ''}
+                        ${item.booking_url ? `<a href="${escapeHtml(item.booking_url)}" class="btn btn-sm btn-primary">\u0110\u1eb7t l\u1ecbch</a>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -76,7 +76,7 @@ if (isCustomerScope) {
             const videoHtml = youtubeLinks.map((item) => `
                 <div class="chat-card py-2">
                     <a href="${escapeHtml(item.url || '#')}" target="_blank" rel="noopener noreferrer" class="small fw-semibold text-decoration-none">
-                        ${escapeHtml(item.title || 'Xem video huong dan')}
+                        ${escapeHtml(item.title || 'Xem video h\u01b0\u1edbng d\u1eabn')}
                     </a>
                 </div>
             `).join('');
@@ -100,19 +100,19 @@ if (isCustomerScope) {
         const renderHistory = async () => {
             try {
                 const response = await callApi('/chat/history', 'GET');
-                if (!response.ok) throw new Error(response.data?.message || 'Khong the tai lich su chat');
+                if (!response.ok) throw new Error(response.data?.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i l\u1ecbch s\u1eed chat');
 
                 messagesContainer.innerHTML = '';
                 const messages = Array.isArray(response.data?.messages) ? response.data.messages : [];
 
                 if (messages.length === 0) {
-                    appendMessage('assistant', 'Mo ta nhanh thiet bi dang gap su co. Truoc khi quan sat hoac kiem tra, ban hay ngat cau dao/aptomat cua thiet bi.');
+                    appendMessage('assistant', 'M\u00f4 t\u1ea3 nhanh thi\u1ebft b\u1ecb \u0111ang g\u1eb7p s\u1ef1 c\u1ed1. Tr\u01b0\u1edbc khi quan s\u00e1t ho\u1eb7c ki\u1ec3m tra, b\u1ea1n h\u00e3y ng\u1eaft c\u1ea7u dao/aptomat c\u1ee7a thi\u1ebft b\u1ecb.');
                     return;
                 }
 
                 messages.forEach((message) => appendMessage(message.sender, message.text, message.meta || null));
             } catch (error) {
-                appendMessage('assistant', 'Chua tai duoc lich su chat luc nay. Ban cu mo ta su co moi, va nho ngat nguon dien truoc khi kiem tra.');
+                appendMessage('assistant', 'Ch\u01b0a t\u1ea3i \u0111\u01b0\u1ee3c l\u1ecbch s\u1eed chat l\u00fac n\u00e0y. B\u1ea1n c\u1ee9 m\u00f4 t\u1ea3 s\u1ef1 c\u1ed1 m\u1edbi, v\u00e0 nh\u1edb ng\u1eaft ngu\u1ed3n \u0111i\u1ec7n tr\u01b0\u1edbc khi ki\u1ec3m tra.');
             }
         };
 
@@ -121,7 +121,7 @@ if (isCustomerScope) {
             const sendBtn = document.getElementById('customerChatSend');
             if (sendBtn) {
                 sendBtn.disabled = isSending;
-                sendBtn.textContent = isSending ? '...' : 'Gui';
+                sendBtn.textContent = isSending ? '...' : 'G\u1eedi';
             }
         };
 
@@ -161,19 +161,19 @@ if (isCustomerScope) {
                 document.getElementById(loadingId)?.remove();
 
                 if (!response.ok) {
-                    throw new Error(response.data?.message || 'Gui tin nhan that bai');
+                    throw new Error(response.data?.message || 'G\u1eedi tin nh\u1eafn th\u1ea5t b\u1ea1i');
                 }
 
                 const payload = response.data?.data || {};
-                appendMessage('assistant', payload.assistant_text || 'Toi da nhan duoc yeu cau cua ban.', {
+                appendMessage('assistant', payload.assistant_text || 'T\u00f4i \u0111\u00e3 nh\u1eadn \u0111\u01b0\u1ee3c y\u00eau c\u1ea7u c\u1ee7a b\u1ea1n.', {
                     cases: payload.cases || [],
                     technicians: payload.technicians || [],
                     youtube_links: payload.youtube_links || [],
                 });
             } catch (error) {
                 document.getElementById(loadingId)?.remove();
-                appendMessage('assistant', 'Toi chua xu ly duoc yeu cau ngay luc nay. Ban thu lai sau vai giay.');
-                showToast(error.message || 'Khong gui duoc tin nhan', 'error');
+                appendMessage('assistant', 'T\u00f4i ch\u01b0a x\u1eed l\u00fd \u0111\u01b0\u1ee3c y\u00eau c\u1ea7u ngay l\u00fac n\u00e0y. B\u1ea1n th\u1eed l\u1ea1i sau v\u00e0i gi\u00e2y.');
+                showToast(error.message || 'Kh\u00f4ng g\u1eedi \u0111\u01b0\u1ee3c tin nh\u1eafn', 'error');
             } finally {
                 setSendingState(false);
                 input.focus();

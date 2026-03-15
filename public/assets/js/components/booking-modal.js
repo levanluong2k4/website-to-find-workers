@@ -21,10 +21,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookingSelectedServices = document.getElementById('bookingSelectedServices');
     const bookingServiceClear = document.getElementById('bookingServiceClear');
     const bookingServiceIdsContainer = document.getElementById('booking_service_ids_container');
+    const bookingTravelFeeSummary = document.getElementById('bookingTravelFeeSummary');
+    const bookingTravelFeeText = document.getElementById('bookingTravelFeeText');
+    const bookingDistanceText = document.getElementById('bookingDistanceText');
+    const bookingTravelFeeHint = document.getElementById('bookingTravelFeeHint');
 
     let allBookingServices = [];
     let selectedServiceIds = new Set();
     let addressData = [];
+    let selectedWorkerContext = null;
+
+    const TRAVEL_FEE_PER_KM = 5000;
+    const DEFAULT_REFERENCE_POINT = {
+        lat: 12.2618,
+        lng: 109.1995,
+        maxDistance: 20,
+        label: 'cửa hàng',
+    };
 
     const tinhSelect = document.getElementById('booking_tinh');
     const huyenSelect = document.getElementById('booking_huyen');
@@ -33,6 +46,99 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookingVideo = document.getElementById('booking_video');
     const mediaPreview = document.getElementById('mediaPreview');
     const bookingNgayHen = document.getElementById('booking_ngay_hen');
+
+    function formatCurrency(amount) {
+        return `${Math.round(Number(amount) || 0).toLocaleString('vi-VN')} ₫`;
+    }
+
+    function getReferencePoint() {
+        if (
+            selectedWorkerContext
+            && Number.isFinite(selectedWorkerContext.lat)
+            && Number.isFinite(selectedWorkerContext.lng)
+        ) {
+            return selectedWorkerContext;
+        }
+
+        return DEFAULT_REFERENCE_POINT;
+    }
+
+    function calculateDistanceKm(fromLat, fromLng, toLat, toLng) {
+        const earthRadius = 6371;
+        const dLat = ((toLat - fromLat) * Math.PI) / 180;
+        const dLng = ((toLng - fromLng) * Math.PI) / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+            + Math.cos((fromLat * Math.PI) / 180) * Math.cos((toLat * Math.PI) / 180)
+            * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return earthRadius * c;
+    }
+
+    function resetTravelFeeEstimate() {
+        if (!bookingTravelFeeSummary) return;
+
+        bookingTravelFeeSummary.classList.add('d-none');
+        if (bookingTravelFeeText) bookingTravelFeeText.textContent = '0 ₫';
+        if (bookingDistanceText) bookingDistanceText.textContent = '0 km';
+        if (bookingTravelFeeHint) {
+            bookingTravelFeeHint.textContent = 'Hệ thống sẽ tính ngay sau khi bạn lấy vị trí hiện tại.';
+            bookingTravelFeeHint.className = 'text-muted';
+        }
+    }
+
+    function showFreeTravelEstimate() {
+        if (!bookingTravelFeeSummary) return;
+
+        bookingTravelFeeSummary.classList.remove('d-none');
+        bookingTravelFeeSummary.classList.remove('alert-warning');
+        bookingTravelFeeSummary.classList.add('alert-success');
+
+        if (bookingTravelFeeText) bookingTravelFeeText.textContent = '0 ₫';
+        if (bookingDistanceText) bookingDistanceText.textContent = 'Miễn phí di chuyển';
+        if (bookingTravelFeeHint) {
+            bookingTravelFeeHint.textContent = 'Bạn chọn mang thiết bị đến cửa hàng nên không phát sinh phí đi lại.';
+            bookingTravelFeeHint.className = 'text-muted';
+        }
+    }
+
+    function updateTravelFeeEstimate() {
+        if (!bookingTravelFeeSummary) return;
+
+        const isAtHome = document.getElementById('loai_hom')?.checked;
+        if (!isAtHome) {
+            showFreeTravelEstimate();
+            return;
+        }
+
+        const lat = Number(document.getElementById('booking_vi_do')?.value);
+        const lng = Number(document.getElementById('booking_kinh_do')?.value);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
+            resetTravelFeeEstimate();
+            return;
+        }
+
+        const reference = getReferencePoint();
+        const distanceKm = calculateDistanceKm(reference.lat, reference.lng, lat, lng);
+        const roundedDistance = Number(distanceKm.toFixed(1));
+        const fee = Math.round(distanceKm * TRAVEL_FEE_PER_KM);
+        const maxDistance = Number(reference.maxDistance || DEFAULT_REFERENCE_POINT.maxDistance);
+        const isOutOfRange = roundedDistance > maxDistance;
+
+        bookingTravelFeeSummary.classList.remove('d-none');
+        bookingTravelFeeSummary.classList.toggle('alert-warning', isOutOfRange);
+        bookingTravelFeeSummary.classList.toggle('alert-success', !isOutOfRange);
+
+        if (bookingTravelFeeText) bookingTravelFeeText.textContent = formatCurrency(fee);
+        if (bookingDistanceText) bookingDistanceText.textContent = `${roundedDistance} km`;
+        if (bookingTravelFeeHint) {
+            bookingTravelFeeHint.textContent = isOutOfRange
+                ? `Khoảng cách hiện tại vượt phạm vi phục vụ ${maxDistance} km của ${reference.label}.`
+                : `Tạm tính theo khoảng cách từ ${reference.label}: ${roundedDistance} km × ${TRAVEL_FEE_PER_KM.toLocaleString('vi-VN')} ₫/km.`;
+            bookingTravelFeeHint.className = isOutOfRange ? 'text-danger' : 'text-muted';
+        }
+    }
 
     function normalizeText(value) {
         return String(value || '')
@@ -258,11 +364,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderSelectedWorker(worker) {
-        if (!bookingSelectedWorkerCard) return;
-
         const user = worker?.user ?? {};
         const services = user.dich_vus ?? user.dichVus ?? [];
         const serviceNames = services.map((service) => service.ten_dich_vu).filter(Boolean);
+        const workerName = user.name || 'th\u1ee3 \u0111\u00e3 ch\u1ecdn';
+        const workerLat = Number(worker?.vi_do);
+        const workerLng = Number(worker?.kinh_do);
+        const workerRadius = Number(worker?.ban_kinh_phuc_vu ?? 10);
+
+        selectedWorkerContext = Number.isFinite(workerLat) && Number.isFinite(workerLng)
+            ? {
+                lat: workerLat,
+                lng: workerLng,
+                maxDistance: Number.isFinite(workerRadius) ? workerRadius : 10,
+                label: workerName,
+            }
+            : null;
+
+        if (!bookingSelectedWorkerCard) {
+            updateTravelFeeEstimate();
+            return;
+        }
 
         bookingSelectedWorkerAvatar.src = user.avatar || '/assets/images/user-default.png';
         bookingSelectedWorkerName.textContent = user.name || 'Thợ sửa chữa';
@@ -270,15 +392,22 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `Chuyên môn: ${serviceNames.join(', ')}`
             : 'Chưa cập nhật dịch vụ chuyên môn.';
         bookingSelectedWorkerCard.classList.remove('d-none');
+        updateTravelFeeEstimate();
     }
 
     function hideSelectedWorker() {
-        if (!bookingSelectedWorkerCard) return;
+        selectedWorkerContext = null;
+
+        if (!bookingSelectedWorkerCard) {
+            updateTravelFeeEstimate();
+            return;
+        }
 
         bookingSelectedWorkerCard.classList.add('d-none');
         bookingSelectedWorkerAvatar.src = '/assets/images/user-default.png';
         bookingSelectedWorkerName.textContent = 'Đang tải thông tin thợ...';
         bookingSelectedWorkerServices.textContent = 'Đang tải chuyên môn...';
+        updateTravelFeeEstimate();
     }
 
     async function loadBookingServices() {
@@ -344,6 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (huyenSelect) huyenSelect.required = true;
                     if (xaSelect) xaSelect.required = true;
                     if (soNha) soNha.required = true;
+                    updateTravelFeeEstimate();
                 } else {
                     atHomeGroup.classList.add('d-none');
                     atStoreGroup.classList.remove('d-none');
@@ -354,6 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('booking_vi_do').value = '';
                     document.getElementById('booking_kinh_do').value = '';
                     document.getElementById('booking_dia_chi').value = '';
+                    showFreeTravelEstimate();
                     bookingLocationStatus.textContent = 'Vui lòng lấy vị trí tự động hoặc chọn địa chỉ thủ công.';
                 }
 
@@ -652,6 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const lng = pos.coords.longitude;
                     document.getElementById('booking_vi_do').value = lat;
                     document.getElementById('booking_kinh_do').value = lng;
+                    updateTravelFeeEstimate();
 
                     try {
                         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`);
@@ -725,6 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateAvailableTimeSlots();
             await loadBookingServices();
+            updateTravelFeeEstimate();
         });
 
         bookingModal.addEventListener('hidden.bs.modal', closeServiceDropdown);

@@ -233,7 +233,7 @@
 
         <!-- General Booking Button -->
         <div class="mt-3 text-end">
-            <button class="btn btn-outline-primary rounded-pill fw-bold bg-white" id="btnGeneralBooking" data-bs-toggle="modal" data-bs-target="#bookingModal">
+            <button class="btn btn-outline-primary rounded-pill fw-bold bg-white" id="btnGeneralBooking" onclick="window.BookingWizardModal?.open ? window.BookingWizardModal.open() : (window.location.href='{{ route('customer.booking') }}')">
                 <i class="fas fa-bolt text-warning me-1"></i> Đặt Lịch Nhanh (Không cần chọn thợ)
             </button>
         </div>
@@ -309,8 +309,7 @@
     </div>
 </div>
 
-<!-- Include Booking Modal Component -->
-@include('components.booking-modal')
+@include('customer.partials.booking-wizard-modal')
 
 @endsection
 

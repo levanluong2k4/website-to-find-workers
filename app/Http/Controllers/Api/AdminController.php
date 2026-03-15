@@ -9,7 +9,10 @@ use App\Models\HoSoTho;
 use App\Models\User;
 use App\Services\Chat\AssistantSoulConfigService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -203,7 +206,7 @@ class AdminController extends Controller
         $validator = Validator::make($request->all(), [
             'ten_dich_vu' => 'required|string|max:255|unique:danh_muc_dich_vu,ten_dich_vu',
             'mo_ta' => 'nullable|string',
-            'hinh_anh' => 'nullable|string|max:2048',
+            'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'trang_thai' => 'nullable|boolean',
         ]);
 
@@ -218,7 +221,9 @@ class AdminController extends Controller
         $service = DanhMucDichVu::query()->create([
             'ten_dich_vu' => trim((string) $request->input('ten_dich_vu')),
             'mo_ta' => trim((string) $request->input('mo_ta', '')) ?: null,
-            'hinh_anh' => trim((string) $request->input('hinh_anh', '')) ?: null,
+            'hinh_anh' => $request->hasFile('hinh_anh')
+                ? $this->storeServiceImage($request->file('hinh_anh'))
+                : null,
             'trang_thai' => $request->has('trang_thai') ? (int) $request->boolean('trang_thai') : 1,
         ]);
 
@@ -243,7 +248,8 @@ class AdminController extends Controller
         $validator = Validator::make($request->all(), [
             'ten_dich_vu' => 'required|string|max:255|unique:danh_muc_dich_vu,ten_dich_vu,' . $service->id,
             'mo_ta' => 'nullable|string',
-            'hinh_anh' => 'nullable|string|max:2048',
+            'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'remove_image' => 'nullable|boolean',
             'trang_thai' => 'nullable|boolean',
         ]);
 
@@ -255,10 +261,22 @@ class AdminController extends Controller
             ], 422);
         }
 
+        $imagePath = $service->getRawOriginal('hinh_anh');
+
+        if ($request->boolean('remove_image')) {
+            $this->deleteStoredServiceImage($imagePath);
+            $imagePath = null;
+        }
+
+        if ($request->hasFile('hinh_anh')) {
+            $this->deleteStoredServiceImage($imagePath);
+            $imagePath = $this->storeServiceImage($request->file('hinh_anh'));
+        }
+
         $service->update([
             'ten_dich_vu' => trim((string) $request->input('ten_dich_vu')),
             'mo_ta' => trim((string) $request->input('mo_ta', '')) ?: null,
-            'hinh_anh' => trim((string) $request->input('hinh_anh', '')) ?: null,
+            'hinh_anh' => $imagePath,
             'trang_thai' => $request->has('trang_thai') ? (int) $request->boolean('trang_thai') : (int) $service->trang_thai,
         ]);
 
@@ -393,5 +411,39 @@ class AdminController extends Controller
         return array_values(array_filter(array_map(static function ($item): string {
             return trim((string) $item);
         }, $items), static fn (string $item): bool => $item !== ''));
+    }
+
+    private function storeServiceImage(UploadedFile $file): string
+    {
+        return $file->store('services', 'public');
+    }
+
+    private function deleteStoredServiceImage(?string $imagePath): void
+    {
+        $imagePath = trim((string) $imagePath);
+
+        if ($imagePath === '') {
+            return;
+        }
+
+        if (Str::startsWith($imagePath, ['http://', 'https://', 'data:'])) {
+            $storagePrefix = rtrim(asset('storage'), '/');
+
+            if (!Str::startsWith($imagePath, $storagePrefix . '/')) {
+                return;
+            }
+
+            $imagePath = Str::after($imagePath, $storagePrefix . '/');
+        }
+
+        if (Str::startsWith($imagePath, '/storage/')) {
+            $imagePath = Str::after($imagePath, '/storage/');
+        } elseif (Str::startsWith($imagePath, 'storage/')) {
+            $imagePath = Str::after($imagePath, 'storage/');
+        }
+
+        if ($imagePath !== '' && Storage::disk('public')->exists($imagePath)) {
+            Storage::disk('public')->delete($imagePath);
+        }
     }
 }

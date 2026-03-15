@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Admin Dashboard - Tho Tot')
+@section('title', 'B&#7843;ng &#273;i&#7873;u khi&#7875;n qu&#7843;n tr&#7883; - Th&#7907; T&#7889;t')
 
 @push('styles')
 <style>
@@ -120,11 +120,11 @@
 <div class="container py-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold mb-1" style="color: #0f172a;">Tong quan he thong</h2>
-            <p class="text-muted mb-0">Theo doi nhanh chi so van hanh va di tat den cong viec admin can xu ly.</p>
+            <h2 class="fw-bold mb-1" style="color: #0f172a;">T&#7893;ng quan h&#7879; th&#7889;ng</h2>
+            <p class="text-muted mb-0">Theo d&#245;i nhanh ch&#7881; s&#7889; v&#7853;n h&#224;nh v&#224; &#273;i t&#7855;t &#273;&#7871;n c&#244;ng vi&#7879;c admin c&#7847;n x&#7917; l&#253;.</p>
         </div>
         <button class="btn btn-outline-primary shadow-sm" id="btnRefresh">
-            <i class="fas fa-sync-alt me-2"></i>Lam moi
+            <i class="fas fa-sync-alt me-2"></i>L&#224;m m&#7899;i
         </button>
     </div>
 
@@ -133,7 +133,7 @@
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Tong khach hang</p>
+                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">T&#7893;ng kh&#225;ch h&#224;ng</p>
                         <h3 class="fw-bold mb-0" style="color: #0f172a;" id="statCustomers"><span class="loading-pulse px-4 py-1"></span></h3>
                     </div>
                     <div class="stat-icon bg-primary-light">
@@ -147,7 +147,7 @@
             <div class="stat-card" style="border-top-color: #10b981;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Doi tac tho</p>
+                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">&#272;&#7889;i t&#225;c th&#7907;</p>
                         <h3 class="fw-bold mb-0" style="color: #0f172a;" id="statWorkers"><span class="loading-pulse px-4 py-1"></span></h3>
                     </div>
                     <div class="stat-icon bg-success-light">
@@ -161,7 +161,7 @@
             <div class="stat-card" style="border-top-color: #f59e0b;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Tong don hang</p>
+                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">T&#7893;ng &#273;&#417;n h&#224;ng</p>
                         <h3 class="fw-bold mb-0" style="color: #0f172a;" id="statBookings"><span class="loading-pulse px-4 py-1"></span></h3>
                         <small class="text-success fw-bold d-none" id="statCompletedBookings"><i class="fas fa-check-circle me-1"></i></small>
                     </div>
@@ -176,9 +176,9 @@
             <div class="stat-card" style="border-top-color: #ef4444;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Hoa hong he thong</p>
+                        <p class="text-muted mb-1 fw-semibold" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Hoa h&#7891;ng h&#7879; th&#7889;ng</p>
                         <h3 class="fw-bold mb-0 text-danger" id="statCommission"><span class="loading-pulse px-4 py-1"></span></h3>
-                        <small class="text-muted" style="font-size: 0.75rem;">Tren tong: <span id="statRevenue">0</span>đ</small>
+                        <small class="text-muted" style="font-size: 0.75rem;">Tr&#234;n t&#7893;ng: <span id="statRevenue">0</span>&#273;</small>
                     </div>
                     <div class="stat-icon bg-danger-light">
                         <i class="fas fa-wallet"></i>
@@ -188,7 +188,7 @@
         </div>
     </div>
 
-    <h4 class="fw-bold mb-3" style="color: #0f172a;">Loi tat cong cu</h4>
+    <h4 class="fw-bold mb-3" style="color: #0f172a;">L&#7889;i t&#7855;t c&#244;ng c&#7909;</h4>
     <div class="row g-4">
         <div class="col-md-3">
             <a href="/admin/users" class="text-decoration-none">
@@ -198,8 +198,8 @@
                             <i class="fas fa-user-shield fs-5"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold mb-1 text-dark">Cong dong</h5>
-                            <p class="text-muted mb-0 small">Quan ly tai khoan khach hang va tho.</p>
+                            <h5 class="fw-bold mb-1 text-dark">C&#7897;ng &#273;&#7891;ng</h5>
+                            <p class="text-muted mb-0 small">Qu&#7843;n l&#253; t&#224;i kho&#7843;n kh&#225;ch h&#224;ng v&#224; th&#7907;.</p>
                         </div>
                     </div>
                 </div>
@@ -215,8 +215,8 @@
                                 <i class="fas fa-user-clock fs-5"></i>
                             </div>
                             <div>
-                                <h5 class="fw-bold mb-1 text-dark">Ho so tho cho duyet</h5>
-                                <p class="text-muted mb-0 small">Mo nhanh danh sach tho dang cho admin phe duyet.</p>
+                                <h5 class="fw-bold mb-1 text-dark">H&#7891; s&#417; th&#7907; ch&#7901; duy&#7879;t</h5>
+                                <p class="text-muted mb-0 small">M&#7903; nhanh danh s&#225;ch th&#7907; &#273;ang ch&#7901; admin ph&#234; duy&#7879;t.</p>
                             </div>
                         </div>
                         <span class="pending-count" id="pendingWorkerProfilesCount">
@@ -235,8 +235,8 @@
                             <i class="fas fa-list-alt fs-5"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold mb-1 text-dark">Cau hinh dich vu</h5>
-                            <p class="text-muted mb-0 small">Them, sua, an hien va xoa mem dich vu.</p>
+                            <h5 class="fw-bold mb-1 text-dark">C&#7845;u h&#236;nh d&#7883;ch v&#7909;</h5>
+                            <p class="text-muted mb-0 small">Th&#234;m, s&#7917;a, &#7849;n hi&#7879;n v&#224; x&#243;a m&#7873;m d&#7883;ch v&#7909;.</p>
                         </div>
                     </div>
                 </div>
@@ -251,8 +251,8 @@
                             <i class="fas fa-receipt fs-5"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold mb-1 text-dark">Giao dich</h5>
-                            <p class="text-muted mb-0 small">Theo doi don hang, thanh toan va huy don.</p>
+                            <h5 class="fw-bold mb-1 text-dark">Giao d&#7883;ch</h5>
+                            <p class="text-muted mb-0 small">Theo d&#245;i &#273;&#417;n h&#224;ng, thanh to&#225;n v&#224; h&#7911;y &#273;&#417;n.</p>
                         </div>
                     </div>
                 </div>

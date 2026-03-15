@@ -42,6 +42,10 @@ Route::prefix('customer')->group(function () {
         return view('customer.home');
     })->name('customer.home');
 
+    Route::get('/booking', function () {
+        return view('customer.booking');
+    })->name('customer.booking');
+
     Route::get('/search', function () {
         return view('customer.search');
     })->name('customer.search');

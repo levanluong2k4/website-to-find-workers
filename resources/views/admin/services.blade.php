@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Quan ly Dich vu - Tho Tot')
+@section('title', 'Qu&#7843;n l&#253; d&#7883;ch v&#7909; - Th&#7907; T&#7889;t')
 
 @push('styles')
 <style>
@@ -40,6 +40,15 @@
         border: 1px solid #e2e8f0;
         background: #fff;
     }
+
+    .service-preview {
+        width: 96px;
+        height: 96px;
+        border-radius: 20px;
+        object-fit: cover;
+        border: 1px solid #dbeafe;
+        background: #f8fafc;
+    }
 </style>
 @endpush
 
@@ -51,25 +60,25 @@
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-1">
-                    <li class="breadcrumb-item"><a href="/admin/dashboard" class="text-decoration-none">Dashboard</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Dich vu</li>
+                    <li class="breadcrumb-item"><a href="/admin/dashboard" class="text-decoration-none">B&#7843;ng &#273;i&#7873;u khi&#7875;n</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">D&#7883;ch v&#7909;</li>
                 </ol>
             </nav>
-            <h2 class="fw-bold mb-1" style="color:#0f172a;">Quan ly dich vu</h2>
-            <p class="text-muted mb-0">Them, sua, an hien va xoa mem dich vu trong cua hang.</p>
+            <h2 class="fw-bold mb-1" style="color:#0f172a;">Qu&#7843;n l&#253; d&#7883;ch v&#7909;</h2>
+            <p class="text-muted mb-0">Th&#234;m, s&#7917;a, &#7849;n hi&#7879;n v&#224; x&#243;a m&#7873;m d&#7883;ch v&#7909; trong c&#7917;a h&#224;ng.</p>
         </div>
 
         <div class="d-flex align-items-center gap-2">
             <select class="form-select shadow-sm" id="serviceStatusFilter" style="min-width: 180px;">
-                <option value="">Tat ca trang thai</option>
-                <option value="1">Dang hoat dong</option>
-                <option value="0">Da an / da xoa</option>
+                <option value="">T&#7845;t c&#7843; tr&#7841;ng th&#225;i</option>
+                <option value="1">&#272;ang ho&#7841;t &#273;&#7897;ng</option>
+                <option value="0">&#272;&#227; &#7849;n / &#273;&#227; x&#243;a</option>
             </select>
             <button class="btn btn-outline-primary shadow-sm" id="btnRefreshServices">
                 <i class="fas fa-sync-alt"></i>
             </button>
             <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#serviceModal" id="btnAddService">
-                <i class="fas fa-plus me-2"></i>Them dich vu
+                <i class="fas fa-plus me-2"></i>Th&#234;m d&#7883;ch v&#7909;
             </button>
         </div>
     </div>
@@ -79,18 +88,18 @@
             <thead>
                 <tr>
                     <th class="ps-4">ID</th>
-                    <th>Anh</th>
-                    <th>Ten dich vu</th>
-                    <th>Mo ta</th>
-                    <th>Trang thai</th>
-                    <th class="text-end pe-4">Thao tac</th>
+                    <th>&#7842;nh</th>
+                    <th>T&#234;n d&#7883;ch v&#7909;</th>
+                    <th>M&#244; t&#7843;</th>
+                    <th>Tr&#7841;ng th&#225;i</th>
+                    <th class="text-end pe-4">Thao t&#225;c</th>
                 </tr>
             </thead>
             <tbody id="servicesTableBody">
                 <tr>
                     <td colspan="6" class="text-center py-5">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="text-muted mt-2 mb-0">Dang tai dich vu...</p>
+                        <p class="text-muted mt-2 mb-0">&#272;ang t&#7843;i d&#7883;ch v&#7909;...</p>
                     </td>
                 </tr>
             </tbody>
@@ -102,7 +111,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0" style="border-radius: 20px; overflow: hidden;">
             <div class="modal-header bg-light border-0 px-4 py-3">
-                <h5 class="modal-title fw-bold" id="serviceModalLabel">Them dich vu</h5>
+                <h5 class="modal-title fw-bold" id="serviceModalLabel">Th&#234;m d&#7883;ch v&#7909;</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -110,27 +119,34 @@
                     <input type="hidden" id="serviceId">
 
                     <div>
-                        <label class="form-label fw-semibold" for="serviceName">Ten dich vu</label>
+                        <label class="form-label fw-semibold" for="serviceName">T&#234;n d&#7883;ch v&#7909;</label>
                         <input type="text" class="form-control" id="serviceName" required maxlength="255">
                     </div>
 
                     <div>
-                        <label class="form-label fw-semibold" for="serviceDesc">Mo ta</label>
+                        <label class="form-label fw-semibold" for="serviceDesc">M&#244; t&#7843;</label>
                         <textarea class="form-control" id="serviceDesc" rows="3"></textarea>
                     </div>
 
                     <div>
-                        <label class="form-label fw-semibold" for="serviceImage">Hinh anh / icon URL</label>
-                        <input type="url" class="form-control" id="serviceImage" placeholder="https://example.com/service.png">
+                        <label class="form-label fw-semibold" for="serviceImage">H&#236;nh &#7843;nh d&#7883;ch v&#7909;</label>
+                        <input type="file" class="form-control" id="serviceImage" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp">
+                        <div class="d-flex align-items-center gap-3 mt-3">
+                            <img src="{{ asset('assets/images/logontu.png') }}" alt="Xem tr&#432;&#7899;c &#7843;nh d&#7883;ch v&#7909;" class="service-preview" id="serviceImagePreview">
+                            <div>
+                                <p class="text-muted mb-2 small">T&#7843;i l&#234;n &#7843;nh JPG, PNG, GIF ho&#7863;c WEBP. T&#7889;i &#273;a 5MB.</p>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRemoveServiceImage">X&#243;a &#7843;nh</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" role="switch" id="serviceActive" checked>
-                        <label class="form-check-label" for="serviceActive">Dang hoat dong</label>
+                        <label class="form-check-label" for="serviceActive">&#272;ang ho&#7841;t &#273;&#7897;ng</label>
                     </div>
 
                     <button type="submit" class="btn btn-primary" id="btnSaveService">
-                        <i class="fas fa-save me-2"></i>Luu dich vu
+                        <i class="fas fa-save me-2"></i>L&#432;u d&#7883;ch v&#7909;
                     </button>
                 </form>
             </div>

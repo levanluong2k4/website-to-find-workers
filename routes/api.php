@@ -26,6 +26,9 @@ Route::get('/ho-so-tho/{id}', [\App\Http\Controllers\Api\HoSoThoController::clas
 Route::get('/payment/vnpay-ipn', [PaymentController::class, 'vnpayIpn']);
 Route::post('/payment/momo-ipn', [PaymentController::class, 'momoIpn']);
 Route::post('/payment/zalopay-ipn', [PaymentController::class, 'zalopayIpn']);
+Route::get('/payment/vnpay-return', [PaymentController::class, 'vnpayReturn'])->name('payment.vnpay.return');
+Route::get('/payment/momo-return', [PaymentController::class, 'momoReturn'])->name('payment.momo.return');
+Route::get('/payment/zalopay-return', [PaymentController::class, 'zalopayReturn'])->name('payment.zalopay.return');
 
 // Chatbot APIs (guest + optional bearer token identity)
 Route::prefix('chat')
@@ -57,9 +60,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Payment actions
     Route::post('/payment/create', [PaymentController::class, 'createPaymentUrl']);
-    Route::get('/payment/vnpay-return', [PaymentController::class, 'vnpayReturn'])->name('payment.vnpay.return');
-    Route::get('/payment/momo-return', [PaymentController::class, 'momoReturn'])->name('payment.momo.return');
-    Route::get('/payment/zalopay-return', [PaymentController::class, 'zalopayReturn'])->name('payment.zalopay.return');
 
     // Service category CRUD
     Route::post('/danh-muc-dich-vu', [DanhMucDichVuController::class, 'store']);

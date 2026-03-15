@@ -852,23 +852,23 @@
 
 </div><!-- end font-inter wrapper -->
 
-<!-- Booking Modal -->
-<x-booking-modal />
+@include('customer.partials.booking-wizard-modal')
 
 @endsection
 
 @push('scripts')
-<script type="module" src="{{ asset('assets/js/components/booking-modal.js') }}"></script>
-
 <script>
   // Helper to open booking modal and pre-fill service
   function openBookingModal(serviceName = '') {
-    const modal = document.getElementById('bookingModal');
-    if (!modal) return;
-    // Store service to pre-select after async options load
-    window.PRESELECT_SERVICE = serviceName;
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
+    if (window.BookingWizardModal?.open) {
+      window.BookingWizardModal.open({
+        serviceName
+      });
+      return;
+    }
+    const targetUrl = new URL('{{ route('customer.booking') }}', window.location.origin);
+    if (serviceName) targetUrl.searchParams.set('service_name', serviceName);
+    window.location.href = targetUrl.toString();
   }
 
   // Hero booking form quick submit

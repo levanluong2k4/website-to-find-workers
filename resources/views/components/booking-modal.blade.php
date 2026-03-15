@@ -351,6 +351,18 @@
                             </div>
 
                             <small class="text-muted d-block mt-2" id="bookingLocationStatus" style="font-size: 0.75rem;">Vui lòng lấy vị trí tự động hoặc chọn địa chỉ thủ công.</small>
+                            <div id="bookingTravelFeeSummary" class="alert alert-success border-0 rounded-3 mt-3 d-none" style="background:#ecfdf5;">
+                                <div class="d-flex flex-wrap justify-content-between gap-2">
+                                    <div>
+                                        <div class="fw-bold" style="color:#065f46;">Ph&#237; &#273;i l&#7841;i d&#7921; ki&#7871;n</div>
+                                        <small id="bookingTravelFeeHint" class="text-muted">H&#7879; th&#7889;ng s&#7869; t&#237;nh ngay sau khi b&#7841;n l&#7845;y v&#7883; tr&#237; hi&#7879;n t&#7841;i.</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <div id="bookingTravelFeeText" class="fw-bold" style="font-size:1rem;color:#0f172a;">0 &#8363;</div>
+                                        <small id="bookingDistanceText" class="text-muted">0 km</small>
+                                    </div>
+                                </div>
+                            </div>
                             <input type="hidden" id="booking_vi_do" name="vi_do">
                             <input type="hidden" id="booking_kinh_do" name="kinh_do">
                             <input type="hidden" id="booking_dia_chi" name="dia_chi">

@@ -1,5 +1,4 @@
 import { callApi } from '../api.js';
-import '../components/booking-modal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('searchInput');

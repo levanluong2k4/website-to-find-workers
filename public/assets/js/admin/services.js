@@ -3,6 +3,7 @@ import { callApi, requireRole, showToast } from '../api.js';
 document.addEventListener('DOMContentLoaded', () => {
     requireRole('admin');
 
+    const PLACEHOLDER_IMAGE = '/assets/images/logontu.png';
     const tbody = document.getElementById('servicesTableBody');
     const form = document.getElementById('serviceForm');
     const modalElement = document.getElementById('serviceModal');
@@ -16,10 +17,16 @@ document.addEventListener('DOMContentLoaded', () => {
         name: document.getElementById('serviceName'),
         desc: document.getElementById('serviceDesc'),
         image: document.getElementById('serviceImage'),
+        preview: document.getElementById('serviceImagePreview'),
+        removeImage: document.getElementById('btnRemoveServiceImage'),
         active: document.getElementById('serviceActive'),
         label: document.getElementById('serviceModalLabel'),
         save: document.getElementById('btnSaveService'),
     };
+
+    let currentImageUrl = '';
+    let removeCurrentImage = false;
+    let localPreviewUrl = null;
 
     const escapeHtml = (value) => (value ?? '')
         .toString()
@@ -28,18 +35,35 @@ document.addEventListener('DOMContentLoaded', () => {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;');
 
+    const revokeLocalPreview = () => {
+        if (!localPreviewUrl) {
+            return;
+        }
+
+        URL.revokeObjectURL(localPreviewUrl);
+        localPreviewUrl = null;
+    };
+
+    const updatePreview = (src = '') => {
+        fields.preview.src = src || (!removeCurrentImage && currentImageUrl ? currentImageUrl : PLACEHOLDER_IMAGE);
+    };
+
     const setLoading = (isLoading) => {
         fields.save.disabled = isLoading;
         fields.save.innerHTML = isLoading
-            ? '<i class="fas fa-spinner fa-spin me-2"></i>Dang luu...'
-            : '<i class="fas fa-save me-2"></i>Luu dich vu';
+            ? '<i class="fas fa-spinner fa-spin me-2"></i>\u0110ang l\u01b0u...'
+            : '<i class="fas fa-save me-2"></i>L\u01b0u d\u1ecbch v\u1ee5';
     };
 
     const resetForm = () => {
         form.reset();
         fields.id.value = '';
         fields.active.checked = true;
-        fields.label.textContent = 'Them dich vu';
+        fields.label.textContent = 'Th\u00eam d\u1ecbch v\u1ee5';
+        currentImageUrl = '';
+        removeCurrentImage = false;
+        revokeLocalPreview();
+        updatePreview();
     };
 
     const renderTable = (services) => {
@@ -47,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center py-5 text-muted">
-                        Khong co dich vu nao.
+                        Kh\u00f4ng c\u00f3 d\u1ecbch v\u1ee5 n\u00e0o.
                     </td>
                 </tr>
             `;
@@ -55,15 +79,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tbody.innerHTML = services.map((service) => {
-            const image = service.hinh_anh || '/assets/images/placeholder.png';
+            const image = service.hinh_anh || PLACEHOLDER_IMAGE;
             const statusBadge = Number(service.trang_thai) === 1
-                ? '<span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">Dang hoat dong</span>'
-                : '<span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill">Da an</span>';
+                ? '<span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">\u0110ang ho\u1ea1t \u0111\u1ed9ng</span>'
+                : '<span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill">\u0110\u00e3 \u1ea9n</span>';
 
             return `
                 <tr>
                     <td class="ps-4 fw-semibold text-muted">#${service.id}</td>
-                    <td><img src="${escapeHtml(image)}" alt="${escapeHtml(service.ten_dich_vu)}" class="service-thumb"></td>
+                    <td><img src="${escapeHtml(image)}" alt="${escapeHtml(service.ten_dich_vu)}" class="service-thumb" onerror="this.src='${PLACEHOLDER_IMAGE}'"></td>
                     <td class="fw-semibold">${escapeHtml(service.ten_dich_vu)}</td>
                     <td class="text-muted">${escapeHtml(service.mo_ta || '--')}</td>
                     <td>${statusBadge}</td>
@@ -75,11 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             data-desc="${escapeHtml(service.mo_ta || '')}"
                             data-image="${escapeHtml(service.hinh_anh || '')}"
                             data-active="${Number(service.trang_thai) === 1 ? '1' : '0'}"
+                            title="S\u1eeda d\u1ecbch v\u1ee5"
                         >
-                            <i class="fas fa-edit"></i>
+                            <i class="fas fa-edit me-1"></i>S\u1eeda
                         </button>
-                        <button class="btn btn-sm btn-outline-danger btn-delete-service" data-id="${service.id}" data-name="${escapeHtml(service.ten_dich_vu)}">
-                            <i class="fas fa-trash"></i>
+                        <button class="btn btn-sm btn-outline-danger btn-delete-service" data-id="${service.id}" data-name="${escapeHtml(service.ten_dich_vu)}" title="X\u00f3a d\u1ecbch v\u1ee5">
+                            <i class="fas fa-trash me-1"></i>X\u00f3a
                         </button>
                     </td>
                 </tr>
@@ -88,12 +113,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.btn-edit-service').forEach((button) => {
             button.addEventListener('click', () => {
-                fields.label.textContent = 'Sua dich vu';
+                fields.label.textContent = 'S\u1eeda d\u1ecbch v\u1ee5';
                 fields.id.value = button.dataset.id || '';
                 fields.name.value = button.dataset.name || '';
                 fields.desc.value = button.dataset.desc || '';
-                fields.image.value = button.dataset.image || '';
+                fields.image.value = '';
                 fields.active.checked = button.dataset.active === '1';
+                currentImageUrl = button.dataset.image || '';
+                removeCurrentImage = false;
+                revokeLocalPreview();
+                updatePreview();
                 modal.show();
             });
         });
@@ -101,12 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-delete-service').forEach((button) => {
             button.addEventListener('click', async () => {
                 const confirmed = await Swal.fire({
-                    title: 'Xoa dich vu?',
-                    text: `Dich vu "${button.dataset.name}" se bi an khoi he thong.`,
+                    title: 'X\u00f3a d\u1ecbch v\u1ee5?',
+                    text: `D\u1ecbch v\u1ee5 "${button.dataset.name}" s\u1ebd b\u1ecb \u1ea9n kh\u1ecfi h\u1ec7 th\u1ed1ng.`,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Xoa',
-                    cancelButtonText: 'Huy',
+                    confirmButtonText: 'X\u00f3a',
+                    cancelButtonText: 'H\u1ee7y',
                     confirmButtonColor: '#dc2626',
                 });
 
@@ -116,11 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const res = await callApi(`/admin/services/${button.dataset.id}`, 'DELETE');
                 if (!res.ok) {
-                    showToast(res.data?.message || 'Khong xoa duoc dich vu', 'error');
+                    showToast(res.data?.message || 'Kh\u00f4ng x\u00f3a \u0111\u01b0\u1ee3c d\u1ecbch v\u1ee5', 'error');
                     return;
                 }
 
-                showToast(res.data?.message || 'Da xoa dich vu');
+                showToast(res.data?.message || '\u0110\u00e3 x\u00f3a d\u1ecbch v\u1ee5');
                 await fetchServices();
             });
         });
@@ -131,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <tr>
                 <td colspan="6" class="text-center py-5">
                     <div class="spinner-border text-primary" role="status"></div>
-                    <p class="text-muted mt-2 mb-0">Dang tai dich vu...</p>
+                    <p class="text-muted mt-2 mb-0">\u0110ang t\u1ea3i d\u1ecbch v\u1ee5...</p>
                 </td>
             </tr>
         `;
@@ -143,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center py-5 text-danger">
-                        Khong tai duoc danh sach dich vu.
+                        Kh\u00f4ng t\u1ea3i \u0111\u01b0\u1ee3c danh s\u00e1ch d\u1ecbch v\u1ee5.
                     </td>
                 </tr>
             `;
@@ -156,30 +185,65 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAdd.addEventListener('click', resetForm);
     statusFilter.addEventListener('change', fetchServices);
     btnRefresh.addEventListener('click', fetchServices);
+    fields.preview.addEventListener('error', () => {
+        fields.preview.src = PLACEHOLDER_IMAGE;
+    });
+    fields.image.addEventListener('change', () => {
+        revokeLocalPreview();
+
+        const [file] = fields.image.files || [];
+        if (!file) {
+            updatePreview();
+            return;
+        }
+
+        removeCurrentImage = false;
+        localPreviewUrl = URL.createObjectURL(file);
+        updatePreview(localPreviewUrl);
+    });
+    fields.removeImage.addEventListener('click', () => {
+        fields.image.value = '';
+        revokeLocalPreview();
+        removeCurrentImage = true;
+        updatePreview();
+    });
+    modalElement.addEventListener('hidden.bs.modal', () => {
+        revokeLocalPreview();
+        updatePreview();
+    });
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         setLoading(true);
 
-        const payload = {
-            ten_dich_vu: fields.name.value.trim(),
-            mo_ta: fields.desc.value.trim(),
-            hinh_anh: fields.image.value.trim(),
-            trang_thai: fields.active.checked,
-        };
-
         const serviceId = fields.id.value.trim();
         const endpoint = serviceId ? `/admin/services/${serviceId}` : '/admin/services';
-        const method = serviceId ? 'PUT' : 'POST';
+        const formData = new FormData();
+        formData.append('ten_dich_vu', fields.name.value.trim());
+        formData.append('mo_ta', fields.desc.value.trim());
+        formData.append('trang_thai', fields.active.checked ? '1' : '0');
+
+        const [imageFile] = fields.image.files || [];
+        if (imageFile) {
+            formData.append('hinh_anh', imageFile);
+        }
+
+        if (serviceId) {
+            formData.append('_method', 'PUT');
+
+            if (removeCurrentImage && !imageFile) {
+                formData.append('remove_image', '1');
+            }
+        }
 
         try {
-            const res = await callApi(endpoint, method, payload);
+            const res = await callApi(endpoint, 'POST', formData);
             if (!res.ok) {
-                showToast(res.data?.message || 'Khong luu duoc dich vu', 'error');
+                showToast(res.data?.message || 'Kh\u00f4ng l\u01b0u \u0111\u01b0\u1ee3c d\u1ecbch v\u1ee5', 'error');
                 return;
             }
 
-            showToast(res.data?.message || 'Da luu dich vu');
+            showToast(res.data?.message || '\u0110\u00e3 l\u01b0u d\u1ecbch v\u1ee5');
             modal.hide();
             resetForm();
             await fetchServices();

@@ -107,7 +107,7 @@
 
                 <hr class="my-4" style="opacity: 0.1;">
 
-                <button class="btn btn-primary w-100 py-3 rounded-pill fw-bold text-lg d-flex align-items-center justify-content-center" id="btnOpenBookingModal" data-bs-toggle="modal" data-bs-target="#bookingModal">
+                <button class="btn btn-primary w-100 py-3 rounded-pill fw-bold text-lg d-flex align-items-center justify-content-center" id="btnOpenBookingModal" onclick="window.BookingWizardModal?.open ? window.BookingWizardModal.open({ workerId: {{ $workerId }} }) : (window.location.href='{{ route('customer.booking', ['worker_id' => $workerId]) }}')">
                     <span class="material-symbols-outlined me-2">calendar_add_on</span> Đặt Lịch Sửa Chữa
                 </button>
                 <div class="text-center mt-3">
@@ -118,8 +118,7 @@
     </div>
 </div>
 
-<!-- Include Global Booking Modal -->
-@include('components.booking-modal')
+@include('customer.partials.booking-wizard-modal')
 
 @endsection
 

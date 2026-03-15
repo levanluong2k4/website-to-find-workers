@@ -326,8 +326,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         phuong_thuc: 'vnpay'
                     });
 
-                    if (res.url) {
-                        window.location.href = res.url;
+                    const payload = res.data || {};
+
+                    if (res.ok && payload.url) {
+                        window.location.href = payload.url;
                     } else {
                         showToast('Không nhận được URL giao dịch', 'error');
                         btn.disabled = false;
@@ -353,8 +355,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         phuong_thuc: 'momo'
                     });
 
-                    if (res.url) {
-                        window.location.href = res.url;
+                    const payload = res.data || {};
+
+                    if (res.ok && payload.url) {
+                        window.location.href = payload.url;
                     } else {
                         showToast('Không tạo được giao dịch MoMo', 'error');
                         btn.disabled = false;
@@ -380,8 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         phuong_thuc: 'zalopay'
                     });
 
-                    if (res.url) {
-                        window.location.href = res.url;
+                    const payload = res.data || {};
+
+                    if (res.ok && payload.url) {
+                        window.location.href = payload.url;
                     } else {
                         showToast('Không tạo được giao dịch ZaloPay', 'error');
                         btn.disabled = false;

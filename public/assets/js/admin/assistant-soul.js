@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const dateText = updatedAt ? new Date(updatedAt).toLocaleString('vi-VN') : '--';
-        updatedMeta.textContent = `Cap nhat boi ${updatedBy || 'he thong'} luc ${dateText}`;
+        updatedMeta.textContent = `C\u1eadp nh\u1eadt b\u1edfi ${updatedBy || 'h\u1ec7 th\u1ed1ng'} l\u00fac ${dateText}`;
         updatedMeta.classList.remove('d-none');
     };
 
@@ -90,25 +90,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const setSaving = (saving) => {
         saveButton.disabled = saving;
         resetButton.disabled = saving;
-        saveButton.textContent = saving ? 'Dang luu...' : 'Luu cau hinh';
+        saveButton.textContent = saving ? '\u0110ang l\u01b0u...' : 'L\u01b0u c\u1ea5u h\u00ecnh';
     };
 
     const loadConfig = async () => {
-        setStatus('Dang tai cau hinh...');
+        setStatus('\u0110ang t\u1ea3i c\u1ea5u h\u00ecnh...');
 
         try {
             const res = await callApi('/admin/assistant-soul', 'GET');
             if (!res.ok) {
-                throw new Error(res.data?.message || 'Khong tai duoc cau hinh');
+                throw new Error(res.data?.message || 'Kh\u00f4ng t\u1ea3i \u0111\u01b0\u1ee3c c\u1ea5u h\u00ecnh');
             }
 
             const data = res.data?.data || {};
             fillForm(data.config || {});
-            setStatus(data.has_override ? 'Dang dung cau hinh tuy chinh' : 'Dang dung cau hinh mac dinh', 'success');
+            setStatus(data.has_override ? '\u0110ang d\u00f9ng c\u1ea5u h\u00ecnh t\u00f9y ch\u1ec9nh' : '\u0110ang d\u00f9ng c\u1ea5u h\u00ecnh m\u1eb7c \u0111\u1ecbnh', 'success');
             setUpdatedMeta(data);
         } catch (error) {
-            setStatus('Tai cau hinh that bai', 'danger');
-            showToast(error.message || 'Khong tai duoc ASSISTANT SOUL', 'error');
+            setStatus('T\u1ea3i c\u1ea5u h\u00ecnh th\u1ea5t b\u1ea1i', 'danger');
+            showToast(error.message || 'Kh\u00f4ng t\u1ea3i \u0111\u01b0\u1ee3c ASSISTANT SOUL', 'error');
         }
     };
 
@@ -119,17 +119,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await callApi('/admin/assistant-soul', 'PUT', buildPayload());
             if (!res.ok) {
-                throw new Error(res.data?.message || 'Khong luu duoc cau hinh');
+                throw new Error(res.data?.message || 'Kh\u00f4ng l\u01b0u \u0111\u01b0\u1ee3c c\u1ea5u h\u00ecnh');
             }
 
             const data = res.data?.data || {};
             fillForm(data.config || {});
-            setStatus('Da luu cau hinh tuy chinh', 'success');
+            setStatus('\u0110\u00e3 l\u01b0u c\u1ea5u h\u00ecnh t\u00f9y ch\u1ec9nh', 'success');
             setUpdatedMeta(data);
-            showToast('Da cap nhat ASSISTANT SOUL', 'success');
+            showToast('\u0110\u00e3 c\u1eadp nh\u1eadt ASSISTANT SOUL', 'success');
         } catch (error) {
-            setStatus('Luu cau hinh that bai', 'danger');
-            showToast(error.message || 'Khong luu duoc ASSISTANT SOUL', 'error');
+            setStatus('L\u01b0u c\u1ea5u h\u00ecnh th\u1ea5t b\u1ea1i', 'danger');
+            showToast(error.message || 'Kh\u00f4ng l\u01b0u \u0111\u01b0\u1ee3c ASSISTANT SOUL', 'error');
         } finally {
             setSaving(false);
         }
@@ -137,12 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resetButton.addEventListener('click', async () => {
         const result = await Swal.fire({
-            title: 'Khoi phuc mac dinh?',
-            text: 'Toan bo cau hinh tuy chinh hien tai se bi go bo.',
+            title: 'Kh\u00f4i ph\u1ee5c m\u1eb7c \u0111\u1ecbnh?',
+            text: 'To\u00e0n b\u1ed9 c\u1ea5u h\u00ecnh t\u00f9y ch\u1ec9nh hi\u1ec7n t\u1ea1i s\u1ebd b\u1ecb g\u1ee1 b\u1ecf.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Khoi phuc',
-            cancelButtonText: 'Huy',
+            confirmButtonText: 'Kh\u00f4i ph\u1ee5c',
+            cancelButtonText: 'H\u1ee7y',
             confirmButtonColor: '#dc2626',
         });
 
@@ -155,17 +155,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await callApi('/admin/assistant-soul', 'DELETE');
             if (!res.ok) {
-                throw new Error(res.data?.message || 'Khong khoi phuc duoc cau hinh');
+                throw new Error(res.data?.message || 'Kh\u00f4ng kh\u00f4i ph\u1ee5c \u0111\u01b0\u1ee3c c\u1ea5u h\u00ecnh');
             }
 
             const data = res.data?.data || {};
             fillForm(data.config || {});
-            setStatus('Da khoi phuc cau hinh mac dinh', 'success');
+            setStatus('\u0110\u00e3 kh\u00f4i ph\u1ee5c c\u1ea5u h\u00ecnh m\u1eb7c \u0111\u1ecbnh', 'success');
             setUpdatedMeta(data);
-            showToast('Da khoi phuc ASSISTANT SOUL mac dinh', 'success');
+            showToast('\u0110\u00e3 kh\u00f4i ph\u1ee5c ASSISTANT SOUL m\u1eb7c \u0111\u1ecbnh', 'success');
         } catch (error) {
-            setStatus('Khoi phuc that bai', 'danger');
-            showToast(error.message || 'Khong khoi phuc duoc cau hinh', 'error');
+            setStatus('Kh\u00f4i ph\u1ee5c th\u1ea5t b\u1ea1i', 'danger');
+            showToast(error.message || 'Kh\u00f4ng kh\u00f4i ph\u1ee5c \u0111\u01b0\u1ee3c c\u1ea5u h\u00ecnh', 'error');
         } finally {
             setSaving(false);
         }

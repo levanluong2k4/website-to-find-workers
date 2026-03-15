@@ -22,7 +22,8 @@
 
     @yield('content')
     @php
-        $showCustomerChatWidget = request()->routeIs('home') || request()->is('customer/*');
+        $showCustomerChatWidget = (request()->routeIs('home') || request()->is('customer/*'))
+            && !request()->routeIs('customer.booking');
     @endphp
     @if($showCustomerChatWidget)
         <x-customer-chat-widget />
