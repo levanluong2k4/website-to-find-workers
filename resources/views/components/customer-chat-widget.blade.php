@@ -5,7 +5,7 @@
             right: 20px;
             bottom: 20px;
             z-index: 1200;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Roboto', sans-serif;
         }
 
         #customerChatToggle {

@@ -51,6 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderBookings = (bookings) => {
+        const getBookingServices = (booking) => Array.isArray(booking.dich_vus) ? booking.dich_vus : [];
+        const getBookingServiceLabel = (booking) => {
+            const services = getBookingServices(booking)
+                .map(service => service.ten_dich_vu)
+                .filter(Boolean);
+
+            return services.length > 0 ? services.join(', ') : 'Dịch vụ';
+        };
+
         if (!bookings || bookings.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -72,9 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return `
                 <tr>
-                    <td class="ps-4 text-primary fw-bold">#${b.id}</td>
+                    <td class="ps-4"><a href="/customer/my-bookings/${b.id}" class="text-primary fw-bold text-decoration-none">#${b.id}</a></td>
                     <td>
-                        <div class="fw-bold text-dark mb-1">${b.dich_vu ? b.dich_vu.ten_dich_vu : ('Dịch vụ #' + b.dich_vu_id)}</div>
+                        <div class="fw-bold text-dark mb-1">${getBookingServiceLabel(b)}</div>
                         ${timeInfo}
                     </td>
                     <td>

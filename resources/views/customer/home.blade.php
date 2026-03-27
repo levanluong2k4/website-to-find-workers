@@ -3,7 +3,7 @@
 @section('title', 'Thợ Tốt NTU - Sửa Đồ Điện Nhanh Tại Nha Trang')
 
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -20,8 +20,8 @@
           'slate-custom': '#64748b'
         },
         fontFamily: {
-          poppins: ['Poppins', 'sans-serif'],
-          inter: ['Inter', 'sans-serif']
+          poppins: ['DM Sans', 'sans-serif'],
+          inter: ['Roboto', 'sans-serif']
         }
       }
     }
@@ -47,6 +47,35 @@
 
   .hero-gradient {
     background: linear-gradient(135deg, rgba(186, 242, 233, 0.45) 0%, #fff 60%);
+  }
+
+  body {
+   background: linear-gradient(135deg, rgba(186, 242, 233, 0.45) 0%, #fff 60%) !important;
+  }
+
+  .hero-title-home {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(3rem, 6vw, 5rem);
+    line-height: 0.98;
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .hero-title-home__dark {
+    color: #14213d;
+  }
+
+  .hero-title-home__accent {
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero-title-home__highlight {
+    color: #f59e0b;
   }
 
   .soft-shadow {
@@ -76,10 +105,10 @@
   }
 
   .c-button--gooey {
-    color: #06c8d9;
+    color: #0ea5e9;
     text-transform: uppercase;
     letter-spacing: 2px;
-    border: 4px solid #06c8d9;
+    border: 4px solid #0ea5e9;
     border-radius: 0;
     position: relative;
     transition: all 700ms ease;
@@ -100,7 +129,7 @@
   }
 
   .c-button--gooey .c-button__blobs div {
-    background-color: #06c8d9;
+    background-color: #0ea5e9;
     width: 34%;
     height: 100%;
     border-radius: 100%;
@@ -137,12 +166,25 @@
 
   /* Restore Bootstrap navbar collapse behavior */
   app-navbar .navbar-collapse.collapse {
+    width: 100%;
     visibility: visible !important;
   }
 
-  app-navbar .navbar-expand-lg .navbar-collapse {
-    display: flex !important;
-    flex-basis: auto !important;
+  @media (max-width: 991.98px) {
+    app-navbar .navbar-collapse.collapse:not(.show) {
+      display: none !important;
+    }
+
+    app-navbar .navbar-collapse.collapse.show {
+      display: block !important;
+    }
+  }
+
+  @media (min-width: 992px) {
+    app-navbar .navbar-expand-lg .navbar-collapse {
+      display: flex !important;
+      flex-basis: auto !important;
+    }
   }
 
   /* Restore Bootstrap display utilities */
@@ -207,194 +249,31 @@
     width: 100%;
   }
 </style>
+<script>
+  (() => {
+    const token = localStorage.getItem('access_token');
+    const userStr = localStorage.getItem('user');
+
+    if (!token || token === 'undefined' || token === 'null' || !userStr) return;
+
+    try {
+      const user = JSON.parse(userStr);
+      const targetPath =
+        user.role === 'admin' ? '/admin/dashboard' :
+        user.role === 'worker' ? '/worker/dashboard' :
+        user.role === 'customer' ? '/customer/home' :
+        null;
+
+      if (targetPath && window.location.pathname !== targetPath) {
+        window.location.replace(targetPath);
+      }
+    } catch (error) {}
+  })();
+</script>
 @endpush
 
 @section('content')
-<!-- ===================== STITCH NAVBAR ===================== -->
-<nav id="landingNav" style="position:sticky;top:0;z-index:1000;width:100%;background:rgba(255,255,255,0.88);backdrop-filter:blur(16px);border-bottom:1px solid rgba(0,0,0,0.06);">
-  <div style="max-width:80rem;margin:0 auto;padding:0 1.5rem;height:5rem;display:flex;align-items:center;justify-content:space-between;">
-
-    <!-- Logo -->
-    <a href="/" style="display:flex;align-items:center;gap:0.625rem;text-decoration:none;">
-      <img src="/assets/images/logontu.png" alt="Logo NTU" style="width:3.3rem;height:3.3rem;object-fit:contain;border-radius:0.9rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.08));">
-      <span style="font-size:1.2rem;font-weight:800;color:#0f172a;font-family:'Poppins',sans-serif;letter-spacing:-0.5px;">
-        Thợ Tốt <span style="color:#0EA5E9;">NTU</span>
-      </span>
-    </a>
-
-    <!-- Center Nav Links -->
-    <nav id="navLinks" style="display:none;gap:0.25rem;align-items:center;">
-      <a href="#services" class="nav-link-item">Dịch vụ</a>
-      <a href="#workers" class="nav-link-item">Thợ sửa</a>
-      <a href="#pricing" class="nav-link-item">Bảng giá</a>
-      <a href="#ai-diagnosis" class="nav-link-item">AI Chẩn đoán</a>
-    </nav>
-
-    <!-- Right Actions -->
-    <div style="display:flex;align-items:center;gap:0.75rem;position:relative;">
-      <button onclick="openBookingModal()" class="nav-cta-btn">
-        <span class="material-symbols-outlined" style="font-size:1.1rem;">event_upcoming</span>
-        Đặt lịch sửa
-      </button>
-
-      <!-- Avatar + Dropdown -->
-      <div id="navUserAvatar" style="display:none;position:relative;">
-        <div id="navUserAvatarBtn"
-          style="width:2.5rem;height:2.5rem;border-radius:50%;border:2px solid #BAF2E9;overflow:hidden;cursor:pointer;"
-          onclick="toggleUserMenu(event)">
-          <div id="navUserInitial" style="width:100%;height:100%;background:#0EA5E9;color:#fff;font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:center;">U</div>
-        </div>
-        <!-- Dropdown menu -->
-        <div id="userDropdown" style="display:none;position:absolute;top:calc(100% + 10px);right:0;min-width:200px;background:#fff;border-radius:1rem;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1px solid #f1f5f9;z-index:9999;overflow:hidden;">
-          <!-- User info header -->
-          <div id="dropUserInfo" style="padding:.875rem 1rem .75rem;border-bottom:1px solid #f1f5f9;">
-            <p id="dropUserName" style="font-weight:700;font-size:.9rem;color:#0f172a;margin:0;">Người dùng</p>
-            <p id="dropUserEmail" style="font-size:.75rem;color:#64748b;margin:.1rem 0 0;"></p>
-          </div>
-          <!-- Menu items -->
-          <a href="/customer/my-bookings" style="display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;color:#334155;font-size:.875rem;font-weight:600;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-            <span class="material-symbols-outlined" style="font-size:1.1rem;color:#0EA5E9;">calendar_month</span>
-            Đơn đặt lịch
-          </a>
-          <a href="/customer/profile" style="display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;color:#334155;font-size:.875rem;font-weight:600;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-            <span class="material-symbols-outlined" style="font-size:1.1rem;color:#0EA5E9;">manage_accounts</span>
-            Tài khoản
-          </a>
-          <div style="height:1px;background:#f1f5f9;margin:0 .75rem;"></div>
-          <button onclick="logoutCustomer()" style="display:flex;align-items:center;gap:.6rem;width:100%;padding:.7rem 1rem;background:transparent;border:none;color:#ef4444;font-size:.875rem;font-weight:600;cursor:pointer;text-align:left;transition:background .15s;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
-            <span class="material-symbols-outlined" style="font-size:1.1rem;">logout</span>
-            Đăng xuất
-          </button>
-        </div>
-      </div>
-
-      <a id="navLoginBtn" href="/select-role" style="display:none;background:#0EA5E9;color:#fff;font-weight:700;font-size:0.875rem;text-decoration:none;border-radius:0.75rem;padding:0.625rem 1.25rem;">Đăng nhập</a>
-      <button id="navHamburger" style="display:none;background:none;border:none;cursor:pointer;padding:0.5rem;" onclick="document.getElementById('mobileMenu').style.display=document.getElementById('mobileMenu').style.display==='none'?'block':'none'">
-        <span class="material-symbols-outlined" style="font-size:1.5rem;color:#475569;">menu</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Mobile Menu -->
-  <div id="mobileMenu" style="display:none;padding:1rem 1.5rem 1.5rem;border-top:1px solid #f1f5f9;background:#fff;">
-    <a href="#services" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;">Dịch vụ</a>
-    <a href="#workers" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">Thợ sửa</a>
-    <a href="#pricing" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">Bảng giá</a>
-    <a href="#ai-diagnosis" style="display:block;padding:.75rem 0;color:#334155;font-weight:600;font-size:.9rem;text-decoration:none;border-top:1px solid #f1f5f9;">AI Chẩn đoán</a>
-  </div>
-</nav>
-
-<style>
-  .nav-link-item {
-    color: #475569;
-    font-size: .875rem;
-    font-weight: 600;
-    text-decoration: none;
-    padding: .5rem .75rem;
-    border-radius: .5rem;
-    transition: color .15s;
-  }
-
-  .nav-link-item:hover {
-    color: #0EA5E9;
-  }
-
-  .nav-cta-btn {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    background: #BAF2E9;
-    color: #0f172a;
-    font-weight: 700;
-    font-size: .875rem;
-    border: none;
-    border-radius: .75rem;
-    padding: .625rem 1.25rem;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(14, 165, 233, 0.14);
-    transition: all .2s;
-    font-family: 'Inter', sans-serif;
-  }
-
-  .nav-cta-btn:hover {
-    background: #0EA5E9;
-    color: #fff;
-  }
-</style>
-
-<script>
-  (function() {
-    function applyNav() {
-      var links = document.getElementById('navLinks');
-      var ham = document.getElementById('navHamburger');
-      if (!links || !ham) return;
-      if (window.innerWidth >= 768) {
-        links.style.display = 'flex';
-        ham.style.display = 'none';
-      } else {
-        links.style.display = 'none';
-        ham.style.display = 'block';
-      }
-    }
-    window.addEventListener('resize', applyNav);
-    applyNav();
-
-    // Show user state & populate dropdown
-    try {
-      var raw = localStorage.getItem('user');
-      var user = raw ? JSON.parse(raw) : null;
-      if (user && user.name) {
-        var av = document.getElementById('navUserAvatar');
-        var init = document.getElementById('navUserInitial');
-        var dn = document.getElementById('dropUserName');
-        var de = document.getElementById('dropUserEmail');
-        if (av) av.style.display = 'block';
-        if (init) init.textContent = user.name.charAt(0).toUpperCase();
-        if (dn) dn.textContent = user.name;
-        if (de) de.textContent = user.email || '';
-      } else {
-        var btn = document.getElementById('navLoginBtn');
-        if (btn) btn.style.display = 'inline-flex';
-      }
-    } catch (e) {
-      var btn2 = document.getElementById('navLoginBtn');
-      if (btn2) btn2.style.display = 'inline-flex';
-    }
-  })();
-
-  // Toggle user dropdown
-  window.toggleUserMenu = function(e) {
-    e.stopPropagation();
-    var dd = document.getElementById('userDropdown');
-    if (!dd) return;
-    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
-  };
-  // Close dropdown when clicking outside
-  document.addEventListener('click', function() {
-    var dd = document.getElementById('userDropdown');
-    if (dd) dd.style.display = 'none';
-  });
-
-  // Logout customer
-  window.logoutCustomer = async function() {
-    try {
-      var token = localStorage.getItem('access_token');
-      if (token && token !== 'undefined' && token !== 'null') {
-        await fetch('/api/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-    } catch (e) {} finally {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-      window.location.href = '/';
-    }
-  };
-</script>
+<app-navbar></app-navbar>
 
 <div class="font-inter bg-white text-slate-900 overflow-x-hidden">
   <svg aria-hidden="true" style="position:absolute;width:0;height:0;pointer-events:none;">
@@ -417,9 +296,11 @@
           <span class="material-symbols-outlined text-sm">verified</span>
           Dịch vụ chuẩn 5 sao tại Nha Trang
         </div>
-        <h1 class="text-5xl lg:text-[58px] font-extrabold leading-tight text-slate-900">
-          Sửa đồ điện nhanh tại Nha Trang<br>
-          <span class="text-primary-dark">Thợ uy tín</span> – Có cửa hàng – Sửa tận nhà
+        <h1 class="hero-title-home">
+          <span class="hero-title-home__dark">Hỏng là</span>
+          <span class="hero-title-home__accent">có thợ</span><br>
+          <span class="hero-title-home__dark">đặt lịch hôm nay,</span><br>
+          <span class="hero-title-home__accent">sửa xong trong ngày</span>
         </h1>
         <p class="text-lg text-slate-600 max-w-2xl">
           Chuyên sửa chữa thiết bị điện gia dụng và điện lạnh chuyên nghiệp. Minh bạch giá cả, bảo hành dài hạn.

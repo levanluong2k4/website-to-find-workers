@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleAuthController;
 use Illuminate\Support\Facades\Route;
 
 // Trang chủ (Landing Page)
@@ -35,6 +36,11 @@ Route::get('/register', function () {
 Route::get('/otp', function () {
     return view('auth.otp');
 })->name('otp');
+Route::get('/verify-phone', function () {
+    return view('auth.phone-verification');
+})->name('verify-phone');
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 
 // Khối Khách Hàng (Customer)
 Route::prefix('customer')->group(function () {
@@ -50,6 +56,14 @@ Route::prefix('customer')->group(function () {
         return view('customer.search');
     })->name('customer.search');
 
+    Route::get('/linh-kien', function () {
+        return view('customer.parts');
+    })->name('customer.parts');
+
+    Route::get('/linh-kien/{id}', function ($id) {
+        return view('customer.part-detail', ['id' => $id]);
+    })->whereNumber('id')->name('customer.parts.show');
+
     Route::get('/worker-profile/{id}', function ($id) {
         return view('customer.worker-profile', ['workerId' => $id]);
     })->name('customer.worker-profile');
@@ -57,6 +71,14 @@ Route::prefix('customer')->group(function () {
     Route::get('/my-bookings', function () {
         return view('customer.my-bookings');
     })->name('customer.my-bookings');
+
+    Route::get('/my-bookings/{id}', function ($id) {
+        return view('customer.booking-details', ['id' => $id]);
+    })->whereNumber('id')->name('customer.my-bookings.show');
+
+    Route::get('/profile', function () {
+        return view('customer.profile');
+    })->name('customer.profile');
 });
 
 // Khối Thợ (Worker)
@@ -112,7 +134,15 @@ Route::prefix('admin')->group(function () {
         return view('admin.assistant-soul');
     })->name('admin.assistant-soul');
 
+    Route::get('/travel-fee-config', function () {
+        return view('admin.travel-fee-config');
+    })->name('admin.travel-fee-config');
+
     Route::get('/bookings', function () {
         return view('admin.bookings');
     })->name('admin.bookings');
+
+    Route::get('/dispatch', function () {
+        return view('admin.dispatch');
+    })->name('admin.dispatch');
 });

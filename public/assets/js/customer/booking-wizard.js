@@ -7,12 +7,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
     const STORE_REFERENCE = { lat: 12.2618, lng: 109.1995, maxDistance: 20, label: 'cửa hàng' };
     const TRAVEL_FEE_PER_KM = 5000;
+    let travelFeeConfig = {
+        default_per_km: TRAVEL_FEE_PER_KM,
+        tiers: [],
+    };
     const TIME_SLOTS = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'];
+    const BOOKING_WINDOW_DAYS = 7;
     const STEP_META = {
         1: ['Bước 1 trên 5', 'ĐẶT LỊCH SỬA CHỮA', 'Chọn một hoặc nhiều dịch vụ phù hợp để bắt đầu lịch hẹn với Thợ Tốt NTU.'],
         2: ['Bước 2 trên 5', 'CHỌN HÌNH THỨC SỬA CHỮA', 'Xác định kỹ thuật viên sẽ đến tận nơi hay bạn mang thiết bị đến cửa hàng.'],
         3: ['Bước 3 trên 5', 'ĐỊA CHỈ SỬA CHỮA', 'Cung cấp vị trí chính xác để hệ thống điều phối kỹ thuật viên và ước tính phí di chuyển.'],
-        4: ['Bước 4 trên 5', 'CHỌN NGÀY VÀ GIỜ', 'Chọn thời điểm thuận tiện nhất trong ba ngày gần nhất mà hệ thống đang mở lịch.'],
+        4: ['Bước 4 trên 5', 'CHỌN NGÀY VÀ GIỜ', `Chọn thời điểm thuận tiện nhất trong ${BOOKING_WINDOW_DAYS} ngày tới mà hệ thống đang mở lịch.`],
         5: ['Bước 5 trên 5', 'MÔ TẢ & HÌNH ẢNH', 'Bổ sung mô tả, hình ảnh và video để thợ chuẩn bị dụng cụ sát với tình trạng thực tế.'],
     };
     const params = new URLSearchParams(window.location.search);
@@ -22,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addressData: [], currentStep: 1, workerId: null, worker: null, prefillServiceName: '', services: [], serviceIds: [],
         repairMode: null, tinh: '', huyen: '', xa: '', soNha: '', lat: '', lng: '', travelFee: 0, distanceKm: null,
         travelMessage: 'Sẽ tính sau khi bạn chọn vị trí.', date: '', timeSlot: '', description: '', images: [], video: null,
-        transportRequested: false, isOutOfRange: false, isOpen: false,
+        transportRequested: false, isOutOfRange: false, isOpen: false, locationSource: '',
     };
     const $ = (id) => document.getElementById(id);
     const refs = {
@@ -37,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dateCards: $('bookingWizardDateCards'), timeSlots: $('bookingWizardTimeSlots'), description: $('bookingWizardDescription'),
         uploadZone: $('bookingWizardUploadZone'), mediaPicker: $('bookingWizardMediaPicker'), imagesInput: $('bookingWizardImages'),
         videoInput: $('bookingWizardVideo'), preview: $('bookingWizardPreview'), success: $('bookingWizardSuccess'), successCode: $('bookingWizardSuccessCode'),
-        hiddenWorkerId: $('bookingWizardWorkerId'), hiddenServiceId: $('bookingWizardServiceId'), hiddenRepairMode: $('bookingWizardRepairMode'),
+        hiddenWorkerId: $('bookingWizardWorkerId'), hiddenRepairMode: $('bookingWizardRepairMode'),
         hiddenLat: $('bookingWizardLat'), hiddenLng: $('bookingWizardLng'), hiddenDiaChi: $('bookingWizardDiaChi'), hiddenDate: $('bookingWizardDate'),
         hiddenTimeSlot: $('bookingWizardTimeSlot'), hiddenStoreTransport: $('bookingWizardStoreTransport'),
         summaryTitle: $('bookingSummaryTitle'), summarySheet: $('bookingSummarySheet'),
@@ -58,6 +63,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedServices = () => state.services.filter((item) => state.serviceIds.includes(Number(item.id)));
     const heavyService = () => selectedServices().some((service) => ['may giat', 'tu lanh', 'tivi', 'may lanh', 'dieu hoa'].some((k) => norm(service.ten_dich_vu).includes(k)));
     const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const relativeDateLabel = (offset) => {
+        if (offset === 0) return 'Hôm nay';
+        if (offset === 1) return 'Ngày mai';
+        return `${offset} ngày nữa`;
+    };
     const humanDate = (value) => value ? new Intl.DateTimeFormat('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${value}T00:00:00`)) : 'Chưa chọn ngày';
     const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const simplifyAdminName = (value) => norm(value)
@@ -81,6 +91,56 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const ensureAuth = () => { try { const user = getCurrentUser(); if (user && ['customer', 'admin'].includes(user.role)) return true; } catch (error) {} window.location.href = '/login'; return false; };
     const distKm = (a, b, c, d) => { const r = 6371, dLat = ((c - a) * Math.PI) / 180, dLng = ((d - b) * Math.PI) / 180; const x = Math.sin(dLat / 2) ** 2 + Math.cos((a * Math.PI) / 180) * Math.cos((c * Math.PI) / 180) * Math.sin(dLng / 2) ** 2; return r * (2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))); };
+    const findTravelFeeTier = (distanceKm) => (travelFeeConfig.tiers || []).find((tier) => distanceKm >= Number(tier.from_km || 0) && distanceKm <= Number(tier.to_km || 0)) || null;
+    const resolveTravelFee = (distanceKm) => {
+        const tier = findTravelFeeTier(distanceKm);
+
+        if (tier) {
+            return Number(tier.fee || 0);
+        }
+
+        return Math.round(distanceKm * Number(travelFeeConfig.default_per_km || TRAVEL_FEE_PER_KM));
+    };
+    const buildTravelFeeMessage = ({ roundedDistance, refLabel, isOutOfRange, maxDistance, manualSuffix = '' }) => {
+        if (isOutOfRange) {
+            return `Khoảng cách hiện tại vượt phạm vi phục vụ ${maxDistance} km của ${refLabel}.`;
+        }
+
+        const tier = findTravelFeeTier(roundedDistance);
+        if (tier) {
+            return `Tạm tính ${roundedDistance} km từ ${refLabel}${manualSuffix}: áp dụng ${money(tier.fee)} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
+        }
+
+        return `Tạm tính ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km từ ${refLabel}${manualSuffix}.`;
+    };
+    const loadTravelFeeConfig = async () => {
+        try {
+            const res = await callApi('/travel-fee-config');
+            if (!res.ok) {
+                return;
+            }
+
+            const config = res.data?.data?.config;
+            if (config && typeof config === 'object') {
+                travelFeeConfig = {
+                    default_per_km: Number(config.default_per_km || TRAVEL_FEE_PER_KM),
+                    tiers: Array.isArray(config.tiers) ? config.tiers : [],
+                };
+                if (state.repairMode === 'at_home' && state.lat && state.lng) {
+                    updateTravelEstimate();
+                } else {
+                    updateSummary();
+                }
+            }
+        } catch (error) {
+            console.warn('Khong tai duoc cau hinh phi di lai', error);
+        }
+    };
+    const homeAddressLabel = () => [state.soNha.trim(), state.xa, state.huyen, state.tinh].filter(Boolean).join(', ');
+    const hasCompleteHomeAddress = () => Boolean(state.tinh && state.huyen && state.xa && state.soNha.trim());
+    let addressLookupTimer = null;
+    let addressLookupRequestId = 0;
+    let suppressAddressGeocode = false;
 
     function renderProvinceOptions() {
         refs.tinh.innerHTML = '<option value="">Chọn tỉnh / thành phố</option>' + state.addressData.map((t) => `<option value="${t.name}" data-code="${t.code}">${t.name}</option>`).join('');
@@ -96,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addressData, currentStep: 1, workerId: prefill.workerId ? Number(prefill.workerId) : null, worker: null,
             prefillServiceName: String(prefill.serviceName || ''), services: [], serviceIds: [], repairMode: null,
             tinh: '', huyen: '', xa: '', soNha: '', lat: '', lng: '', travelFee: 0, distanceKm: null, travelMessage: 'Sẽ tính sau khi bạn chọn vị trí.',
-            date: '', timeSlot: '', description: '', images: [], video: null, transportRequested: false, isOutOfRange: false,
+            date: '', timeSlot: '', description: '', images: [], video: null, transportRequested: false, isOutOfRange: false, locationSource: '',
         });
         refs.form.reset();
         refs.success.classList.add('d-none');
@@ -104,12 +164,17 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.sumWorkerCard.classList.add('d-none');
         refs.locationStatus.textContent = 'Vui lòng lấy vị trí hiện tại hoặc nhập địa chỉ thủ công.';
         refs.preview.innerHTML = '';
+        if (addressLookupTimer) {
+            window.clearTimeout(addressLookupTimer);
+            addressLookupTimer = null;
+        }
+        addressLookupRequestId += 1;
+        suppressAddressGeocode = false;
         if (state.addressData.length) renderProvinceOptions();
     }
 
     function syncHidden() {
         refs.hiddenWorkerId.value = state.workerId ? String(state.workerId) : '';
-        refs.hiddenServiceId.value = state.serviceIds[0] ? String(state.serviceIds[0]) : '';
         refs.hiddenRepairMode.value = state.repairMode || '';
         refs.hiddenLat.value = state.lat || '';
         refs.hiddenLng.value = state.lng || '';
@@ -154,11 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.repairMode === 'at_store'
             || (state.soNha && state.xa && state.huyen && state.tinh)
         );
-        const hasTravel = Boolean(
-            state.repairMode === 'at_store'
-            || state.travelFee > 0
-            || (state.repairMode === 'at_home' && (state.lat || state.lng))
-        );
+        const hasTravel = Boolean(state.repairMode === 'at_store' || state.repairMode === 'at_home');
         const hasContent = Boolean(
             hasService
             || hasWorker
@@ -234,11 +295,110 @@ document.addEventListener('DOMContentLoaded', () => {
             : STORE_REFERENCE;
         const distanceKm = distKm(refPoint.lat, refPoint.lng, lat, lng);
         const rounded = Number(distanceKm.toFixed(1));
-        state.travelFee = Math.round(distanceKm * TRAVEL_FEE_PER_KM);
+        state.travelFee = resolveTravelFee(distanceKm);
         state.distanceKm = rounded;
         state.isOutOfRange = rounded > Number(refPoint.maxDistance || STORE_REFERENCE.maxDistance);
-        state.travelMessage = state.isOutOfRange ? `Khoảng cách hiện tại vượt phạm vi phục vụ ${refPoint.maxDistance} km của ${refPoint.label}.` : `Tạm tính ${rounded} km × ${TRAVEL_FEE_PER_KM.toLocaleString('vi-VN')} ₫/km từ ${refPoint.label}.`;
+        state.travelMessage = buildTravelFeeMessage({
+            roundedDistance: rounded,
+            refLabel: refPoint.label,
+            isOutOfRange: state.isOutOfRange,
+            maxDistance: refPoint.maxDistance,
+        });
         updateSummary();
+    }
+
+    function resetTravelEstimate(message, locationStatus = '') {
+        state.lat = '';
+        state.lng = '';
+        state.locationSource = '';
+        state.travelFee = 0;
+        state.distanceKm = null;
+        state.isOutOfRange = false;
+        state.travelMessage = message;
+        syncHidden();
+        if (locationStatus) refs.locationStatus.textContent = locationStatus;
+        updateSummary();
+    }
+
+    async function geocodeManualAddress() {
+        if (state.repairMode !== 'at_home') return;
+
+        if (!hasCompleteHomeAddress()) {
+            resetTravelEstimate(
+                'Sáº½ tÃ­nh sau khi báº¡n chá»n vá»‹ trÃ­ hoáº·c nháº­p Ä‘á»§ Ä‘á»‹a chá»‰.',
+                'Vui lÃ²ng láº¥y vá»‹ trÃ­ hiá»‡n táº¡i hoáº·c nháº­p Ä‘á»§ Ä‘á»‹a chá»‰ Ä‘á»ƒ há»‡ thá»‘ng tÃ­nh phÃ­ di chuyá»ƒn.'
+            );
+            return;
+        }
+
+        const lookupId = ++addressLookupRequestId;
+        state.lat = '';
+        state.lng = '';
+        state.locationSource = '';
+        state.travelFee = 0;
+        state.distanceKm = null;
+        state.isOutOfRange = false;
+        state.travelMessage = 'Äang cáº­p nháº­t phÃ­ Ä‘i láº¡i theo Ä‘á»‹a chá»‰ báº¡n chá»n...';
+        syncHidden();
+        updateSummary();
+        refs.locationStatus.textContent = 'Äang xÃ¡c Ä‘á»‹nh tá»a Ä‘á»™ theo Ä‘á»‹a chá»‰ báº¡n chá»n...';
+
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q=${encodeURIComponent(homeAddressLabel())}`);
+            const data = await response.json();
+
+            if (lookupId !== addressLookupRequestId) return;
+
+            const location = Array.isArray(data) ? data[0] : null;
+            if (!location?.lat || !location?.lon) {
+                resetTravelEstimate(
+                    'ChÆ°a thá»ƒ tÃ­nh phÃ­ Ä‘i láº¡i vÃ¬ khÃ´ng tÃ¬m tháº¥y tá»a Ä‘á»™ phÃ¹ há»£p cho Ä‘á»‹a chá»‰ nÃ y.',
+                    'KhÃ´ng tÃ¬m tháº¥y tá»a Ä‘á»™ phÃ¹ há»£p cho Ä‘á»‹a chá»‰ báº¡n nháº­p. Vui lÃ²ng kiá»ƒm tra láº¡i hoáº·c dÃ¹ng GPS.'
+                );
+                return;
+            }
+
+            state.lat = String(location.lat);
+            state.lng = String(location.lon);
+            state.locationSource = 'manual';
+            syncHidden();
+            updateTravelEstimate();
+            refs.locationStatus.textContent = 'ÄÃ£ cáº­p nháº­t pháº¡m vi vÃ  phÃ­ Ä‘i láº¡i theo Ä‘á»‹a chá»‰ báº¡n nháº­p.';
+            if (!state.isOutOfRange) {
+                state.travelMessage = `${state.travelMessage.slice(0, -1)} theo Ä‘á»‹a chá»‰ báº¡n nháº­p.`;
+                updateSummary();
+            }
+        } catch (error) {
+            if (lookupId !== addressLookupRequestId) return;
+
+            resetTravelEstimate(
+                'ChÆ°a thá»ƒ tÃ­nh phÃ­ Ä‘i láº¡i vÃ¬ khÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c tá»a Ä‘á»™ Ä‘á»‹a chá»‰.',
+                'ChÆ°a thá»ƒ xÃ¡c Ä‘á»‹nh tá»a Ä‘á»™ tá»« Ä‘á»‹a chá»‰ nÃ y. Vui lÃ²ng thá»­ láº¡i hoáº·c dÃ¹ng GPS.'
+            );
+        }
+    }
+
+    function queueAddressRecalculation() {
+        if (suppressAddressGeocode || state.repairMode !== 'at_home') return;
+
+        if (addressLookupTimer) {
+            window.clearTimeout(addressLookupTimer);
+            addressLookupTimer = null;
+        }
+
+        addressLookupRequestId += 1;
+
+        if (!hasCompleteHomeAddress()) {
+            resetTravelEstimate(
+                'Sáº½ tÃ­nh sau khi báº¡n chá»n vá»‹ trÃ­ hoáº·c nháº­p Ä‘á»§ Ä‘á»‹a chá»‰.',
+                'Vui lÃ²ng láº¥y vá»‹ trÃ­ hiá»‡n táº¡i hoáº·c nháº­p Ä‘á»§ Ä‘á»‹a chá»‰ Ä‘á»ƒ há»‡ thá»‘ng tÃ­nh phÃ­ di chuyá»ƒn.'
+            );
+            return;
+        }
+
+        addressLookupTimer = window.setTimeout(() => {
+            geocodeManualAddress();
+        }, 500);
     }
 
     function goToStep(step, skipAnimation = false) {
@@ -258,17 +418,21 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.main?.scrollTo({ top: 0, behavior: skipAnimation ? 'auto' : 'smooth' });
     }
 
+    function clearDisabledTimeSlot() {
+        if (availableTimeSlots().find((slot) => slot.value === state.timeSlot && slot.disabled)) state.timeSlot = '';
+    }
+
     function renderDateCards() {
-        const labels = ['Hôm nay', 'Ngày mai', 'Ngày mốt'];
-        refs.dateCards.innerHTML = [0, 1, 2].map((offset) => {
+        refs.dateCards.innerHTML = Array.from({ length: BOOKING_WINDOW_DAYS }, (_, offset) => {
             const date = new Date();
             date.setHours(0, 0, 0, 0);
             date.setDate(date.getDate() + offset);
             const value = localDate(date);
-            return `<button type="button" class="booking-date-card ${value === state.date ? 'is-selected' : ''}" data-date-value="${value}"><span class="booking-date-label">${labels[offset]}</span><span class="booking-date-weekday">${new Intl.DateTimeFormat('vi-VN', { weekday: 'long' }).format(date)}</span><span class="booking-date-day">${String(date.getDate()).padStart(2, '0')}</span><span class="booking-date-month">Tháng ${date.getMonth() + 1}</span></button>`;
+            return `<button type="button" class="booking-date-card ${value === state.date ? 'is-selected' : ''}" data-date-value="${value}"><span class="booking-date-label">${relativeDateLabel(offset)}</span><span class="booking-date-weekday">${new Intl.DateTimeFormat('vi-VN', { weekday: 'long' }).format(date)}</span><span class="booking-date-day">${String(date.getDate()).padStart(2, '0')}</span><span class="booking-date-month">Tháng ${date.getMonth() + 1}</span></button>`;
         }).join('');
         refs.dateCards.querySelectorAll('[data-date-value]').forEach((button) => button.addEventListener('click', () => {
             state.date = button.dataset.dateValue;
+            clearDisabledTimeSlot();
             renderDateCards();
             renderTimeSlots();
             syncHidden();
@@ -322,6 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function autoFillAdministrativeAddress(geoData) {
         const addr = geoData?.address;
         if (!addr) return false;
+        suppressAddressGeocode = true;
 
         const displayParts = String(geoData?.display_name || '')
             .split(',')
@@ -369,7 +534,10 @@ document.addEventListener('DOMContentLoaded', () => {
             matchedProvince = pickOptionValue(refs.tinh, candidate);
             if (matchedProvince) break;
         }
-        if (!matchedProvince) return false;
+        if (!matchedProvince) {
+            suppressAddressGeocode = false;
+            return false;
+        }
 
         refs.tinh.value = matchedProvince;
         refs.tinh.dispatchEvent(new Event('change'));
@@ -395,6 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
             refs.xa.value = matchedWard;
             refs.xa.dispatchEvent(new Event('change'));
         }
+
+        suppressAddressGeocode = false;
 
         return Boolean(matchedProvince && matchedDistrict && matchedWard);
     }
@@ -466,6 +636,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (step === 4 && !state.date) return { valid: false, message: 'Vui lòng chọn ngày hẹn.' };
         if (step === 4 && !state.timeSlot) return { valid: false, message: 'Vui lòng chọn khung giờ.' };
+        if (step === 4 && availableTimeSlots().find((slot) => slot.value === state.timeSlot && slot.disabled)) {
+            return { valid: false, message: 'Khung giờ đã chọn không còn khả dụng, vui lòng chọn lại.' };
+        }
         return { valid: true };
     }
 
@@ -484,7 +657,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(refs.form);
         formData.delete('dich_vu_ids[]');
         state.serviceIds.forEach((serviceId) => formData.append('dich_vu_ids[]', String(serviceId)));
-        formData.set('dich_vu_id', String(state.serviceIds[0]));
         formData.set('loai_dat_lich', state.repairMode);
         formData.set('ngay_hen', state.date);
         formData.set('khung_gio_hen', state.timeSlot);
@@ -560,11 +732,21 @@ document.addEventListener('DOMContentLoaded', () => {
     repairCards.forEach((card) => card.addEventListener('click', () => {
         state.repairMode = card.dataset.repairMode;
         if (state.repairMode === 'at_store') {
+            if (addressLookupTimer) {
+                window.clearTimeout(addressLookupTimer);
+                addressLookupTimer = null;
+            }
+            addressLookupRequestId += 1;
             state.lat = '';
             state.lng = '';
+            state.locationSource = '';
             refs.locationStatus.textContent = 'Không cần lấy vị trí khi mang thiết bị đến cửa hàng.';
+        } else if (!hasCompleteHomeAddress()) {
+            refs.locationStatus.textContent = 'Vui lÃ²ng láº¥y vá»‹ trÃ­ hiá»‡n táº¡i hoáº·c nháº­p Ä‘á»§ Ä‘á»‹a chá»‰ Ä‘á»ƒ há»‡ thá»‘ng tÃ­nh phÃ­ di chuyá»ƒn.';
+        } else {
+            refs.locationStatus.textContent = 'Há»‡ thá»‘ng sáº½ tá»± cáº­p nháº­t phÃ­ di chuyá»ƒn khi báº¡n thay Ä‘á»•i Ä‘á»‹a chá»‰.';
         }
-        if (availableTimeSlots().find((slot) => slot.value === state.timeSlot && slot.disabled)) state.timeSlot = '';
+        clearDisabledTimeSlot();
         syncHidden();
         updateHeader();
         updateAddressPanels();
@@ -602,6 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.huyen.disabled = !(tinh?.districts || []).length;
         syncHidden();
         updateSummary();
+        queueAddressRecalculation();
     });
     refs.huyen.addEventListener('change', () => {
         state.huyen = refs.huyen.value;
@@ -613,9 +796,10 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.xa.disabled = wards.length === 0;
         syncHidden();
         updateSummary();
+        queueAddressRecalculation();
     });
-    refs.xa.addEventListener('change', () => { state.xa = refs.xa.value; syncHidden(); updateSummary(); });
-    refs.soNha.addEventListener('input', () => { state.soNha = refs.soNha.value; updateSummary(); });
+    refs.xa.addEventListener('change', () => { state.xa = refs.xa.value; syncHidden(); updateSummary(); queueAddressRecalculation(); });
+    refs.soNha.addEventListener('input', () => { state.soNha = refs.soNha.value; syncHidden(); updateSummary(); queueAddressRecalculation(); });
     refs.description.addEventListener('input', () => { state.description = refs.description.value; });
     refs.getLocation.addEventListener('click', () => {
         if (!navigator.geolocation) {
@@ -623,10 +807,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         refs.locationStatus.textContent = 'Đang lấy tọa độ GPS...';
+        if (addressLookupTimer) {
+            window.clearTimeout(addressLookupTimer);
+            addressLookupTimer = null;
+        }
+        addressLookupRequestId += 1;
         refs.getLocation.disabled = true;
         navigator.geolocation.getCurrentPosition(async (position) => {
             state.lat = String(position.coords.latitude);
             state.lng = String(position.coords.longitude);
+            state.locationSource = 'gps';
             syncHidden();
             updateTravelEstimate();
             refs.locationStatus.textContent = 'Đã lấy vị trí thành công.';
@@ -695,11 +885,765 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.mediaPicker.files = transfer.files;
         refs.mediaPicker.dispatchEvent(new Event('change'));
     });
+
+    STORE_REFERENCE.maxDistance = 8;
+
+    function resetState(prefill = {}) {
+        const addressData = state.addressData;
+        Object.assign(state, {
+            addressData,
+            currentStep: 1,
+            workerId: prefill.workerId ? Number(prefill.workerId) : null,
+            worker: null,
+            prefillServiceName: String(prefill.serviceName || ''),
+            services: [],
+            serviceIds: [],
+            repairMode: null,
+            tinh: '',
+            huyen: '',
+            xa: '',
+            soNha: '',
+            lat: '',
+            lng: '',
+            travelFee: 0,
+            distanceKm: null,
+            travelMessage: 'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
+            date: '',
+            timeSlot: '',
+            description: '',
+            images: [],
+            video: null,
+            transportRequested: false,
+            isOutOfRange: false,
+            isOpen: false,
+            locationSource: '',
+        });
+        refs.form.reset();
+        refs.success.classList.add('d-none');
+        refs.workerBanner.classList.add('d-none');
+        refs.sumWorkerCard.classList.add('d-none');
+        refs.locationStatus.textContent = 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.';
+        refs.preview.innerHTML = '';
+        if (addressLookupTimer) {
+            window.clearTimeout(addressLookupTimer);
+            addressLookupTimer = null;
+        }
+        addressLookupRequestId += 1;
+        suppressAddressGeocode = false;
+        if (state.addressData.length) renderProvinceOptions();
+    }
+
+    function updateTravelEstimate() {
+        if (state.repairMode !== 'at_home') {
+            state.travelFee = 0;
+            state.distanceKm = 0;
+            state.isOutOfRange = false;
+            state.locationSource = '';
+            state.travelMessage = 'Ban chon mang thiet bi den cua hang nen khong phat sinh phi di lai.';
+            syncHidden();
+            updateSummary();
+            return;
+        }
+
+        const lat = Number(state.lat);
+        const lng = Number(state.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
+            state.travelFee = 0;
+            state.distanceKm = null;
+            state.isOutOfRange = false;
+            state.travelMessage = 'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.';
+            syncHidden();
+            updateSummary();
+            return;
+        }
+
+        const workerMaxDistance = Number(state.worker?.ban_kinh_phuc_vu ?? 8);
+        const refPoint = Number.isFinite(Number(state.worker?.vi_do)) && Number.isFinite(Number(state.worker?.kinh_do))
+            ? {
+                lat: Number(state.worker.vi_do),
+                lng: Number(state.worker.kinh_do),
+                maxDistance: Math.min(workerMaxDistance, 8),
+                label: state.worker?.user?.name || 'tho da chon',
+            }
+            : { ...STORE_REFERENCE, maxDistance: 8, label: 'cua hang' };
+
+        const distanceKm = distKm(refPoint.lat, refPoint.lng, lat, lng);
+        const rounded = Number(distanceKm.toFixed(1));
+        state.travelFee = resolveTravelFee(distanceKm);
+        state.distanceKm = rounded;
+        state.isOutOfRange = rounded > Number(refPoint.maxDistance || 8);
+        state.travelMessage = state.isOutOfRange
+            ? `Dia chi dang vuot qua pham vi phuc vu ${refPoint.maxDistance} km tu ${refPoint.label}.`
+            : buildTravelFeeMessage({
+                roundedDistance: rounded,
+                refLabel: refPoint.label,
+                isOutOfRange: false,
+                maxDistance: refPoint.maxDistance,
+                manualSuffix: state.locationSource === 'manual' ? ' theo dia chi ban nhap' : '',
+            });
+        syncHidden();
+        updateSummary();
+    }
+
+    function resetTravelEstimate(message, locationStatus = '') {
+        state.lat = '';
+        state.lng = '';
+        state.locationSource = '';
+        state.travelFee = 0;
+        state.distanceKm = null;
+        state.isOutOfRange = false;
+        state.travelMessage = message;
+        syncHidden();
+        if (locationStatus) refs.locationStatus.textContent = locationStatus;
+        updateSummary();
+    }
+
+    async function geocodeManualAddress() {
+        if (state.repairMode !== 'at_home') return;
+
+        if (!hasCompleteHomeAddress()) {
+            resetTravelEstimate(
+                'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
+                'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.'
+            );
+            return;
+        }
+
+        const lookupId = ++addressLookupRequestId;
+        state.lat = '';
+        state.lng = '';
+        state.locationSource = '';
+        state.travelFee = 0;
+        state.distanceKm = null;
+        state.isOutOfRange = false;
+        state.travelMessage = 'Dang cap nhat phi di lai theo dia chi ban chon...';
+        syncHidden();
+        updateSummary();
+        refs.locationStatus.textContent = 'Dang xac dinh toa do theo dia chi ban chon...';
+
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q=${encodeURIComponent(homeAddressLabel())}`);
+            const data = await response.json();
+
+            if (lookupId !== addressLookupRequestId) return;
+
+            const location = Array.isArray(data) ? data[0] : null;
+            if (!location?.lat || !location?.lon) {
+                resetTravelEstimate(
+                    'Chua the tinh phi di lai vi khong tim thay toa do phu hop cho dia chi nay.',
+                    'Khong tim thay toa do phu hop cho dia chi ban nhap. Vui long kiem tra lai hoac dung GPS.'
+                );
+                return;
+            }
+
+            state.lat = String(location.lat);
+            state.lng = String(location.lon);
+            state.locationSource = 'manual';
+            syncHidden();
+            updateTravelEstimate();
+            refs.locationStatus.textContent = state.isOutOfRange
+                ? 'Dia chi dang vuot qua 8 km nen he thong khong cho phep tiep tuc.'
+                : 'Da cap nhat phi di lai theo dia chi ban nhap.';
+        } catch (error) {
+            if (lookupId !== addressLookupRequestId) return;
+
+            resetTravelEstimate(
+                'Chua the tinh phi di lai vi khong xac dinh duoc toa do dia chi.',
+                'Chua the xac dinh toa do tu dia chi nay. Vui long thu lai hoac dung GPS.'
+            );
+        }
+    }
+
+    function queueAddressRecalculation() {
+        if (suppressAddressGeocode || state.repairMode !== 'at_home') return;
+
+        if (addressLookupTimer) {
+            window.clearTimeout(addressLookupTimer);
+            addressLookupTimer = null;
+        }
+
+        addressLookupRequestId += 1;
+
+        if (!hasCompleteHomeAddress()) {
+            resetTravelEstimate(
+                'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
+                'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.'
+            );
+            return;
+        }
+
+        addressLookupTimer = window.setTimeout(() => {
+            geocodeManualAddress();
+        }, 500);
+    }
+
+    function autoFillAdministrativeAddress(geoData) {
+        const addr = geoData?.address;
+        if (!addr) return false;
+
+        suppressAddressGeocode = true;
+
+        const uniqueCandidates = (items) => [...new Set(items.filter(Boolean).map((item) => String(item).trim()).filter(Boolean))];
+        const normalizeAdminText = (value) => norm(value)
+            .replace(/[.,()/-]/g, ' ')
+            .replace(/\b(tp|tp\.|q|q\.|h|h\.|p|p\.|x|x\.|tx|tx\.|tt|tt\.)\b/g, ' ')
+            .replace(/^(tinh|thanh pho|quan|huyen|thi xa|thi tran|phuong|xa)\s+/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const pickOptionFromText = (select, text) => {
+            const haystack = normalizeAdminText(text);
+            if (!haystack) return '';
+
+            return Array.from(select.options)
+                .map((option) => option.value)
+                .filter(Boolean)
+                .find((value) => {
+                    const normalizedValue = normalizeAdminText(value);
+                    return normalizedValue && (haystack.includes(normalizedValue) || normalizedValue.includes(haystack));
+                }) || '';
+        };
+        const displayParts = String(geoData?.display_name || '')
+            .split(',')
+            .map((part) => part.trim())
+            .filter(Boolean);
+        const combinedAddressText = [
+            geoData?.display_name || '',
+            ...Object.values(addr || {}),
+        ].filter(Boolean).join(', ');
+
+        const provinceCandidates = uniqueCandidates([
+            addr.state,
+            addr.province,
+            addr.region,
+            addr.city,
+            addr.county,
+            addr['ISO3166-2-lvl4'],
+            ...displayParts,
+        ]);
+
+        const districtCandidates = uniqueCandidates([
+            addr.city_district,
+            addr.county,
+            addr.district,
+            addr.state_district,
+            addr.municipality,
+            addr.city,
+            addr.town,
+            addr.borough,
+            ...displayParts,
+        ]);
+
+        const wardCandidates = uniqueCandidates([
+            addr.ward,
+            addr.township,
+            addr.suburb,
+            addr.city_block,
+            addr.quarter,
+            addr.neighbourhood,
+            addr.locality,
+            addr.village,
+            addr.hamlet,
+            addr.residential,
+            addr.allotments,
+            ...displayParts,
+        ]);
+
+        let matchedProvince = '';
+        for (const candidate of provinceCandidates) {
+            matchedProvince = pickOptionValue(refs.tinh, candidate);
+            if (matchedProvince) break;
+        }
+        if (!matchedProvince) matchedProvince = pickOptionFromText(refs.tinh, combinedAddressText);
+        if (!matchedProvince) {
+            suppressAddressGeocode = false;
+            return false;
+        }
+
+        refs.tinh.value = matchedProvince;
+        refs.tinh.dispatchEvent(new Event('change'));
+
+        let matchedDistrict = '';
+        for (const candidate of districtCandidates) {
+            matchedDistrict = pickOptionValue(refs.huyen, candidate);
+            if (matchedDistrict) break;
+        }
+        if (!matchedDistrict) matchedDistrict = pickOptionFromText(refs.huyen, combinedAddressText);
+        if (matchedDistrict) {
+            refs.huyen.value = matchedDistrict;
+            refs.huyen.dispatchEvent(new Event('change'));
+        }
+
+        let matchedWard = '';
+        for (const candidate of wardCandidates) {
+            matchedWard = pickOptionValue(refs.xa, candidate);
+            if (matchedWard) break;
+        }
+        if (!matchedWard) matchedWard = pickOptionFromText(refs.xa, combinedAddressText);
+        if (matchedWard) {
+            refs.xa.value = matchedWard;
+            refs.xa.dispatchEvent(new Event('change'));
+        }
+
+        suppressAddressGeocode = false;
+
+        return Boolean(matchedProvince && matchedDistrict && matchedWard);
+    }
+
+    function validateStep(step) {
+        if (step === 1 && !state.serviceIds.length) return { valid: false, message: 'Vui long chon it nhat mot dich vu de tiep tuc.' };
+        if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui long chon hinh thuc sua chua.' };
+        if (step === 3 && state.repairMode === 'at_home') {
+            if (!state.lat || !state.lng) return { valid: false, message: 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.' };
+            if (state.isOutOfRange) return { valid: false, message: 'Dia chi cua ban vuot qua 8 km. Vui long chon dia chi gan hon hoac mang thiet bi den cua hang.' };
+            if (!state.tinh || !state.huyen || !state.xa) return { valid: false, message: 'Vui long chon day du Tinh / Huyen / Xa.' };
+            if (!state.soNha.trim()) return { valid: false, message: 'Vui long nhap dia chi chi tiet.' };
+        }
+        if (step === 4 && !state.date) return { valid: false, message: 'Vui long chon ngay hen.' };
+        if (step === 4 && !state.timeSlot) return { valid: false, message: 'Vui long chon khung gio.' };
+        if (step === 4 && availableTimeSlots().find((slot) => slot.value === state.timeSlot && slot.disabled)) {
+            return { valid: false, message: 'Khung gio da chon khong con kha dung, vui long chon lai.' };
+        }
+        return { valid: true };
+    }
+
+    const ADDRESS_API_BASE = 'https://provinces.open-api.vn/api/v2';
+    const districtField = refs.huyen?.closest('.booking-field');
+    const isMergedAddressMode = () => state.addressApiVersion === 'v2';
+    const getSelectedProvinceData = () => {
+        const selectedCode = refs.tinh?.options?.[refs.tinh.selectedIndex]?.getAttribute('data-code');
+        return state.addressData.find((item) => String(item.code) === String(selectedCode));
+    };
+    const composeAdminAddress = () => [state.xa, isMergedAddressMode() ? '' : state.huyen, state.tinh].filter(Boolean).join(', ');
+    const composeFullHomeAddress = () => [state.soNha.trim(), state.xa, isMergedAddressMode() ? '' : state.huyen, state.tinh].filter(Boolean).join(', ');
+    const hasRequiredHomeAddressSelection = () => Boolean(state.tinh && state.xa && state.soNha.trim() && (isMergedAddressMode() || state.huyen));
+    const setDistrictFieldVisibility = () => {
+        if (!districtField) return;
+        districtField.classList.toggle('d-none', isMergedAddressMode());
+    };
+    const uniqueAdminCandidates = (items) => [...new Set(items.filter(Boolean).map((item) => String(item).trim()).filter(Boolean))];
+    const normalizeAdminText = (value) => norm(value)
+        .replace(/[.,()/-]/g, ' ')
+        .replace(/\b(tp|tp\.|q|q\.|h|h\.|p|p\.|x|x\.|tx|tx\.|tt|tt\.)\b/g, ' ')
+        .replace(/^(tinh|thanh pho|quan|huyen|thi xa|thi tran|phuong|xa)\s+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const pickOptionFromText = (select, text) => {
+        const haystack = normalizeAdminText(text);
+        if (!haystack) return '';
+
+        return Array.from(select.options)
+            .map((option) => option.value)
+            .filter(Boolean)
+            .find((value) => {
+                const normalizedValue = normalizeAdminText(value);
+                return normalizedValue && (haystack.includes(normalizedValue) || normalizedValue.includes(haystack));
+            }) || '';
+    };
+    const buildAdminCandidates = (geoData) => {
+        const addr = geoData?.address || {};
+        const displayParts = String(geoData?.display_name || '')
+            .split(',')
+            .map((part) => part.trim())
+            .filter(Boolean);
+
+        return {
+            provinceCandidates: uniqueAdminCandidates([
+                addr.state,
+                addr.province,
+                addr.region,
+                addr.city,
+                addr.county,
+                addr['ISO3166-2-lvl4'],
+                ...displayParts,
+            ]),
+            districtCandidates: uniqueAdminCandidates([
+                addr.city_district,
+                addr.county,
+                addr.district,
+                addr.state_district,
+                addr.municipality,
+                addr.city,
+                addr.town,
+                addr.borough,
+                ...displayParts,
+            ]),
+            wardCandidates: uniqueAdminCandidates([
+                addr.ward,
+                addr.township,
+                addr.suburb,
+                addr.city_block,
+                addr.quarter,
+                addr.neighbourhood,
+                addr.locality,
+                addr.village,
+                addr.hamlet,
+                addr.residential,
+                addr.allotments,
+                ...displayParts,
+            ]),
+            combinedAddressText: [
+                geoData?.display_name || '',
+                ...Object.values(addr || {}),
+            ].filter(Boolean).join(', '),
+        };
+    };
+
+    async function resolveCurrentWardName(legacyName) {
+        if (!legacyName) return '';
+
+        try {
+            const response = await fetch(`${ADDRESS_API_BASE}/w/from-legacy/?legacy_name=${encodeURIComponent(legacyName)}`);
+            if (!response.ok) return '';
+
+            const data = await response.json();
+            if (!Array.isArray(data)) return '';
+
+            const preferred = data.find((item) => item?.ward?.name && pickOptionValue(refs.xa, item.ward.name));
+            return preferred?.ward?.name || data[0]?.ward?.name || '';
+        } catch (error) {
+            return '';
+        }
+    }
+
+    function renderProvinceOptions() {
+        refs.tinh.innerHTML = '<option value="">Chon tinh / thanh pho</option>' + state.addressData.map((tinh) => `<option value="${tinh.name}" data-code="${tinh.code}">${tinh.name}</option>`).join('');
+        refs.huyen.innerHTML = isMergedAddressMode()
+            ? '<option value="">Khong ap dung sau sap nhap</option>'
+            : '<option value="">Chon quan / huyen</option>';
+        refs.xa.innerHTML = '<option value="">Chon phuong / xa</option>';
+        refs.huyen.disabled = isMergedAddressMode();
+        refs.xa.disabled = true;
+        setDistrictFieldVisibility();
+    }
+
+    function syncHidden() {
+        refs.hiddenWorkerId.value = state.workerId ? String(state.workerId) : '';
+        refs.hiddenRepairMode.value = state.repairMode || '';
+        refs.hiddenLat.value = state.lat || '';
+        refs.hiddenLng.value = state.lng || '';
+        refs.hiddenDate.value = state.date || '';
+        refs.hiddenTimeSlot.value = state.timeSlot || '';
+        refs.hiddenStoreTransport.value = state.transportRequested ? '1' : '0';
+        refs.hiddenDiaChi.value = state.repairMode === 'at_store' ? STORE_ADDRESS : composeAdminAddress();
+    }
+
+    function updateSummary() {
+        const services = selectedServices();
+        const names = services.slice(0, 2).map((service) => service.ten_dich_vu).join(', ');
+        const extra = Math.max(services.length - 2, 0);
+        const hasService = services.length > 0;
+        const hasWorker = Boolean(state.worker);
+        const hasMode = Boolean(state.repairMode);
+        const hasTime = Boolean(state.date && state.timeSlot);
+        const hasAddress = Boolean(state.repairMode === 'at_store' || hasRequiredHomeAddressSelection());
+        const hasTravel = Boolean(state.repairMode === 'at_store' || state.repairMode === 'at_home');
+        const hasContent = Boolean(hasService || hasWorker || hasMode || hasTime || hasAddress || hasTravel);
+
+        refs.summaryTitle.classList.toggle('d-none', !hasContent);
+        refs.summarySheet.classList.toggle('d-none', !hasContent);
+        refs.sumTravelCard.classList.toggle('d-none', !hasTravel);
+
+        refs.sumServiceCard.classList.toggle('d-none', !hasService);
+        refs.sumServiceValue.textContent = hasService ? `${names}${extra ? ` +${extra}` : ''}` : '';
+        refs.sumServiceMeta.textContent = services.length > 1 ? `${services.length} dich vu trong cung mot lich hen.` : (services[0]?.mo_ta || '');
+        refs.sumServiceThumb.src = services[0]?.hinh_anh || '/assets/images/logontu.png';
+
+        refs.sumWorkerCard.classList.toggle('d-none', !hasWorker);
+        if (hasWorker) {
+            refs.sumWorkerThumb.src = state.worker?.user?.avatar || '/assets/images/user-default.png';
+            refs.sumWorkerValue.textContent = state.worker?.user?.name || 'Tho sua chua';
+            refs.sumWorkerMeta.textContent = state.worker?.user?.dich_vus?.map((service) => service.ten_dich_vu).join(', ')
+                || state.worker?.user?.dichVus?.map((service) => service.ten_dich_vu).join(', ')
+                || refs.sumWorkerMeta.textContent
+                || '';
+        }
+
+        refs.sumModeCard.classList.toggle('d-none', !hasMode);
+        refs.sumModeValue.textContent = state.repairMode === 'at_home' ? 'Sua tai nha' : 'Mang den cua hang';
+        refs.sumModeMeta.textContent = state.repairMode === 'at_home'
+            ? 'Ky thuat vien den tan noi.'
+            : (state.transportRequested ? 'Co thue xe cho thiet bi hai chieu.' : 'Ban tu mang thiet bi den cua hang.');
+        refs.sumModeMark.textContent = state.repairMode === 'at_home' ? 'NHA' : 'SHOP';
+
+        refs.sumTimeCard.classList.toggle('d-none', !hasTime);
+        refs.sumTimeValue.textContent = hasTime ? `${humanDate(state.date)} • ${state.timeSlot.replace('-', ' - ')}` : '';
+        refs.sumTimeMeta.textContent = hasTime ? 'Khung gio ban da chon.' : '';
+
+        refs.sumAddressCard.classList.toggle('d-none', !hasAddress);
+        refs.sumAddressValue.textContent = state.repairMode === 'at_store' ? STORE_ADDRESS : composeFullHomeAddress();
+        refs.sumAddressMeta.textContent = state.repairMode === 'at_store'
+            ? 'Dia chi tiep nhan thiet bi.'
+            : (state.lat && state.lng ? 'Dia chi da gan GPS.' : 'Dia chi nhap thu cong.');
+
+        refs.sumTravelFee.textContent = money(state.travelFee);
+        refs.sumTravelMeta.textContent = state.travelMessage;
+    }
+
+    function resetState(prefill = {}) {
+        const addressData = state.addressData;
+        const addressApiVersion = state.addressApiVersion || 'v2';
+        Object.assign(state, {
+            addressData,
+            addressApiVersion,
+            currentStep: 1,
+            workerId: prefill.workerId ? Number(prefill.workerId) : null,
+            worker: null,
+            prefillServiceName: String(prefill.serviceName || ''),
+            services: [],
+            serviceIds: [],
+            repairMode: null,
+            tinh: '',
+            huyen: '',
+            xa: '',
+            soNha: '',
+            lat: '',
+            lng: '',
+            travelFee: 0,
+            distanceKm: null,
+            travelMessage: 'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
+            date: '',
+            timeSlot: '',
+            description: '',
+            images: [],
+            video: null,
+            transportRequested: false,
+            isOutOfRange: false,
+            isOpen: false,
+            locationSource: '',
+        });
+        refs.form.reset();
+        refs.success.classList.add('d-none');
+        refs.workerBanner.classList.add('d-none');
+        refs.sumWorkerCard.classList.add('d-none');
+        refs.locationStatus.textContent = 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.';
+        refs.preview.innerHTML = '';
+        if (addressLookupTimer) {
+            window.clearTimeout(addressLookupTimer);
+            addressLookupTimer = null;
+        }
+        addressLookupRequestId += 1;
+        suppressAddressGeocode = false;
+        if (state.addressData.length) renderProvinceOptions();
+    }
+
+    async function geocodeManualAddress() {
+        if (state.repairMode !== 'at_home') return;
+
+        if (!hasRequiredHomeAddressSelection()) {
+            resetTravelEstimate(
+                'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
+                'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.'
+            );
+            return;
+        }
+
+        const lookupId = ++addressLookupRequestId;
+        state.lat = '';
+        state.lng = '';
+        state.locationSource = '';
+        state.travelFee = 0;
+        state.distanceKm = null;
+        state.isOutOfRange = false;
+        state.travelMessage = 'Dang cap nhat phi di lai theo dia chi ban chon...';
+        syncHidden();
+        updateSummary();
+        refs.locationStatus.textContent = 'Dang xac dinh toa do theo dia chi ban chon...';
+
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q=${encodeURIComponent(composeFullHomeAddress())}`);
+            const data = await response.json();
+
+            if (lookupId !== addressLookupRequestId) return;
+
+            const location = Array.isArray(data) ? data[0] : null;
+            if (!location?.lat || !location?.lon) {
+                resetTravelEstimate(
+                    'Chua the tinh phi di lai vi khong tim thay toa do phu hop cho dia chi nay.',
+                    'Khong tim thay toa do phu hop cho dia chi ban nhap. Vui long kiem tra lai hoac dung GPS.'
+                );
+                return;
+            }
+
+            state.lat = String(location.lat);
+            state.lng = String(location.lon);
+            state.locationSource = 'manual';
+            syncHidden();
+            updateTravelEstimate();
+            refs.locationStatus.textContent = state.isOutOfRange
+                ? 'Dia chi dang vuot qua 8 km nen he thong khong cho phep tiep tuc.'
+                : 'Da cap nhat phi di lai theo dia chi ban nhap.';
+        } catch (error) {
+            if (lookupId !== addressLookupRequestId) return;
+
+            resetTravelEstimate(
+                'Chua the tinh phi di lai vi khong xac dinh duoc toa do dia chi.',
+                'Chua the xac dinh toa do tu dia chi nay. Vui long thu lai hoac dung GPS.'
+            );
+        }
+    }
+
+    function queueAddressRecalculation() {
+        if (suppressAddressGeocode || state.repairMode !== 'at_home') return;
+
+        if (addressLookupTimer) {
+            window.clearTimeout(addressLookupTimer);
+            addressLookupTimer = null;
+        }
+
+        addressLookupRequestId += 1;
+
+        if (!hasRequiredHomeAddressSelection()) {
+            resetTravelEstimate(
+                'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
+                'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.'
+            );
+            return;
+        }
+
+        addressLookupTimer = window.setTimeout(() => {
+            geocodeManualAddress();
+        }, 500);
+    }
+
+    async function loadAddressData() {
+        if (state.addressData.length) {
+            renderProvinceOptions();
+            return;
+        }
+
+        try {
+            const response = await fetch(`${ADDRESS_API_BASE}/?depth=2`);
+            const payload = await response.json();
+            state.addressData = Array.isArray(payload) ? payload : [];
+            state.addressApiVersion = state.addressData.some((item) => Array.isArray(item?.wards)) ? 'v2' : 'v1';
+            renderProvinceOptions();
+        } catch (error) {
+            refs.locationStatus.textContent = 'Loi khi tai du lieu dia chi. Vui long thu lai sau.';
+        }
+    }
+
+    async function autoFillAdministrativeAddress(geoData) {
+        const addr = geoData?.address;
+        if (!addr) return false;
+
+        suppressAddressGeocode = true;
+
+        const {
+            provinceCandidates,
+            districtCandidates,
+            wardCandidates,
+            combinedAddressText,
+        } = buildAdminCandidates(geoData);
+
+        let matchedProvince = '';
+        for (const candidate of provinceCandidates) {
+            matchedProvince = pickOptionValue(refs.tinh, candidate);
+            if (matchedProvince) break;
+        }
+        if (!matchedProvince) matchedProvince = pickOptionFromText(refs.tinh, combinedAddressText);
+        if (!matchedProvince) {
+            suppressAddressGeocode = false;
+            return false;
+        }
+
+        refs.tinh.value = matchedProvince;
+        refs.tinh.dispatchEvent(new Event('change'));
+
+        let matchedDistrict = '';
+        if (!isMergedAddressMode()) {
+            for (const candidate of districtCandidates) {
+                matchedDistrict = pickOptionValue(refs.huyen, candidate);
+                if (matchedDistrict) break;
+            }
+            if (!matchedDistrict) matchedDistrict = pickOptionFromText(refs.huyen, combinedAddressText);
+            if (matchedDistrict) {
+                refs.huyen.value = matchedDistrict;
+                refs.huyen.dispatchEvent(new Event('change'));
+            }
+        } else {
+            state.huyen = districtCandidates[0] || addr.city || addr.county || '';
+        }
+
+        let matchedWard = '';
+        for (const candidate of wardCandidates) {
+            matchedWard = pickOptionValue(refs.xa, candidate);
+            if (matchedWard) break;
+        }
+
+        if (!matchedWard) {
+            for (const candidate of wardCandidates) {
+                const currentWardName = await resolveCurrentWardName(candidate);
+                matchedWard = pickOptionValue(refs.xa, currentWardName);
+                if (matchedWard) break;
+            }
+        }
+
+        if (!matchedWard) matchedWard = pickOptionFromText(refs.xa, combinedAddressText);
+        if (matchedWard) {
+            refs.xa.value = matchedWard;
+            refs.xa.dispatchEvent(new Event('change'));
+        }
+
+        suppressAddressGeocode = false;
+
+        return Boolean(matchedProvince && matchedWard && (isMergedAddressMode() || matchedDistrict));
+    }
+
+    function validateStep(step) {
+        if (step === 1 && !state.serviceIds.length) return { valid: false, message: 'Vui long chon it nhat mot dich vu de tiep tuc.' };
+        if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui long chon hinh thuc sua chua.' };
+        if (step === 3 && state.repairMode === 'at_home') {
+            if (!state.lat || !state.lng) return { valid: false, message: 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.' };
+            if (state.isOutOfRange) return { valid: false, message: 'Dia chi cua ban vuot qua 8 km. Vui long chon dia chi gan hon hoac mang thiet bi den cua hang.' };
+            if (isMergedAddressMode()) {
+                if (!state.tinh || !state.xa) return { valid: false, message: 'Vui long chon day du Tinh / Thanh pho va Phuong / Xa.' };
+            } else if (!state.tinh || !state.huyen || !state.xa) {
+                return { valid: false, message: 'Vui long chon day du Tinh / Huyen / Xa.' };
+            }
+            if (!state.soNha.trim()) return { valid: false, message: 'Vui long nhap dia chi chi tiet.' };
+        }
+        if (step === 4 && !state.date) return { valid: false, message: 'Vui long chon ngay hen.' };
+        if (step === 4 && !state.timeSlot) return { valid: false, message: 'Vui long chon khung gio.' };
+        if (step === 4 && availableTimeSlots().find((slot) => slot.value === state.timeSlot && slot.disabled)) {
+            return { valid: false, message: 'Khung gio da chon khong con kha dung, vui long chon lai.' };
+        }
+        return { valid: true };
+    }
+
+    refs.tinh.addEventListener('change', () => {
+        if (!isMergedAddressMode()) return;
+
+        state.huyen = '';
+        refs.huyen.innerHTML = '<option value="">Khong ap dung sau sap nhap</option>';
+        refs.huyen.disabled = true;
+
+        const province = getSelectedProvinceData();
+        const wards = Array.isArray(province?.wards) ? province.wards : [];
+        refs.xa.innerHTML = '<option value="">Chon phuong / xa</option>' + wards.map((xa) => `<option value="${xa.name}">${xa.name}</option>`).join('');
+        refs.xa.disabled = wards.length === 0;
+
+        syncHidden();
+        updateSummary();
+        queueAddressRecalculation();
+    });
+
+    repairCards.forEach((card) => card.addEventListener('click', () => {
+        if (state.repairMode === 'at_store') {
+            refs.locationStatus.textContent = 'Khong can lay vi tri khi mang thiet bi den cua hang.';
+            return;
+        }
+
+        refs.locationStatus.textContent = hasRequiredHomeAddressSelection()
+            ? 'He thong se tu cap nhat phi di chuyen khi ban thay doi dia chi.'
+            : 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.';
+    }));
+
     renderDateCards();
     renderTimeSlots();
     updateHeader();
     updateAddressPanels();
     syncHidden();
     updateSummary();
+    loadTravelFeeConfig();
     if (isStandalone) openModal();
 });

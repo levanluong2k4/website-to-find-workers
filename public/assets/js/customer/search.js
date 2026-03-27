@@ -1,69 +1,51 @@
 import { callApi } from '../api.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('searchInput');
-    const btnSearch = document.getElementById('btnSearch');
     const workersContainer = document.getElementById('workersContainer');
     const resultsCount = document.getElementById('resultsCount');
+    const resultsSubline = document.getElementById('resultsSubline');
+    const resultsCategorySpotlight = document.getElementById('resultsCategorySpotlight');
+    const resultsScheduleSpotlight = document.getElementById('resultsScheduleSpotlight');
     const categoryFiltersList = document.getElementById('categoryFiltersList');
     const paginationContainer = document.getElementById('paginationContainer');
+    const activeFilterChips = document.getElementById('activeFilterChips');
+    const activeFiltersSection = document.getElementById('activeFiltersSection');
     const sortRadios = document.querySelectorAll('input[name="sortOrder"]');
     const filterDate = document.getElementById('filterDate');
     const filterTimeSlot = document.getElementById('filterTimeSlot');
     const btnApplyTimeFilter = document.getElementById('btnApplyTimeFilter');
-
-    // State
+    const btnResetSearchFilters = document.getElementById('btnResetSearchFilters');
+    const DEFAULT_SORT = 'jobs';
     const searchParams = new URLSearchParams(window.location.search);
-    let currentPage = parseInt(searchParams.get('page')) || 1;
+    let categoriesCache = [];
 
-    // init
-    initSearchInput();
+    syncControlsFromParams();
+    renderActiveFilterChips();
+    updateContextualCopy();
+    bindStaticEvents();
     fetchCategories();
     fetchWorkers();
 
-    // Event Listeners
-    btnSearch.addEventListener('click', () => {
-        const keyword = searchInput.value.trim();
-        const province = document.querySelector('.search-container').getAttribute('data-search-location');
-        const lat = document.querySelector('.search-container').getAttribute('data-search-lat');
-        const lng = document.querySelector('.search-container').getAttribute('data-search-lng');
+    function bindStaticEvents() {
+        filterDate?.setAttribute('min', getTodayString());
 
-        // Reset old params except sort & category
-        searchParams.delete('q');
-        searchParams.delete('province');
-        searchParams.delete('lat');
-        searchParams.delete('lng');
+        sortRadios.forEach((radio) => {
+            radio.addEventListener('change', (event) => {
+                const selectedSort = event.target.value;
+                if (!selectedSort || selectedSort === DEFAULT_SORT) {
+                    searchParams.delete('sort');
+                } else {
+                    searchParams.set('sort', selectedSort);
+                }
 
-        if (keyword) searchParams.set('q', keyword);
-        if (lat && lng) {
-            searchParams.set('lat', lat);
-            searchParams.set('lng', lng);
-        } else if (province) {
-            searchParams.set('province', province);
-        }
-
-        searchParams.set('page', 1);
-        updateUrlAndFetch();
-    });
-
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            btnSearch.click();
-        }
-    });
-
-    sortRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            searchParams.set('sort', e.target.value);
-            searchParams.set('page', 1);
-            updateUrlAndFetch();
+                searchParams.set('page', '1');
+                updateUrlAndFetch();
+            });
         });
-    });
 
-    if (btnApplyTimeFilter) {
-        btnApplyTimeFilter.addEventListener('click', () => {
-            const dateVal = filterDate.value;
-            const timeVal = filterTimeSlot.value;
+        btnApplyTimeFilter?.addEventListener('click', () => {
+            const dateVal = filterDate?.value || '';
+            const timeVal = filterTimeSlot?.value || '';
 
             if (dateVal && timeVal) {
                 searchParams.set('ngay_hen', dateVal);
@@ -72,311 +54,661 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchParams.delete('ngay_hen');
                 searchParams.delete('khung_gio_hen');
             } else {
-                alert('Vui lòng chọn cả Ngày hẹn và Khung giờ để lọc thời gian rảnh.');
+                window.alert('Vui lòng chọn đủ ngày làm việc và khung giờ trước khi áp dụng.');
                 return;
             }
 
-            searchParams.set('page', 1);
+            searchParams.set('page', '1');
             updateUrlAndFetch();
+        });
+
+        btnResetSearchFilters?.addEventListener('click', () => {
+            clearAllFilters();
+            updateUrlAndFetch();
+        });
+
+        activeFilterChips?.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-remove-filter]');
+            if (!trigger) return;
+
+            removeFilter(trigger.dataset.removeFilter);
+            searchParams.set('page', '1');
+            updateUrlAndFetch();
+        });
+
+        workersContainer?.addEventListener('click', (event) => {
+            const clearButton = event.target.closest('[data-action="clear-filters"]');
+            if (clearButton) {
+                clearAllFilters();
+                updateUrlAndFetch();
+                return;
+            }
+
+            const bookingButton = event.target.closest('[data-book-worker]');
+            if (bookingButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                openWorkerBooking(bookingButton.dataset.bookWorker);
+                return;
+            }
+
+            if (event.target.closest('a, button, input, select, label')) return;
+
+            const card = event.target.closest('.worker-card[data-profile-url]');
+            if (card) {
+                window.location.href = card.dataset.profileUrl;
+            }
+        });
+
+        workersContainer?.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            if (event.target.closest('a, button, input, select, label')) return;
+
+            const card = event.target.closest('.worker-card[data-profile-url]');
+            if (!card) return;
+
+            event.preventDefault();
+            window.location.href = card.dataset.profileUrl;
+        });
+
+        window.addEventListener('popstate', () => {
+            overwriteParamsFromUrl();
+            syncControlsFromParams();
+
+            if (categoriesCache.length) {
+                renderCategories(categoriesCache);
+            }
+
+            renderActiveFilterChips();
+            updateContextualCopy();
+            fetchWorkers();
         });
     }
 
-    function initSearchInput() {
-        if (searchParams.has('q')) {
-            searchInput.value = searchParams.get('q');
+    function overwriteParamsFromUrl() {
+        Array.from(searchParams.keys()).forEach((key) => searchParams.delete(key));
+        const currentUrlParams = new URLSearchParams(window.location.search);
+        currentUrlParams.forEach((value, key) => searchParams.set(key, value));
+    }
+
+    function syncControlsFromParams() {
+        const activeSort = searchParams.get('sort') || DEFAULT_SORT;
+        const radioToCheck = document.querySelector(`input[name="sortOrder"][value="${activeSort}"]`)
+            || document.querySelector(`input[name="sortOrder"][value="${DEFAULT_SORT}"]`);
+
+        if (radioToCheck) {
+            radioToCheck.checked = true;
         }
-        if (searchParams.has('sort')) {
-            const sortVal = searchParams.get('sort');
-            const radio = document.querySelector(`input[name="sortOrder"][value="${sortVal}"]`);
-            if (radio) radio.checked = true;
+
+        if (filterDate) {
+            filterDate.value = searchParams.get('ngay_hen') || getTodayString();
         }
-        if (searchParams.has('ngay_hen')) {
-            filterDate.value = searchParams.get('ngay_hen');
-        } else {
-            // Default to today
-            const today = new Date().toISOString().split('T')[0];
-            filterDate.value = today;
-        }
-        if (searchParams.has('khung_gio_hen')) {
-            filterTimeSlot.value = searchParams.get('khung_gio_hen');
+
+        if (filterTimeSlot) {
+            filterTimeSlot.value = searchParams.get('khung_gio_hen') || '';
         }
     }
 
     function updateUrlAndFetch() {
-        const newUrl = `${window.location.pathname}?${searchParams.toString()}`;
-        window.history.pushState({}, '', newUrl);
+        const query = searchParams.toString();
+        const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+
+        window.history.pushState({}, '', nextUrl);
+        syncControlsFromParams();
+
+        if (categoriesCache.length) {
+            renderCategories(categoriesCache);
+        }
+
+        renderActiveFilterChips();
+        updateContextualCopy();
         fetchWorkers();
-    }
-
-    // --- Xử lý Chọn Vị trí (Location Selector) ---
-    const btnGetLocation = document.getElementById('btnGetLocation');
-    const locationText = document.getElementById('selectedLocationText');
-    const locationItems = document.querySelectorAll('.location-item');
-    const searchContainer = document.querySelector('.search-container');
-
-    // Handle Tỉnh/Thành selection
-    if (locationItems) {
-        locationItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                const province = e.target.getAttribute('data-province');
-                locationText.textContent = province;
-                searchContainer.setAttribute('data-search-location', province);
-                searchContainer.removeAttribute('data-search-lat');
-                searchContainer.removeAttribute('data-search-lng');
-            });
-        });
-    }
-
-    // Handle Geolocation API
-    if (btnGetLocation) {
-        btnGetLocation.addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert("Trình duyệt của bạn không hỗ trợ định vị vị trí.");
-                return;
-            }
-
-            locationText.textContent = "Đang lấy vị trí...";
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-
-                    locationText.textContent = "Vị trí của bạn";
-                    locationText.classList.add('text-primary');
-
-                    searchContainer.setAttribute('data-search-lat', lat);
-                    searchContainer.setAttribute('data-search-lng', lng);
-                    searchContainer.removeAttribute('data-search-location');
-                },
-                (error) => {
-                    console.error("Lỗi định vị:", error);
-                    let errMsg = "Không thể lấy vị trí. ";
-                    if (error.code == 1) errMsg += "Vui lòng cấp quyền truy cập vị trí.";
-                    else if (error.code == 2) errMsg += "Lạc tín hiệu GPS.";
-                    else if (error.code == 3) errMsg += "Hết thời gian chờ.";
-
-                    alert(errMsg);
-                    locationText.textContent = "Toàn quốc";
-                }, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
-            );
-        });
     }
 
     async function fetchCategories() {
         try {
             const result = await callApi('/danh-muc-dich-vu', 'GET');
-            if (result.data) {
-                renderCategories(result.data);
-            }
+            categoriesCache = Array.isArray(result?.data) ? result.data : [];
+            renderCategories(categoriesCache);
+            renderActiveFilterChips();
+            updateContextualCopy();
         } catch (error) {
             console.error('Error fetching categories:', error);
-            categoryFiltersList.innerHTML = '<p class="text-danger">Không tải được danh mục</p>';
+            categoryFiltersList.innerHTML = '<p class="text-danger mb-0">Không tải được danh mục.</p>';
         }
     }
 
     function renderCategories(categories) {
-        let html = '';
-        const currentCategory = searchParams.get('category_id');
-
-        // All category option
-        // All category option
-        html += `
-            <div class="category-filter-item ${!currentCategory ? 'active' : ''}">
-                <label class="custom-control-label fw-bold d-flex flex-grow-1" for="cat_all" style="cursor: pointer; margin: 0;">
-                    <input class="d-none filter-category custom-control-input" type="radio" name="categoryId" id="cat_all" value="" ${!currentCategory ? 'checked' : ''}>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="material-symbols-outlined text-lg">category</span>
-                        <span>Tất cả Dịch vụ</span>
-                    </div>
-                </label>
-            </div>
+        const currentCategory = searchParams.get('category_id') || '';
+        let html = `
+            <label class="category-chip ${currentCategory ? '' : 'active'}">
+                <input class="filter-category" type="radio" name="categoryId" value="" ${currentCategory ? '' : 'checked'}>
+                <span>Tất cả</span>
+            </label>
         `;
 
-        categories.forEach(cat => {
-            const isChecked = currentCategory == cat.id ? 'checked' : '';
-            // Giao diện Danh mục xịn xò với Font đậm mượt mà theo Stitch Design System
+        categories.forEach((category) => {
+            const isActive = String(category.id) === currentCategory;
             html += `
-                <div class="category-filter-item ${isChecked ? 'active' : ''}">
-                    <label class="custom-control-label fw-bold d-flex flex-grow-1" for="cat_${cat.id}" style="cursor: pointer; margin: 0;">
-                        <input class="d-none filter-category" type="radio" name="categoryId" id="cat_${cat.id}" value="${cat.id}" ${isChecked}>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="material-symbols-outlined text-lg">hotel_class</span>
-                            <span>${cat.ten_dich_vu}</span>
-                        </div>
-                    </label>
-                    <span class="material-symbols-outlined text-sm">chevron_right</span>
-                </div>
-                `;
+                <label class="category-chip ${isActive ? 'active' : ''}">
+                    <input class="filter-category" type="radio" name="categoryId" value="${category.id}" ${isActive ? 'checked' : ''}>
+                    <span>${escapeHtml(category.ten_dich_vu)}</span>
+                </label>
+            `;
         });
 
         categoryFiltersList.innerHTML = html;
 
-        // Add events to new radios
-        document.querySelectorAll('input[name="categoryId"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (e.target.value) {
-                    searchParams.set('category_id', e.target.value);
+        categoryFiltersList.querySelectorAll('input[name="categoryId"]').forEach((radio) => {
+            radio.addEventListener('change', (event) => {
+                const value = event.target.value;
+
+                if (value) {
+                    searchParams.set('category_id', value);
                 } else {
                     searchParams.delete('category_id');
                 }
-                searchParams.set('page', 1);
+
+                searchParams.set('page', '1');
                 updateUrlAndFetch();
             });
         });
     }
 
-    async function fetchWorkers() {
-        // Show loading state
-        workersContainer.innerHTML = generateSkeletonHTML(6);
-        resultsCount.textContent = 'Đang tìm kiếm...';
+    function renderActiveFilterChips() {
+        if (!activeFiltersSection || !activeFilterChips) return;
 
-        try {
-            const queryString = searchParams.toString();
-            const result = await callApi(`/ho-so-tho?${queryString}`, 'GET');
+        const chips = [];
+        const currentCategory = searchParams.get('category_id');
+        const currentSort = searchParams.get('sort');
+        const workingDate = searchParams.get('ngay_hen');
+        const workingTime = searchParams.get('khung_gio_hen');
+        const province = searchParams.get('province');
+        const hasCoordinates = searchParams.get('lat') && searchParams.get('lng');
 
-            // Lưu ý: với fetch() gọi từ callApi, format trả về là: result = { status: 200, data: { current_page: 1, data: [...], total: 20 } }
-            if (result && result.data && result.data.data && result.data.data.length > 0) {
-                renderWorkers(result.data.data);
-                resultsCount.innerHTML = `Tìm thấy <span class="text-primary">${result.data.total}</span> chuyên gia phù hợp`;
-                renderPagination(result.data);
-            } else {
-                workersContainer.innerHTML = `
-                <div class="col-12 text-center py-5">
-                    <img src="/assets/images/logontu.png" style="width: 100px; opacity: 0.1; filter: grayscale(1); margin-bottom: 20px;">
-                        <h4 class="text-muted fw-bold">Không tìm thấy thợ phù hợp</h4>
-                        <p class="text-muted-custom">Vui lòng thử thay đổi từ khóa hoặc bộ lọc tìm kiếm.</p>
-                        <button class="btn btn-outline-primary mt-3 px-4 rounded-pill" onclick="window.location.href='/customer/search'">Xóa bộ lọc</button>
-                    </div>
-            `;
-                resultsCount.textContent = '0 kết quả';
-                paginationContainer.innerHTML = '';
-            }
+        if (currentCategory) {
+            chips.push({
+                label: getSelectedCategoryLabel(),
+                key: 'category',
+            });
+        }
 
-        } catch (error) {
-            console.error('Error fetching workers:', error);
-            workersContainer.innerHTML = `<div class="col-12 alert alert-danger shadow-sm border-0 rounded-4">Lỗi kết nối đến máy chủ. Không thể tải danh sách thợ.</div>`;
-            resultsCount.textContent = 'Lỗi kết nối';
+        if (currentSort && currentSort !== DEFAULT_SORT) {
+            chips.push({
+                label: sortLabelMap(currentSort),
+                key: 'sort',
+            });
+        }
+
+        if (workingDate && workingTime) {
+            chips.push({
+                label: `${formatDateChip(workingDate)} • ${workingTime}`,
+                key: 'time',
+            });
+        }
+
+        if (province) {
+            chips.push({
+                label: province,
+                key: 'location',
+            });
+        } else if (hasCoordinates) {
+            chips.push({
+                label: currentSort === 'nearest' ? 'Gần nhất' : 'Vị trí hiện tại',
+                key: 'location',
+            });
+        }
+
+        activeFiltersSection.style.display = chips.length ? 'flex' : 'none';
+        activeFilterChips.innerHTML = chips.map((chip) => `
+            <div class="active-chip">
+                <span>${escapeHtml(chip.label)}</span>
+                <span class="material-symbols-outlined" data-remove-filter="${chip.key}">close</span>
+            </div>
+        `).join('');
+    }
+
+    function removeFilter(filterKey) {
+        if (filterKey === 'category') {
+            searchParams.delete('category_id');
+            return;
+        }
+
+        if (filterKey === 'sort') {
+            searchParams.delete('sort');
+            return;
+        }
+
+        if (filterKey === 'time') {
+            searchParams.delete('ngay_hen');
+            searchParams.delete('khung_gio_hen');
+            return;
+        }
+
+        if (filterKey === 'location') {
+            searchParams.delete('province');
+            searchParams.delete('lat');
+            searchParams.delete('lng');
         }
     }
 
-    function renderWorkers(workers) {
-        let html = '';
-        workers.forEach(worker => {
-            const name = worker.user ? worker.user.name : 'Unknown';
-            const avatarUrl = (worker.user && worker.user.avatar) ? worker.user.avatar : '/assets/images/user-default.png';
-            const distanceText = worker.distance ? `<div class="stat-item fw-bold text-primary"><svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg> ${parseFloat(worker.distance).toFixed(1)} km</div>` : '';
-
-            let services = 'Chưa xác định';
-            if (worker.user && worker.user.dich_vus && worker.user.dich_vus.length > 0) {
-                services = worker.user.dich_vus.map(d => d.ten_dich_vu).join(', ');
-            } else {
-                services = worker.kinh_nghiem || 'Thợ đa năng';
-            }
-
-            let statusHtml = '';
-            if (worker.trang_thai_hoat_dong === 'dang_hoat_dong') {
-                statusHtml = '<span class="worker-badge-status status-active"><i class="fas fa-circle text-success" style="font-size: 8px;"></i> Sẵn sàng</span>';
-            } else if (worker.trang_thai_hoat_dong === 'dang_ban') {
-                statusHtml = '<span class="worker-badge-status status-busy"><i class="fas fa-circle text-warning" style="font-size: 8px;"></i> Đang bận</span>';
-            } else {
-                statusHtml = '<span class="worker-badge-status" style="background: rgba(0,0,0,0.5); color: white;">Nghỉ</span>';
-            }
-
-            const rating = parseFloat(worker.danh_gia_trung_binh).toFixed(1);
-
-            html += `
-                <div class="col-md-6 col-xl-4">
-                    <a href="/customer/worker-profile/${worker.id}" class="text-decoration-none">
-                        <div class="worker-card">
-                            <div class="worker-banner">
-                                <div class="worker-avatar-container">
-                                    <img src="${avatarUrl}" class="worker-avatar" onerror="this.src='/assets/images/customer.png'" data-alt="Chuyên gia ${name}">
-                                </div>
-                                ${statusHtml}
-                            </div>
-                            <div class="worker-info pt-5 px-3 pb-3"> <!-- Added padding-top to clear the absolute avatar -->
-                                <div class="worker-name mb-1">
-                                    ${name}
-                                    <span class="material-symbols-outlined text-blue-500 text-base ms-1" style="font-variation-settings: 'FILL' 1;">verified</span>
-                                </div>
-                                <p class="worker-service">${services}</p>
-
-                                <div class="worker-stats mt-auto">
-                                    <div class="stat-rating">
-                                        <span class="material-symbols-outlined text-warning" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
-                                        ${rating} <span class="text-secondary fw-normal ms-1" style="font-size: 12px">(${worker.tong_so_danh_gia})</span>
-                                    </div>
-                                    ${distanceText ? `<div class="stat-distance"><span class="material-symbols-outlined" style="font-size: 16px;">location_on</span> ${parseFloat(worker.distance).toFixed(1)} km</div>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div >
-                `;
+    function clearAllFilters() {
+        ['sort', 'category_id', 'ngay_hen', 'khung_gio_hen', 'province', 'lat', 'lng', 'page'].forEach((key) => {
+            searchParams.delete(key);
         });
-        workersContainer.innerHTML = html;
+    }
+
+    function updateContextualCopy(total = null) {
+        const categoryLabel = getSelectedCategoryLabel();
+        const scheduleLabel = getSelectedScheduleLabel();
+
+        if (resultsCategorySpotlight) {
+            resultsCategorySpotlight.textContent = categoryLabel;
+        }
+
+        if (resultsScheduleSpotlight) {
+            resultsScheduleSpotlight.textContent = scheduleLabel;
+        }
+
+        if (resultsSubline) {
+            resultsSubline.textContent = buildResultsSummary(total);
+        }
+    }
+
+    async function fetchWorkers() {
+        workersContainer.innerHTML = generateSkeletonHTML(4);
+        resultsCount.innerHTML = 'Chọn người thợ đúng việc <span>Đang tải danh sách</span>';
+        paginationContainer.innerHTML = '';
+        updateContextualCopy();
+
+        try {
+            const queryString = searchParams.toString();
+            const endpoint = queryString ? `/ho-so-tho?${queryString}` : '/ho-so-tho';
+            const result = await callApi(endpoint, 'GET');
+            const payload = result?.data;
+            const workers = Array.isArray(payload?.data) ? payload.data : [];
+
+            renderResultsCount(payload?.total || 0);
+            updateContextualCopy(payload?.total || 0);
+
+            if (!workers.length) {
+                renderEmptyState();
+                paginationContainer.innerHTML = '';
+                return;
+            }
+
+            renderWorkers(workers);
+            renderPagination(payload);
+        } catch (error) {
+            console.error('Error fetching workers:', error);
+            resultsCount.innerHTML = 'Chọn người thợ đúng việc <span>Không tải được dữ liệu</span>';
+            updateContextualCopy(0);
+            renderErrorState();
+            paginationContainer.innerHTML = '';
+        }
+    }
+
+    function renderResultsCount(total) {
+        const count = Number(total) || 0;
+        resultsCount.innerHTML = `Chọn người thợ đúng việc <span>${count} hồ sơ phù hợp</span>`;
+    }
+
+    function renderWorkers(workers) {
+        workersContainer.innerHTML = workers.map((worker) => renderWorkerCard(worker)).join('');
+    }
+
+    function renderWorkerCard(worker) {
+        const profileUrl = `/customer/worker-profile/${worker.id}`;
+        const name = worker?.user?.name || 'Chưa cập nhật';
+        const avatarUrl = worker?.user?.avatar || '/assets/images/user-default.png';
+        const serviceList = getWorkerServiceList(worker);
+        const servicesText = serviceList.join(', ') || 'Dịch vụ đa năng';
+        const primaryService = serviceList[0] || 'Dịch vụ tổng hợp';
+        const description = getWorkerDescription(worker, servicesText);
+        const priceText = formatReferencePrice(worker?.bang_gia_tham_khao);
+        const distanceText = formatDistance(worker?.distance);
+        const ratingValue = Number(worker?.danh_gia_trung_binh || 0);
+        const reviewCount = Number(worker?.tong_so_danh_gia || 0);
+        const statusMeta = getStatusMeta(worker?.trang_thai_hoat_dong);
+
+        return `
+            <article class="worker-card" data-profile-url="${profileUrl}" tabindex="0" role="link" aria-label="Xem hồ sơ ${escapeHtml(name)}">
+                <div class="card-top">
+                    <div class="avatar-wrapper">
+                        <div class="avatar-img-box">
+                            <img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(name)}" onerror="this.src='/assets/images/customer.png'">
+                        </div>
+                        <div class="verified-icon">
+                            <span class="material-symbols-outlined">verified</span>
+                        </div>
+                    </div>
+                    <span class="status-badge ${statusMeta.cssClass}">${escapeHtml(statusMeta.label)}</span>
+                </div>
+                <div class="card-body">
+                    <div class="worker-header">
+                        <h3 class="worker-name">${escapeHtml(name)}</h3>
+                        <div class="worker-rating">
+                            <span class="material-symbols-outlined star">star</span>
+                            <span class="score">${ratingValue.toFixed(1)}</span>
+                            <span class="count">(${reviewCount})</span>
+                        </div>
+                    </div>
+                    <p class="worker-category">${escapeHtml(primaryService)}</p>
+                    <div class="card-footer">
+                        ${distanceText ? `
+                        <div class="footer-item">
+                            <span class="material-symbols-outlined">location_on</span>
+                            <span>Cách ${escapeHtml(distanceText)}</span>
+                        </div>
+                        ` : ''}
+                        <div class="footer-item">
+                            <span class="material-symbols-outlined">payments</span>
+                            <span>${escapeHtml(priceText)}</span>
+                        </div>
+                    </div>
+                    <button class="btn-worker-card-book" data-book-worker="${worker.id}" type="button">
+                        <span class="material-symbols-outlined" style="font-size: 1.125rem;">calendar_add_on</span> Đặt Lịch
+                    </button>
+                </div>
+            </article>
+        `;
+    }
+
+    function renderEmptyState() {
+        workersContainer.innerHTML = `
+            <div class="empty-state">
+                <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--outline-variant); margin-bottom: 1rem;">search_off</span>
+                <h3 style="font-family: var(--headline); font-weight: 800; font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--on-surface);">Chưa thấy hồ sơ khớp với bộ lọc</h3>
+                <p style="color: var(--on-surface-variant); margin-bottom: 2rem; max-width: 400px; text-align: center;">Hãy đổi danh mục, bỏ bớt bộ lọc thời gian hoặc quay về mặc định để mở rộng danh sách thợ.</p>
+                <button class="btn-primary" type="button" data-action="clear-filters">Xóa toàn bộ bộ lọc</button>
+            </div>
+        `;
+    }
+
+    function renderErrorState() {
+        workersContainer.innerHTML = `
+            <div class="empty-state error-state">
+                <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--error); margin-bottom: 1rem;">wifi_off</span>
+                <h3 style="font-family: var(--headline); font-weight: 800; font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--on-surface);">Không thể tải danh sách thợ</h3>
+                <p style="color: var(--on-surface-variant); margin-bottom: 2rem; max-width: 400px; text-align: center;">Máy chủ đang bận hoặc kết nối chưa ổn định. Vui lòng thử lại sau.</p>
+                <button class="btn-primary" type="button" data-action="clear-filters">Tải lại danh sách</button>
+            </div>
+        `;
     }
 
     function renderPagination(result) {
-        if (result.last_page <= 1) {
+        if (!result || result.last_page <= 1) {
             paginationContainer.innerHTML = '';
             return;
         }
 
-        let html = '<ul class="pagination pagination-lg border-0 shadow-sm" style="border-radius: 50px; overflow: hidden;">';
-
-        // Prev
-        const prevDisabled = result.current_page === 1 ? 'disabled' : '';
-        html += `<li class="page-item ${prevDisabled}"><a class="page-link border-0 fw-bold" href="#" data-page="${result.current_page - 1}">Trước</a></li>`;
-
-        // Pages
-        for (let i = 1; i <= result.last_page; i++) {
-            const active = result.current_page === i ? 'active' : '';
-            html += `<li class="page-item ${active}"><a class="page-link border-0 fw-bold" href="#" data-page="${i}">${i}</a></li>`;
+        const pageItems = buildPaginationItems(result.current_page, result.last_page);
+        let html = '<div class="premium-pagination" aria-label="Phân trang kết quả">';
+        
+        // Previous Button
+        if (result.current_page > 1) {
+            html += `<button class="page-btn nav-btn" data-page="${result.current_page - 1}"><span class="material-symbols-outlined">chevron_left</span></button>`;
+        } else {
+            html += `<button class="page-btn nav-btn" disabled style="opacity: 0.5; cursor: not-allowed;"><span class="material-symbols-outlined">chevron_left</span></button>`;
         }
+        
+        // Page Numbers
+        pageItems.forEach((item) => {
+            if (item === 'ellipsis') {
+                html += '<span class="page-btn" style="cursor: default; background: transparent; color: var(--outline);">...</span>';
+                return;
+            }
 
-        // Next
-        const nextDisabled = result.current_page === result.last_page ? 'disabled' : '';
-        html += `<li class="page-item ${nextDisabled}"><a class="page-link border-0 fw-bold" href="#" data-page="${result.current_page + 1}">Sau</a></li>`;
+            const isActive = item === result.current_page;
+            html += `<button class="page-btn ${isActive ? 'active' : ''}" data-page="${item}">${item}</button>`;
+        });
 
-        html += '</ul>';
+        // Next Button
+        if (result.current_page < result.last_page) {
+            html += `<button class="page-btn nav-btn" data-page="${result.current_page + 1}"><span class="material-symbols-outlined">chevron_right</span></button>`;
+        } else {
+            html += `<button class="page-btn nav-btn" disabled style="opacity: 0.5; cursor: not-allowed;"><span class="material-symbols-outlined">chevron_right</span></button>`;
+        }
+        
+        html += '</div>';
         paginationContainer.innerHTML = html;
 
-        // Add events
-        paginationContainer.querySelectorAll('.page-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (e.target.parentElement.classList.contains('disabled') || e.target.parentElement.classList.contains('active')) return;
+        paginationContainer.querySelectorAll('[data-page]').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                event.preventDefault();
+                const nextPage = event.currentTarget.dataset.page;
+                if (!nextPage) return;
 
-                const page = e.target.getAttribute('data-page');
-                searchParams.set('page', page);
+                searchParams.set('page', nextPage);
                 updateUrlAndFetch();
-                window.scrollTo({ top: 300, behavior: 'smooth' }); // scroll to top of list
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
     }
 
-    function generateSkeletonHTML(count) {
-        let html = '';
-        for (let i = 0; i < count; i++) {
-            html += `
-                <div class="col-md-6 col-xl-4 skeleton-item">
-                    <div class="worker-card">
-                        <div class="worker-banner skeleton-box"></div>
-                        <div class="worker-info bg-white">
-                            <div class="skeleton-box mb-2" style="width: 70%; height: 24px;"></div>
-                            <div class="skeleton-box mb-3" style="width: 50%; height: 16px;"></div>
-                            <div class="skeleton-box w-100 mt-auto" style="height: 38px;"></div>
-                        </div>
-                    </div>
-                </div>
-                `;
+    function buildPaginationItems(currentPage, lastPage) {
+        if (lastPage <= 7) {
+            return Array.from({ length: lastPage }, (_, index) => index + 1);
         }
+
+        const items = [1];
+        if (currentPage > 3) items.push('ellipsis');
+
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(lastPage - 1, currentPage + 1);
+
+        for (let page = start; page <= end; page += 1) {
+            items.push(page);
+        }
+
+        if (currentPage < lastPage - 2) items.push('ellipsis');
+        items.push(lastPage);
+
+        return items;
+    }
+
+    function generateSkeletonHTML(count) {
+        return Array.from({ length: count }, () => `
+            <div class="skeleton-card">
+                <div class="skel-avatar"></div>
+                <div class="skel-text-lg" style="width: 50%;"></div>
+                <div class="skel-text-sm" style="width: 80%;"></div>
+                <div class="skel-footer"></div>
+            </div>
+        `).join('');
+    }
+
+    function getWorkerServiceList(worker) {
+        const services = Array.isArray(worker?.user?.dich_vus) ? worker.user.dich_vus : [];
+        return services
+            .map((service) => String(service?.ten_dich_vu || '').trim())
+            .filter(Boolean)
+            .slice(0, 3);
+    }
+
+    function renderServiceTags(serviceList) {
+        if (!serviceList.length) {
+            return '<span class="worker-service-chip">Dịch vụ tổng hợp</span>';
+        }
+
+        return serviceList.map((service) => `
+            <span class="worker-service-chip">${escapeHtml(service)}</span>
+        `).join('');
+    }
+
+    function getWorkerDescription(worker, servicesText) {
+        const experience = String(worker?.kinh_nghiem || '').trim();
+        if (experience) {
+            return experience;
+        }
+
+        return `Nhận ${servicesText.toLowerCase()} với quy trình rõ ràng, báo giá minh bạch và hỗ trợ nhanh tại khu vực của bạn.`;
+    }
+
+    function getStatusMeta(status) {
+        if (status === 'dang_hoat_dong') {
+            return {
+                label: 'Sẵn sàng',
+                cssClass: 'available'
+            };
+        }
+
+        if (status === 'dang_ban') {
+            return {
+                label: 'Đang bận',
+                cssClass: 'busy'
+            };
+        }
+
+        return {
+            label: 'Tạm nghỉ',
+            cssClass: 'offline'
+        };
+    }
+
+    function renderStars(rating) {
+        let html = '';
+
+        for (let star = 1; star <= 5; star += 1) {
+            const isFilled = rating >= star - 0.25;
+            html += `
+                <span class="material-symbols-outlined" style="${isFilled ? '' : "font-variation-settings: 'FILL' 0; color: #cbd5e1;"}">star</span>
+            `;
+        }
+
         return html;
+    }
+
+    function formatDistance(distance) {
+        const numericDistance = Number(distance);
+        if (!Number.isFinite(numericDistance) || numericDistance <= 0) {
+            return '';
+        }
+
+        return `${numericDistance.toFixed(1)} km`;
+    }
+
+    function formatReferencePrice(value) {
+        const rawValue = String(value || '').trim();
+        if (!rawValue) {
+            return 'Liên hệ báo giá';
+        }
+
+        if (/^từ\s+/i.test(rawValue)) {
+            return rawValue;
+        }
+
+        const firstNumber = rawValue.match(/\d[\d.,\s]*/);
+        if (!firstNumber) {
+            return rawValue;
+        }
+
+        const amount = Number(firstNumber[0].replace(/[^\d]/g, ''));
+        if (!Number.isFinite(amount) || amount <= 0) {
+            return rawValue;
+        }
+
+        return `Từ ${amount.toLocaleString('vi-VN')}đ`;
+    }
+
+    function buildResultsSummary(total) {
+        const currentSort = sortLabelMap(searchParams.get('sort') || DEFAULT_SORT).toLowerCase();
+        const categoryLabel = getSelectedCategoryLabel().toLowerCase();
+        const hasCategory = Boolean(searchParams.get('category_id'));
+        const workingDate = searchParams.get('ngay_hen');
+        const workingTime = searchParams.get('khung_gio_hen');
+
+        if (!Number.isFinite(Number(total))) {
+            return 'Hệ thống đang kiểm tra các hồ sơ phù hợp với bộ lọc hiện tại của bạn.';
+        }
+
+        if (Number(total) === 0) {
+            return 'Chưa có hồ sơ phù hợp với các điều kiện đang chọn. Hãy nới bộ lọc để mở rộng danh sách.';
+        }
+
+        if (workingDate && workingTime) {
+            return `${total} hồ sơ đang được ưu tiên theo ${currentSort}, phù hợp với ${categoryLabel} và lịch ${formatDateChip(workingDate)} • ${workingTime}.`;
+        }
+
+        if (hasCategory) {
+            return `${total} hồ sơ đang được sắp theo ${currentSort} cho danh mục ${categoryLabel}. Bạn có thể thêm lịch hẹn để lọc sát hơn.`;
+        }
+
+        return `${total} hồ sơ đang được sắp theo ${currentSort} trong toàn bộ dịch vụ sửa chữa. Chọn danh mục hoặc lịch hẹn để thu hẹp nhanh hơn.`;
+    }
+
+    function getSelectedCategoryLabel() {
+        const currentCategory = searchParams.get('category_id');
+        if (!currentCategory) {
+            return 'Tất cả dịch vụ sửa chữa';
+        }
+
+        const category = categoriesCache.find((item) => String(item.id) === String(currentCategory));
+        return category?.ten_dich_vu || 'Danh mục đã chọn';
+    }
+
+    function getSelectedScheduleLabel() {
+        const workingDate = searchParams.get('ngay_hen');
+        const workingTime = searchParams.get('khung_gio_hen');
+
+        if (workingDate && workingTime) {
+            return `${formatDateChip(workingDate)} • ${workingTime}`;
+        }
+
+        if (workingDate && !workingTime) {
+            return `${formatDateChip(workingDate)} • Chưa chọn khung giờ`;
+        }
+
+        return 'Hôm nay • Chưa chọn khung giờ';
+    }
+
+    function formatDateChip(value) {
+        const date = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return new Intl.DateTimeFormat('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+        }).format(date);
+    }
+
+    function sortLabelMap(value) {
+        if (value === 'rating') return 'Đánh giá cao nhất';
+        if (value === 'value') return 'Giá tham khảo tốt';
+        if (value === 'nearest') return 'Gần nhất';
+        return 'Phổ biến nhất';
+    }
+
+    function openWorkerBooking(workerId) {
+        if (!workerId) return;
+
+        if (window.BookingWizardModal?.open) {
+            window.BookingWizardModal.open({ workerId: Number(workerId) });
+            return;
+        }
+
+        const targetUrl = new URL('/customer/booking', window.location.origin);
+        targetUrl.searchParams.set('worker_id', workerId);
+        window.location.href = targetUrl.toString();
+    }
+
+    function getTodayString() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const date = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${date}`;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 });

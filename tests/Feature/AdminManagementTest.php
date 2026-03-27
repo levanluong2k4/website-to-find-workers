@@ -28,7 +28,6 @@ class AdminManagementTest extends TestCase
             ->postJson('/api/admin/services', [
                 'ten_dich_vu' => 'Sua may giat',
                 'mo_ta' => 'Sua may giat tai nha',
-                'hinh_anh' => 'https://example.com/may-giat.png',
                 'trang_thai' => true,
             ]);
 
@@ -45,7 +44,6 @@ class AdminManagementTest extends TestCase
             ->putJson('/api/admin/services/' . $serviceId, [
                 'ten_dich_vu' => 'Sua may giat inverter',
                 'mo_ta' => 'Cap nhat mo ta',
-                'hinh_anh' => 'https://example.com/new.png',
                 'trang_thai' => false,
             ]);
 
@@ -137,6 +135,38 @@ class AdminManagementTest extends TestCase
             ->assertJsonPath('data.users.pending_worker_profiles', 1);
     }
 
+    public function test_admin_can_update_travel_fee_config(): void
+    {
+        $admin = $this->createAdmin();
+        $token = $admin->createToken('admin-test')->plainTextToken;
+
+        $updateResponse = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson('/api/admin/travel-fee-config', [
+                'default_per_km' => 5000,
+                'tiers' => [
+                    ['from_km' => 0, 'to_km' => 2, 'fee' => 15000],
+                    ['from_km' => 2, 'to_km' => 5, 'fee' => 30000],
+                ],
+            ]);
+
+        $updateResponse->assertOk()
+            ->assertJsonPath('data.config.default_per_km', 5000)
+            ->assertJsonPath('data.config.tiers.0.fee', 15000)
+            ->assertJsonPath('data.config.tiers.1.to_km', 5);
+
+        $this->assertDatabaseHas('app_settings', [
+            'key' => 'travel_fee_config',
+            'updated_by' => $admin->id,
+        ]);
+
+        $getResponse = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/admin/travel-fee-config');
+
+        $getResponse->assertOk()
+            ->assertJsonPath('data.config.tiers.0.from_km', 0)
+            ->assertJsonPath('data.preview.samples.2.fee', 30000);
+    }
+
     public function test_admin_can_use_customer_and_worker_booking_permissions(): void
     {
         $admin = $this->createAdmin();
@@ -167,6 +197,13 @@ class AdminManagementTest extends TestCase
             'id' => $bookingId,
             'khach_hang_id' => $admin->id,
             'trang_thai' => 'cho_xac_nhan',
+        ]);
+
+        DB::table('tho_dich_vu')->insert([
+            'user_id' => $admin->id,
+            'dich_vu_id' => $serviceId,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $availableJobsResponse = $this->withHeader('Authorization', 'Bearer ' . $token)
@@ -256,7 +293,7 @@ class AdminManagementTest extends TestCase
             ]);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['dich_vu_id']);
+            ->assertJsonValidationErrors(['dich_vu_ids']);
 
         $this->assertDatabaseCount('don_dat_lich', 0);
     }
@@ -403,6 +440,16 @@ class AdminManagementTest extends TestCase
             });
         }
 
+        if (!Schema::hasTable('app_settings')) {
+            Schema::create('app_settings', function (Blueprint $table) {
+                $table->id();
+                $table->string('key')->unique();
+                $table->json('value')->nullable();
+                $table->unsignedBigInteger('updated_by')->nullable();
+                $table->timestamps();
+            });
+        }
+
         if (!Schema::hasTable('ho_so_tho')) {
             Schema::create('ho_so_tho', function (Blueprint $table) {
                 $table->id();
@@ -458,12 +505,22 @@ class AdminManagementTest extends TestCase
                 $table->decimal('tien_thue_xe', 12, 2)->default(0);
                 $table->decimal('tong_tien', 12, 2)->default(0);
                 $table->boolean('trang_thai_thanh_toan')->default(false);
+                $table->timestamp('thoi_gian_hoan_thanh')->nullable();
                 $table->text('ly_do_huy')->nullable();
                 $table->text('ghi_chu_linh_kien')->nullable();
                 $table->json('hinh_anh_mo_ta')->nullable();
                 $table->string('video_mo_ta')->nullable();
                 $table->json('hinh_anh_ket_qua')->nullable();
                 $table->string('video_ket_qua')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (!Schema::hasTable('don_dat_lich_dich_vu')) {
+            Schema::create('don_dat_lich_dich_vu', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('don_dat_lich_id');
+                $table->unsignedBigInteger('dich_vu_id');
                 $table->timestamps();
             });
         }
@@ -486,9 +543,11 @@ class AdminManagementTest extends TestCase
     {
         foreach ([
             'danh_gia',
+            'don_dat_lich_dich_vu',
             'don_dat_lich',
             'tho_dich_vu',
             'ho_so_tho',
+            'app_settings',
             'danh_muc_dich_vu',
             'personal_access_tokens',
             'users',

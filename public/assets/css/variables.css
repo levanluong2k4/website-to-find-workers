@@ -19,7 +19,10 @@
 
   /* 2. Premium Backgrounds & Surface */
   /* Mesh gradient cực đẹp cho background nền */
-  --bg-gradient: linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 50%, #ECFDF5 100%);
+  --bg-gradient:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.68) 0, rgba(255, 255, 255, 0) 24rem),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.58) 0, rgba(255, 255, 255, 0) 18rem),
+    linear-gradient(180deg, #8ad0ff 0%, #c7e8ff 36%, #edf7ff 100%);
   
   /* Glassmorphism Surface (Kính mờ) */
   --surface-color: rgba(255, 255, 255, 0.85);

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\DonDatLich;
 use Illuminate\Console\Command;
 
 class CancelExpiredBookings extends Command
@@ -18,21 +19,39 @@ class CancelExpiredBookings extends Command
      *
      * @var string
      */
-    protected $description = 'Hủy các đơn đặt lịch cụ thể thợ nhưng quá hạn (1 tiếng) mà không có ai nhận.';
+    protected $description = 'Tu dong huy cac don cho xac nhan khi da cho qua lau hoac qua lich hen ma chua co tho nhan.';
 
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
-        $expiredBookingsCount = \App\Models\DonDatLich::whereNotNull('tho_id')
+        $waitingTooLongCount = DonDatLich::query()
             ->where('trang_thai', 'cho_xac_nhan')
+            ->whereNotNull('thoi_gian_het_han_nhan')
             ->where('thoi_gian_het_han_nhan', '<', now())
             ->update([
                 'trang_thai' => 'da_huy',
-                'ly_do_huy' => 'Hệ thống tự động hủy do thợ không nhận đơn trong thời gian quy định (1 tiếng).'
+                'ma_ly_do_huy' => DonDatLich::CANCEL_REASON_CHO_QUA_LAU,
+                'ly_do_huy' => DonDatLich::cancelReasonLabel(DonDatLich::CANCEL_REASON_CHO_QUA_LAU),
+                'updated_at' => now(),
             ]);
 
-        $this->info("Đã hủy thành công {$expiredBookingsCount} đơn đặt lịch hết hạn.");
+        $unclaimedExpiredCount = DonDatLich::query()
+            ->where('trang_thai', 'cho_xac_nhan')
+            ->whereNotNull('thoi_gian_hen')
+            ->where('thoi_gian_hen', '<', now())
+            ->update([
+                'trang_thai' => 'da_huy',
+                'ma_ly_do_huy' => DonDatLich::CANCEL_REASON_KHONG_CO_THO_NAO_NHAN,
+                'ly_do_huy' => DonDatLich::cancelReasonLabel(DonDatLich::CANCEL_REASON_KHONG_CO_THO_NAO_NHAN),
+                'updated_at' => now(),
+            ]);
+
+        $totalCancelled = $waitingTooLongCount + $unclaimedExpiredCount;
+
+        $this->info("Da tu dong huy {$totalCancelled} don: {$waitingTooLongCount} don cho qua lau, {$unclaimedExpiredCount} don qua lich nhung chua co tho nhan.");
+
+        return self::SUCCESS;
     }
 }

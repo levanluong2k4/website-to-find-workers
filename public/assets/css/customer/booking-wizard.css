@@ -684,7 +684,7 @@
 
 .booking-date-cards {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 1.25rem;
 }
 
@@ -866,8 +866,8 @@
 }
 
 .booking-summary {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     min-height: 0;
     gap: 0.8rem;
     padding: 1.1rem 1rem;
@@ -894,6 +894,10 @@ body.booking-wizard-open x-customer-chat-widget {
 .booking-summary-sheet {
     display: grid;
     gap: 0.55rem;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 0.2rem;
+    scrollbar-gutter: stable;
     background: transparent;
 }
 
@@ -996,8 +1000,8 @@ body.booking-wizard-open x-customer-chat-widget {
 .booking-summary-actions {
     display: grid;
     gap: 0.7rem;
-    margin-top: auto;
-    padding-top: 0.2rem;
+    padding-top: 0.7rem;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgba(255, 255, 255, 0.92) 22%, rgba(255, 255, 255, 0.98) 100%);
 }
 
 .booking-success-overlay {

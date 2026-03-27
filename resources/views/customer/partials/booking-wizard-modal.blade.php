@@ -37,7 +37,6 @@
 
                 <form id="bookingWizardForm" class="booking-wizard-form">
                     <input type="hidden" id="bookingWizardWorkerId" name="tho_id" value="">
-                    <input type="hidden" id="bookingWizardServiceId" name="dich_vu_id" value="">
                     <input type="hidden" id="bookingWizardRepairMode" name="loai_dat_lich" value="">
                     <input type="hidden" id="bookingWizardLat" name="vi_do" value="">
                     <input type="hidden" id="bookingWizardLng" name="kinh_do" value="">
@@ -220,7 +219,7 @@
                         <div class="booking-summary-item-body">
                             <div class="booking-summary-item-label">Ngày &amp; giờ</div>
                             <div class="booking-summary-item-value" id="bookingSummaryTimeValue">Chưa chọn thời gian</div>
-                            <div class="booking-summary-item-meta" id="bookingSummaryTimeMeta">Hệ thống giữ tối đa 3 ngày gần nhất.</div>
+                            <div class="booking-summary-item-meta" id="bookingSummaryTimeMeta">Hệ thống đang mở lịch trong 7 ngày tới.</div>
                         </div>
                     </div>
 

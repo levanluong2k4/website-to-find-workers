@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             WorkerSeeder::class,
             DanhMucDichVuSeeder::class,
+            LinhKienSeeder::class,
         ]);
     }
 }

@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "screenshots": [
+    "D:\\laragon\\www\\DATN\\website-to-find-workers\\output\\payment-flow-browser\\customer-payment-flow.png",
+    "D:\\laragon\\www\\DATN\\website-to-find-workers\\output\\payment-flow-browser\\worker-payment-flow.png"
+  ],
+  "consoleErrors": [
+    "[customer] Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "[customer] Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "pageErrors": []
+}

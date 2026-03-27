@@ -31,6 +31,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return statusMap[status] || { label: 'Không rõ', class: 'bg-secondary text-white' };
     };
 
+    const getBookingServices = (booking) => Array.isArray(booking.dich_vus) ? booking.dich_vus : [];
+    const getBookingServiceLabel = (booking) => {
+        const services = getBookingServices(booking)
+            .map(service => service.ten_dich_vu)
+            .filter(Boolean);
+
+        return services.length > 0 ? services.join(', ') : 'Sửa chữa';
+    };
+
     // Load Events from API
     const fetchEvents = async () => {
         try {
@@ -54,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     return {
                         id: b.id,
-                        title: b.dich_vu?.ten_dich_vu || 'Sửa chữa',
+                        title: getBookingServiceLabel(b),
                         start: startDateTime,
                         backgroundColor: color,
                         borderColor: color,
@@ -94,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 modalAvatar.src = b.khach_hang?.avatar || '/assets/images/user-default.png';
                 modalCustomerName.innerText = b.khach_hang?.name || 'Khách hàng';
                 modalCustomerPhone.innerText = b.khach_hang?.phone || 'Chưa cập nhật SĐT';
-                modalService.innerText = b.dich_vu?.ten_dich_vu || 'Chưa rõ';
+                modalService.innerText = getBookingServiceLabel(b);
 
                 const timeStr = b.thoi_gian_hen ? new Date(b.thoi_gian_hen).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : (b.ngay_hen + ' ' + b.khung_gio_hen);
                 modalTime.innerText = timeStr;

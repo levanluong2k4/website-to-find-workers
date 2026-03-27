@@ -2,373 +2,757 @@
 @section('title', 'Tổng quan - Thợ Tốt NTU')
 
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined" rel="stylesheet" />
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    corePlugins: {
-      preflight: false
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-container-lowest": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-tertiary-fixed": "#2c1600",
+            "tertiary": "#8a5100",
+            "on-tertiary-fixed-variant": "#693c00",
+            "primary-fixed-dim": "#89ceff",
+            "surface": "#f6fafc",
+            "surface-container-high": "#e5e9eb",
+            "outline": "#6e7881",
+            "inverse-primary": "#89ceff",
+            "primary-fixed": "#c9e6ff",
+            "on-primary-fixed-variant": "#004c6e",
+            "secondary-container": "#b8dffe",
+            "tertiary-container": "#de8712",
+            "on-background": "#171c1e",
+            "tertiary-fixed-dim": "#ffb86e",
+            "on-surface": "#171c1e",
+            "surface-container-low": "#f0f4f6",
+            "surface-container-highest": "#dfe3e5",
+            "on-tertiary": "#ffffff",
+            "inverse-surface": "#2c3133",
+            "outline-variant": "#bec8d2",
+            "on-secondary-fixed": "#001e2f",
+            "surface-dim": "#d6dbdd",
+            "on-secondary": "#ffffff",
+            "secondary-fixed-dim": "#a5cbe9",
+            "surface-bright": "#f6fafc",
+            "error": "#ba1a1a",
+            "surface-tint": "#006591",
+            "on-surface-variant": "#3e4850",
+            "background": "#f6fafc",
+            "inverse-on-surface": "#edf1f3",
+            "primary": "#006591",
+            "on-primary-fixed": "#001e2f",
+            "surface-variant": "#dfe3e5",
+            "on-primary-container": "#003751",
+            "primary-container": "#0ea5e9",
+            "on-tertiary-container": "#4d2b00",
+            "secondary": "#3c627d",
+            "surface-container": "#eaeef0",
+            "secondary-fixed": "#c9e6ff",
+            "on-secondary-container": "#3d637d",
+            "on-primary": "#ffffff",
+            "on-error-container": "#93000a",
+            "on-error": "#ffffff",
+            "on-secondary-fixed-variant": "#234b64",
+            "tertiary-fixed": "#ffdcbd"
+          },
+          fontFamily: {
+            "headline": ["Inter"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
     }
-  }
 </script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.css" />
 <style>
-  .worker-main {
-    margin-left: 240px;
-    min-height: 100vh;
-    background: #f8fafc;
-  }
-
-  .worker-header {
-    background: #fff;
-    border-bottom: 1px solid #e2e8f0;
-    padding: .875rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .stat-card {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 1rem;
-    padding: 1.25rem 1.5rem;
-    transition: all .2s;
-  }
-
-  .stat-card:hover {
-    box-shadow: 0 8px 24px rgba(14, 165, 233, .1);
-    border-color: #BAF2E9;
-  }
-
-  .activity-item {
-    display: flex;
-    align-items: center;
-    gap: .875rem;
-    padding: .75rem 0;
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  .activity-item:last-child {
-    border-bottom: none;
-  }
-
-  @media (max-width: 768px) {
-    .worker-main {
-      margin-left: 0;
+    body { font-family: 'Inter', sans-serif; }
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        vertical-align: middle;
     }
-  }
+    .glass-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+    }
+
+    .worker-dashboard-main {
+        margin-left: 240px;
+    }
+
+    .worker-dashboard-topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .worker-dashboard-main {
+            margin-left: 0;
+            padding-top: 96px;
+        }
+
+        .worker-dashboard-topbar {
+            position: static;
+            width: auto;
+            margin: 0 1rem 1rem;
+            padding: 1.15rem;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.5rem;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+        }
+
+        .worker-dashboard-topbar-meta {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .worker-dashboard-topbar-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+            gap: 0.75rem;
+        }
+
+        .worker-dashboard-topbar-actions > * {
+            width: 100%;
+            min-width: 0;
+            justify-content: center;
+        }
+
+        .worker-dashboard-content {
+            padding: 0 1rem 6.75rem;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .worker-dashboard-topbar-actions {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 @endpush
 
 @section('content')
-<div style="display:flex;">
+<div class="bg-surface text-on-surface min-h-screen flex" style="background-color: var(--page-bg, #f6fafc);">
+    <!-- Navigation Drawer -->
+    <x-worker-sidebar />
 
-  <!-- SIDEBAR COMPONENT -->
-  <x-worker-sidebar />
-
-  <!-- ===== MAIN CONTENT ===== -->
-  <div class="worker-main" style="flex:1;">
-
-    <!-- Top Header -->
-    <div class="worker-header">
-      <div>
-        <h5 style="font-family:'Poppins',sans-serif; font-weight:700; margin:0; font-size:1rem; color:#0f172a;">Tổng quan Dashboard</h5>
-        <p style="margin:0; font-size:.75rem; color:#64748b;" id="headerDate">Hôm nay, Thứ 2/03/2026</p>
-      </div>
-      <div style="display:flex; align-items:center; gap:1rem;">
-        <!-- Notification Bell -->
-        <div style="position:relative; cursor:pointer;">
-          <span class="material-symbols-outlined" style="font-size:1.4rem; color:#64748b;">notifications</span>
-          <span style="position:absolute; top:-4px; right:-4px; background:#ef4444; color:#fff; border-radius:50%; width:16px; height:16px; font-size:.6rem; font-weight:700; display:flex; align-items:center; justify-content:center;">3</span>
-        </div>
-        <!-- Shop badge -->
-        <div style="display:flex; align-items:center; gap:.4rem; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:.5rem; padding:.35rem .75rem; font-size:.75rem; font-weight:600; color:#15803d;">
-          <span class="material-symbols-outlined" style="font-size:.9rem;">storefront</span>
-          Nha Trang
-        </div>
-      </div>
-    </div>
-
-    <div style="padding:1.5rem;">
-      <!-- AI Suggestion Banner -->
-      <div id="aiSuggestionBanner" style="display:none; background:linear-gradient(135deg,#BAF2E9,#e0f2fe); border:1px solid #BAF2E9; border-radius:1rem; padding:1rem 1.25rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:.875rem;">
-        <span class="material-symbols-outlined" style="font-size:1.5rem; color:#0EA5E9;">psychology</span>
-        <div style="flex:1;">
-          <p style="font-weight:700; font-size:.875rem; margin:0; color:#0f172a;">AI Gợi ý việc gần bạn</p>
-          <p style="font-size:.8rem; color:#475569; margin:0;" id="aiSuggestionText">Đang tìm việc phù hợp...</p>
-        </div>
-        <a href="/worker/dashboard" style="background:#0EA5E9; color:#fff; font-weight:600; font-size:.8rem; text-decoration:none; border-radius:.5rem; padding:.5rem 1rem; white-space:nowrap;">Xem việc</a>
-      </div>
-
-      <!-- Stat Cards -->
-      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem;">
-        @php
-        $statCards = [
-        ['label'=>'Việc hôm nay','val'=>'0','icon'=>'work','color'=>'#0EA5E9','bg'=>'#e0f2fe'],
-        ['label'=>'Đang sửa', 'val'=>'0','icon'=>'build','color'=>'#f59e0b','bg'=>'#fef3c7'],
-        ['label'=>'Hoàn thành', 'val'=>'0','icon'=>'check_circle','color'=>'#10b981','bg'=>'#d1fae5'],
-        ['label'=>'Đánh giá TB','val'=>'--','icon'=>'star','color'=>'#8b5cf6','bg'=>'#ede9fe'],
-        ];
-        @endphp
-        @foreach($statCards as $i => $card)
-        <div class="stat-card">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem;">
-            <span style="font-size:.8rem; font-weight:600; color:#64748b;">{{ $card['label'] }}</span>
-            <div style="width:2.25rem; height:2.25rem; border-radius:.75rem; background:{{ $card['bg'] }}; display:flex; align-items:center; justify-content:center;">
-              <span class="material-symbols-outlined" style="font-size:1.1rem; color:{{ $card['color'] }};">{{ $card['icon'] }}</span>
+    <!-- Main Content Canvas -->
+    <main class="worker-dashboard-main flex-1 flex flex-col min-h-screen">
+        <!-- TopAppBar -->
+        <header class="worker-dashboard-topbar flex justify-between items-center w-full px-8 py-6 sticky top-0 bg-[#f6fafc] dark:bg-slate-950 z-40 transition-opacity">
+            <div class="flex flex-col">
+                <h1 class="text-2xl font-semibold text-on-surface">Dashboard</h1>
+                <div class="worker-dashboard-topbar-meta flex items-center gap-3 mt-1">
+                    <p class="text-sm text-on-surface-variant font-medium" id="headerDate">Đang tải ngày...</p>
+                    <span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded-full flex items-center gap-1">
+                        <span class="w-1 h-1 rounded-full bg-primary animate-pulse"></span>
+                        <span id="liveStatusText">ĐANG CẬP NHẬT...</span>
+                    </span>
+                </div>
             </div>
-          </div>
-          <p data-stat="{{ $i }}" style="font-family:'Poppins',sans-serif; font-size:1.75rem; font-weight:800; margin:0; color:#0f172a;">{{ $card['val'] }}</p>
-        </div>
-        @endforeach
-      </div>
-
-      <!-- Charts Row -->
-      <div style="display:grid; grid-template-columns:1.65fr 1fr; gap:1rem; margin-bottom:1.5rem;">
-        <div class="stat-card">
-          <h6 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:.875rem; color:#0f172a; margin-bottom:1rem;">Việc hoàn thành theo tuần</h6>
-          <div id="chartWeekly" style="height:200px;"></div>
-        </div>
-        <div class="stat-card">
-          <h6 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:.875rem; color:#0f172a; margin-bottom:1rem;">Phân loại thiết bị</h6>
-          <div id="chartDeviceType" style="height:200px;"></div>
-        </div>
-      </div>
-
-      <!-- Bottom Row -->
-      <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:1rem;">
-
-        <!-- Recent Activity -->
-        <div class="stat-card">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
-            <h6 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:.875rem; color:#0f172a; margin:0;">Hoạt động gần đây</h6>
-            <a href="/worker/my-bookings" style="font-size:.75rem; color:#0EA5E9; text-decoration:none; font-weight:600;">Xem tất cả</a>
-          </div>
-          <div id="recentActivityList">
-            <div style="text-align:center; padding:2rem 0; color:#94a3b8; font-size:.875rem;">Đang tải...</div>
-          </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div style="display:flex; flex-direction:column; gap:1rem;">
-          <div class="stat-card">
-            <h6 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:.875rem; color:#0f172a; margin-bottom:1rem;">Thao tác nhanh</h6>
-            <div style="display:flex; flex-direction:column; gap:.65rem;">
-              <button onclick="window.location.href='/worker/dashboard'" style="display:flex; align-items:center; gap:.625rem; background:#BAF2E9; color:#0f172a; border:none; border-radius:.75rem; padding:.75rem 1rem; font-weight:700; font-size:.875rem; cursor:pointer; width:100%; transition:all .2s;" onmouseover="this.style.background='#0EA5E9';this.style.color='#fff'" onmouseout="this.style.background='#BAF2E9';this.style.color='#0f172a'">
-                <span class="material-symbols-outlined" style="font-size:1.1rem;">add_task</span> Nhận việc mới
-              </button>
-              <button onclick="window.location.href='/worker/my-bookings'" style="display:flex; align-items:center; gap:.625rem; background:#f1f5f9; color:#334155; border:none; border-radius:.75rem; padding:.75rem 1rem; font-weight:600; font-size:.875rem; cursor:pointer; width:100%; transition:all .2s;">
-                <span class="material-symbols-outlined" style="font-size:1.1rem; color:#0EA5E9;">calendar_month</span> Xem lịch
-              </button>
-              <button style="display:flex; align-items:center; gap:.625rem; background:#f1f5f9; color:#334155; border:none; border-radius:.75rem; padding:.75rem 1rem; font-weight:600; font-size:.875rem; cursor:pointer; width:100%; transition:all .2s;">
-                <span class="material-symbols-outlined" style="font-size:1.1rem; color:#0EA5E9;">chat</span> Mở chat
-              </button>
+            <div class="worker-dashboard-topbar-actions">
+                <button id="dashboardRefreshButton" class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors text-on-surface-variant">
+                    <span class="material-symbols-outlined">refresh</span>
+                </button>
+                <a href="/worker/jobs" class="bg-gradient-to-br from-primary-container to-primary text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity">
+                    <span class="material-symbols-outlined text-lg">add</span> Việc mới
+                </a>
             </div>
-          </div>
+        </header>
 
-          <!-- Upcoming today -->
-          <div class="stat-card">
-            <h6 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:.875rem; color:#0f172a; margin-bottom:.75rem;">
-              <span class="material-symbols-outlined" style="font-size:1rem; vertical-align:middle; color:#f59e0b;">schedule</span>
-              Lịch hôm nay
-            </h6>
-            <div id="todayScheduleList" style="font-size:.8rem; color:#64748b;">Đang tải lịch...</div>
-          </div>
+        <div class="worker-dashboard-content px-8 pb-12 space-y-8">
+            <!-- Hero Summary Section -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-surface-container-lowest p-8 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group">
+                    <div class="absolute -right-12 -top-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
+                    <div class="flex-1 space-y-6">
+                        <div>
+                            <h2 class="text-3xl font-bold tracking-tight text-on-surface">Chào <span id="heroWorkerName">bạn</span>,</h2>
+                            <p class="text-on-surface-variant mt-2" id="heroSummaryText">Hôm nay có vẻ là một ngày bận rộn. Hãy kiểm tra các lịch hẹn sắp tới!</p>
+                        </div>
+                        <div class="flex flex-wrap gap-8">
+                            <div class="space-y-1">
+                                <p class="text-on-surface-variant text-sm font-medium" id="heroAvailableMeta">Việc mới</p>
+                                <p class="text-3xl font-extrabold text-primary" id="heroAvailableJobs">0</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-on-surface-variant text-sm font-medium" id="heroTodayMeta">Lịch hôm nay</p>
+                                <p class="text-3xl font-extrabold text-on-surface" id="heroTodayJobs">0</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-on-surface-variant text-sm font-medium" id="heroRevenueMeta">Doanh thu tháng</p>
+                                <p class="text-3xl font-extrabold text-on-surface" id="heroMonthRevenue">0 ₫</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3 w-full md:w-56">
+                        <a href="/worker/jobs" class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-primary hover:text-white rounded-2xl transition-all group/btn">
+                            <span class="material-symbols-outlined text-primary group-hover/btn:text-white">assignment_add</span>
+                            <span class="text-sm font-semibold">Nhận việc mới</span>
+                        </a>
+                        <a href="/worker/my-bookings" class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-primary hover:text-white rounded-2xl transition-all group/btn">
+                            <span class="material-symbols-outlined text-primary group-hover/btn:text-white">event_note</span>
+                            <span class="text-sm font-semibold">Xem lịch</span>
+                        </a>
+                        <a href="/worker/profile" class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-primary hover:text-white rounded-2xl transition-all group/btn">
+                            <span class="material-symbols-outlined text-primary group-hover/btn:text-white">account_circle</span>
+                            <span class="text-sm font-semibold">Cập nhật hồ sơ</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Profile Health / Quick Stats -->
+                <div class="bg-surface-container-lowest p-8 rounded-[2rem] flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-lg font-bold">Chỉ số hồ sơ</h3>
+                        <span id="profileStatusBadge" class="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase">ĐANG TẢI</span>
+                    </div>
+                    <div class="space-y-6 mt-6">
+                        <div class="flex items-end justify-between">
+                            <div>
+                                <p class="text-sm text-on-surface-variant mb-1">Điểm đánh giá</p>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-3xl font-extrabold text-on-surface" id="profileRatingValue">0.0</span>
+                                    <span class="text-primary font-bold">/ 5</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-1 mb-1" id="profileRatingStars">
+                                <span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
+                            </div>
+                        </div>
+                        <div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="h-full bg-primary rounded-full transition-all" id="profileCompletedBar" style="width: 100%"></div>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-on-surface-variant">Hủy đơn: <span class="font-bold text-error" id="profileCancelledMonth">0</span></span>
+                            <span class="text-on-surface-variant">Lượt đánh giá: <span class="font-bold text-on-surface" id="profileReviewCount">0</span></span>
+                            <span class="hidden" id="profileRadiusValue"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Dashboard Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Left Column: Job Spotlight & Schedule -->
+                <div class="lg:col-span-8 space-y-8">
+                    <!-- Job Spotlight -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">near_me</span> Việc mới gần bạn
+                            </h3>
+                            <a class="text-sm font-semibold text-primary hover:underline" href="/worker/jobs" id="availableJobsBadge">Xem tất cả</a>
+                        </div>
+                        <div id="jobSpotlightList" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="col-span-3 text-center text-sm text-on-surface-variant p-8 border border-dashed rounded-2xl">Đang tải...</div>
+                        </div>
+                    </div>
+
+                    <!-- Today Schedule -->
+                    <div class="bg-surface-container-lowest rounded-[2rem] overflow-hidden">
+                        <div class="p-6 border-b border-surface-container flex items-center justify-between">
+                            <h3 class="text-lg font-bold">Lịch trình hôm nay</h3>
+                            <div class="flex gap-2">
+                                <span class="flex items-center gap-1 text-xs font-medium text-on-surface-variant">
+                                    <span class="w-2 h-2 rounded-full bg-blue-400"></span> Chờ làm
+                                </span>
+                                <span class="flex items-center gap-1 text-xs font-medium text-on-surface-variant">
+                                    <span class="w-2 h-2 rounded-full bg-amber-400"></span> Đang làm
+                                </span>
+                                <span class="flex items-center gap-1 text-xs font-medium text-on-surface-variant">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Xong
+                                </span>
+                            </div>
+                        </div>
+                        <div class="p-0">
+                            <div class="grid grid-cols-1" id="todayScheduleList">
+                                <div class="text-center text-sm text-on-surface-variant p-8">Đang tải lịch...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Revenue Chart Area -->
+                    <div class="bg-surface-container-lowest p-8 rounded-[2rem] space-y-6">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg font-bold">Biểu đồ doanh thu</h3>
+                                <p class="text-sm text-on-surface-variant">Thống kê 7 ngày gần nhất</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-on-surface-variant">Tổng:</span>
+                                <span class="text-xl font-extrabold text-primary" id="chartRevenueSummary">0 ₫</span>
+                            </div>
+                        </div>
+                        <div class="h-64 w-full relative" id="revenueChart">
+                            <!-- ApexCharts injects here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Recent Activity & KPI Strip -->
+                <div class="lg:col-span-4 space-y-8">
+                    <!-- KPI Strip -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-surface-container-low p-5 rounded-2xl space-y-2">
+                            <span class="material-symbols-outlined text-primary">pending_actions</span>
+                            <p class="text-xs font-bold text-on-surface-variant uppercase" id="statTodayMeta">Lịch chờ</p>
+                            <p class="text-2xl font-black" id="statTodayJobs">0</p>
+                        </div>
+                        <div class="bg-surface-container-low p-5 rounded-2xl space-y-2">
+                            <span class="material-symbols-outlined text-primary">sync</span>
+                            <p class="text-xs font-bold text-on-surface-variant uppercase" id="statInProgressMeta">Đang làm</p>
+                            <p class="text-2xl font-black" id="statInProgress">0</p>
+                        </div>
+                        <div class="bg-surface-container-low p-5 rounded-2xl space-y-2">
+                            <span class="material-symbols-outlined text-primary">task_alt</span>
+                            <p class="text-xs font-bold text-on-surface-variant uppercase" id="statCompletedMeta">Hoàn thành tháng</p>
+                            <p class="text-2xl font-black" id="statCompletedMonth">0</p>
+                        </div>
+                        <div class="bg-surface-container-low p-5 rounded-2xl space-y-2">
+                            <span class="material-symbols-outlined text-primary">reviews</span>
+                            <p class="text-xs font-bold text-on-surface-variant uppercase" id="statRatingMeta">Đánh giá chung</p>
+                            <p class="text-2xl font-black" id="statRating">0.0</p>
+                        </div>
+                    </div>
+
+                    <!-- Status Distribution (Donut Chart) -->
+                    <div class="bg-surface-container-lowest p-8 rounded-[2rem] space-y-6">
+                        <h3 class="text-lg font-bold text-center">Trạng thái đơn hàng</h3>
+                        <div class="flex justify-center relative h-32" id="statusChart">
+                            <!-- Apexchart Donut injects here -->
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none opacity-0">
+                            <span class="text-xl font-bold" id="statusDonutSummary">0</span>
+                            <span class="text-[10px] font-bold text-on-surface-variant uppercase">Tổng</span>
+                        </div>
+                        <div class="space-y-3" id="statusLegend">
+                            <!-- Dynamic Legend -->
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity Timeline -->
+                    <div class="bg-surface-container-lowest p-8 rounded-[2rem] space-y-6">
+                        <h3 class="text-lg font-bold">Hoạt động gần nhất</h3>
+                        <div class="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-surface-container" id="recentActivityList">
+                            <div class="text-center text-sm text-on-surface-variant p-4">Đang tải...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  </div><!-- end worker-main -->
-</div><!-- end flex wrapper -->
+    </main>
+</div>
 
+<!-- Dummy element for unused profileAreaValue binding to avoid JS error -->
+<span id="profileAreaValue" class="hidden"></span>
 @endsection
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script type="module">
-  import {
-    callApi,
-    getCurrentUser,
-    showToast
-  } from "{{ asset('assets/js/api.js') }}";
+  import { callApi, getCurrentUser, showToast } from "{{ asset('assets/js/api.js') }}";
 
-  const baseUrl = '{{ url('/') }}';
-  const user = getCurrentUser();
-  if (!user || !['worker', 'admin'].includes(user.role)) {
-    window.location.href = baseUrl + '/login?role=worker';
+  const baseUrl = "{{ url('/') }}";
+  const currentUser = getCurrentUser();
+
+  if (!currentUser || !['worker', 'admin'].includes(currentUser.role)) {
+    window.location.href = `${baseUrl}/login?role=worker`;
   }
 
-  // Update date
-  const days = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
-  const now = new Date();
-  const headerDate = document.getElementById('headerDate');
-  if (headerDate) {
-    headerDate.textContent = `${days[now.getDay()]}, ${now.toLocaleDateString('vi-VN')}`;
+  const $ = (id) => document.getElementById(id);
+  const dom = {
+    headerDate: $('headerDate'),
+    liveStatusText: $('liveStatusText'),
+    refreshButton: $('dashboardRefreshButton'),
+    heroWorkerName: $('heroWorkerName'),
+    heroSummaryText: $('heroSummaryText'),
+    heroAvailableJobs: $('heroAvailableJobs'),
+    heroAvailableMeta: $('heroAvailableMeta'),
+    heroTodayJobs: $('heroTodayJobs'),
+    heroTodayMeta: $('heroTodayMeta'),
+    heroMonthRevenue: $('heroMonthRevenue'),
+    heroRevenueMeta: $('heroRevenueMeta'),
+    availableJobsBadge: $('availableJobsBadge'),
+    jobSpotlightList: $('jobSpotlightList'),
+    profileStatusBadge: $('profileStatusBadge'),
+    profileAreaValue: $('profileAreaValue'),
+    profileRatingValue: $('profileRatingValue'),
+    profileRadiusValue: $('profileRadiusValue'),
+    profileReviewCount: $('profileReviewCount'),
+    profileCompletedBar: $('profileCompletedBar'),
+    profileCancelledMonth: $('profileCancelledMonth'),
+    statTodayJobs: $('statTodayJobs'),
+    statTodayMeta: $('statTodayMeta'),
+    statInProgress: $('statInProgress'),
+    statInProgressMeta: $('statInProgressMeta'),
+    statCompletedMonth: $('statCompletedMonth'),
+    statCompletedMeta: $('statCompletedMeta'),
+    statRating: $('statRating'),
+    statRatingMeta: $('statRatingMeta'),
+    chartRevenueSummary: $('chartRevenueSummary'),
+    revenueChart: $('revenueChart'),
+    statusDonutSummary: $('statusDonutSummary'),
+    statusChart: $('statusChart'),
+    statusLegend: $('statusLegend'),
+    recentActivityList: $('recentActivityList'),
+    todayScheduleList: $('todayScheduleList'),
+  };
+
+  const STATUS_META = {
+    cho_xac_nhan: { label: 'Chờ xác nhận', border: 'border-slate-500', bg: 'bg-slate-50', text: 'text-slate-900', chip: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400', icon: 'hourglass_top' },
+    da_xac_nhan: { label: 'Đã xác nhận', border: 'border-blue-500', bg: 'bg-blue-50', text: 'text-blue-900', chip: 'bg-blue-100 text-blue-600', dot: 'bg-blue-400', icon: 'directions_car' },
+    dang_lam: { label: 'Đang làm', border: 'border-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', chip: 'bg-amber-100 text-amber-600', dot: 'bg-amber-400', icon: 'build' },
+    cho_hoan_thanh: { label: 'Chờ duyệt', border: 'border-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', chip: 'bg-amber-100 text-amber-600', dot: 'bg-amber-400', icon: 'hourglass_bottom' },
+    cho_thanh_toan: { label: 'Chờ thanh toán', border: 'border-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-900', chip: 'bg-indigo-100 text-indigo-600', dot: 'bg-indigo-400', icon: 'payments' },
+    da_xong: { label: 'Hoàn thành', border: 'border-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', chip: 'bg-emerald-100 text-emerald-600', dot: 'bg-emerald-400', icon: 'task_alt' },
+    da_huy: { label: 'Đã hủy', border: 'border-red-500', bg: 'bg-red-50', text: 'text-red-900', chip: 'bg-red-100 text-red-600', dot: 'bg-red-400', icon: 'cancel' },
+  };
+
+  let revenueChartInstance = null;
+  let statusChartInstance = null;
+
+  const escapeHtml = (value) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const formatMoney = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`;
+  const formatCompactMoney = (value) => {
+    const amount = Number(value) || 0;
+    if (amount >= 1000000) return `${(amount / 1000000).toFixed(amount >= 10000000 ? 0 : 1)}M`;
+    if (amount >= 1000) return `${Math.round(amount / 1000)}k`;
+    return `${Math.round(amount)} ₫`;
+  };
+
+  const localDateKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const weekdayLabel = (date = new Date()) => new Intl.DateTimeFormat('vi-VN', { weekday: 'long' }).format(date);
+  const extractList = (response) => {
+    if (!response?.ok) return [];
+    if (Array.isArray(response.data?.data)) return response.data.data;
+    if (Array.isArray(response.data)) return response.data;
+    if (Array.isArray(response.data?.data?.data)) return response.data.data.data;
+    return [];
+  };
+
+  const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.cho_xac_nhan;
+  const getServices = (booking) => Array.isArray(booking?.dich_vus) ? booking.dich_vus : (Array.isArray(booking?.dichVus) ? booking.dichVus : []);
+  const getServiceNames = (booking) => getServices(booking).map((service) => service?.ten_dich_vu).filter(Boolean);
+  const getServiceSummary = (booking, limit = 2) => {
+    const names = getServiceNames(booking);
+    if (!names.length) return 'Dịch vụ sửa chữa';
+    return `${names.slice(0, limit).join(', ')}${names.length > limit ? ` +${names.length - limit}` : ''}`;
+  };
+
+  const getCustomer = (booking) => booking?.khach_hang || booking?.khachHang || {};
+  const bookingTotal = (booking) => {
+    const explicit = Number(booking?.tong_tien ?? booking?.tongTien);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    return Number(booking?.phi_di_lai || 0) + Number(booking?.phi_linh_kien || 0) + Number(booking?.tien_cong || 0) + Number(booking?.tien_thue_xe || 0);
+  };
+
+  const startTimeFromSlot = (slot) => String(slot || '').split('-')[0]?.trim() || '00:00';
+  const formatShortDate = (value) => value ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' }).format(new Date(`${value}T00:00:00`)) : 'Chưa hẹn';
+  const buildDateHeader = () => {
+    const now = new Date();
+    const capitalizedWeekday = weekdayLabel(now).replace(/^\w/, (c) => c.toUpperCase());
+    return `${capitalizedWeekday}, ${now.getDate()} Tháng ${now.getMonth()+1}, ${now.getFullYear()}`;
+  };
+
+  function renderTopbar(bookings, availableJobs) {
+    const todayKey = localDateKey();
+    const todayOpen = bookings.filter((booking) => booking.ngay_hen === todayKey && !['da_xong', 'da_huy'].includes(booking.trang_thai));
+    const inProgress = bookings.filter((booking) => booking.trang_thai === 'dang_lam');
+    const workerName = String(currentUser?.name || 'bạn').trim().split(' ').pop() || currentUser?.name || 'bạn';
+
+    dom.headerDate.textContent = buildDateHeader();
+    dom.heroWorkerName.textContent = workerName;
+
+    if (inProgress.length > 0) {
+      dom.liveStatusText.textContent = `${inProgress.length} ĐƠN ĐANG XỬ LÝ`;
+      dom.heroSummaryText.textContent = `Bạn đang xử lý ${inProgress.length} đơn. Ưu tiên hoàn tất ${todayOpen.length} lịch còn lại.`;
+      return;
+    }
+    if (availableJobs.length > 0) {
+      dom.liveStatusText.textContent = `${availableJobs.length} VIỆC MỚI`;
+      dom.heroSummaryText.textContent = `Có ${availableJobs.length} việc mới quanh bạn. Bấm "Nhận việc mới" để xem.`;
+      return;
+    }
+
+    dom.liveStatusText.textContent = 'DỮ LIỆU ĐÃ ĐỒNG BỘ';
+    dom.heroSummaryText.textContent = todayOpen.length > 0
+      ? `Hôm nay có ${todayOpen.length} lịch hẹn. Hãy kiểm tra các lịch hẹn sắp tới!`
+      : 'Thảnh thơi nhâm nhi ly cà phê, hoặc kiểm tra lại hồ sơ nhé!';
   }
 
-  // Load dashboard stats
-  async function loadStats() {
-    try {
-      const bookings = await callApi('/worker/my-bookings', 'GET');
-      if (!bookings.ok) return;
-      const all = bookings.data.data || [];
-      const today = now.toISOString().slice(0, 10);
-      const todayJobs = all.filter(b => b.booking_date === today);
-      const inProgress = all.filter(b => ['da_xac_nhan', 'dang_lam'].includes(b.status));
-      const completed = all.filter(b => b.status === 'da_xong');
+  function renderHero(bookings, availableJobs, stats) {
+    const todayKey = localDateKey();
+    const todayJobs = bookings.filter((booking) => booking.ngay_hen === todayKey);
+    const todayOpen = todayJobs.filter((b) => !['da_xong', 'da_huy'].includes(b.trang_thai));
+    const monthRevenue = Number(stats?.doanh_thu_thang_nay || 0);
 
-      // Update stat cards by data-stat index
-      const s0 = document.querySelector('[data-stat="0"]');
-      const s1 = document.querySelector('[data-stat="1"]');
-      const s2 = document.querySelector('[data-stat="2"]');
-      if (s0) s0.textContent = todayJobs.length;
-      if (s1) s1.textContent = inProgress.length;
-      if (s2) s2.textContent = completed.length;
+    dom.heroAvailableJobs.textContent = String(availableJobs.length < 10 && availableJobs.length > 0 ? `0${availableJobs.length}` : availableJobs.length);
+    dom.heroTodayJobs.textContent = String(todayOpen.length < 10 && todayOpen.length > 0 ? `0${todayOpen.length}` : todayOpen.length);
+    dom.heroMonthRevenue.textContent = formatCompactMoney(monthRevenue);
+  }
 
-      // Sidebar badge
-      const available = await callApi('/bookings/available', 'GET');
-      if (available.ok) {
-        const cnt = (available.data.data || []).length;
-        const badge = document.getElementById('sidebarJobBadge');
-        if (badge) badge.textContent = cnt;
-        if (cnt > 0) {
-          document.getElementById('aiSuggestionBanner').style.display = 'flex';
-          document.getElementById('aiSuggestionText').textContent = `Có ${cnt} việc gần bạn đang chờ nhận – AI gợi ý việc phù hợp nhất!`;
-        }
-      }
+  function renderProfile(profile, stats) {
+    const canceled = Number(stats?.don_huy_thang_nay || 0);
+    const completed = Number(stats?.don_hoan_thanh_thang_nay || 0);
+    const total = canceled + completed;
+    const rate = total > 0 ? ((completed / total) * 100).toFixed(0) : 100;
 
-      // Recent activity
-      const actList = document.getElementById('recentActivityList');
-      if (actList) {
-        const recent = all.slice(0, 5);
-        if (recent.length === 0) {
-          actList.innerHTML = '<div style="text-align:center;padding:1.5rem;color:#94a3b8;font-size:.875rem;">Chưa có hoạt động nào</div>';
-        } else {
-          actList.innerHTML = recent.map(b => {
-            const icons = {
-              da_xac_nhan: 'check_circle',
-              dang_lam: 'build',
-              da_xong: 'done_all',
-              da_huy: 'cancel',
-              cho_xac_nhan: 'schedule'
-            };
-            const colors = {
-              da_xac_nhan: '#0EA5E9',
-              dang_lam: '#f59e0b',
-              da_xong: '#10b981',
-              da_huy: '#ef4444',
-              cho_xac_nhan: '#64748b'
-            };
-            const icon = icons[b.status] || 'info';
-            const color = colors[b.status] || '#64748b';
-            return `<div class="activity-item">
-            <div style="width:2rem;height:2rem;border-radius:50%;background:${color}20;display:flex;align-items:center;justify-content:center;">
-              <span class="material-symbols-outlined" style="font-size:.9rem;color:${color};">${icon}</span>
+    if (!profile) {
+      dom.profileStatusBadge.textContent = 'CHƯA CÓ HỒ SƠ';
+      dom.profileStatusBadge.className = 'px-3 py-1 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-full';
+      dom.profileRatingValue.textContent = '0.0';
+      dom.profileReviewCount.textContent = '0';
+      dom.profileCancelledMonth.textContent = canceled;
+      dom.profileCompletedBar.style.width = '0%';
+      return;
+    }
+
+    const isApp = profile.trang_thai_duyet === 'da_duyet';
+    const isAct = Boolean(profile.dang_hoat_dong);
+    dom.profileStatusBadge.textContent = isApp && isAct ? 'SẴN SÀNG' : (isApp ? 'TẠM DỪNG' : 'CHỜ DUYỆT');
+    dom.profileStatusBadge.className = isApp && isAct 
+      ? 'px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full'
+      : 'px-3 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full';
+
+    dom.profileRatingValue.textContent = Number(profile.danh_gia_trung_binh || 0).toFixed(1);
+    dom.profileReviewCount.textContent = `${Number(profile.tong_so_danh_gia || 0)}`;
+    dom.profileCancelledMonth.textContent = `${canceled}`;
+    dom.profileCompletedBar.style.width = `${rate}%`;
+
+    const sCount = Math.round(Number(profile.danh_gia_trung_binh || 0));
+    $('profileRatingStars').innerHTML = Array.from({length: 5}).map((_, i) => `<span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' ${i < sCount ? 1 : 0};">star</span>`).join('');
+  }
+
+  function renderKpis(bookings, stats, profile) {
+    const todayKey = localDateKey();
+    const todayOpen = bookings.filter((b) => b.ngay_hen === todayKey && !['da_xong', 'da_huy'].includes(b.trang_thai));
+    const inProgress = bookings.filter((b) => b.trang_thai === 'dang_lam');
+    
+    dom.statTodayJobs.textContent = String(todayOpen.length < 10 ? `0${todayOpen.length}` : todayOpen.length);
+    dom.statInProgress.textContent = String(inProgress.length < 10 ? `0${inProgress.length}` : inProgress.length);
+    dom.statCompletedMonth.textContent = String(stats?.don_hoan_thanh_thang_nay || 0);
+    dom.statRating.textContent = `${Number(profile?.danh_gia_trung_binh || 0).toFixed(1)}/5`;
+  }
+
+  function renderJobSpotlight(availableJobs) {
+    dom.availableJobsBadge.textContent = availableJobs.length > 0 ? `Có ${availableJobs.length} việc mới` : 'Xem tất cả';
+    if (!availableJobs.length) {
+      dom.jobSpotlightList.innerHTML = `<div class="col-span-3 text-center text-sm text-on-surface-variant p-8 border border-dashed rounded-2xl">Không có việc mới nào quanh khu vực của bạn.</div>`;
+      return;
+    }
+    const icons = ['ac_unit', 'local_laundry_service', 'electric_bolt', 'plumbing', 'home_repair_service'];
+    
+    dom.jobSpotlightList.innerHTML = availableJobs.slice(0, 3).map((job, idx) => {
+      const icon = icons[idx % icons.length];
+      const isPriority = idx === 0;
+      const tBg = isPriority ? 'bg-amber-100 text-amber-600' : 'bg-primary/10 text-primary';
+      const pColor = isPriority ? 'text-amber-600' : 'text-primary';
+      const price = formatCompactMoney(bookingTotal(job) || job.phi_dich_vu);
+      
+      return `
+        <a href="/worker/jobs" class="block bg-surface-container-lowest p-5 rounded-2xl border-2 border-primary/10 hover:border-primary transition-all group">
+            <div class="flex justify-between mb-4">
+                <span class="p-2 ${tBg} rounded-lg bg-opacity-50">
+                    <span class="material-symbols-outlined">${icon}</span>
+                </span>
+                <span class="text-xs font-bold text-on-surface-variant">${startTimeFromSlot(job.khung_gio_hen)}</span>
             </div>
-            <div style="flex:1;">
-              <p style="margin:0;font-size:.8rem;font-weight:600;color:#0f172a;">${b.customer_name || 'Khách hàng'}</p>
-              <p style="margin:0;font-size:.72rem;color:#64748b;">${b.appliance_type || 'Thiết bị'} · ${b.booking_date || ''}</p>
+            <h4 class="font-bold text-on-surface group-hover:${pColor} transition-colors">${escapeHtml(getServiceSummary(job))}</h4>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">${escapeHtml(getCustomer(job).name || 'Khách')}</p>
+            <div class="mt-4 pt-4 border-t border-dashed border-outline-variant flex justify-between items-center">
+                <span class="text-sm font-bold ${pColor}">${price}</span>
+                <span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform">arrow_forward_ios</span>
             </div>
-          </div>`;
-          }).join('');
-        }
-      }
+        </a>
+      `;
+    }).join('');
+  }
 
-      // Today schedule
-      const todaySched = document.getElementById('todayScheduleList');
-      if (todaySched) {
-        if (todayJobs.length === 0) {
-          todaySched.innerHTML = '<p style="text-align:center;margin:1rem 0;color:#94a3b8;">Không có lịch hôm nay</p>';
-        } else {
-          todaySched.innerHTML = todayJobs.slice(0, 3).map(b => `
-          <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid #f1f5f9;">
-            <span class="material-symbols-outlined" style="font-size:.85rem;color:#0EA5E9;">schedule</span>
+  function renderTodaySchedule(bookings) {
+    const todayKey = localDateKey();
+    const todayJobs = [...bookings].filter((b) => b.ngay_hen === todayKey && b.trang_thai !== 'da_huy').sort((a,b) => startTimeFromSlot(a.khung_gio_hen).localeCompare(startTimeFromSlot(b.khung_gio_hen)));
+
+    if (!todayJobs.length) {
+      dom.todayScheduleList.innerHTML = `<div class="text-center text-sm text-on-surface-variant p-8">Bạn không có lịch làm việc nào trong hôm nay.</div>`;
+      return;
+    }
+
+    const htmls = [];
+    let lastTime = '';
+    
+    todayJobs.slice(0, 6).forEach(booking => {
+        const time = startTimeFromSlot(booking.khung_gio_hen);
+        const st = getStatusMeta(booking.trang_thai);
+        const code = booking.ma_don ? `#${booking.ma_don.slice(0, 8).toUpperCase()}` : '';
+        const addr = booking.dia_chi ? (booking.dia_chi.split(',')[0].substring(0, 15) + '...') : '';
+        const title = `${escapeHtml(getServiceSummary(booking, 1))} - ${addr}`;
+        
+        // Output empty slots if needed to pad timeline? No, just output real ones.
+        htmls.push(`
+            <div class="flex border-b border-surface-container last:border-0">
+                <div class="w-16 md:w-20 p-4 text-xs font-bold text-on-surface-variant border-r border-surface-container flex items-center justify-center">${time}</div>
+                <div class="flex-1 p-4">
+                    <a href="/worker/bookings/${booking.id}" class="${st.bg} border-l-4 ${st.border} p-3 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-2 hover:opacity-80 transition-opacity">
+                        <div>
+                            <p class="text-sm font-bold ${st.text}">${title}</p>
+                            <p class="text-xs ${st.text} opacity-80">Mã đơn: ${code}</p>
+                        </div>
+                        <span class="px-2 py-1 ${st.chip} text-[10px] font-bold rounded uppercase whitespace-nowrap">${st.label}</span>
+                    </a>
+                </div>
+            </div>
+        `);
+    });
+    
+    dom.todayScheduleList.innerHTML = htmls.join('');
+  }
+
+  function renderRecentActivity(bookings) {
+    if (!bookings.length) {
+      dom.recentActivityList.innerHTML = `<div class="text-center text-sm text-on-surface-variant p-4">Chưa có hoạt động nào.</div>`;
+      return;
+    }
+
+    dom.recentActivityList.innerHTML = bookings.slice(0, 5).map((booking) => {
+      const st = getStatusMeta(booking.trang_thai);
+      const isOk = ['da_xong'].includes(booking.trang_thai) ? 'emerald' : (['dang_lam', 'da_xac_nhan'].includes(booking.trang_thai) ? 'blue' : 'slate');
+      const timeAgo = formatShortDate(booking.updated_at ? booking.updated_at.split('T')[0] : booking.ngay_hen);
+      const sub = `${escapeHtml(getServiceSummary(booking))} • ${timeAgo}`;
+      
+      return `
+        <div class="flex gap-4 relative">
+            <div class="w-6 h-6 rounded-full bg-${isOk}-100 flex items-center justify-center z-10 shrink-0">
+                <span class="material-symbols-outlined text-[14px] text-${isOk}-600 font-bold">${st.icon}</span>
+            </div>
             <div>
-              <span style="font-weight:600;color:#0f172a;">${b.customer_name || 'KH'}</span>
-              <span style="color:#64748b;margin-left:.25rem;">${b.booking_time || ''}</span>
+                <p class="text-sm font-bold">${st.label} đơn hàng</p>
+                <p class="text-xs text-on-surface-variant">${sub}</p>
             </div>
-          </div>`).join('');
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
+        </div>
+      `;
+    }).join('');
   }
-  loadStats();
 
-  // Weekly chart
-  const chartWeekly = new ApexCharts(document.getElementById('chartWeekly'), {
-    chart: {
-      type: 'bar',
-      height: 200,
-      toolbar: {
-        show: false
-      },
-      fontFamily: 'Inter,sans-serif'
-    },
-    colors: ['#0EA5E9'],
-    series: [{
-      name: 'Việc hoàn thành',
-      data: [2, 5, 3, 7, 4, 6, 3]
-    }],
-    xaxis: {
-      categories: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-      labels: {
-        style: {
-          fontSize: '11px'
-        }
-      }
-    },
-    yaxis: {
-      labels: {
-        style: {
-          fontSize: '11px'
-        }
-      }
-    },
-    plotOptions: {
-      bar: {
-        borderRadius: 6,
-        columnWidth: '55%'
-      }
-    },
-    dataLabels: {
-      enabled: false
-    },
-    grid: {
-      borderColor: '#f1f5f9'
-    }
-  });
-  chartWeekly.render();
+  function renderRevenueChart(stats) {
+    const chartData = Array.isArray(stats?.chart_data) ? stats.chart_data : [];
+    const labels = chartData.length ? chartData.map((item) => item.date) : [];
+    const values = chartData.length ? chartData.map((item) => Number(item.revenue || 0)) : [];
+    
+    dom.chartRevenueSummary.textContent = formatCompactMoney(values.reduce((a,b) => a+b, 0));
 
-  // Donut chart
-  const chartDevice = new ApexCharts(document.getElementById('chartDeviceType'), {
-    chart: {
-      type: 'donut',
-      height: 200,
-      fontFamily: 'Inter,sans-serif'
-    },
-    colors: ['#0EA5E9', '#BAF2E9', '#f59e0b', '#818cf8', '#10b981'],
-    series: [35, 25, 20, 15, 5],
-    labels: ['Tivi', 'Máy giặt', 'Tủ lạnh', 'Điều hòa', 'Khác'],
-    legend: {
-      position: 'bottom',
-      fontSize: '11px'
-    },
-    dataLabels: {
-      enabled: false
-    },
-    plotOptions: {
-      pie: {
-        donut: {
-          size: '60%'
-        }
-      }
+    if (revenueChartInstance) { revenueChartInstance.destroy(); }
+    dom.revenueChart.innerHTML = '';
+    
+    if (chartData.length === 0) {
+        dom.revenueChart.innerHTML = `<div class="flex items-center justify-center h-full text-on-surface-variant text-sm">Chưa có dữ liệu thống kê</div>`;
+        return;
     }
-  });
-  chartDevice.render();
+
+    revenueChartInstance = new ApexCharts(dom.revenueChart, {
+      chart: { type: 'area', height: 260, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+      series: [{ name: 'Doanh thu', data: values }],
+      colors: ['#0ea5e9'],
+      stroke: { curve: 'smooth', width: 3 },
+      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.0, stops: [0, 95] } },
+      markers: { size: 4, strokeWidth: 0, hover: { size: 6 } },
+      dataLabels: { enabled: false },
+      xaxis: { categories: labels, labels: { style: { colors: '#6e7881', fontSize: '12px' } }, axisBorder: { show: false }, axisTicks: { show: false } },
+      yaxis: { labels: { formatter: (val) => formatCompactMoney(val), style: { colors: '#6e7881', fontSize: '12px' } } },
+      grid: { borderColor: '#eaeef0', strokeDashArray: 3 },
+      tooltip: { y: { formatter: (val) => formatMoney(val) } },
+    });
+    revenueChartInstance.render();
+  }
+
+  function renderStatusChart(bookings) {
+    const counts = { da_xong: 0, dang_lam: 0, da_huy: 0, cho: 0 };
+    bookings.forEach(b => {
+        if (b.trang_thai === 'da_xong') counts.da_xong++;
+        else if (b.trang_thai === 'dang_lam') counts.dang_lam++;
+        else if (b.trang_thai === 'da_huy') counts.da_huy++;
+        else counts.cho++;
+    });
+    const total = counts.da_xong + counts.dang_lam + counts.da_huy + counts.cho;
+
+    if (total === 0) {
+        dom.statusChart.innerHTML = `<div class="flex items-center justify-center h-full text-sm">Chưa có dữ liệu</div>`;
+        dom.statusLegend.innerHTML = '';
+        return;
+    }
+
+    if (statusChartInstance) { statusChartInstance.destroy(); }
+    
+    const slices = [
+        { name: 'Xong', val: counts.da_xong, color: '#006591', dot: 'bg-primary' },
+        { name: 'Làm', val: counts.dang_lam, color: '#0ea5e9', dot: 'bg-primary-container' },
+        { name: 'Chờ', val: counts.cho, color: '#89ceff', dot: 'bg-[#89ceff]' },
+        { name: 'Hủy', val: counts.da_huy, color: '#dfe3e5', dot: 'bg-surface-container-highest' },
+    ].filter(s => s.val > 0);
+
+    statusChartInstance = new ApexCharts(dom.statusChart, {
+      chart: { type: 'donut', height: 180, fontFamily: 'Inter, sans-serif' },
+      series: slices.map(s => s.val), labels: slices.map(s => s.name), colors: slices.map(s => s.color),
+      dataLabels: { enabled: false }, legend: { show: false }, stroke: { width: 0 },
+      plotOptions: { pie: { donut: { size: '80%', labels: { show: true, name: {show: true}, value: {show: true, fontSize: '24px', fontWeight: 'bold'}, total: {show: true, showAlways: true, label: 'Tổng'} } } } },
+    });
+    statusChartInstance.render();
+
+    dom.statusLegend.innerHTML = slices.map(s => `
+        <div class="flex items-center justify-between text-sm">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full ${s.dot}"></span>
+                <span>${s.name}</span>
+            </div>
+            <span class="font-bold">${s.val}</span>
+        </div>
+    `).join('');
+  }
+
+  async function fetchResource(endpoint) {
+    try { return await callApi(endpoint, 'GET'); } catch (error) { return { ok: false, error }; }
+  }
+
+  async function loadDashboard({ notify = false } = {}) {
+    dom.refreshButton.classList.add('animate-spin');
+    dom.liveStatusText.textContent = 'ĐANG ĐỒNG BỘ...';
+    
+    const [bookingsRes, availableRes, statsRes, profileRes] = await Promise.all([
+      fetchResource('/don-dat-lich'), fetchResource('/don-dat-lich/available'), fetchResource('/worker/stats'), fetchResource(`/ho-so-tho/${currentUser.id}`)
+    ]);
+
+    const bookings = extractList(bookingsRes).sort((l, r) => `${r.ngay_hen||''} ${startTimeFromSlot(r.khung_gio_hen)}`.localeCompare(`${l.ngay_hen||''} ${startTimeFromSlot(l.khung_gio_hen)}`));
+    const availableJobs = extractList(availableRes);
+    const stats = statsRes?.ok ? statsRes.data : { chart_data:[] };
+    const profile = profileRes?.ok ? profileRes.data : null;
+
+    renderTopbar(bookings, availableJobs); 
+    renderHero(bookings, availableJobs, stats);
+    renderProfile(profile, stats); 
+    renderKpis(bookings, stats, profile); 
+    renderJobSpotlight(availableJobs);
+    renderRecentActivity(bookings); 
+    renderTodaySchedule(bookings); 
+    renderRevenueChart(stats); 
+    renderStatusChart(bookings);
+
+    setTimeout(() => {
+        dom.refreshButton.classList.remove('animate-spin');
+        if (notify) showToast('Đã làm mới', 'success');
+    }, 500);
+  }
+
+  dom.refreshButton?.addEventListener('click', () => loadDashboard({ notify: true }));
+  loadDashboard();
 </script>
 @endpush

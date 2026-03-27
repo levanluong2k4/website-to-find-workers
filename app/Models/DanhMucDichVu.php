@@ -25,6 +25,11 @@ class DanhMucDichVu extends Model
         return $this->belongsToMany(User::class, 'tho_dich_vu', 'dich_vu_id', 'user_id');
     }
 
+    public function linhKiens()
+    {
+        return $this->hasMany(LinhKien::class, 'dich_vu_id');
+    }
+
     protected function hinhAnh(): Attribute
     {
         return Attribute::make(

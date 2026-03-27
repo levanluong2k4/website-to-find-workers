@@ -1,0 +1,279 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1120" viewBox="0 0 1760 1120">
+<rect width="1760" height="1120" fill="#f1f3f6" />
+<text x="40" y="28" font-family="Arial, Segoe UI, sans-serif" font-size="16" font-weight="700" fill="#1d2630">ERD vat ly - cac bang co quan he</text>
+<polyline points="320,539 334,539 334,325 40,325" fill="none" stroke="#5aa65c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="303" y="517" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="310" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="163" y="303" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="170" y="317" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="1040,159 990,159 990,827 980,827" fill="none" stroke="#4d7fb8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="991" y="137" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="998" y="151" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="961" y="805" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="968" y="819" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,539 654,539 654,879 700,879" fill="none" stroke="#5aa65c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="463" y="517" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="470" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="653" y="857" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="660" y="871" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,539 674,539 674,853 700,853" fill="none" stroke="#5aa65c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="473" y="517" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="480" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="663" y="831" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="670" y="845" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,89 1000,89 1000,237 1040,237" fill="none" stroke="#c3a400" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="636" y="67" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="643" y="81" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="996" y="215" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="1003" y="229" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,539 820,539 820,185 1040,185" fill="none" stroke="#5aa65c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="546" y="517" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="553" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="906" y="163" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="913" y="177" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,539 920,539 920,211 1040,211" fill="none" stroke="#4d7fb8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="596" y="517" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="603" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="956" y="189" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="963" y="203" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,89 674,89 674,603 700,603" fill="none" stroke="#c3a400" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="473" y="67" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="480" y="81" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="663" y="581" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="670" y="595" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="1040,159 1010,159 1010,577 980,577" fill="none" stroke="#4d7fb8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="1001" y="137" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="1008" y="151" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="971" y="555" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="978" y="569" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,539 334,539 334,115 360,115" fill="none" stroke="#5aa65c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="303" y="517" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="310" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="323" y="93" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="330" y="107" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="1320,159 1350,159 1350,577 1380,577" fill="none" stroke="#4d7fb8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="1311" y="137" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="1318" y="151" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="1341" y="555" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="1348" y="569" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,89 334,89 334,561 360,561" fill="none" stroke="#c3a400" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="303" y="67" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="310" y="81" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="323" y="539" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="330" y="553" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<polyline points="320,539 334,539 334,535 360,535" fill="none" stroke="#5aa65c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+<rect x="303" y="517" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="310" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,n)</text>
+<rect x="323" y="513" rx="8" ry="8" width="49" height="20" fill="#ffffff" stroke="#7f6cf2" stroke-width="2" /><text x="330" y="527" font-family="Arial, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#5a43db">(1,1)</text>
+<rect x="40" y="48" width="280" height="182" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="40" y="48" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="48" y="66" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers danh_muc_dich_vu</text>
+<line x1="40" y1="76" x2="320" y2="76" stroke="#d8dee6" stroke-width="1" />
+<rect x="48" y="84" width="8" height="8" fill="#1f65d6" />
+<text x="62" y="93" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="41" y="102" width="278" height="26" fill="#f7f9fb" />
+<line x1="40" y1="102" x2="320" y2="102" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="111" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="119" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">ten_dich_vu : varchar</text>
+<line x1="40" y1="128" x2="320" y2="128" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="137" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="145" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">mo_ta : varchar</text>
+<rect x="41" y="154" width="278" height="26" fill="#f7f9fb" />
+<line x1="40" y1="154" x2="320" y2="154" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="163" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="171" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">trang_thai : tinyint</text>
+<line x1="40" y1="180" x2="320" y2="180" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="189" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="197" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">created_at : timestamp</text>
+<line x1="40" y1="206" x2="320" y2="206" stroke="#d8dee6" stroke-width="1" />
+<text x="48" y="223" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 2 cot khac</text>
+<rect x="40" y="258" width="280" height="208" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="40" y="258" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="48" y="276" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers chat_magic</text>
+<line x1="40" y1="286" x2="320" y2="286" stroke="#d8dee6" stroke-width="1" />
+<rect x="48" y="294" width="8" height="8" fill="#1f65d6" />
+<text x="62" y="303" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="41" y="312" width="278" height="26" fill="#f7f9fb" />
+<line x1="40" y1="312" x2="320" y2="312" stroke="#d8dee6" stroke-width="1" />
+<circle cx="52" cy="324" r="4" fill="#2ca24f" />
+<text x="62" y="329" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">user_id : bigint</text>
+<line x1="40" y1="338" x2="320" y2="338" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="347" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="355" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">guest_token : varchar</text>
+<rect x="41" y="364" width="278" height="26" fill="#f7f9fb" />
+<line x1="40" y1="364" x2="320" y2="364" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="373" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="381" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">sender : enum</text>
+<line x1="40" y1="390" x2="320" y2="390" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="399" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="407" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">text : longtext</text>
+<rect x="41" y="416" width="278" height="26" fill="#f7f9fb" />
+<line x1="40" y1="416" x2="320" y2="416" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="425" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="433" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">created_at : timestamp</text>
+<line x1="40" y1="442" x2="320" y2="442" stroke="#d8dee6" stroke-width="1" />
+<text x="48" y="459" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 1 cot khac</text>
+<rect x="40" y="498" width="280" height="234" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="40" y="498" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="48" y="516" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers users</text>
+<line x1="40" y1="526" x2="320" y2="526" stroke="#d8dee6" stroke-width="1" />
+<rect x="48" y="534" width="8" height="8" fill="#1f65d6" />
+<text x="62" y="543" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="41" y="552" width="278" height="26" fill="#f7f9fb" />
+<line x1="40" y1="552" x2="320" y2="552" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="561" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="569" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">name : varchar</text>
+<line x1="40" y1="578" x2="320" y2="578" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="587" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="595" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">email : varchar</text>
+<rect x="41" y="604" width="278" height="26" fill="#f7f9fb" />
+<line x1="40" y1="604" x2="320" y2="604" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="613" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="621" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">phone : varchar</text>
+<line x1="40" y1="630" x2="320" y2="630" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="639" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="647" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">role : enum</text>
+<rect x="41" y="656" width="278" height="26" fill="#f7f9fb" />
+<line x1="40" y1="656" x2="320" y2="656" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="665" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="673" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">is_active : tinyint</text>
+<line x1="40" y1="682" x2="320" y2="682" stroke="#d8dee6" stroke-width="1" />
+<rect x="49" y="691" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="62" y="699" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">created_at : timestamp</text>
+<line x1="40" y1="708" x2="320" y2="708" stroke="#d8dee6" stroke-width="1" />
+<text x="48" y="725" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 6 cot khac</text>
+<rect x="360" y="48" width="280" height="234" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="360" y="48" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="368" y="66" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers ho_so_tho</text>
+<line x1="360" y1="76" x2="640" y2="76" stroke="#d8dee6" stroke-width="1" />
+<rect x="368" y="84" width="8" height="8" fill="#1f65d6" />
+<text x="382" y="93" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="361" y="102" width="278" height="26" fill="#f7f9fb" />
+<line x1="360" y1="102" x2="640" y2="102" stroke="#d8dee6" stroke-width="1" />
+<circle cx="372" cy="114" r="4" fill="#2ca24f" />
+<text x="382" y="119" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">user_id : bigint</text>
+<line x1="360" y1="128" x2="640" y2="128" stroke="#d8dee6" stroke-width="1" />
+<rect x="369" y="137" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="382" y="145" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">cccd : varchar</text>
+<rect x="361" y="154" width="278" height="26" fill="#f7f9fb" />
+<line x1="360" y1="154" x2="640" y2="154" stroke="#d8dee6" stroke-width="1" />
+<rect x="369" y="163" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="382" y="171" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">kinh_nghiem : text</text>
+<line x1="360" y1="180" x2="640" y2="180" stroke="#d8dee6" stroke-width="1" />
+<rect x="369" y="189" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="382" y="197" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">ban_kinh_phuc_vu : int</text>
+<rect x="361" y="206" width="278" height="26" fill="#f7f9fb" />
+<line x1="360" y1="206" x2="640" y2="206" stroke="#d8dee6" stroke-width="1" />
+<rect x="369" y="215" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="382" y="223" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">trang_thai_duyet : enum</text>
+<line x1="360" y1="232" x2="640" y2="232" stroke="#d8dee6" stroke-width="1" />
+<rect x="369" y="241" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="382" y="249" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">danh_gia_trung_binh : decimal</text>
+<line x1="360" y1="258" x2="640" y2="258" stroke="#d8dee6" stroke-width="1" />
+<text x="368" y="275" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 10 cot khac</text>
+<rect x="360" y="468" width="280" height="156" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="360" y="468" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="368" y="486" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers tho_dich_vu</text>
+<line x1="360" y1="496" x2="640" y2="496" stroke="#d8dee6" stroke-width="1" />
+<rect x="368" y="504" width="8" height="8" fill="#1f65d6" />
+<text x="382" y="513" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="361" y="522" width="278" height="26" fill="#f7f9fb" />
+<line x1="360" y1="522" x2="640" y2="522" stroke="#d8dee6" stroke-width="1" />
+<circle cx="372" cy="534" r="4" fill="#2ca24f" />
+<text x="382" y="539" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">user_id : bigint</text>
+<line x1="360" y1="548" x2="640" y2="548" stroke="#d8dee6" stroke-width="1" />
+<circle cx="372" cy="560" r="4" fill="#2ca24f" />
+<text x="382" y="565" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">dich_vu_id : bigint</text>
+<rect x="361" y="574" width="278" height="26" fill="#f7f9fb" />
+<line x1="360" y1="574" x2="640" y2="574" stroke="#d8dee6" stroke-width="1" />
+<rect x="369" y="583" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="382" y="591" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">created_at : timestamp</text>
+<line x1="360" y1="600" x2="640" y2="600" stroke="#d8dee6" stroke-width="1" />
+<text x="368" y="617" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 1 cot khac</text>
+<rect x="700" y="510" width="280" height="156" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="700" y="510" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="708" y="528" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers don_dat_lich_dich_vu</text>
+<line x1="700" y1="538" x2="980" y2="538" stroke="#d8dee6" stroke-width="1" />
+<rect x="708" y="546" width="8" height="8" fill="#1f65d6" />
+<text x="722" y="555" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="701" y="564" width="278" height="26" fill="#f7f9fb" />
+<line x1="700" y1="564" x2="980" y2="564" stroke="#d8dee6" stroke-width="1" />
+<circle cx="712" cy="576" r="4" fill="#2ca24f" />
+<text x="722" y="581" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">don_dat_lich_id : bigint</text>
+<line x1="700" y1="590" x2="980" y2="590" stroke="#d8dee6" stroke-width="1" />
+<circle cx="712" cy="602" r="4" fill="#2ca24f" />
+<text x="722" y="607" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">dich_vu_id : bigint</text>
+<rect x="701" y="616" width="278" height="26" fill="#f7f9fb" />
+<line x1="700" y1="616" x2="980" y2="616" stroke="#d8dee6" stroke-width="1" />
+<rect x="709" y="625" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="722" y="633" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">created_at : timestamp</text>
+<line x1="700" y1="642" x2="980" y2="642" stroke="#d8dee6" stroke-width="1" />
+<text x="708" y="659" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 1 cot khac</text>
+<rect x="700" y="760" width="280" height="234" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="700" y="760" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="708" y="778" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers danh_gia</text>
+<line x1="700" y1="788" x2="980" y2="788" stroke="#d8dee6" stroke-width="1" />
+<rect x="708" y="796" width="8" height="8" fill="#1f65d6" />
+<text x="722" y="805" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="701" y="814" width="278" height="26" fill="#f7f9fb" />
+<line x1="700" y1="814" x2="980" y2="814" stroke="#d8dee6" stroke-width="1" />
+<circle cx="712" cy="826" r="4" fill="#2ca24f" />
+<text x="722" y="831" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">don_dat_lich_id : bigint</text>
+<line x1="700" y1="840" x2="980" y2="840" stroke="#d8dee6" stroke-width="1" />
+<circle cx="712" cy="852" r="4" fill="#2ca24f" />
+<text x="722" y="857" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">nguoi_danh_gia_id : bigint</text>
+<rect x="701" y="866" width="278" height="26" fill="#f7f9fb" />
+<line x1="700" y1="866" x2="980" y2="866" stroke="#d8dee6" stroke-width="1" />
+<circle cx="712" cy="878" r="4" fill="#2ca24f" />
+<text x="722" y="883" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">nguoi_bi_danh_gia_id : bigint</text>
+<line x1="700" y1="892" x2="980" y2="892" stroke="#d8dee6" stroke-width="1" />
+<rect x="709" y="901" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="722" y="909" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">so_sao : int</text>
+<rect x="701" y="918" width="278" height="26" fill="#f7f9fb" />
+<line x1="700" y1="918" x2="980" y2="918" stroke="#d8dee6" stroke-width="1" />
+<rect x="709" y="927" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="722" y="935" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">nhan_xet : text</text>
+<line x1="700" y1="944" x2="980" y2="944" stroke="#d8dee6" stroke-width="1" />
+<rect x="709" y="953" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="722" y="961" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">created_at : timestamp</text>
+<line x1="700" y1="970" x2="980" y2="970" stroke="#d8dee6" stroke-width="1" />
+<text x="708" y="987" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 6 cot khac</text>
+<rect x="1040" y="118" width="280" height="260" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="1040" y="118" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="1048" y="136" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers don_dat_lich</text>
+<line x1="1040" y1="146" x2="1320" y2="146" stroke="#d8dee6" stroke-width="1" />
+<rect x="1048" y="154" width="8" height="8" fill="#1f65d6" />
+<text x="1062" y="163" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="1041" y="172" width="278" height="26" fill="#f7f9fb" />
+<line x1="1040" y1="172" x2="1320" y2="172" stroke="#d8dee6" stroke-width="1" />
+<circle cx="1052" cy="184" r="4" fill="#2ca24f" />
+<text x="1062" y="189" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">khach_hang_id : bigint</text>
+<line x1="1040" y1="198" x2="1320" y2="198" stroke="#d8dee6" stroke-width="1" />
+<circle cx="1052" cy="210" r="4" fill="#2ca24f" />
+<text x="1062" y="215" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">tho_id : bigint</text>
+<rect x="1041" y="224" width="278" height="26" fill="#f7f9fb" />
+<line x1="1040" y1="224" x2="1320" y2="224" stroke="#d8dee6" stroke-width="1" />
+<circle cx="1052" cy="236" r="4" fill="#2ca24f" />
+<text x="1062" y="241" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">dich_vu_id : bigint</text>
+<line x1="1040" y1="250" x2="1320" y2="250" stroke="#d8dee6" stroke-width="1" />
+<rect x="1049" y="259" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="1062" y="267" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">loai_dat_lich : enum</text>
+<rect x="1041" y="276" width="278" height="26" fill="#f7f9fb" />
+<line x1="1040" y1="276" x2="1320" y2="276" stroke="#d8dee6" stroke-width="1" />
+<rect x="1049" y="285" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="1062" y="293" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">thoi_gian_hen : datetime</text>
+<line x1="1040" y1="302" x2="1320" y2="302" stroke="#d8dee6" stroke-width="1" />
+<rect x="1049" y="311" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="1062" y="319" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">trang_thai : enum</text>
+<rect x="1041" y="328" width="278" height="26" fill="#f7f9fb" />
+<line x1="1040" y1="328" x2="1320" y2="328" stroke="#d8dee6" stroke-width="1" />
+<rect x="1049" y="337" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="1062" y="345" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">tong_tien : decimal</text>
+<line x1="1040" y1="354" x2="1320" y2="354" stroke="#d8dee6" stroke-width="1" />
+<text x="1048" y="371" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 25 cot khac</text>
+<rect x="1380" y="510" width="280" height="208" fill="#ffffff" stroke="#8e99a7" stroke-width="1" />
+<rect x="1380" y="510" width="280" height="28" fill="#dde5ee" stroke="#8e99a7" stroke-width="1" />
+<text x="1388" y="528" font-family="Arial, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#1d2630">find_workers thanh_toan</text>
+<line x1="1380" y1="538" x2="1660" y2="538" stroke="#d8dee6" stroke-width="1" />
+<rect x="1388" y="546" width="8" height="8" fill="#1f65d6" />
+<text x="1402" y="555" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">id : bigint</text>
+<rect x="1381" y="564" width="278" height="26" fill="#f7f9fb" />
+<line x1="1380" y1="564" x2="1660" y2="564" stroke="#d8dee6" stroke-width="1" />
+<circle cx="1392" cy="576" r="4" fill="#2ca24f" />
+<text x="1402" y="581" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">don_dat_lich_id : bigint</text>
+<line x1="1380" y1="590" x2="1660" y2="590" stroke="#d8dee6" stroke-width="1" />
+<rect x="1389" y="599" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="1402" y="607" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">so_tien : decimal</text>
+<rect x="1381" y="616" width="278" height="26" fill="#f7f9fb" />
+<line x1="1380" y1="616" x2="1660" y2="616" stroke="#d8dee6" stroke-width="1" />
+<rect x="1389" y="625" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="1402" y="633" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">phuong_thuc : enum</text>
+<line x1="1380" y1="642" x2="1660" y2="642" stroke="#d8dee6" stroke-width="1" />
+<rect x="1389" y="651" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="1402" y="659" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">trang_thai : enum</text>
+<rect x="1381" y="668" width="278" height="26" fill="#f7f9fb" />
+<line x1="1380" y1="668" x2="1660" y2="668" stroke="#d8dee6" stroke-width="1" />
+<rect x="1389" y="677" width="6" height="6" fill="#ffffff" stroke="#8893a1" stroke-width="1" />
+<text x="1402" y="685" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1d2630">created_at : timestamp</text>
+<line x1="1380" y1="694" x2="1660" y2="694" stroke="#d8dee6" stroke-width="1" />
+<text x="1388" y="711" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#677381">+ 3 cot khac</text>
+<rect x="1260" y="1010" rx="10" ry="10" width="460" height="90" fill="#fff6d8" stroke="#bda33f" stroke-width="2" />
+<text x="1272" y="1030" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#715f10">Quan he logic N-N duoc suy ra tu bang noi</text>
+<text x="1272" y="1058" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#715f10">danh_muc_dich_vu &lt;-&gt; don_dat_lich : (n,n) qua don_dat_lich_dich_vu</text>
+<text x="1272" y="1086" font-family="Arial, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#715f10">danh_muc_dich_vu &lt;-&gt; users : (n,n) qua tho_dich_vu</text>
+</svg>

@@ -1,0 +1,253 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1360" height="1286" viewBox="0 0 1360 1286">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#f5f7fb" />
+<stop offset="100%" stop-color="#e8eef7" />
+</linearGradient>
+</defs>
+<rect width="1360" height="1286" fill="url(#bg)" />
+<text x="80" y="56" font-family="Arial, Segoe UI, sans-serif" font-size="28" font-weight="700" fill="#16324f">ERD - find_workers</text>
+<text x="80" y="86" font-family="Arial, Segoe UI, sans-serif" font-size="16" font-weight="400" fill="#4c647d">Chi gom cac bang co quan he khoa ngoai trong file SQL</text>
+<polyline points="520,242 460,242 460,242 400,242" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="400,242 392,238 392,246" fill="#8f5fd7" />
+<polyline points="520,242 506,231" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="520,242 506,242" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="520,242 506,253" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="432" y="230" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#8f5fd7" stroke-width="2" /><text x="442" y="247" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#8f5fd7">(1,n)</text>
+<polyline points="520,1094 460,1094 460,810 400,810" fill="none" stroke="#5a7795" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="400,810 392,806 392,814" fill="#5a7795" />
+<polyline points="520,1094 506,1083" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="520,1094 506,1094" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="520,1094 506,1105" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="432" y="940" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#5a7795" stroke-width="2" /><text x="442" y="957" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#5a7795">(1,n)</text>
+<polyline points="680,982 680,668 240,668 240,354" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="240,354 236,346 244,346" fill="#8f5fd7" />
+<polyline points="680,982 669,996" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="680,982 680,996" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="680,982 691,996" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="432" y="656" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#8f5fd7" stroke-width="2" /><text x="442" y="673" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#8f5fd7">(1,n)</text>
+<polyline points="680,982 680,668 240,668 240,354" fill="none" stroke="#2a6f97" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="240,354 236,346 244,346" fill="#2a6f97" />
+<polyline points="680,982 669,996" fill="none" stroke="#2a6f97" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="680,982 680,996" fill="none" stroke="#2a6f97" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="680,982 691,996" fill="none" stroke="#2a6f97" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="432" y="656" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#2a6f97" stroke-width="2" /><text x="442" y="673" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#2a6f97">(1,n)</text>
+<polyline points="400,810 680,810 680,242 960,242" fill="none" stroke="#5a7795" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="960,242 968,238 968,246" fill="#5a7795" />
+<polyline points="400,810 414,799" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="400,810 414,810" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="400,810 414,821" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="652" y="514" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#5a7795" stroke-width="2" /><text x="662" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#5a7795">(1,n)</text>
+<polyline points="240,698 240,526 240,526 240,354" fill="none" stroke="#2a6f97" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="240,354 236,346 244,346" fill="#2a6f97" />
+<polyline points="240,698 229,712" fill="none" stroke="#2a6f97" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="240,698 240,712" fill="none" stroke="#2a6f97" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="240,698 251,712" fill="none" stroke="#2a6f97" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="212" y="514" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#2a6f97" stroke-width="2" /><text x="222" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#2a6f97">(1,n)</text>
+<polyline points="240,698 240,526 240,526 240,354" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="240,354 236,346 244,346" fill="#8f5fd7" />
+<polyline points="240,698 229,712" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="240,698 240,712" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="240,698 251,712" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="212" y="514" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#8f5fd7" stroke-width="2" /><text x="222" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#8f5fd7">(1,n)</text>
+<polyline points="680,698 680,526 1120,526 1120,354" fill="none" stroke="#5a7795" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="1120,354 1116,346 1124,346" fill="#5a7795" />
+<polyline points="680,698 669,712" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="680,698 680,712" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="680,698 691,712" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="872" y="514" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#5a7795" stroke-width="2" /><text x="882" y="531" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#5a7795">(1,n)</text>
+<polyline points="520,786 460,786 460,810 400,810" fill="none" stroke="#5a7795" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="400,810 392,806 392,814" fill="#5a7795" />
+<polyline points="520,786 506,775" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="520,786 506,786" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="520,786 506,797" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="432" y="786" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#5a7795" stroke-width="2" /><text x="442" y="803" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#5a7795">(1,n)</text>
+<polyline points="520,526 460,526 460,242 400,242" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="400,242 392,238 392,246" fill="#8f5fd7" />
+<polyline points="520,526 506,515" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="520,526 506,526" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="520,526 506,537" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="432" y="372" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#8f5fd7" stroke-width="2" /><text x="442" y="389" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#8f5fd7">(1,n)</text>
+<polyline points="960,810 680,810 680,810 400,810" fill="none" stroke="#5a7795" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="400,810 392,806 392,814" fill="#5a7795" />
+<polyline points="960,810 946,799" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="960,810 946,810" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="960,810 946,821" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="652" y="798" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#5a7795" stroke-width="2" /><text x="662" y="815" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#5a7795">(1,n)</text>
+<polyline points="1120,414 1120,384 1120,384 1120,354" fill="none" stroke="#5a7795" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="1120,354 1116,346 1124,346" fill="#5a7795" />
+<polyline points="1120,414 1109,428" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="1120,414 1120,428" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="1120,414 1131,428" fill="none" stroke="#5a7795" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="1092" y="372" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#5a7795" stroke-width="2" /><text x="1102" y="389" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#5a7795">(1,n)</text>
+<polyline points="960,502 680,502 680,242 400,242" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round" stroke-linejoin="round" />
+<polygon points="400,242 392,238 392,246" fill="#8f5fd7" />
+<polyline points="960,502 946,491" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="960,502 946,502" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><polyline points="960,502 946,513" fill="none" stroke="#8f5fd7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="652" y="360" rx="10" ry="10" width="56" height="24" fill="#ffffff" stroke="#8f5fd7" stroke-width="2" /><text x="662" y="377" font-family="Arial, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#8f5fd7">(1,n)</text>
+<rect x="80" y="130" rx="12" ry="12" width="320" height="224" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="80" y="130" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="80" y="152" width="320" height="12" fill="#1f4f82" />
+<text x="94" y="153" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">users</text>
+<text x="94" y="188" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="314" y="188" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="90" y1="200" x2="390" y2="200" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="214" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      name</text>
+<text x="314" y="214" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">varchar</text>
+<line x1="90" y1="226" x2="390" y2="226" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="240" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      role</text>
+<text x="314" y="240" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">enum</text>
+<line x1="90" y1="252" x2="390" y2="252" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="266" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      email</text>
+<text x="314" y="266" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">varchar</text>
+<line x1="90" y1="278" x2="390" y2="278" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="292" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      created_at</text>
+<text x="314" y="292" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<line x1="90" y1="304" x2="390" y2="304" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="318" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      email_verified_at</text>
+<text x="314" y="318" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<text x="94" y="344" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">+ 7 cot khac</text>
+<rect x="520" y="130" rx="12" ry="12" width="320" height="224" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="520" y="130" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="520" y="152" width="320" height="12" fill="#1f4f82" />
+<text x="534" y="153" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">chat_magic</text>
+<text x="534" y="188" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="754" y="188" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="200" x2="830" y2="200" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="214" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    user_id</text>
+<text x="754" y="214" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="226" x2="830" y2="226" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="240" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      created_at</text>
+<text x="754" y="240" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<line x1="530" y1="252" x2="830" y2="252" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="266" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      guest_token</text>
+<text x="754" y="266" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">varchar</text>
+<line x1="530" y1="278" x2="830" y2="278" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="292" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      sender</text>
+<text x="754" y="292" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">enum</text>
+<line x1="530" y1="304" x2="830" y2="304" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="318" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      text</text>
+<text x="754" y="318" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">longtext</text>
+<text x="534" y="344" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">+ 1 cot khac</text>
+<rect x="520" y="414" rx="12" ry="12" width="320" height="224" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="520" y="414" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="520" y="436" width="320" height="12" fill="#1f4f82" />
+<text x="534" y="437" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">ho_so_tho</text>
+<text x="534" y="472" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="754" y="472" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="484" x2="830" y2="484" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="498" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    user_id</text>
+<text x="754" y="498" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="510" x2="830" y2="510" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="524" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      created_at</text>
+<text x="754" y="524" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<line x1="530" y1="536" x2="830" y2="536" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="550" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      cccd</text>
+<text x="754" y="550" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">varchar</text>
+<line x1="530" y1="562" x2="830" y2="562" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="576" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      kinh_nghiem</text>
+<text x="754" y="576" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">text</text>
+<line x1="530" y1="588" x2="830" y2="588" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="602" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      chung_chi</text>
+<text x="754" y="602" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">varchar</text>
+<text x="534" y="628" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">+ 11 cot khac</text>
+<rect x="960" y="130" rx="12" ry="12" width="320" height="224" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="960" y="130" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="960" y="152" width="320" height="12" fill="#1f4f82" />
+<text x="974" y="153" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">danh_muc_dich_vu</text>
+<text x="974" y="188" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="1194" y="188" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="970" y1="200" x2="1270" y2="200" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="214" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      ten_dich_vu</text>
+<text x="1194" y="214" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">varchar</text>
+<line x1="970" y1="226" x2="1270" y2="226" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="240" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      trang_thai</text>
+<text x="1194" y="240" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">tinyint</text>
+<line x1="970" y1="252" x2="1270" y2="252" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="266" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      created_at</text>
+<text x="1194" y="266" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<line x1="970" y1="278" x2="1270" y2="278" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="292" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      mo_ta</text>
+<text x="1194" y="292" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">varchar</text>
+<line x1="970" y1="304" x2="1270" y2="304" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="318" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      hinh_anh</text>
+<text x="1194" y="318" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">varchar</text>
+<text x="974" y="344" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">+ 1 cot khac</text>
+<rect x="960" y="414" rx="12" ry="12" width="320" height="176" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="960" y="414" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="960" y="436" width="320" height="12" fill="#1f4f82" />
+<text x="974" y="437" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">tho_dich_vu</text>
+<text x="974" y="472" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="1194" y="472" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="970" y1="484" x2="1270" y2="484" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="498" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    dich_vu_id</text>
+<text x="1194" y="498" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="970" y1="510" x2="1270" y2="510" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="524" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    user_id</text>
+<text x="1194" y="524" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="970" y1="536" x2="1270" y2="536" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="550" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      created_at</text>
+<text x="1194" y="550" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<line x1="970" y1="562" x2="1270" y2="562" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="576" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      updated_at</text>
+<text x="1194" y="576" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<rect x="80" y="698" rx="12" ry="12" width="320" height="224" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="80" y="698" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="80" y="720" width="320" height="12" fill="#1f4f82" />
+<text x="94" y="721" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">don_dat_lich</text>
+<text x="94" y="756" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="314" y="756" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="90" y1="768" x2="390" y2="768" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="782" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    dich_vu_id</text>
+<text x="314" y="782" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="90" y1="794" x2="390" y2="794" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="808" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    khach_hang_id</text>
+<text x="314" y="808" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="90" y1="820" x2="390" y2="820" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="834" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    tho_id</text>
+<text x="314" y="834" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="90" y1="846" x2="390" y2="846" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="860" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      trang_thai</text>
+<text x="314" y="860" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">enum</text>
+<line x1="90" y1="872" x2="390" y2="872" stroke="#edf1f5" stroke-width="1" />
+<text x="94" y="886" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      thoi_gian_hen</text>
+<text x="314" y="886" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">datetime</text>
+<text x="94" y="912" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">+ 27 cot khac</text>
+<rect x="520" y="698" rx="12" ry="12" width="320" height="176" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="520" y="698" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="520" y="720" width="320" height="12" fill="#1f4f82" />
+<text x="534" y="721" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">don_dat_lich_dich_vu</text>
+<text x="534" y="756" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="754" y="756" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="768" x2="830" y2="768" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="782" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    dich_vu_id</text>
+<text x="754" y="782" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="794" x2="830" y2="794" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="808" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    don_dat_lich_id</text>
+<text x="754" y="808" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="820" x2="830" y2="820" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="834" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      created_at</text>
+<text x="754" y="834" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<line x1="530" y1="846" x2="830" y2="846" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="860" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      updated_at</text>
+<text x="754" y="860" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<rect x="960" y="698" rx="12" ry="12" width="320" height="224" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="960" y="698" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="960" y="720" width="320" height="12" fill="#1f4f82" />
+<text x="974" y="721" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">thanh_toan</text>
+<text x="974" y="756" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="1194" y="756" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="970" y1="768" x2="1270" y2="768" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="782" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    don_dat_lich_id</text>
+<text x="1194" y="782" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="970" y1="794" x2="1270" y2="794" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="808" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      trang_thai</text>
+<text x="1194" y="808" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">enum</text>
+<line x1="970" y1="820" x2="1270" y2="820" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="834" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      phuong_thuc</text>
+<text x="1194" y="834" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">enum</text>
+<line x1="970" y1="846" x2="1270" y2="846" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="860" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      so_tien</text>
+<text x="1194" y="860" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">decimal</text>
+<line x1="970" y1="872" x2="1270" y2="872" stroke="#edf1f5" stroke-width="1" />
+<text x="974" y="886" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      created_at</text>
+<text x="1194" y="886" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<text x="974" y="912" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">+ 3 cot khac</text>
+<rect x="520" y="982" rx="12" ry="12" width="320" height="224" fill="#ffffff" stroke="#9fb3c8" stroke-width="2" />
+<rect x="520" y="982" rx="12" ry="12" width="320" height="34" fill="#1f4f82" />
+<rect x="520" y="1004" width="320" height="12" fill="#1f4f82" />
+<text x="534" y="1005" font-family="Arial, Segoe UI, sans-serif" font-size="18" font-weight="700" fill="#ffffff">danh_gia</text>
+<text x="534" y="1040" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#0a7a45">PK    id</text>
+<text x="754" y="1040" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="1052" x2="830" y2="1052" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="1066" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    don_dat_lich_id</text>
+<text x="754" y="1066" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="1078" x2="830" y2="1078" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="1092" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    nguoi_bi_danh_gia_id</text>
+<text x="754" y="1092" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="1104" x2="830" y2="1104" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="1118" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#c15814">FK    nguoi_danh_gia_id</text>
+<text x="754" y="1118" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">bigint</text>
+<line x1="530" y1="1130" x2="830" y2="1130" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="1144" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      created_at</text>
+<text x="754" y="1144" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">timestamp</text>
+<line x1="530" y1="1156" x2="830" y2="1156" stroke="#edf1f5" stroke-width="1" />
+<text x="534" y="1170" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">      so_lan_sua</text>
+<text x="754" y="1170" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">int</text>
+<text x="534" y="1196" font-family="Arial, Segoe UI, sans-serif" font-size="15" font-weight="400" fill="#5e738c">+ 7 cot khac</text>
+</svg>

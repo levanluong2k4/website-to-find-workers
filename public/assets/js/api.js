@@ -66,6 +66,13 @@ export async function callApi(endpoint, method = 'GET', bodyData = null) {
 
         const data = await response.json();
 
+        if (response.status === 403 && data?.requires_phone_verification) {
+            const verifyUrl = data.phone_verification_url || '/verify-phone';
+            if (!window.location.pathname.includes('/verify-phone')) {
+                window.location.href = verifyUrl;
+            }
+        }
+
         // Trả về kèm Status để component biết cách xử lý lỗi 400, 422...
         return {
             status: response.status,
@@ -94,6 +101,30 @@ export function saveUserSession(token, user) {
 export function getCurrentUser() {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
+}
+
+export function resolveHomePathByRole(role) {
+    if (role === 'admin') return '/admin/dashboard';
+    if (role === 'worker') return '/worker/dashboard';
+    if (role === 'customer') return '/customer/home';
+    return '/';
+}
+
+export function redirectAuthenticatedUser() {
+    const token = localStorage.getItem('access_token');
+    const user = getCurrentUser();
+
+    if (!token || token === 'undefined' || token === 'null' || !user?.role) {
+        return null;
+    }
+
+    const targetPath = resolveHomePathByRole(user.role);
+
+    if (window.location.pathname !== targetPath) {
+        window.location.replace(targetPath);
+    }
+
+    return targetPath;
 }
 
 export function logout() {
@@ -133,7 +164,7 @@ export const showToast = (message, type = 'success') => {
             style: {
                 background: bgColor,
                 borderRadius: '8px',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'Roboto, sans-serif',
                 fontWeight: '500',
                 boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
             }

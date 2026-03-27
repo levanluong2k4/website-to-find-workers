@@ -4,11 +4,11 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chọn Vai Trò - Thợ Tốt NTU</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-    html, body { height:100vh; overflow:hidden; font-family:'Inter',sans-serif; display:flex; }
+    html, body { height:100vh; overflow:hidden; font-family:'Roboto',sans-serif; display:flex; background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.68) 0, rgba(255, 255, 255, 0) 24rem), radial-gradient(circle at top right, rgba(255, 255, 255, 0.58) 0, rgba(255, 255, 255, 0) 18rem), linear-gradient(180deg, #8ad0ff 0%, #c7e8ff 36%, #edf7ff 100%); }
 
     /* ── LEFT ── */
     .left-panel {
@@ -33,7 +33,7 @@
       border-radius:.6rem; display:flex; align-items:center; justify-content:center;
       backdrop-filter:blur(4px);
     }
-    .logo-text { color:#fff; font-family:'Poppins',sans-serif; font-weight:800; font-size:1rem; }
+    .logo-text { color:#fff; font-family:'DM Sans',sans-serif; font-weight:800; font-size:1rem; }
 
     .hero-content {
       flex:1; display:flex; flex-direction:column; justify-content:flex-start;
@@ -46,7 +46,7 @@
       font-size:.72rem; font-weight:600; width:fit-content; margin-bottom:.5rem;
     }
     .hero-title {
-      font-family:'Poppins',sans-serif; font-weight:800;
+      font-family:'DM Sans',sans-serif; font-weight:800;
       font-size:1.45rem; color:#fff; line-height:1.2; margin-bottom:.35rem;
     }
     .hero-sub {
@@ -90,7 +90,7 @@
       font-size:.68rem; font-weight:700; margin-bottom:.35rem;
     }
     #heroCarousel .caption-title {
-      font-family:'Poppins',sans-serif; font-weight:800;
+      font-family:'DM Sans',sans-serif; font-weight:800;
       font-size:1.05rem; color:#fff; line-height:1.25;
       margin-bottom:.2rem; text-shadow:0 1px 6px rgba(0,0,0,.4);
     }
@@ -111,7 +111,7 @@
     .right-inner { width:100%; max-width:480px; }
 
     .right-heading {
-      font-family:'Poppins',sans-serif; font-weight:800;
+      font-family:'DM Sans',sans-serif; font-weight:800;
       font-size:1.45rem; color:#0f172a; margin-bottom:.3rem; line-height:1.2;
     }
     .right-sub { color:#64748b; font-size:.83rem; margin-bottom:1.25rem; }
@@ -138,7 +138,7 @@
     .role-img-wrap img { width:auto; height:90px; object-fit:contain; }
 
     .role-title {
-      font-family:'Poppins',sans-serif; font-weight:700;
+      font-family:'DM Sans',sans-serif; font-weight:700;
       font-size:.95rem; color:#0f172a; margin-bottom:.25rem;
     }
     .role-desc { color:#64748b; font-size:.78rem; line-height:1.45; margin-bottom:.65rem; flex:1; }
@@ -160,11 +160,32 @@
       content:''; flex:1; height:1px; background:#e2e8f0;
     }
 
-    .security-note {
+  .security-note {
       display:flex; align-items:center; gap:.4rem;
       justify-content:center; font-size:.72rem; color:#94a3b8;
     }
   </style>
+  <script>
+    (() => {
+      const token = localStorage.getItem('access_token');
+      const userStr = localStorage.getItem('user');
+
+      if (!token || token === 'undefined' || token === 'null' || !userStr) return;
+
+      try {
+        const user = JSON.parse(userStr);
+        const targetPath =
+          user.role === 'admin' ? '/admin/dashboard' :
+          user.role === 'worker' ? '/worker/dashboard' :
+          user.role === 'customer' ? '/customer/home' :
+          null;
+
+        if (targetPath && window.location.pathname !== targetPath) {
+          window.location.replace(targetPath);
+        }
+      } catch (error) {}
+    })();
+  </script>
 </head>
 <body>
 

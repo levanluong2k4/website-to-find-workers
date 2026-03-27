@@ -4,9 +4,13 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\DanhMucDichVuController;
 use App\Http\Controllers\Api\DonDatLichController;
+use App\Http\Controllers\Api\LinhKienController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PhoneVerificationController;
+use App\Http\Controllers\Api\TravelFeeConfigController;
 use App\Http\Middleware\EnsureGuestToken;
+use App\Http\Middleware\EnsurePhoneVerified;
 use App\Http\Middleware\ResolveChatIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +23,9 @@ Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 // Public browse APIs
 Route::get('/danh-muc-dich-vu', [DanhMucDichVuController::class, 'index']);
 Route::get('/danh-muc-dich-vu/{id}', [DanhMucDichVuController::class, 'show']);
+Route::get('/linh-kien', [LinhKienController::class, 'index']);
+Route::get('/linh-kien/{id}', [LinhKienController::class, 'show'])->whereNumber('id');
+Route::get('/travel-fee-config', [TravelFeeConfigController::class, 'public']);
 Route::get('/ho-so-tho', [\App\Http\Controllers\Api\HoSoThoController::class, 'index']);
 Route::get('/ho-so-tho/{id}', [\App\Http\Controllers\Api\HoSoThoController::class, 'show']);
 
@@ -44,63 +51,77 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/phone-verification/request', [PhoneVerificationController::class, 'requestCode']);
+    Route::post('/phone-verification/verify', [PhoneVerificationController::class, 'verifyCode']);
 
-    // User profile
-    Route::post('/user/avatar', [\App\Http\Controllers\Api\UserController::class, 'uploadAvatar']);
+    Route::middleware([EnsurePhoneVerified::class])->group(function () {
+        Route::put('/user', [\App\Http\Controllers\Api\UserController::class, 'updateProfile']);
 
-    // Notifications
-    Route::get('/notifications/unread', [NotificationController::class, 'getUnread']);
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+        // User profile
+        Route::post('/user/avatar', [\App\Http\Controllers\Api\UserController::class, 'uploadAvatar']);
+        Route::put('/user/address', [\App\Http\Controllers\Api\UserController::class, 'updateAddress']);
+        Route::put('/user/password', [\App\Http\Controllers\Api\UserController::class, 'changePassword']);
 
-    // Booking actions
-    Route::post('/bookings/cancel/{id}', [DonDatLichController::class, 'cancelBooking']);
+        // Notifications
+        Route::get('/notifications/unread', [NotificationController::class, 'getUnread']);
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 
-    // Payment actions
-    Route::post('/payment/create', [PaymentController::class, 'createPaymentUrl']);
+        // Booking actions
+        Route::post('/bookings/cancel/{id}', [DonDatLichController::class, 'cancelBooking']);
 
-    // Service category CRUD
-    Route::post('/danh-muc-dich-vu', [DanhMucDichVuController::class, 'store']);
-    Route::put('/danh-muc-dich-vu/{id}', [DanhMucDichVuController::class, 'update']);
-    Route::delete('/danh-muc-dich-vu/{id}', [DanhMucDichVuController::class, 'destroy']);
+        // Payment actions
+        Route::post('/payment/create', [PaymentController::class, 'createPaymentUrl']);
 
-    // Worker profile APIs
-    Route::put('/ho-so-tho', [\App\Http\Controllers\Api\HoSoThoController::class, 'update']);
-    Route::get('/worker/stats', [\App\Http\Controllers\Api\HoSoThoController::class, 'stats']);
+        // Service category CRUD
+        Route::post('/danh-muc-dich-vu', [DanhMucDichVuController::class, 'store']);
+        Route::put('/danh-muc-dich-vu/{id}', [DanhMucDichVuController::class, 'update']);
+        Route::delete('/danh-muc-dich-vu/{id}', [DanhMucDichVuController::class, 'destroy']);
 
-    // Booking APIs
-    Route::post('/don-dat-lich', [\App\Http\Controllers\Api\DonDatLichController::class, 'store']);
-    Route::get('/don-dat-lich/available', [\App\Http\Controllers\Api\DonDatLichController::class, 'availableJobs']);
-    Route::get('/don-dat-lich/calendar', [\App\Http\Controllers\Api\DonDatLichController::class, 'getCalendarView']);
-    Route::get('/don-dat-lich', [\App\Http\Controllers\Api\DonDatLichController::class, 'index']);
-    Route::get('/don-dat-lich/{id}', [\App\Http\Controllers\Api\DonDatLichController::class, 'show']);
-    Route::post('/don-dat-lich/{id}/claim', [\App\Http\Controllers\Api\DonDatLichController::class, 'claimJob']);
-    Route::put('/don-dat-lich/{id}/status', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateStatus']);
-    Route::put('/don-dat-lich/{id}/update-costs', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateCosts']);
-    Route::post('/bookings/{id}/request-payment', [\App\Http\Controllers\Api\DonDatLichController::class, 'requestPayment']);
-    Route::post('/bookings/{id}/confirm-cash-payment', [\App\Http\Controllers\Api\DonDatLichController::class, 'confirmCashPayment']);
+        // Worker profile APIs
+        Route::put('/ho-so-tho', [\App\Http\Controllers\Api\HoSoThoController::class, 'update']);
+        Route::get('/worker/stats', [\App\Http\Controllers\Api\HoSoThoController::class, 'stats']);
 
-    // Review APIs
-    Route::post('/danh-gia', [\App\Http\Controllers\Api\DanhGiaController::class, 'store']);
-    Route::put('/danh-gia/{id}', [\App\Http\Controllers\Api\DanhGiaController::class, 'update']);
+        // Booking APIs
+        Route::post('/don-dat-lich', [\App\Http\Controllers\Api\DonDatLichController::class, 'store']);
+        Route::get('/don-dat-lich/available', [\App\Http\Controllers\Api\DonDatLichController::class, 'availableJobs']);
+        Route::get('/don-dat-lich/calendar', [\App\Http\Controllers\Api\DonDatLichController::class, 'getCalendarView']);
+        Route::get('/don-dat-lich', [\App\Http\Controllers\Api\DonDatLichController::class, 'index']);
+        Route::get('/don-dat-lich/{id}', [\App\Http\Controllers\Api\DonDatLichController::class, 'show']);
+        Route::post('/don-dat-lich/{id}/claim', [\App\Http\Controllers\Api\DonDatLichController::class, 'claimJob']);
+        Route::put('/don-dat-lich/{id}/status', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateStatus']);
+        Route::put('/don-dat-lich/{id}/update-costs', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateCosts']);
+        Route::post('/don-dat-lich/{id}/parts/{partIndex}/confirm-warranty', [\App\Http\Controllers\Api\DonDatLichController::class, 'confirmPartWarranty']);
+        Route::post('/bookings/{id}/request-payment', [\App\Http\Controllers\Api\DonDatLichController::class, 'requestPayment']);
+        Route::post('/bookings/{id}/confirm-cash-payment', [\App\Http\Controllers\Api\DonDatLichController::class, 'confirmCashPayment']);
 
-    // Admin APIs
-    Route::middleware([\App\Http\Middleware\AdminMiddleware::class])->prefix('admin')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\Api\AdminController::class, 'getDashboardStats']);
-        Route::get('/users', [\App\Http\Controllers\Api\AdminController::class, 'getUsers']);
-        Route::patch('/users/{id}/toggle-status', [\App\Http\Controllers\Api\AdminController::class, 'toggleUserStatus']);
-        Route::get('/worker-profiles', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerProfiles']);
-        Route::patch('/worker-profiles/{userId}/approval', [\App\Http\Controllers\Api\AdminController::class, 'updateWorkerApproval']);
-        Route::get('/bookings', [\App\Http\Controllers\Api\AdminController::class, 'getAllBookings']);
-        Route::get('/services', [\App\Http\Controllers\Api\AdminController::class, 'getServices']);
-        Route::post('/services', [\App\Http\Controllers\Api\AdminController::class, 'storeService']);
-        Route::put('/services/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateService']);
-        Route::delete('/services/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroyService']);
-        Route::get('/assistant-soul', [\App\Http\Controllers\Api\AdminController::class, 'getAssistantSoulConfig']);
-        Route::put('/assistant-soul', [\App\Http\Controllers\Api\AdminController::class, 'updateAssistantSoulConfig']);
-        Route::delete('/assistant-soul', [\App\Http\Controllers\Api\AdminController::class, 'resetAssistantSoulConfig']);
+        // Review APIs
+        Route::post('/danh-gia', [\App\Http\Controllers\Api\DanhGiaController::class, 'store']);
+        Route::put('/danh-gia/{id}', [\App\Http\Controllers\Api\DanhGiaController::class, 'update']);
+
+        // Admin APIs
+        Route::middleware([\App\Http\Middleware\AdminMiddleware::class])->prefix('admin')->group(function () {
+            Route::get('/dashboard', [\App\Http\Controllers\Api\AdminController::class, 'getDashboardStats']);
+            Route::get('/users', [\App\Http\Controllers\Api\AdminController::class, 'getUsers']);
+            Route::patch('/users/{id}/toggle-status', [\App\Http\Controllers\Api\AdminController::class, 'toggleUserStatus']);
+            Route::get('/worker-profiles', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerProfiles']);
+            Route::patch('/worker-profiles/{userId}/approval', [\App\Http\Controllers\Api\AdminController::class, 'updateWorkerApproval']);
+            Route::get('/bookings', [\App\Http\Controllers\Api\AdminController::class, 'getAllBookings']);
+            Route::get('/services', [\App\Http\Controllers\Api\AdminController::class, 'getServices']);
+            Route::post('/services', [\App\Http\Controllers\Api\AdminController::class, 'storeService']);
+            Route::put('/services/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateService']);
+            Route::delete('/services/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroyService']);
+            Route::get('/ai-knowledge', [\App\Http\Controllers\Api\AdminController::class, 'getAiKnowledgeItems']);
+            Route::get('/ai-knowledge/export', [\App\Http\Controllers\Api\AdminController::class, 'exportAiKnowledge']);
+            Route::post('/ai-knowledge/sync', [\App\Http\Controllers\Api\AdminController::class, 'syncAiKnowledge']);
+            Route::get('/ai-knowledge/{id}', [\App\Http\Controllers\Api\AdminController::class, 'getAiKnowledgeItem']);
+            Route::get('/assistant-soul', [\App\Http\Controllers\Api\AdminController::class, 'getAssistantSoulConfig']);
+            Route::put('/assistant-soul', [\App\Http\Controllers\Api\AdminController::class, 'updateAssistantSoulConfig']);
+            Route::delete('/assistant-soul', [\App\Http\Controllers\Api\AdminController::class, 'resetAssistantSoulConfig']);
+            Route::get('/travel-fee-config', [TravelFeeConfigController::class, 'show']);
+            Route::put('/travel-fee-config', [TravelFeeConfigController::class, 'update']);
+        });
     });
 });
 

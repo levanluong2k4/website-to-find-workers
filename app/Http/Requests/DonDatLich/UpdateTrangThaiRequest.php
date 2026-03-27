@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\DonDatLich;
 
+use App\Models\DonDatLich;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateTrangThaiRequest extends FormRequest
 {
@@ -23,7 +25,13 @@ class UpdateTrangThaiRequest extends FormRequest
     {
         return [
             'trang_thai' => 'required|string|in:da_xac_nhan,dang_lam,cho_hoan_thanh,da_xong,da_huy',
-            'ly_do_huy' => 'required_if:trang_thai,da_huy|string|max:1000'
+            'ma_ly_do_huy' => [
+                Rule::requiredIf(fn () => $this->input('trang_thai') === 'da_huy'),
+                'nullable',
+                'string',
+                Rule::in(DonDatLich::cancelReasonCodes()),
+            ],
+            'ly_do_huy' => 'nullable|string|max:1000',
         ];
     }
 }

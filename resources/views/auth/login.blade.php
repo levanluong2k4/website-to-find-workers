@@ -4,11 +4,11 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Đăng nhập - Thợ Tốt NTU</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"/>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{min-height:100vh;display:flex;font-family:'Inter',sans-serif;overflow:hidden;}
+    body{min-height:100vh;display:flex;font-family:'Roboto',sans-serif;overflow:hidden;background:radial-gradient(circle at top left, rgba(255, 255, 255, 0.68) 0, rgba(255, 255, 255, 0) 24rem),radial-gradient(circle at top right, rgba(255, 255, 255, 0.58) 0, rgba(255, 255, 255, 0) 18rem),linear-gradient(180deg, #8ad0ff 0%, #c7e8ff 36%, #edf7ff 100%);}
 
     
     /* ── LEFT ── */
@@ -34,7 +34,7 @@
       border-radius:.6rem; display:flex; align-items:center; justify-content:center;
       backdrop-filter:blur(4px);
     }
-    .logo-text { color:#fff; font-family:'Poppins',sans-serif; font-weight:800; font-size:1rem; }
+    .logo-text { color:#fff; font-family:'DM Sans',sans-serif; font-weight:800; font-size:1rem; }
 
     .hero-content {
       flex:1; display:flex; flex-direction:column; justify-content:flex-start;
@@ -47,7 +47,7 @@
       font-size:.72rem; font-weight:600; width:fit-content; margin-bottom:.5rem;
     }
     .hero-title {
-      font-family:'Poppins',sans-serif; font-weight:800;
+      font-family:'DM Sans',sans-serif; font-weight:800;
       font-size:1.45rem; color:#fff; line-height:1.2; margin-bottom:.35rem;
     }
     .hero-sub {
@@ -91,7 +91,7 @@
       font-size:.68rem; font-weight:700; margin-bottom:.35rem;
     }
     #heroCarousel .caption-title {
-      font-family:'Poppins',sans-serif; font-weight:800;
+      font-family:'DM Sans',sans-serif; font-weight:800;
       font-size:1.05rem; color:#fff; line-height:1.25;
       margin-bottom:.2rem; text-shadow:0 1px 6px rgba(0,0,0,.4);
     }
@@ -107,7 +107,7 @@
     /* RIGHT */
     .right-panel{flex:1;background:linear-gradient(135deg,#f8fafc 0%,#f0f9ff 100%);display:flex;align-items:center;justify-content:center;padding:2rem;}
     .form-card{background:#fff;border-radius:1.5rem;box-shadow:0 20px 60px rgba(14,165,233,.1);padding:2.5rem;width:100%;max-width:420px;}
-    .form-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:1.5rem;color:#0f172a;margin-bottom:.4rem;}
+    .form-title{font-family:'DM Sans',sans-serif;font-weight:700;font-size:1.5rem;color:#0f172a;margin-bottom:.4rem;}
     .form-sub{color:#64748b;font-size:.85rem;margin-bottom:1.5rem;}
     .role-chip{display:inline-flex;align-items:center;gap:.4rem;background:#f0f9ff;border:1px solid #BAF2E9;color:#0369a1;border-radius:2rem;padding:.35rem .875rem;font-size:.78rem;font-weight:600;margin-bottom:1.75rem;}
     .input-group{margin-bottom:1.1rem;}
@@ -115,16 +115,23 @@
     .input-wrap{position:relative;display:flex;align-items:center;}
     .input-icon{position:absolute;left:.875rem;color:#94a3b8;}
     .input-icon .material-symbols-outlined{font-size:1.1rem;}
-    .input-wrap input{width:100%;border:1.5px solid #e2e8f0;border-radius:.75rem;padding:.75rem 1rem .75rem 2.75rem;font-size:.9rem;font-family:'Inter',sans-serif;background:#f8fafc;transition:all .2s;outline:none;}
+    .input-wrap input{width:100%;border:1.5px solid #e2e8f0;border-radius:.75rem;padding:.75rem 1rem .75rem 2.75rem;font-size:.9rem;font-family:'Roboto',sans-serif;background:#f8fafc;transition:all .2s;outline:none;}
     .input-wrap input:focus{border-color:#0EA5E9;background:#fff;box-shadow:0 0 0 3px rgba(14,165,233,.1);}
     .eye-toggle{position:absolute;right:.875rem;cursor:pointer;color:#94a3b8;}
     .eye-toggle .material-symbols-outlined{font-size:1.1rem;}
     .forgot-link{display:block;text-align:right;font-size:.78rem;color:#0EA5E9;text-decoration:none;font-weight:600;margin-top:.35rem;}
-    .btn-submit{width:100%;background:linear-gradient(135deg,#0EA5E9,#0284c7);color:#fff;border:none;border-radius:.875rem;padding:.9rem;font-family:'Poppins',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;margin-top:1.25rem;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+    .btn-submit{width:100%;background:linear-gradient(135deg,#0EA5E9,#0284c7);color:#fff;border:none;border-radius:.875rem;padding:.9rem;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;margin-top:1.25rem;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
     .btn-submit:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(14,165,233,.35);}
     .btn-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;}
     .divider{display:flex;align-items:center;gap:.75rem;margin:1.25rem 0;color:#cbd5e1;font-size:.8rem;}
     .divider::before,.divider::after{content:'';flex:1;height:1px;background:#e2e8f0;}
+    .btn-social{width:100%;display:flex;align-items:center;justify-content:center;gap:.75rem;border:1.5px solid #dbe7f3;border-radius:.875rem;padding:.85rem 1rem;background:#fff;color:#0f172a;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.92rem;text-decoration:none;transition:all .2s;}
+    .btn-social:hover{border-color:#0EA5E9;box-shadow:0 8px 24px rgba(14,165,233,.12);transform:translateY(-2px);}
+    .btn-social.is-disabled{background:#f8fafc;border-color:#e2e8f0;color:#94a3b8;box-shadow:none;transform:none;}
+    .btn-social.is-disabled:hover{border-color:#e2e8f0;box-shadow:none;transform:none;}
+    .btn-social svg{width:1.1rem;height:1.1rem;flex-shrink:0;}
+    .social-hint{margin-top:.7rem;text-align:center;font-size:.75rem;line-height:1.5;color:#64748b;}
+    .social-config-note{margin-top:.65rem;padding:.7rem .85rem;border-radius:.85rem;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:.75rem;line-height:1.5;}
     .register-link{text-align:center;font-size:.85rem;color:#64748b;}
     .register-link a{color:#0EA5E9;font-weight:700;text-decoration:none;}
     .back-link{display:flex;align-items:center;justify-content:center;gap:.3rem;color:#94a3b8;font-size:.78rem;text-decoration:none;margin-top:1.25rem;}
@@ -234,6 +241,13 @@
 <div class="right-panel">
   <div>
     <div class="form-card">
+      @php
+        $googleAuthConfig = app(\App\Services\Auth\GoogleAuthConfigService::class);
+        $googleAuthEnabled = $googleAuthConfig->isConfigured();
+        $googleAuthMessage = $googleAuthConfig->setupMessage();
+        $googleAuthMissingKeys = $googleAuthConfig->missingKeys();
+        $googleAuthRedirectUri = $googleAuthConfig->redirectUri();
+      @endphp
       <p class="form-title">Đăng nhập</p>
       <p class="form-sub">Nhập thông tin để tiếp tục sử dụng dịch vụ</p>
 
@@ -269,11 +283,35 @@
         </button>
       </form>
 
+      <a
+        href="{{ $googleAuthEnabled ? route('auth.google.redirect', ['role' => request('role', 'customer')]) : '#' }}"
+        class="btn-social{{ $googleAuthEnabled ? '' : ' is-disabled' }}"
+        id="googleLoginButton"
+        aria-disabled="{{ $googleAuthEnabled ? 'false' : 'true' }}"
+        data-google-enabled="{{ $googleAuthEnabled ? '1' : '0' }}"
+        data-google-error="{{ $googleAuthMessage }}"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.24 1.26-.96 2.32-2.04 3.03l3.3 2.56c1.92-1.77 3.03-4.38 3.03-7.47 0-.71-.06-1.39-.18-2.02H12z"/>
+          <path fill="#4285F4" d="M12 22c2.7 0 4.97-.9 6.63-2.44l-3.3-2.56c-.9.61-2.05.97-3.33.97-2.56 0-4.72-1.73-5.49-4.05H3.1v2.63A10 10 0 0 0 12 22z"/>
+          <path fill="#FBBC05" d="M6.51 13.92A5.98 5.98 0 0 1 6.2 12c0-.67.12-1.31.31-1.92V7.45H3.1A10 10 0 0 0 2 12c0 1.61.39 3.13 1.1 4.55l3.41-2.63z"/>
+          <path fill="#34A853" d="M12 6.03c1.47 0 2.79.51 3.84 1.5l2.88-2.88C16.96 3.02 14.7 2 12 2A10 10 0 0 0 3.1 7.45l3.41 2.63C7.28 7.76 9.44 6.03 12 6.03z"/>
+        </svg>
+        Đăng nhập với Google
+      </a>
+      <p class="social-hint">Lần đầu đăng nhập bằng Google, hệ thống sẽ tạo tài khoản theo vai trò bạn đã chọn.</p>
+      @unless ($googleAuthEnabled)
+        <p class="social-config-note">
+          Đăng nhập Google đang tạm tắt. Cần cấu hình: {{ implode(', ', $googleAuthMissingKeys) }}.
+          Callback URL hiện tại: {{ $googleAuthRedirectUri }}
+        </p>
+      @endunless
+
       <div class="divider">hoặc</div>
-      <p class="register-link">Chưa có tài khoản? <a href="{{ route('register') }}">Đăng ký ngay</a></p>
+      <p class="register-link">Chưa có tài khoản? <a href="{{ route('register', ['role' => request('role')]) }}">Đăng ký ngay</a></p>
     </div>
 
-    <a href="{{ url('/') }}" class="back-link">
+    <a href="{{ route('select-role') }}" class="back-link">
       <span class="material-symbols-outlined" style="font-size:.9rem;">arrow_back</span>
       Quay lại chọn vai trò
     </a>
@@ -282,24 +320,33 @@
 
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script type="module">
-import { callApi, showToast } from "{{ asset('assets/js/api.js') }}";
+import { callApi, redirectAuthenticatedUser, showToast } from "{{ asset('assets/js/api.js') }}";
 const baseUrl = '{{ url('/') }}';
+const flashError = @json(session('auth_error'));
+const googleLoginButton = document.getElementById('googleLoginButton');
+const googleAuthEnabled = googleLoginButton.dataset.googleEnabled === '1';
+const googleAuthError = googleLoginButton.dataset.googleError || '';
 
 // Set role chip label from URL
 const params = new URLSearchParams(window.location.search);
 const role = params.get('role') || 'customer';
 document.getElementById('roleLabel').textContent = role === 'worker' ? 'Thợ chuyên nghiệp' : 'Khách hàng';
 document.getElementById('roleChip').style.background = role === 'worker' ? '#f0fdf4' : '#f0f9ff';
+if (googleAuthEnabled) {
+  googleLoginButton.href = `${baseUrl}/auth/google/redirect?role=${encodeURIComponent(role)}`;
+} else {
+  googleLoginButton.addEventListener('click', e => {
+    e.preventDefault();
+    showToast(googleAuthError || 'Đăng nhập Google chưa được cấu hình.', 'error');
+  });
+}
+
+if (flashError) {
+  showToast(flashError, 'error');
+}
 
 // Auth guard — redirect if already logged in
-const token = localStorage.getItem('access_token');
-const user = localStorage.getItem('user');
-if (token && user) {
-  const userData = JSON.parse(user);
-  if (userData.role === 'admin') window.location.href = baseUrl + '/admin/dashboard';
-  else if (userData.role === 'worker') window.location.href = baseUrl + '/worker/dashboard';
-  else window.location.href = baseUrl + '/customer/home';
-}
+redirectAuthenticatedUser();
 
 window.togglePassword = function() {
   const input = document.getElementById('matKhau');
@@ -317,11 +364,11 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
   btn.innerHTML = '<span style="width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;"></span> Đang xử lý...';
 
   try {
-    const response = await callApi('/login', 'POST', { email, password });
+    const response = await callApi('/login', 'POST', { email, password, role });
     if (response.ok) {
       if (response.data.debug_otp) sessionStorage.setItem('debug_otp', response.data.debug_otp);
       showToast('Đã gửi mã OTP thành công!');
-      setTimeout(() => { window.location.href = baseUrl + `/otp?email=${email}`; }, 900);
+      setTimeout(() => { window.location.href = baseUrl + `/otp?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`; }, 900);
     } else {
       showToast(response.data.message || 'Email hoặc mật khẩu không đúng!', 'error');
       btn.disabled = false;

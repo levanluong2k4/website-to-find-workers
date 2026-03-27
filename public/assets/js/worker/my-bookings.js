@@ -68,18 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderBookings = (bookings) => {
         bookingsContainer.innerHTML = '';
 
-        const getBookingServices = (booking) => {
-            if (Array.isArray(booking.dich_vus) && booking.dich_vus.length > 0) {
-                return booking.dich_vus;
-            }
-            if (booking.dich_vu) {
-                return [booking.dich_vu];
-            }
-            if (booking.dichVu) {
-                return [booking.dichVu];
-            }
-            return [];
-        };
+        const getBookingServices = (booking) => Array.isArray(booking.dich_vus) ? booking.dich_vus : [];
 
         if (bookings.length === 0) {
             bookingsContainer.innerHTML = `

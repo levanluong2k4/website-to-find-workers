@@ -24,6 +24,7 @@ class VerifyOtpRequest extends FormRequest
         return [
             'email' => 'required|email',
             'code' => 'required|string|size:6',
+            'role' => 'required|string|in:customer,worker,admin',
         ];
     }
 }

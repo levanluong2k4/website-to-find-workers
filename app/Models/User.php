@@ -24,8 +24,12 @@ class User extends Authenticatable
         'phone',
         'address',
         'avatar',
+        'google_id',
         'role',
         'is_active',
+        'email_verified_at',
+        'phone_verified_at',
+        'phone_verification_mode',
     ];
 
     /**
@@ -47,6 +51,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];

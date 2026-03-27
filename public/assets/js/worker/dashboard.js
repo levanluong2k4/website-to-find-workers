@@ -49,12 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateObj = new Date(job.ngay_hen);
             const dateString = dateObj.toLocaleDateString('vi-VN');
             const createdString = new Date(job.created_at).toLocaleString('vi-VN');
-            const bookingServices = Array.isArray(job.dich_vus) && job.dich_vus.length > 0
-                ? job.dich_vus
-                : (job.dich_vu ? [job.dich_vu] : []);
+            const bookingServices = Array.isArray(job.dich_vus) ? job.dich_vus : [];
             const serviceTitle = bookingServices.length > 0
                 ? bookingServices.map(service => service.ten_dich_vu).join(', ')
-                : (job.dich_vu?.ten_dich_vu || 'Sửa chữa điện máy');
+                : 'Sửa chữa điện máy';
             const serviceBadges = bookingServices.length > 0
                 ? bookingServices.map(service => `<span class="badge rounded-pill text-bg-light border">${service.ten_dich_vu}</span>`).join('')
                 : '';

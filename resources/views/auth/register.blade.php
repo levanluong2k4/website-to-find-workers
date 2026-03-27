@@ -4,12 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Đăng ký - Thợ Tốt NTU</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"/>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; display: flex; }
+    html, body { height: 100vh; overflow: hidden; font-family: 'Roboto', sans-serif; display: flex; background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.68) 0, rgba(255, 255, 255, 0) 24rem), radial-gradient(circle at top right, rgba(255, 255, 255, 0.58) 0, rgba(255, 255, 255, 0) 18rem), linear-gradient(180deg, #8ad0ff 0%, #c7e8ff 36%, #edf7ff 100%); }
 
     /* ===== LEFT PANEL: gradient background with framed carousel ===== */
     .left-panel {
@@ -61,7 +61,7 @@
     }
     .left-logo-text {
       color: #fff;
-      font-family: 'Poppins', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       font-weight: 800;
       font-size: 1.05rem;
     }
@@ -142,7 +142,7 @@
     }
     .caption-chip .material-symbols-outlined { font-size: .78rem; }
     .caption-title {
-      font-family: 'Poppins', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       font-weight: 800; font-size: 1.15rem;
       color: #fff; line-height: 1.2; margin-bottom: .3rem;
       text-shadow: 0 2px 10px rgba(0,0,0,.5);
@@ -200,7 +200,7 @@
       padding: 1.875rem 2rem;
     }
     .form-title {
-      font-family: 'Poppins', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       font-weight: 700;
       font-size: 1.35rem;
       color: #0f172a;
@@ -269,7 +269,7 @@
       border-radius: .75rem;
       padding: .65rem 1rem .65rem 2.6rem;
       font-size: .85rem;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Roboto', sans-serif;
       background: #f8fafc;
       transition: all .2s;
       outline: none;
@@ -303,7 +303,7 @@
       border: none;
       border-radius: .875rem;
       padding: .8rem;
-      font-family: 'Poppins', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       font-weight: 700;
       font-size: .9rem;
       cursor: pointer;
@@ -461,10 +461,10 @@
         </button>
       </form>
 
-      <p class="login-link">Đã có tài khoản? <a href="{{ route('login') }}">Đăng nhập</a></p>
+      <p class="login-link">Đã có tài khoản? <a href="{{ route('login', ['role' => request('role')]) }}">Đăng nhập</a></p>
     </div>
 
-    <a href="{{ url('/') }}" class="back-link">
+    <a href="{{ route('select-role') }}" class="back-link">
       <span class="material-symbols-outlined">arrow_back</span>
       Quay lại chọn vai trò
     </a>
@@ -507,7 +507,7 @@ document.getElementById('registerForm').addEventListener('submit', async e => {
     if (res.ok) {
       if (res.data.debug_otp) sessionStorage.setItem('debug_otp', res.data.debug_otp);
       showToast('Đăng ký thành công! Kiểm tra mã OTP trong email của bạn.');
-      setTimeout(() => { window.location.href = baseUrl + `/otp?email=${res.data.email}&is_new=1`; }, 1200);
+      setTimeout(() => { window.location.href = baseUrl + `/otp?email=${encodeURIComponent(res.data.email)}&is_new=1&role=${encodeURIComponent(body.role)}`; }, 1200);
     } else {
       let msg = res.data.message || 'Đăng ký thất bại.';
       if (res.data.errors?.email) msg = 'Email đã tồn tại!';

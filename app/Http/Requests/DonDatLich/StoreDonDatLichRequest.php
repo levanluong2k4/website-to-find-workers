@@ -11,12 +11,12 @@ class StoreDonDatLichRequest extends FormRequest
     {
         $serviceIds = $this->input('dich_vu_ids', []);
 
-        if (!is_array($serviceIds)) {
-            $serviceIds = [$serviceIds];
+        if ((is_array($serviceIds) && empty($serviceIds)) || $serviceIds === null || $serviceIds === '') {
+            $serviceIds = $this->input('dich_vu_id', []);
         }
 
-        if (empty($serviceIds) && $this->filled('dich_vu_id')) {
-            $serviceIds = [$this->input('dich_vu_id')];
+        if (!is_array($serviceIds)) {
+            $serviceIds = [$serviceIds];
         }
 
         $serviceIds = collect($serviceIds)
@@ -28,7 +28,7 @@ class StoreDonDatLichRequest extends FormRequest
 
         $this->merge([
             'dich_vu_ids' => $serviceIds,
-            'dich_vu_id' => $serviceIds[0] ?? $this->input('dich_vu_id'),
+            'dich_vu_id' => $serviceIds[0] ?? null,
         ]);
     }
 
@@ -47,13 +47,14 @@ class StoreDonDatLichRequest extends FormRequest
      */
     public function rules(): array
     {
+        $latestBookingDate = now()->addDays(6)->toDateString();
+
         return [
             'loai_dat_lich' => 'required|in:at_home,at_store',
-            'dich_vu_id' => 'nullable|exists:danh_muc_dich_vu,id',
             'dich_vu_ids' => 'required|array|min:1',
             'dich_vu_ids.*' => 'required|exists:danh_muc_dich_vu,id',
             'tho_id' => 'nullable|exists:users,id',
-            'ngay_hen' => 'required|date|after_or_equal:today',
+            'ngay_hen' => "required|date|after_or_equal:today|before_or_equal:{$latestBookingDate}",
             'khung_gio_hen' => 'required|in:08:00-10:00,10:00-12:00,12:00-14:00,14:00-17:00,08:00 - 10:00,10:00 - 12:00,12:00 - 14:00,14:00 - 17:00',
             'dia_chi' => 'required_if:loai_dat_lich,at_home|nullable|string',
             'vi_do' => 'required_if:loai_dat_lich,at_home|nullable|numeric',
@@ -62,6 +63,14 @@ class StoreDonDatLichRequest extends FormRequest
             'thue_xe_cho' => 'nullable|boolean',
             'hinh_anh_mo_ta.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // max 5MB per image
             'video_mo_ta' => 'nullable|file|mimes:mp4,mov,avi,wmv|max:20480', // max 20MB
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'ngay_hen.after_or_equal' => 'Ngay hen phai tu hom nay tro di.',
+            'ngay_hen.before_or_equal' => 'Ngay hen chi duoc dat trong 7 ngay toi.',
         ];
     }
 

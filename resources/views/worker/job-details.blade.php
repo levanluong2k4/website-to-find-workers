@@ -2,266 +2,494 @@
 @section('title', 'Chi tiết công việc - Thợ Tốt NTU')
 
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config = { corePlugins: { preflight: false } }</script>
-<style>
-  .worker-main { margin-left:240px; min-height:100vh; background:#f8fafc; }
-  .worker-header { background:#fff; border-bottom:1px solid #e2e8f0; padding:.875rem 1.5rem; display:flex; align-items:center; gap:1rem; position:sticky; top:0; z-index:100; }
-  
-  .detail-card { background:#fff; border:1px solid #e2e8f0; border-radius:1.5rem; padding:2rem; margin-bottom:1.5rem; }
-  .section-title { font-family:'Poppins',sans-serif; font-weight:700; font-size:1.1rem; color:#0f172a; margin-bottom:1.25rem; display:flex; align-items:center; gap:.5rem; }
-  .section-title .material-symbols-outlined { color:#0EA5E9; }
-
-  .label-text { font-size:.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.25rem; }
-  .value-text { font-weight:600; color:#1e293b; font-size:.95rem; }
-
-  .status-badge { padding:.4rem 1rem; border-radius:2rem; font-size:.75rem; font-weight:700; display:inline-flex; align-items:center; gap:.4rem; }
-  .status-cho_xac_nhan { background:#fef3c7; color:#92400e; }
-  .status-da_xac_nhan { background:#e0f2fe; color:#0369a1; }
-
-  .btn-action {
-    border-radius:.75rem;
-    padding:.875rem 1.5rem;
-    font-weight:700;
-    font-size:.95rem;
-    cursor:pointer;
-    transition:all .2s;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:.6rem;
-    border:none;
-  }
-  .btn-primary-gradient {
-    background:linear-gradient(135deg, #0EA5E9 0%, #0284c7 100%);
-    color:#fff;
-  }
-  .btn-primary-gradient:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(14,165,233,.3); }
-
-  @media (max-width: 768px) { .worker-main{margin-left:0;} }
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=Material+Symbols+Outlined" rel="stylesheet"/>
+<link rel="stylesheet" href="{{ asset('assets/css/worker/dispatch-ui.css') }}">
 @endpush
 
 @section('content')
-<div style="display:flex;">
+<div class="dispatch-page">
+  <div class="dispatch-shell">
+    @include('worker.partials.dispatch-sidebar', [
+      'context' => 'detail',
+      'ctaLabel' => 'Quay lại việc mới',
+      'ctaHref' => '/worker/jobs',
+      'hotZoneTitle' => 'Điểm triển khai',
+      'hotZoneCopy' => 'Địa điểm thực hiện sẽ được cập nhật theo thông tin của đơn hàng bạn đang xem.'
+    ])
 
-<x-worker-sidebar />
-
-<div class="worker-main" style="flex:1;">
-  <div class="worker-header">
-    <a href="/worker/jobs" class="p-2 hover:bg-slate-50 rounded-full transition-colors" style="text-decoration:none; color:#64748b;">
-      <span class="material-symbols-outlined">arrow_back</span>
-    </a>
-    <div>
-      <h5 style="font-family:'Poppins',sans-serif; font-weight:700; margin:0; font-size:1rem; color:#0f172a;">Chi tiết yêu cầu #{{ $id }}</h5>
-      <p style="margin:0; font-size:.75rem; color:#64748b;">Xem thông tin chi tiết trước khi nhận việc</p>
-    </div>
-  </div>
-
-  <div id="jobDetails" style="padding:1.5rem; max-width:1000px; margin:0 auto; display:none;">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
-      <!-- Left Column: Main Info -->
-      <div class="lg:col-span-2">
-        <div class="detail-card">
-          <div class="section-title">
-            <span class="material-symbols-outlined">receipt_long</span> Thông tin sửa chữa
-          </div>
-          
-          <div class="grid grid-cols-2 gap-y-6 mb-8">
-            <div>
-              <p class="label-text">Thiết bị</p>
-              <p class="value-text" id="applianceType">---</p>
-            </div>
-            <div>
-              <p class="label-text">Trạng thái</p>
-              <span id="jobStatus" class="status-badge status-cho_xac_nhan">
-                <span class="material-symbols-outlined" style="font-size:1rem;">schedule</span> Đang chờ
-              </span>
-            </div>
-            <div class="col-span-2">
-              <p class="label-text">Mô tả lỗi</p>
-              <p class="value-text leading-relaxed" id="problemDesc">---</p>
-            </div>
-          </div>
-
-          <div class="section-title">
-            <span class="material-symbols-outlined">pin_drop</span> Địa điểm & Thời gian
-          </div>
-          <div class="grid grid-cols-2 gap-y-6">
-            <div class="col-span-2">
-              <p class="label-text">Địa chỉ khách hàng</p>
-              <p class="value-text" id="jobAddress">---</p>
-            </div>
-            <div>
-              <p class="label-text">Ngày hẹn</p>
-              <p class="value-text" id="jobDate">---</p>
-            </div>
-            <div>
-              <p class="label-text">Khung giờ</p>
-              <p class="value-text" id="jobTime">---</p>
-            </div>
-          </div>
+    <main class="dispatch-main">
+      <header class="dispatch-topbar">
+        <div class="dispatch-breadcrumb" style="gap:14px;">
+          <a href="/worker/jobs" style="color:#7283a0; font-weight:500;">Nhận việc</a>
+          <span style="color:#8da0bc;">›</span>
+          <span style="color:#10203a; font-weight:700;">Chi tiết công việc</span>
         </div>
 
-        <!-- Job Photos if any -->
-        <div class="detail-card">
-          <div class="section-title">
-            <span class="material-symbols-outlined">image</span> Hình ảnh hiện trạng
-          </div>
-          <div id="jobPhotos" class="grid grid-cols-3 gap-4">
-            <p class="text-slate-400 italic text-sm col-span-3">Không có hình ảnh đính kèm</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column: Customer & Action -->
-      <div class="flex flex-direction-column gap-6">
-        <div class="detail-card" style="padding:1.5rem;">
-          <div class="section-title" style="margin-bottom:1.5rem;">
-            <span class="material-symbols-outlined">person</span> Khách hàng
-          </div>
-          <div class="flex items-center gap-3 mb-6">
-            <div id="customerAvatar" style="width:3.5rem; height:3.5rem; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-weight:800; color:#0EA5E9; font-size:1.2rem;">?</div>
-            <div>
-              <p id="customerName" class="font-bold text-slate-900 mb-0">---</p>
-              <p id="customerRole" class="text-xs text-slate-500 mb-0">Khách hàng hệ thống</p>
-            </div>
-          </div>
-          <div class="space-y-4">
-            <div>
-              <p class="label-text">Số điện thoại</p>
-              <p class="value-text text-slate-400">******** (Sẽ hiện khi nhận việc)</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="detail-card" style="background:#f8fafc; border-style:dashed;">
-          <p class="label-text">Dự toán thu nhập</p>
-          <p class="price-tag text-teal-600 mb-6" id="estimatedPrice">--- ₫</p>
-          
-          <button id="btnClaim" onclick="claimJob({{ $id }})" class="btn-action btn-primary-gradient w-full">
-            <span class="material-symbols-outlined">add_task</span> Nhận việc ngay
+        <div class="dispatch-topbar-actions">
+          <button type="button" class="dispatch-icon-btn" id="detailRefreshButton" onclick="loadJobDetails(event)" aria-label="Làm mới chi tiết">
+            <span class="material-symbols-outlined">refresh</span>
           </button>
-          <p class="text-[10px] text-center text-slate-400 mt-3 italic">Bằng cách nhấn nhận việc, bạn cam kết sẽ đến đúng giờ hẹn.</p>
+          <button type="button" class="dispatch-icon-btn" aria-label="Thông báo">
+            <span class="material-symbols-outlined">notifications</span>
+          </button>
+          <div class="dispatch-avatar-btn" id="dispatchTopAvatar">TT</div>
+        </div>
+      </header>
+
+      <div class="dispatch-content">
+        <div id="loadingState" class="dispatch-loading-page">
+          <span class="material-symbols-outlined">autorenew</span>
+          <div class="dispatch-loading-copy">Đang tải chi tiết công việc...</div>
+        </div>
+
+        <div id="jobDetails" style="display:none;">
+          <div class="dispatch-detail-grid">
+            <div class="dispatch-detail-main">
+              <section class="dispatch-detail-hero">
+                <div>
+                  <div class="dispatch-code-pill" id="jobCode">Mã việc: #JOB-00000</div>
+                  <h1 class="dispatch-detail-title" id="detailTitle">Đang tải chi tiết yêu cầu</h1>
+                  <div class="dispatch-status-row">
+                    <span class="dispatch-status-pill status-pending" id="jobStatus">Chờ xác nhận</span>
+                    <span id="jobPosted">Vừa đăng vài phút trước</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="dispatch-rich-card">
+                <div class="dispatch-card-title">
+                  <span class="material-symbols-outlined">description</span>
+                  <span>Mô tả chi tiết</span>
+                </div>
+                <div class="dispatch-description" id="problemDesc">---</div>
+                <div class="dispatch-chip-row" id="serviceChips"></div>
+              </section>
+
+              <div class="dispatch-info-duo">
+                <section class="dispatch-info-card">
+                  <div class="dispatch-info-head">
+                    <div class="dispatch-detail-icon">
+                      <span class="material-symbols-outlined">calendar_month</span>
+                    </div>
+                    <div>
+                      <div class="dispatch-detail-label">Thời gian dự kiến</div>
+                      <div class="dispatch-detail-value" id="jobDate">---</div>
+                    </div>
+                  </div>
+                  <div class="dispatch-info-copy">
+                    <span>Khung giờ triển khai</span>
+                    <strong id="jobTime">---</strong>
+                  </div>
+                </section>
+
+                <section class="dispatch-info-card">
+                  <div class="dispatch-info-head">
+                    <div class="dispatch-detail-icon">
+                      <span class="material-symbols-outlined">place</span>
+                    </div>
+                    <div>
+                      <div class="dispatch-detail-label">Địa điểm triển khai</div>
+                      <div class="dispatch-detail-value" id="jobArea">---</div>
+                    </div>
+                  </div>
+                  <div class="dispatch-info-copy">
+                    <span>Địa chỉ chi tiết</span>
+                    <strong style="font-size:1.18rem; line-height:1.4;" id="jobAddress">---</strong>
+                  </div>
+                </section>
+              </div>
+
+              <section>
+                <div class="dispatch-gallery-title">Hình ảnh &amp; Video hiện trạng</div>
+                <div class="dispatch-gallery-grid" id="jobPhotos">
+                  <div class="dispatch-media-card"><span class="material-symbols-outlined">photo_camera</span></div>
+                  <div class="dispatch-media-card"><span class="material-symbols-outlined">image</span></div>
+                  <div class="dispatch-media-card"><span class="material-symbols-outlined">build_circle</span></div>
+                  <div class="dispatch-media-card is-video"><span class="material-symbols-outlined" style="opacity:0;">play_arrow</span></div>
+                </div>
+              </section>
+            </div>
+
+            <aside class="dispatch-detail-side">
+              <section class="dispatch-panel dispatch-earning-card">
+                <div class="dispatch-panel-kicker">Dự toán thu nhập</div>
+                <div class="dispatch-earning-price" id="estimatedPrice">---</div>
+                <button type="button" id="btnClaim" onclick="claimJob({{ $id }}, event)" class="dispatch-primary-btn" style="width:100%; margin-top:22px;">
+                  Nhận việc ngay
+                </button>
+                <div class="dispatch-muted-copy" id="qualityCopy">Đơn phù hợp để nhận nhanh nếu lịch trình của bạn còn trống trong ca này.</div>
+              </section>
+
+              <section class="dispatch-panel dispatch-customer-card">
+                <div class="dispatch-panel-kicker" style="color:#6b7f9c;">Thông tin khách hàng</div>
+                <div class="dispatch-customer-head">
+                  <div class="dispatch-avatar" id="customerAvatar">KH</div>
+                  <div>
+                    <div class="dispatch-customer-name" id="customerName">---</div>
+                    <div class="dispatch-customer-sub" id="customerMeta">Khách hệ thống</div>
+                  </div>
+                </div>
+
+                <div class="dispatch-customer-row">
+                  <span>Điện thoại</span>
+                  <strong id="customerPhone">********</strong>
+                </div>
+
+                <div class="dispatch-customer-row">
+                  <span>Loại khách</span>
+                  <strong id="customerType">Khách hệ thống</strong>
+                </div>
+
+                <button type="button" class="dispatch-customer-chat" disabled>Nhắn tin trao đổi</button>
+              </section>
+
+              <section class="dispatch-panel dispatch-route-card">
+                <div class="dispatch-route-map">
+                  <div class="dispatch-route-pin">
+                    <span class="material-symbols-outlined">location_on</span>
+                  </div>
+                </div>
+                <div class="dispatch-route-body">
+                  <div class="dispatch-muted-copy" id="routeDistance">Điểm hẹn nằm trong khu vực phục vụ của bạn.</div>
+                  <a href="#" id="routeLink" target="_blank" rel="noopener noreferrer" class="dispatch-route-link">
+                    Mở bản đồ dẫn đường
+                    <span class="material-symbols-outlined">open_in_new</span>
+                  </a>
+                </div>
+              </section>
+
+              <section class="dispatch-panel dispatch-plain-card">
+                <div style="display:flex; gap:14px; align-items:flex-start;">
+                  <div class="dispatch-shield">
+                    <span class="material-symbols-outlined">verified_user</span>
+                  </div>
+                  <div>
+                    <div style="font-weight:800; color:#23324c;">Bảo hiểm công việc</div>
+                    <div class="dispatch-muted-copy" style="margin-top:8px;">Các đơn qua hệ thống được ghi nhận và lưu vết thao tác để hỗ trợ xử lý khiếu nại hoặc phát sinh kỹ thuật.</div>
+                  </div>
+                </div>
+              </section>
+            </aside>
+          </div>
         </div>
       </div>
-
-    </div>
+    </main>
   </div>
-
-  <!-- Loading State -->
-  <div id="loadingState" style="text-align:center; padding:5rem 2rem;">
-    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-blue-500 mb-4"></div>
-    <p class="text-slate-500 font-medium">Đang tải chi tiết công việc...</p>
-  </div>
-</div>
 </div>
 @endsection
 
 @push('scripts')
 <script type="module">
 import { callApi, getCurrentUser, showToast } from "{{ asset('assets/js/api.js') }}";
+
 const baseUrl = '{{ url('/') }}';
 const user = getCurrentUser();
-if (!user || !['worker', 'admin'].includes(user.role)) { window.location.href = baseUrl + '/login?role=worker'; }
+
+if (!user || !['worker', 'admin'].includes(user.role)) {
+  window.location.href = baseUrl + '/login?role=worker';
+}
 
 const jobId = {{ $id }};
 
-async function loadJobDetails() {
-  try {
-    const res = await callApi(`/don-dat-lich/${jobId}`, 'GET');
-    if (res.ok) {
-      const j = res.data;
-      
-      // Update UI elements
-      document.getElementById('applianceType').textContent = j.dich_vu ? j.dich_vu.ten_dich_vu : (j.appliance_type || 'Thiết bị');
-      document.getElementById('problemDesc').textContent = j.mo_ta_van_de || 'Không có mô tả chi tiết.';
-      document.getElementById('jobAddress').textContent = j.dia_chi || 'Địa chỉ ẩn';
-      document.getElementById('jobDate').textContent = j.ngay_hen ? new Date(j.ngay_hen).toLocaleDateString('vi-VN') : '';
-      document.getElementById('jobTime').textContent = j.khung_gio_hen || '';
-      document.getElementById('customerName').textContent = j.khach_hang ? j.khach_hang.name : 'Khách hàng';
-      document.getElementById('estimatedPrice').textContent = j.estimated_price ? parseInt(j.estimated_price).toLocaleString('vi-VN') + ' ₫' : 'Liên hệ';
-      
-      const avatar = document.getElementById('customerAvatar');
-      if (j.khach_hang && j.khach_hang.avatar) {
-        avatar.innerHTML = `<img src="${j.khach_hang.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-      } else {
-        avatar.textContent = (j.khach_hang ? j.khach_hang.name : 'K').charAt(0).toUpperCase();
-      }
+const ui = {
+  loadingState: document.getElementById('loadingState'),
+  jobDetails: document.getElementById('jobDetails'),
+  refreshButton: document.getElementById('detailRefreshButton'),
+  jobCode: document.getElementById('jobCode'),
+  detailTitle: document.getElementById('detailTitle'),
+  jobStatus: document.getElementById('jobStatus'),
+  jobPosted: document.getElementById('jobPosted'),
+  problemDesc: document.getElementById('problemDesc'),
+  serviceChips: document.getElementById('serviceChips'),
+  jobDate: document.getElementById('jobDate'),
+  jobTime: document.getElementById('jobTime'),
+  jobArea: document.getElementById('jobArea'),
+  jobAddress: document.getElementById('jobAddress'),
+  jobPhotos: document.getElementById('jobPhotos'),
+  estimatedPrice: document.getElementById('estimatedPrice'),
+  btnClaim: document.getElementById('btnClaim'),
+  qualityCopy: document.getElementById('qualityCopy'),
+  customerAvatar: document.getElementById('customerAvatar'),
+  customerName: document.getElementById('customerName'),
+  customerMeta: document.getElementById('customerMeta'),
+  customerPhone: document.getElementById('customerPhone'),
+  customerType: document.getElementById('customerType'),
+  routeDistance: document.getElementById('routeDistance'),
+  routeLink: document.getElementById('routeLink'),
+  sidebarHotZoneTitle: document.getElementById('dispatchHotZoneTitle'),
+  sidebarHotZoneCopy: document.getElementById('dispatchHotZoneCopy'),
+  sidebarName: document.getElementById('dispatchSidebarName'),
+  sidebarRole: document.getElementById('dispatchSidebarRole'),
+  sidebarAvatar: document.getElementById('dispatchSidebarAvatar'),
+  topAvatar: document.getElementById('dispatchTopAvatar'),
+};
 
-      // Media (Images & Video)
-      const photosContainer = document.getElementById('jobPhotos');
-      let mediaHtml = '';
-      
-      if (j.video_mo_ta) {
-        mediaHtml += `
-          <div class="rounded-xl overflow-hidden aspect-square bg-slate-900 flex items-center justify-center">
-            <video src="${j.video_mo_ta}" class="w-full h-full object-cover" controls></video>
-          </div>
-        `;
-      }
-
-      if (j.hinh_anh_mo_ta && j.hinh_anh_mo_ta.length > 0) {
-        mediaHtml += j.hinh_anh_mo_ta.map(img => `
-          <div class="rounded-xl overflow-hidden aspect-square bg-slate-100">
-            <img src="${img}" class="w-full h-full object-cover cursor-pointer" onclick="window.open('${img}', '_blank')">
-          </div>
-        `).join('');
-      }
-
-      if (mediaHtml) {
-        photosContainer.innerHTML = mediaHtml;
-      }
-
-      // Hide loading, show content
-      document.getElementById('loadingState').style.display = 'none';
-      document.getElementById('jobDetails').style.display = 'block';
-
-      // Disable button if already joined
-      if (j.tho_id || j.trang_thai !== 'cho_xac_nhan') {
-        const btn = document.getElementById('btnClaim');
-        btn.disabled = true;
-        btn.textContent = 'Việc đã có người nhận';
-        btn.classList.remove('btn-primary-gradient');
-        btn.classList.add('bg-slate-200', 'text-slate-500');
-      }
-
-    } else {
-      showToast('Không tìm thấy thông tin công việc', 'error');
-    }
-  } catch (e) {
-    console.error(e);
-    showToast('Lỗi kết nối máy chủ', 'error');
-  }
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-window.claimJob = async function(id) {
-  if(!confirm('Bạn có chắc chắn muốn nhận việc này không?')) return;
-  
-  const btn = document.getElementById('btnClaim');
-  const originalHtml = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="animate-spin rounded-full h-5 w-5 border-2 border-white/40 border-t-white inline-block"></span> Đang xử lý...';
+function getInitials(name) {
+  const source = String(name || 'TT').trim();
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'TT';
+}
+
+function setAvatarContent(element, avatar, fallbackName) {
+  if (!element) return;
+  if (avatar) {
+    element.innerHTML = `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(fallbackName || 'Avatar')}">`;
+    return;
+  }
+
+  element.textContent = getInitials(fallbackName);
+}
+
+function hydrateShellUser() {
+  ui.sidebarName.textContent = user.name || 'Thợ kỹ thuật';
+  ui.sidebarRole.textContent = user.role === 'admin' ? 'Quản trị vận hành' : 'Thợ kỹ thuật';
+  setAvatarContent(ui.sidebarAvatar, user.avatar, user.name);
+  setAvatarContent(ui.topAvatar, user.avatar, user.name);
+}
+
+function getServices(job) {
+  if (Array.isArray(job.dich_vus) && job.dich_vus.length > 0) {
+    return job.dich_vus.map((service) => service?.ten_dich_vu).filter(Boolean);
+  }
+
+  if (job.dich_vu?.ten_dich_vu) {
+    return [job.dich_vu.ten_dich_vu];
+  }
+
+  return ['Yêu cầu sửa chữa'];
+}
+
+function getEstimate(job) {
+  const direct = Number(job.estimated_price ?? job.tong_tien ?? 0);
+  if (direct > 0) return direct;
+
+  const fallback = ['phi_di_lai', 'phi_linh_kien', 'tien_cong', 'tien_thue_xe']
+    .map((key) => Number(job[key] ?? 0))
+    .reduce((sum, value) => sum + value, 0);
+
+  return fallback > 0 ? fallback : 0;
+}
+
+function formatMoney(value) {
+  if (!Number.isFinite(value) || value <= 0) return 'Liên hệ';
+  return `${value.toLocaleString('vi-VN')}đ`;
+}
+
+function getArea(address) {
+  if (!address) return 'Chưa có khu vực';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  return parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+}
+
+function formatFullDate(dateString) {
+  if (!dateString) return 'Chưa có ngày hẹn';
+  const target = new Date(dateString);
+  return target.toLocaleDateString('vi-VN', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function formatRelativeTime(dateString) {
+  if (!dateString) return 'Vừa đăng gần đây';
+  const diffMinutes = Math.max(0, Math.round((Date.now() - new Date(dateString).getTime()) / 60000));
+
+  if (diffMinutes < 1) return 'Vừa đăng';
+  if (diffMinutes < 60) return `Vừa đăng ${diffMinutes} phút trước`;
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `Vừa đăng ${diffHours} giờ trước`;
+
+  const diffDays = Math.round(diffHours / 24);
+  return `Đăng ${diffDays} ngày trước`;
+}
+
+function maskPhone(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length < 7) return '********';
+  return `${digits.slice(0, 4)}***${digits.slice(-3)}`;
+}
+
+function getStatusMeta(status) {
+  const map = {
+    cho_xac_nhan: { label: 'Chờ xác nhận', className: 'status-pending' },
+    da_xac_nhan: { label: 'Đã xác nhận', className: 'status-confirmed' },
+    dang_lam: { label: 'Đang làm', className: 'status-progress' },
+    cho_hoan_thanh: { label: 'Chờ hoàn thành', className: 'status-progress' },
+    cho_thanh_toan: { label: 'Chờ thanh toán', className: 'status-progress' },
+    da_xong: { label: 'Hoàn thành', className: 'status-complete' },
+    da_huy: { label: 'Đã hủy', className: 'status-cancelled' },
+  };
+
+  return map[status] || { label: 'Đang cập nhật', className: 'status-pending' };
+}
+
+function setRefreshLoading(isLoading) {
+  ui.refreshButton.disabled = isLoading;
+  ui.refreshButton.innerHTML = isLoading
+    ? '<span class="material-symbols-outlined" style="animation:dispatchSpin 900ms linear infinite;">autorenew</span>'
+    : '<span class="material-symbols-outlined">refresh</span>';
+}
+
+function renderMedia(job) {
+  const media = [];
+
+  if (job.video_mo_ta) {
+    media.push(`
+      <div class="dispatch-media-card is-video">
+        <video src="${escapeHtml(job.video_mo_ta)}" controls></video>
+      </div>
+    `);
+  }
+
+  if (Array.isArray(job.hinh_anh_mo_ta) && job.hinh_anh_mo_ta.length > 0) {
+    media.push(...job.hinh_anh_mo_ta.map((image) => `
+      <div class="dispatch-media-card">
+        <img src="${escapeHtml(image)}" alt="Ảnh hiện trạng" onclick="window.open('${escapeHtml(image)}', '_blank')">
+      </div>
+    `));
+  }
+
+  if (media.length === 0) {
+    ui.jobPhotos.innerHTML = `
+      <div class="dispatch-media-card"><span class="material-symbols-outlined">photo_camera</span></div>
+      <div class="dispatch-media-card"><span class="material-symbols-outlined">image</span></div>
+      <div class="dispatch-media-card"><span class="material-symbols-outlined">build_circle</span></div>
+      <div class="dispatch-media-card is-video"><span class="material-symbols-outlined" style="opacity:0;">play_arrow</span></div>
+    `;
+    return;
+  }
+
+  ui.jobPhotos.innerHTML = media.join('');
+}
+
+function updateClaimState(job) {
+  if (!job.tho_id && job.trang_thai === 'cho_xac_nhan') {
+    ui.btnClaim.classList.remove('dispatch-secondary-btn');
+    ui.btnClaim.classList.add('dispatch-primary-btn');
+    ui.btnClaim.disabled = false;
+    ui.btnClaim.innerHTML = 'Nhận việc ngay';
+    return;
+  }
+
+  ui.btnClaim.disabled = true;
+  ui.btnClaim.innerHTML = 'Việc đã có người nhận';
+  ui.btnClaim.classList.remove('dispatch-primary-btn');
+  ui.btnClaim.classList.add('dispatch-secondary-btn');
+}
+
+function renderJobDetails(job) {
+  const services = getServices(job);
+  const estimate = getEstimate(job);
+  const status = getStatusMeta(job.trang_thai);
+  const customerName = job.khach_hang?.name || 'Khách hàng';
+  const address = job.dia_chi || 'Địa chỉ sẽ hiển thị khi công việc được chốt';
+  const area = getArea(address);
+  const mapQuery = encodeURIComponent(address);
+  const codeYear = new Date(job.created_at || Date.now()).getFullYear();
+
+  ui.jobCode.textContent = `Mã việc: #INV-${codeYear}-${String(job.id).padStart(3, '0')}`;
+  ui.detailTitle.textContent = services.join(' - ');
+  ui.jobStatus.className = `dispatch-status-pill ${status.className}`;
+  ui.jobStatus.textContent = status.label;
+  ui.jobPosted.textContent = formatRelativeTime(job.created_at);
+  ui.problemDesc.textContent = job.mo_ta_van_de || 'Khách hàng cần thợ kiểm tra thêm hiện trạng và báo phương án xử lý phù hợp.';
+  ui.serviceChips.innerHTML = services.map((service) => `<span class="dispatch-chip">${escapeHtml(service)}</span>`).join('');
+  ui.jobDate.textContent = formatFullDate(job.ngay_hen);
+  ui.jobTime.textContent = job.khung_gio_hen || 'Chưa có khung giờ';
+  ui.jobArea.textContent = area;
+  ui.jobAddress.textContent = address;
+  ui.estimatedPrice.textContent = formatMoney(estimate);
+  ui.qualityCopy.textContent = estimate >= 1000000
+    ? 'Đơn giá trị cao. Nếu lịch trình của bạn đang trống, nên xác nhận sớm để khóa công việc này.'
+    : 'Đơn phù hợp để nhận nhanh nếu lịch trình của bạn còn trống trong ca này.';
+
+  setAvatarContent(ui.customerAvatar, job.khach_hang?.avatar, customerName);
+  ui.customerName.textContent = customerName;
+  ui.customerMeta.textContent = job.khach_hang?.phone ? 'Khách hàng đã xác minh' : 'Khách hệ thống';
+  ui.customerPhone.textContent = maskPhone(job.khach_hang?.phone);
+  ui.customerType.textContent = job.khach_hang?.phone ? 'Tài khoản xác minh' : 'Khách hệ thống';
+  ui.routeDistance.textContent = `Điểm hẹn ở ${area}. Hệ thống khuyến nghị bạn kiểm tra tuyến di chuyển trước khi xác nhận.`;
+  ui.routeLink.href = address ? `https://www.google.com/maps/search/?api=1&query=${mapQuery}` : '#';
+  ui.sidebarHotZoneTitle.textContent = `Điểm triển khai: ${area}`;
+  ui.sidebarHotZoneCopy.textContent = address;
+
+  renderMedia(job);
+  updateClaimState(job);
+}
+
+window.loadJobDetails = async function loadJobDetails(event) {
+  if (event?.preventDefault) event.preventDefault();
+
+  setRefreshLoading(true);
 
   try {
-    const res = await callApi(`/don-dat-lich/${id}/claim`, 'POST');
-    if (res.ok) {
-      showToast('Nhận việc thành công!');
-      setTimeout(() => { window.location.href = baseUrl + '/worker/my-bookings'; }, 1000);
-    } else {
-      showToast(res.data.message || 'Lỗi nhận việc', 'error');
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
+    const res = await callApi(`/don-dat-lich/${jobId}`, 'GET');
+
+    if (!res.ok) {
+      throw new Error(res.data?.message || 'Không tìm thấy thông tin công việc');
     }
-  } catch (e) {
-    showToast('Lỗi kết nối', 'error');
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
+
+    renderJobDetails(res.data);
+    ui.loadingState.style.display = 'none';
+    ui.jobDetails.style.display = 'block';
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || 'Lỗi kết nối máy chủ', 'error');
+    ui.loadingState.innerHTML = `
+      <span class="material-symbols-outlined" style="animation:none;">error</span>
+      <div class="dispatch-loading-copy">Không tải được chi tiết công việc. Vui lòng thử làm mới lại.</div>
+    `;
+  } finally {
+    setRefreshLoading(false);
   }
 };
 
-document.addEventListener('DOMContentLoaded', loadJobDetails);
+window.claimJob = async function claimJob(id, event) {
+  if (!confirm('Bạn có chắc chắn muốn nhận việc này không?')) return;
+
+  const button = event?.currentTarget || ui.btnClaim;
+  const originalHtml = button.innerHTML;
+
+  button.disabled = true;
+  button.innerHTML = '<span class="material-symbols-outlined" style="animation:dispatchSpin 900ms linear infinite;">autorenew</span> Đang xử lý';
+
+  try {
+    const res = await callApi(`/don-dat-lich/${id}/claim`, 'POST');
+
+    if (!res.ok) {
+      throw new Error(res.data?.message || 'Không thể nhận việc này');
+    }
+
+    showToast('Nhận việc thành công!');
+    setTimeout(() => {
+      window.location.href = `${baseUrl}/worker/my-bookings`;
+    }, 1000);
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || 'Lỗi kết nối máy chủ', 'error');
+    button.disabled = false;
+    button.innerHTML = originalHtml;
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  hydrateShellUser();
+  window.loadJobDetails();
+});
 </script>
 @endpush

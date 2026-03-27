@@ -2,7 +2,7 @@
 @section('title', 'Lịch sử sửa chữa - Thợ Tốt NTU')
 
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { corePlugins: { preflight: false } }</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.css"/>
@@ -36,7 +36,7 @@
 <div class="worker-main" style="flex:1;">
   <div class="worker-header">
     <div>
-      <h5 style="font-family:'Poppins',sans-serif; font-weight:700; margin:0; font-size:1rem; color:#0f172a;">Lịch sử sửa chữa</h5>
+      <h5 style="font-family:'DM Sans',sans-serif; font-weight:700; margin:0; font-size:1rem; color:#0f172a;">Lịch sử sửa chữa</h5>
       <p style="margin:0; font-size:.75rem; color:#64748b;">Thống kê thu nhập và lịch sử công việc</p>
     </div>
     <a href="/worker/my-bookings" style="display:flex; align-items:center; gap:.4rem; background:#BAF2E9; color:#0f172a; font-weight:700; font-size:.8rem; text-decoration:none; border-radius:.5rem; padding:.5rem 1rem;">
@@ -49,25 +49,25 @@
     <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.25rem;">
       <div class="stat-card" style="border-left:4px solid #0EA5E9;">
         <p style="font-size:.72rem; font-weight:700; color:#64748b; text-transform:uppercase; margin:0 0 .5rem;">Tổng doanh thu</p>
-        <p id="statTongDoanhThu" style="font-family:'Poppins',sans-serif; font-size:1.4rem; font-weight:800; margin:0; color:#0f172a;">0 ₫</p>
+        <p id="statTongDoanhThu" style="font-family:'DM Sans',sans-serif; font-size:1.4rem; font-weight:800; margin:0; color:#0f172a;">0 ₫</p>
       </div>
       <div class="stat-card" style="border-left:4px solid #10b981;">
         <p style="font-size:.72rem; font-weight:700; color:#64748b; text-transform:uppercase; margin:0 0 .5rem;">Tháng này</p>
-        <p id="statDoanhThuThangNay" style="font-family:'Poppins',sans-serif; font-size:1.4rem; font-weight:800; margin:0; color:#0f172a;">0 ₫</p>
+        <p id="statDoanhThuThangNay" style="font-family:'DM Sans',sans-serif; font-size:1.4rem; font-weight:800; margin:0; color:#0f172a;">0 ₫</p>
       </div>
       <div class="stat-card" style="border-left:4px solid #8b5cf6;">
         <p style="font-size:.72rem; font-weight:700; color:#64748b; text-transform:uppercase; margin:0 0 .5rem;">Đã hoàn thành</p>
-        <p id="statDonHoanThanh" style="font-family:'Poppins',sans-serif; font-size:1.4rem; font-weight:800; margin:0; color:#0f172a;">0</p>
+        <p id="statDonHoanThanh" style="font-family:'DM Sans',sans-serif; font-size:1.4rem; font-weight:800; margin:0; color:#0f172a;">0</p>
       </div>
       <div class="stat-card" style="border-left:4px solid #ef4444;">
         <p style="font-size:.72rem; font-weight:700; color:#64748b; text-transform:uppercase; margin:0 0 .5rem;">Đã hủy</p>
-        <p id="statDonHuy" style="font-family:'Poppins',sans-serif; font-size:1.4rem; font-weight:800; margin:0; color:#0f172a;">0</p>
+        <p id="statDonHuy" style="font-family:'DM Sans',sans-serif; font-size:1.4rem; font-weight:800; margin:0; color:#0f172a;">0</p>
       </div>
     </div>
 
     <!-- Chart -->
     <div class="stat-card" style="margin-bottom:1.25rem;">
-      <h6 style="font-family:'Poppins',sans-serif; font-weight:700; font-size:.875rem; color:#0f172a; margin-bottom:1rem;">Doanh thu 7 ngày qua</h6>
+      <h6 style="font-family:'DM Sans',sans-serif; font-weight:700; font-size:.875rem; color:#0f172a; margin-bottom:1rem;">Doanh thu 7 ngày qua</h6>
       <div id="revenueChartApex" style="height:220px;"></div>
     </div>
 
@@ -116,7 +116,7 @@
 <!-- Side Detail Drawer -->
 <div class="detail-drawer" id="detailDrawer">
   <div style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem; border-bottom:1px solid #f1f5f9; position:sticky; top:0; background:#fff; z-index:10;">
-    <h6 style="font-family:'Poppins',sans-serif; font-weight:700; margin:0; color:#0f172a;">Chi tiết công việc</h6>
+    <h6 style="font-family:'DM Sans',sans-serif; font-weight:700; margin:0; color:#0f172a;">Chi tiết công việc</h6>
     <button onclick="closeDrawer()" style="background:none; border:none; cursor:pointer; color:#64748b;">
       <span class="material-symbols-outlined">close</span>
     </button>
@@ -185,7 +185,7 @@ async function loadHistory() {
     const labels = last7.map(d=>d.slice(5).replace('-','/'));
 
     new ApexCharts(document.getElementById('revenueChartApex'), {
-      chart: { type:'area', height:220, toolbar:{show:false}, fontFamily:'Inter,sans-serif' },
+      chart: { type:'area', height:220, toolbar:{show:false}, fontFamily:'Roboto, sans-serif' },
       colors: ['#0EA5E9'],
       fill: { type:'gradient', gradient:{ shadeIntensity:1, opacityFrom:.4, opacityTo:.05 } },
       series: [{ name:'Doanh thu', data: amounts }],

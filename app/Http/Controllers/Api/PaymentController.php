@@ -15,7 +15,7 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'don_dat_lich_id' => 'required|exists:don_dat_lich,id',
-            'phuong_thuc' => 'required|in:vnpay,momo,zalopay',
+            'phuong_thuc' => 'required|in:test',
         ]);
 
         $booking = DonDatLich::findOrFail($validated['don_dat_lich_id']);
@@ -42,6 +42,13 @@ class PaymentController extends Controller
             ], 400);
         }
 
+        if (($booking->phuong_thuc_thanh_toan ?? 'cod') !== 'transfer') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Don nay dang su dung tien mat. Vui long thanh toan truc tiep cho tho va doi tho xac nhan.',
+            ], 400);
+        }
+
         $totalAmount = $this->resolvePaymentAmount($booking);
         if ($totalAmount <= 0) {
             return response()->json([
@@ -50,11 +57,7 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        return match ($validated['phuong_thuc']) {
-            'vnpay' => $this->createVnpayPayment($request, $booking, $totalAmount),
-            'momo' => $this->createMomoPayment($request, $booking, $totalAmount),
-            'zalopay' => $this->createZalopayPayment($request, $booking, $totalAmount),
-        };
+        return $this->createTestPayment($booking, $totalAmount);
     }
 
     public function vnpayReturn(Request $request)
@@ -403,6 +406,29 @@ class PaymentController extends Controller
         }
     }
 
+    private function createTestPayment(DonDatLich $booking, float $totalAmount)
+    {
+        $transactionId = 'TEST_' . $booking->id . '_' . now()->format('YmdHis');
+
+        $this->processSuccessPayment(
+            (int) $booking->id,
+            $totalAmount,
+            'test',
+            $transactionId,
+            [
+                'mode' => 'test',
+                'note' => 'Thanh toan test noi bo, khong tao giao dich that.',
+                'paid_at' => now()->toIso8601String(),
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'payment_status' => 'success',
+            'message' => 'Thanh toan test thanh cong. Don da duoc hoan tat.',
+        ]);
+    }
+
     private function processSuccessPayment(int $bookingId, float $amount, string $method, string $transactionId, array|string $extraInfo): void
     {
         if ($bookingId <= 0) {
@@ -436,8 +462,11 @@ class PaymentController extends Controller
             $booking->trang_thai = 'da_xong';
         }
 
+        $booking->thoi_gian_hoan_thanh = $booking->thoi_gian_hoan_thanh ?? now();
         $booking->trang_thai_thanh_toan = true;
         $booking->save();
+
+        app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncBookingCases($bookingId);
     }
 
     private function resolvePaymentAmount(DonDatLich $booking): float

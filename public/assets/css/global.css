@@ -1,17 +1,21 @@
-/* Nhúng Font Chữ Outfit (Sang trọng, cực kì hiện đại cho tên thương hiệu/heading) và Inter cho Body */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+/* Bo font chung toan site: DM Sans cho tieu de/UI, Roboto cho noi dung, Libre Baskerville lam accent khi can */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 
 body {
-  font-family: 'Inter', sans-serif;
-  background: var(--bg-gradient);
+  font-family: 'Roboto', sans-serif;
+  background: var(--bg-gradient) !important;
   background-attachment: fixed;
   color: var(--bs-body-color);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
 
+.worker-main {
+  background: transparent !important;
+}
+
 h1, h2, h3, h4, h5, h6, .brand-font {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'DM Sans', sans-serif;
   letter-spacing: -0.02em;
 }
 
@@ -22,7 +26,7 @@ h1, h2, h3, h4, h5, h6, .brand-font {
 /* Nút Bấm (Button) siêu mượt */
 .btn {
   border-radius: var(--border-radius-md);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'DM Sans', sans-serif;
   font-weight: 600;
   padding: 0.8rem 1.5rem;
   letter-spacing: 0.01em;

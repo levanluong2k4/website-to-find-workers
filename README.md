@@ -57,3 +57,13 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Browser Automation
+
+This project now uses Playwright for browser automation.
+
+- Install the Chromium browser binary with `npm run playwright:install`
+- Run the browser suite with `npm run test:e2e`
+- Use `npm run test:e2e:headed` or `npm run test:e2e:ui` while building flows interactively
+
+Playwright reuses an existing app server when one is already running. Otherwise it starts `php artisan serve` automatically and targets `APP_URL` from `.env` by default. Override that target with `PLAYWRIGHT_BASE_URL` if you need a different host or port.

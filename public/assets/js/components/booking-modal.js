@@ -30,8 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedServiceIds = new Set();
     let addressData = [];
     let selectedWorkerContext = null;
-
-    const TRAVEL_FEE_PER_KM = 5000;
+    const DEFAULT_TRAVEL_FEE_PER_KM = 5000;
+    const TRAVEL_FEE_PER_KM = DEFAULT_TRAVEL_FEE_PER_KM;
+    let travelFeeConfig = {
+        default_per_km: DEFAULT_TRAVEL_FEE_PER_KM,
+        tiers: [],
+    };
     const DEFAULT_REFERENCE_POINT = {
         lat: 12.2618,
         lng: 109.1995,
@@ -73,6 +77,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return earthRadius * c;
+    }
+
+    function findTravelFeeTier(distanceKm) {
+        return (travelFeeConfig.tiers || []).find((tier) => distanceKm >= Number(tier.from_km || 0) && distanceKm <= Number(tier.to_km || 0)) || null;
+    }
+
+    function resolveTravelFee(distanceKm) {
+        const tier = findTravelFeeTier(distanceKm);
+
+        if (tier) {
+            return Number(tier.fee || 0);
+        }
+
+        return Math.round(distanceKm * Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM));
+    }
+
+    function describeTravelFee(referenceLabel, roundedDistance, fee) {
+        const tier = findTravelFeeTier(roundedDistance);
+
+        if (tier) {
+            return `Tạm tính theo bảng khoảng cách từ ${referenceLabel}: ${roundedDistance} km áp dụng mức ${formatCurrency(fee)} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
+        }
+
+        return `Tạm tính theo khoảng cách từ ${referenceLabel}: ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km.`;
+    }
+
+    async function loadTravelFeeConfig() {
+        try {
+            const res = await callApi('/travel-fee-config');
+            if (!res.ok) {
+                return;
+            }
+
+            const config = res.data?.data?.config;
+            if (config && typeof config === 'object') {
+                travelFeeConfig = {
+                    default_per_km: Number(config.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM),
+                    tiers: Array.isArray(config.tiers) ? config.tiers : [],
+                };
+                updateTravelFeeEstimate();
+            }
+        } catch (error) {
+            console.warn('Khong tai duoc cau hinh phi di lai', error);
+        }
     }
 
     function resetTravelFeeEstimate() {
@@ -122,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reference = getReferencePoint();
         const distanceKm = calculateDistanceKm(reference.lat, reference.lng, lat, lng);
         const roundedDistance = Number(distanceKm.toFixed(1));
-        const fee = Math.round(distanceKm * TRAVEL_FEE_PER_KM);
+        const fee = resolveTravelFee(distanceKm);
         const maxDistance = Number(reference.maxDistance || DEFAULT_REFERENCE_POINT.maxDistance);
         const isOutOfRange = roundedDistance > maxDistance;
 
@@ -137,6 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? `Khoảng cách hiện tại vượt phạm vi phục vụ ${maxDistance} km của ${reference.label}.`
                 : `Tạm tính theo khoảng cách từ ${reference.label}: ${roundedDistance} km × ${TRAVEL_FEE_PER_KM.toLocaleString('vi-VN')} ₫/km.`;
             bookingTravelFeeHint.className = isOutOfRange ? 'text-danger' : 'text-muted';
+        }
+
+        if (bookingTravelFeeHint && !isOutOfRange) {
+            bookingTravelFeeHint.textContent = describeTravelFee(reference.label, roundedDistance, fee);
         }
     }
 
@@ -834,6 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (bookingModal) {
+        loadTravelFeeConfig();
         bookingModal.addEventListener('show.bs.modal', async () => {
             loadAddressData();
 
@@ -913,13 +966,9 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSubmitBooking.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
 
             const formData = new FormData(formBooking);
-            formData.delete('dich_vu_id');
             formData.delete('dich_vu_ids[]');
-            Array.from(selectedServiceIds).forEach((serviceId, index) => {
+            Array.from(selectedServiceIds).forEach((serviceId) => {
                 formData.append('dich_vu_ids[]', String(serviceId));
-                if (index === 0) {
-                    formData.set('dich_vu_id', String(serviceId));
-                }
             });
 
             const thueXe = document.getElementById('booking_thue_xe_cho').checked ? 1 : 0;
