@@ -29,13 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
         da_xac_nhan: { label: 'Đã có thợ nhận', className: 'status-da_xac_nhan' },
         dang_lam: { label: 'Đang xử lý', className: 'status-dang_lam' },
         cho_hoan_thanh: { label: 'Chờ thợ xác nhận COD', className: 'status-cho_hoan_thanh' },
-        cho_thanh_toan: { label: 'Chờ thanh toán test', className: 'status-cho_thanh_toan' },
+        cho_thanh_toan: { label: 'Chờ thanh toán online', className: 'status-cho_thanh_toan' },
         da_xong: { label: 'Đã hoàn tất', className: 'status-da_xong' },
         da_huy: { label: 'Đã hủy', className: 'status-da_huy' },
     };
+    const isLocalPaymentSandbox = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
     const cancelReasonOptions = {
         doi_y_khong_muon_dat: 'Đổi ý không muốn đặt',
-        thay_doi_thoi_gian_dat: 'Thay đổi thời gian đặt',
         khong_co_tho_nao_nhan: 'Không có thợ nào nhận',
         cho_qua_lau: 'Chờ quá lâu',
     };
@@ -59,6 +59,42 @@ document.addEventListener('DOMContentLoaded', () => {
         currency: 'VND',
         maximumFractionDigits: 0,
     }).format(Number(value || 0));
+
+    const getBookingRebookPayload = (booking) => {
+        const services = getBookingServices(booking);
+        const serviceIds = services
+            .map((service) => Number(service?.id || 0))
+            .filter((serviceId) => Number.isInteger(serviceId) && serviceId > 0);
+        const firstServiceName = services[0]?.ten_dich_vu || '';
+        const workerId = Number(booking?.tho?.id || booking?.tho_id || 0);
+
+        return {
+            workerId: workerId > 0 ? workerId : null,
+            serviceIds,
+            serviceName: firstServiceName,
+        };
+    };
+
+    const openRebookBooking = (booking) => {
+        const payload = getBookingRebookPayload(booking);
+
+        if (window.BookingWizardModal?.open) {
+            window.BookingWizardModal.open(payload);
+            return;
+        }
+
+        const targetUrl = new URL('/customer/booking', window.location.origin);
+        if (payload.workerId) {
+            targetUrl.searchParams.set('worker_id', String(payload.workerId));
+        }
+        if (payload.serviceIds.length) {
+            targetUrl.searchParams.set('service_ids', payload.serviceIds.join(','));
+        } else if (payload.serviceName) {
+            targetUrl.searchParams.set('service_name', payload.serviceName);
+        }
+
+        window.location.href = targetUrl.toString();
+    };
 
     const renderReviewStars = (rating) => {
         const safeRating = Math.max(0, Math.min(5, Number(rating) || 0));
@@ -187,6 +223,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const normalizeServiceName = (value = '') => String(value).trim().toLowerCase();
     const getBookingPaymentMethod = (booking) => booking?.phuong_thuc_thanh_toan === 'transfer' ? 'transfer' : 'cod';
     const isCashPaymentBooking = (booking) => getBookingPaymentMethod(booking) === 'cod';
+    const buildOnlineGatewayOptions = () => ({
+        momo: 'Ví MoMo',
+        zalopay: 'Ví ZaloPay',
+        vnpay: 'VNPAY / Thẻ ngân hàng',
+        ...(isLocalPaymentSandbox ? { test: 'Thanh toán test nội bộ' } : {}),
+    });
 
     const getStatusMeta = (status) => statusConfig[status] || {
         label: 'Đang cập nhật',
@@ -297,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isCash = isCashPaymentBooking(booking);
             return `
                 <button class="booking-action-button ${isCash ? 'booking-action-button--warning' : 'booking-action-button--primary'} btn-payment-choice" type="button" data-id="${booking.id}">
-                    <span class="material-symbols-outlined">${isCash ? 'payments' : 'account_balance_wallet'}</span>${isCash ? 'Hướng dẫn COD' : 'Thanh toán test'}
+                    <span class="material-symbols-outlined">${isCash ? 'payments' : 'account_balance_wallet'}</span>Chọn cách thanh toán
                 </button>
             `;
         }
@@ -322,9 +364,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (booking.trang_thai === 'da_huy') {
             return `
-                <a href="/customer/home" class="booking-action-link booking-action-link--primary">
+                <button class="booking-action-button booking-action-button--primary btn-rebook" type="button" data-id="${booking.id}">
                     <span class="material-symbols-outlined">refresh</span>Đặt lại
-                </a>
+                </button>
             `;
         }
 
@@ -670,9 +712,9 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Thanh toán tiền mặt',
             html: `
                 <div style="text-align:left; line-height:1.65;">
-                    <p style="margin-bottom:0.75rem;">Đơn này đang ở chế độ <strong>tiền mặt</strong>.</p>
+                    <p style="margin-bottom:0.75rem;">Thợ đã chốt đơn này với phương thức <strong>tiền mặt</strong>.</p>
                     <p style="margin-bottom:0.75rem;">Bạn thanh toán trực tiếp cho thợ sau khi kiểm tra kết quả sửa chữa.</p>
-                    <p style="margin:0;">Đơn chỉ chuyển sang <strong>hoàn tất</strong> khi thợ xác nhận đã thu đủ tiền mặt.</p>
+                    <p style="margin:0;">Nếu đơn chưa hoàn tất ngay, vui lòng liên hệ thợ hoặc cửa hàng để được hỗ trợ đối soát.</p>
                 </div>
             `,
             icon: 'info',
@@ -680,13 +722,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const startTestPayment = async (booking) => {
+    const syncBookingPaymentMethod = async (booking, paymentMethod) => {
+        if (getBookingPaymentMethod(booking) === paymentMethod) {
+            return booking;
+        }
+
+        const response = ensureOk(
+            await callApi(`/bookings/${booking.id}/payment-method`, 'PUT', {
+                phuong_thuc_thanh_toan: paymentMethod,
+            }),
+            'Không thể cập nhật phương thức thanh toán'
+        );
+
+        Object.assign(booking, response.data?.booking || {});
+        showToast(response.data?.message || 'Đã cập nhật phương thức thanh toán.');
+
+        return booking;
+    };
+
+    const selectPendingPaymentMode = async (booking) => {
         const result = await Swal.fire({
-            title: 'Thanh toán test',
-            text: 'Đây là thanh toán giả lập để test luồng hệ thống, không tạo giao dịch thật. Bạn muốn tiếp tục?',
+            title: 'Chọn cách thanh toán',
+            input: 'radio',
+            inputOptions: {
+                cod: 'Tiền mặt trực tiếp cho thợ',
+                transfer: 'Chuyển khoản online / ví điện tử',
+            },
+            inputValue: getBookingPaymentMethod(booking),
+            inputValidator: (value) => (!value ? 'Vui lòng chọn cách thanh toán.' : undefined),
+            showCancelButton: true,
+            confirmButtonText: 'Tiếp tục',
+            cancelButtonText: 'Đóng',
+        });
+
+        return result.isConfirmed ? result.value : null;
+    };
+
+    const selectOnlineGateway = async () => {
+        const gatewayOptions = buildOnlineGatewayOptions();
+        const gatewayKeys = Object.keys(gatewayOptions);
+        const result = await Swal.fire({
+            title: 'Chọn ví điện tử',
+            input: 'radio',
+            inputOptions: gatewayOptions,
+            inputValue: gatewayKeys[0] || 'momo',
+            inputValidator: (value) => (!value ? 'Vui lòng chọn ví hoặc cổng thanh toán.' : undefined),
+            showCancelButton: true,
+            confirmButtonText: 'Mở thanh toán',
+            cancelButtonText: 'Quay lại',
+        });
+
+        return result.isConfirmed ? result.value : null;
+    };
+
+    const startOnlinePayment = async (booking, gateway) => {
+        const result = await Swal.fire({
+            title: gateway === 'test' ? 'Thanh toán test nội bộ' : 'Chuyển sang cổng thanh toán',
+            text: gateway === 'test'
+                ? 'Đây là thanh toán giả lập để test luồng hệ thống, không tạo giao dịch thật. Bạn muốn tiếp tục?'
+                : 'Hệ thống sẽ chuyển bạn sang ví điện tử hoặc cổng thanh toán đã chọn để hoàn tất đơn hàng.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Thanh toán test',
+            confirmButtonText: gateway === 'test' ? 'Thanh toán test' : 'Tiếp tục',
             cancelButtonText: 'Đóng',
         });
 
@@ -694,19 +791,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const res = ensureOk(await callApi('/payment/create', 'POST', {
             don_dat_lich_id: booking.id,
-            phuong_thuc: 'test',
-        }), 'Không tạo được giao dịch thanh toán test');
-        showToast(res.data?.message || 'Thanh toán test thành công.');
+            phuong_thuc: gateway,
+        }), gateway === 'test' ? 'Không tạo được giao dịch thanh toán test' : 'Không tạo được giao dịch thanh toán');
+
+        if (res.data?.url) {
+            window.location.href = res.data.url;
+            return;
+        }
+
+        showToast(res.data?.message || 'Thanh toán thành công.');
         await loadBookings();
     };
 
     const openPaymentAction = async (booking) => {
-        if (isCashPaymentBooking(booking)) {
+        if (getBookingPaymentMethod(booking) !== 'transfer') {
             await showCashPaymentInstructions(booking);
             return;
         }
 
-        await startTestPayment(booking);
+        const selectedGateway = await selectOnlineGateway();
+        if (!selectedGateway) {
+            return;
+        }
+
+        await startOnlinePayment(booking, selectedGateway);
     };
 
     const attachCardNavigationListeners = () => {
@@ -790,6 +898,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 } finally {
                     currentButton.disabled = false;
                 }
+            });
+        });
+
+        document.querySelectorAll('.btn-rebook').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                const booking = allBookings.find((item) => String(item.id) === String(event.currentTarget.dataset.id || ''));
+                if (!booking) {
+                    showToast('Không tìm thấy đơn để đặt lại.', 'error');
+                    return;
+                }
+
+                openRebookBooking(booking);
             });
         });
 

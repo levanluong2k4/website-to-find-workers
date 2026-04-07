@@ -5,6 +5,7 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script id="tailwind-config">
     tailwind.config = {
       darkMode: "class",
@@ -90,6 +91,546 @@
         gap: 1rem;
     }
 
+    .worker-priority-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .worker-priority-card {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        min-height: 0;
+        padding: 1.25rem;
+        border-radius: 1.5rem;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .worker-priority-card::after {
+        content: '';
+        position: absolute;
+        right: -2rem;
+        bottom: -2.5rem;
+        width: 7rem;
+        height: 7rem;
+        border-radius: 9999px;
+        opacity: 0.8;
+        pointer-events: none;
+    }
+
+    .worker-priority-card--revenue {
+        background: linear-gradient(145deg, #082f49 0%, #0369a1 48%, #38bdf8 100%);
+        color: #f0f9ff;
+    }
+
+    .worker-priority-card--revenue::after {
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .worker-priority-card--schedule {
+        background: linear-gradient(145deg, #f8fbff 0%, #e0f2fe 52%, #ffffff 100%);
+        color: #0f172a;
+    }
+
+    .worker-priority-card--schedule::after {
+        background: rgba(14, 165, 233, 0.14);
+    }
+
+    .worker-priority-card--pending {
+        background: linear-gradient(145deg, #fff7ed 0%, #ffedd5 52%, #ffffff 100%);
+        color: #7c2d12;
+    }
+
+    .worker-priority-card--pending::after {
+        background: rgba(249, 115, 22, 0.14);
+    }
+
+    .worker-priority-card__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: fit-content;
+        padding: 0.45rem 0.8rem;
+        border-radius: 9999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .worker-priority-card--revenue .worker-priority-card__eyebrow {
+        background: rgba(255, 255, 255, 0.14);
+        color: rgba(240, 249, 255, 0.92);
+    }
+
+    .worker-priority-card--schedule .worker-priority-card__eyebrow {
+        background: rgba(14, 165, 233, 0.12);
+        color: #075985;
+    }
+
+    .worker-priority-card--pending .worker-priority-card__eyebrow {
+        background: rgba(249, 115, 22, 0.12);
+        color: #9a3412;
+    }
+
+    .worker-priority-card__value {
+        font-size: clamp(2.1rem, 3.4vw, 2.9rem);
+        line-height: 0.95;
+        font-weight: 800;
+        letter-spacing: -0.05em;
+    }
+
+    .worker-priority-card__meta {
+        max-width: none;
+        font-size: 0.95rem;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+
+    .worker-priority-card__hint {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.82;
+    }
+
+    .worker-priority-preview {
+        display: grid;
+        gap: 0.5rem;
+        padding-top: 0;
+        margin-top: 0.25rem;
+    }
+
+    .worker-priority-card--revenue .worker-priority-preview {
+        border-top: 0;
+    }
+
+    .worker-priority-card--schedule .worker-priority-preview,
+    .worker-priority-card--pending .worker-priority-preview {
+        border-top: 0;
+    }
+
+    .worker-priority-preview-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.7rem 0.8rem;
+        border-radius: 1rem;
+        color: inherit;
+        text-decoration: none;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+
+    .worker-priority-card--revenue .worker-priority-preview-item {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .worker-priority-card--schedule .worker-priority-preview-item,
+    .worker-priority-card--pending .worker-priority-preview-item {
+        background: rgba(255, 255, 255, 0.76);
+    }
+
+    .worker-priority-preview-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .worker-priority-preview-copy {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        min-width: 0;
+    }
+
+    .worker-priority-preview-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 9999px;
+    }
+
+    .worker-priority-card--revenue .worker-priority-preview-icon {
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    .worker-priority-card--schedule .worker-priority-preview-icon {
+        background: rgba(14, 165, 233, 0.12);
+        color: #0284c7;
+    }
+
+    .worker-priority-card--pending .worker-priority-preview-icon {
+        background: rgba(249, 115, 22, 0.12);
+        color: #ea580c;
+    }
+
+    .worker-priority-preview-title {
+        display: block;
+        font-size: 0.92rem;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .worker-priority-preview-subtitle {
+        display: none;
+    }
+
+    .worker-priority-preview-chip {
+        flex-shrink: 0;
+        padding: 0.35rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .worker-priority-card--revenue .worker-priority-preview-chip {
+        background: rgba(255, 255, 255, 0.14);
+        color: #f0f9ff;
+    }
+
+    .worker-priority-card--schedule .worker-priority-preview-chip {
+        background: rgba(14, 165, 233, 0.12);
+        color: #0c4a6e;
+    }
+
+    .worker-priority-card--pending .worker-priority-preview-chip {
+        background: rgba(249, 115, 22, 0.12);
+        color: #9a3412;
+    }
+
+    .dashboard-map-shell {
+        position: relative;
+        overflow: hidden;
+        border-radius: 2rem;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        box-shadow: 0 20px 54px rgba(15, 23, 42, 0.07);
+    }
+
+    .dashboard-map-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem 0.75rem;
+    }
+
+    .dashboard-map-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .dashboard-map-stage {
+        position: relative;
+        min-height: 28rem;
+        padding: 0 1.5rem 1.5rem;
+    }
+
+    .dashboard-map-canvas {
+        width: 100%;
+        height: 28rem;
+        border-radius: 1.5rem;
+        overflow: hidden;
+        background: linear-gradient(135deg, #dbeafe 0%, #f8fbff 55%, #ffffff 100%);
+    }
+
+    .dashboard-map-canvas .leaflet-control-attribution,
+    .dashboard-map-canvas .leaflet-control-zoom {
+        display: none;
+    }
+
+    .dashboard-map-status {
+        position: absolute;
+        top: 1.25rem;
+        left: 2.5rem;
+        z-index: 450;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.7rem 0.9rem;
+        border-radius: 9999px;
+        background: rgba(15, 23, 42, 0.8);
+        color: #f8fafc;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+    }
+
+    .dashboard-map-legend {
+        position: absolute;
+        top: 1.25rem;
+        right: 2.5rem;
+        z-index: 450;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+
+    .dashboard-map-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.6rem 0.8rem;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.86);
+        color: #0f172a;
+        font-size: 0.72rem;
+        font-weight: 700;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(12px);
+    }
+
+    .dashboard-map-chip__dot {
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 9999px;
+        flex-shrink: 0;
+    }
+
+    .dashboard-map-chip__dot--worker {
+        background: #0284c7;
+    }
+
+    .dashboard-map-chip__dot--mine {
+        background: #0f766e;
+    }
+
+    .dashboard-map-chip__dot--open {
+        background: #ea580c;
+    }
+
+    .dashboard-map-card {
+        position: absolute;
+        left: 2.5rem;
+        bottom: 2.5rem;
+        z-index: 450;
+        width: min(24rem, calc(100% - 5rem));
+        padding: 1rem;
+        border-radius: 1.4rem;
+        background: rgba(255, 255, 255, 0.94);
+        color: #0f172a;
+        box-shadow: 0 28px 60px rgba(15, 23, 42, 0.16);
+        backdrop-filter: blur(18px);
+    }
+
+    .dashboard-map-card.is-hidden {
+        display: none;
+    }
+
+    .dashboard-map-card__eyebrow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .dashboard-map-card__status {
+        padding: 0.35rem 0.65rem;
+        border-radius: 9999px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .dashboard-map-card__status--mine {
+        background: rgba(15, 118, 110, 0.1);
+        color: #0f766e;
+    }
+
+    .dashboard-map-card__status--open {
+        background: rgba(234, 88, 12, 0.12);
+        color: #c2410c;
+    }
+
+    .dashboard-map-card__title {
+        font-size: 1rem;
+        font-weight: 800;
+        line-height: 1.35;
+    }
+
+    .dashboard-map-card__meta {
+        margin-top: 0.35rem;
+        color: #475569;
+        font-size: 0.86rem;
+        line-height: 1.5;
+    }
+
+    .dashboard-map-card__stack {
+        display: grid;
+        gap: 0.55rem;
+        margin-top: 0.9rem;
+    }
+
+    .dashboard-map-card__line {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: #334155;
+        font-size: 0.84rem;
+    }
+
+    .dashboard-map-card__line .material-symbols-outlined {
+        font-size: 1rem;
+        color: #0284c7;
+    }
+
+    .dashboard-map-card__actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .dashboard-map-card__actions > * {
+        flex: 1;
+    }
+
+    .dashboard-map-primary-btn,
+    .dashboard-map-secondary-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        min-height: 2.75rem;
+        padding: 0.8rem 1rem;
+        border-radius: 0.95rem;
+        border: 1px solid transparent;
+        font-size: 0.84rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+
+    .dashboard-map-primary-btn {
+        background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+        color: #ffffff;
+        box-shadow: 0 14px 28px rgba(2, 132, 199, 0.22);
+    }
+
+    .dashboard-map-primary-btn:hover,
+    .dashboard-map-secondary-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .dashboard-map-primary-btn[disabled] {
+        cursor: default;
+        opacity: 0.55;
+        box-shadow: none;
+    }
+
+    .dashboard-map-secondary-btn {
+        border-color: rgba(148, 163, 184, 0.28);
+        background: #ffffff;
+        color: #0f172a;
+    }
+
+    .dashboard-map-empty {
+        position: absolute;
+        inset: 4.75rem 2.5rem 2.5rem;
+        z-index: 410;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.9rem;
+        border-radius: 1.5rem;
+        border: 1px dashed rgba(148, 163, 184, 0.34);
+        background: rgba(255, 255, 255, 0.82);
+        color: #475569;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .dashboard-map-empty .material-symbols-outlined {
+        font-size: 2rem;
+        color: #0284c7;
+    }
+
+    .dashboard-map-empty.is-hidden {
+        display: none;
+    }
+
+    .dashboard-map-marker {
+        position: relative;
+        width: 2.45rem;
+        height: 2.45rem;
+        border-radius: 9999px;
+        border: 3px solid #ffffff;
+        box-shadow: 0 14px 24px rgba(15, 23, 42, 0.18);
+    }
+
+    .dashboard-map-marker::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: -0.55rem;
+        width: 0.8rem;
+        height: 0.8rem;
+        background: inherit;
+        transform: translateX(-50%) rotate(45deg);
+        border-radius: 0.15rem;
+    }
+
+    .dashboard-map-marker::before {
+        content: '';
+        position: absolute;
+        inset: 0.5rem;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.92);
+        z-index: 1;
+    }
+
+    .dashboard-map-marker > span {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        color: #0f172a;
+        z-index: 2;
+    }
+
+    .dashboard-map-marker--worker {
+        background: #0284c7;
+    }
+
+    .dashboard-map-marker--mine {
+        background: #0f766e;
+    }
+
+    .dashboard-map-marker--open {
+        background: #ea580c;
+    }
+
     @media (max-width: 768px) {
         .worker-dashboard-main {
             margin-left: 0;
@@ -131,10 +672,65 @@
         .worker-dashboard-content {
             padding: 0 1rem 6.75rem;
         }
+
+        .worker-priority-card {
+            min-height: 0;
+            padding: 1rem;
+            border-radius: 1.25rem;
+        }
+
+        .worker-priority-preview-item {
+            padding: 0.65rem 0.75rem;
+        }
+
+        .dashboard-map-head {
+            padding: 1rem 1rem 0.75rem;
+        }
+
+        .dashboard-map-stage {
+            min-height: 31rem;
+            padding: 0 1rem 1rem;
+        }
+
+        .dashboard-map-canvas {
+            height: 31rem;
+            border-radius: 1.25rem;
+        }
+
+        .dashboard-map-status {
+            top: 1rem;
+            left: 2rem;
+            right: 2rem;
+            justify-content: center;
+        }
+
+        .dashboard-map-legend {
+            top: 4.4rem;
+            right: 2rem;
+            left: 2rem;
+            justify-content: flex-start;
+        }
+
+        .dashboard-map-card {
+            left: 2rem;
+            right: 2rem;
+            bottom: 2rem;
+            width: auto;
+        }
+
+        .dashboard-map-empty {
+            inset: 7.5rem 2rem 2rem;
+        }
     }
 
     @media (max-width: 640px) {
         .worker-dashboard-topbar-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 1279px) {
+        .worker-priority-grid {
             grid-template-columns: 1fr;
         }
     }
@@ -164,13 +760,121 @@
                 <button id="dashboardRefreshButton" class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors text-on-surface-variant">
                     <span class="material-symbols-outlined">refresh</span>
                 </button>
-                <a href="/worker/jobs" class="bg-gradient-to-br from-primary-container to-primary text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity">
+                <a href="/worker/my-bookings?status=pending" class="bg-gradient-to-br from-primary-container to-primary text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity">
                     <span class="material-symbols-outlined text-lg">add</span> Việc mới
                 </a>
             </div>
         </header>
 
         <div class="worker-dashboard-content px-8 pb-12 space-y-8">
+            <!-- Priority Summary Section -->
+            <section class="worker-priority-grid">
+                <article class="worker-priority-card worker-priority-card--revenue">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-5">
+                            <span class="worker-priority-card__eyebrow">
+                                <span class="material-symbols-outlined text-base">payments</span>
+                                Doanh thu hôm nay
+                            </span>
+                            <div class="space-y-3">
+                                <p class="worker-priority-card__value" id="priorityTodayRevenue">0 ₫</p>
+                                <p class="worker-priority-card__meta text-white/90" id="priorityRevenueMeta">Chưa có doanh thu hôm nay.</p>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-[2.25rem] text-white/70">trending_up</span>
+                    </div>
+                    <p class="worker-priority-card__hint text-white/80" id="priorityRevenueHint">0 đơn chờ thanh toán</p>
+                    <div class="worker-priority-preview" id="priorityRevenuePreview">
+                        <div class="worker-priority-preview-item">
+                            <span class="worker-priority-preview-copy">
+                                <span class="worker-priority-preview-icon">
+                                    <span class="material-symbols-outlined text-[18px]">hourglass_top</span>
+                                </span>
+                                <span>
+                                    <span class="worker-priority-preview-title">Chưa có giao dịch</span>
+                                    <span class="worker-priority-preview-subtitle">Hệ thống đang gom các đơn đã có doanh thu.</span>
+                                </span>
+                            </span>
+                            <span class="worker-priority-preview-chip">0 đ</span>
+                        </div>
+                    </div>
+                    <a href="/worker/my-bookings" class="inline-flex items-center gap-2 text-sm font-semibold text-white/95 hover:text-white transition-colors">
+                        Xem đơn
+                        <span class="material-symbols-outlined text-base">arrow_outward</span>
+                    </a>
+                </article>
+
+                <article class="worker-priority-card worker-priority-card--schedule">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-5">
+                            <span class="worker-priority-card__eyebrow">
+                                <span class="material-symbols-outlined text-base">calendar_clock</span>
+                                Lịch làm hôm nay
+                            </span>
+                            <div class="space-y-3">
+                                <p class="worker-priority-card__value" id="priorityTodayScheduleCount">00</p>
+                                <p class="worker-priority-card__meta text-slate-700" id="priorityTodayScheduleMeta">Hôm nay chưa có lịch.</p>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-[2.25rem] text-sky-700/60">event_note</span>
+                    </div>
+                    <p class="worker-priority-card__hint text-sky-900/70" id="priorityScheduleHint">0 lịch đang xử lý</p>
+                    <div class="worker-priority-preview" id="prioritySchedulePreview">
+                        <div class="worker-priority-preview-item">
+                            <span class="worker-priority-preview-copy">
+                                <span class="worker-priority-preview-icon">
+                                    <span class="material-symbols-outlined text-[18px]">schedule</span>
+                                </span>
+                                <span>
+                                    <span class="worker-priority-preview-title">Trống lịch</span>
+                                    <span class="worker-priority-preview-subtitle">Lịch gần nhất sẽ hiện ở đây.</span>
+                                </span>
+                            </span>
+                            <span class="worker-priority-preview-chip">Hôm nay</span>
+                        </div>
+                    </div>
+                    <a href="/worker/my-bookings" class="inline-flex items-center gap-2 text-sm font-semibold text-sky-900 hover:text-sky-700 transition-colors">
+                        Mở lịch
+                        <span class="material-symbols-outlined text-base">arrow_outward</span>
+                    </a>
+                </article>
+
+                <article class="worker-priority-card worker-priority-card--pending">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-5">
+                            <span class="worker-priority-card__eyebrow">
+                                <span class="material-symbols-outlined text-base">pending_actions</span>
+                                Đơn mới chờ xác nhận
+                            </span>
+                            <div class="space-y-3">
+                                <p class="worker-priority-card__value" id="priorityPendingCount">00</p>
+                                <p class="worker-priority-card__meta text-orange-950/85" id="priorityPendingMeta">Không có đơn chờ xác nhận.</p>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-[2.25rem] text-orange-700/60">notification_important</span>
+                    </div>
+                    <p class="worker-priority-card__hint text-orange-900/70" id="priorityPendingHint">0 việc mới quanh bạn</p>
+                    <div class="worker-priority-preview" id="priorityPendingPreview">
+                        <div class="worker-priority-preview-item">
+                            <span class="worker-priority-preview-copy">
+                                <span class="worker-priority-preview-icon">
+                                    <span class="material-symbols-outlined text-[18px]">mark_email_unread</span>
+                                </span>
+                                <span>
+                                    <span class="worker-priority-preview-title">Hộp chờ trống</span>
+                                    <span class="worker-priority-preview-subtitle">Danh sách ưu tiên sẽ xuất hiện ở đây.</span>
+                                </span>
+                            </span>
+                            <span class="worker-priority-preview-chip">Ổn</span>
+                        </div>
+                    </div>
+                    <a href="/worker/my-bookings?status=pending" class="inline-flex items-center gap-2 text-sm font-semibold text-orange-950 hover:text-orange-700 transition-colors">
+                        Xem việc mới
+                        <span class="material-symbols-outlined text-base">arrow_outward</span>
+                    </a>
+                </article>
+            </section>
+
             <!-- Hero Summary Section -->
             <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-surface-container-lowest p-8 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group">
@@ -196,7 +900,7 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-1 gap-3 w-full md:w-56">
-                        <a href="/worker/jobs" class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-primary hover:text-white rounded-2xl transition-all group/btn">
+                        <a href="/worker/my-bookings?status=pending" class="flex items-center gap-3 p-4 bg-surface-container-low hover:bg-primary hover:text-white rounded-2xl transition-all group/btn">
                             <span class="material-symbols-outlined text-primary group-hover/btn:text-white">assignment_add</span>
                             <span class="text-sm font-semibold">Nhận việc mới</span>
                         </a>
@@ -252,7 +956,7 @@
                             <h3 class="text-xl font-bold flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary">near_me</span> Việc mới gần bạn
                             </h3>
-                            <a class="text-sm font-semibold text-primary hover:underline" href="/worker/jobs" id="availableJobsBadge">Xem tất cả</a>
+                            <a class="text-sm font-semibold text-primary hover:underline" href="/worker/my-bookings?status=pending" id="availableJobsBadge">Xem tất cả</a>
                         </div>
                         <div id="jobSpotlightList" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="col-span-3 text-center text-sm text-on-surface-variant p-8 border border-dashed rounded-2xl">Đang tải...</div>
@@ -360,6 +1064,7 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
   import { callApi, getCurrentUser, showToast } from "{{ asset('assets/js/api.js') }}";
 
@@ -375,6 +1080,18 @@
     headerDate: $('headerDate'),
     liveStatusText: $('liveStatusText'),
     refreshButton: $('dashboardRefreshButton'),
+    priorityTodayRevenue: $('priorityTodayRevenue'),
+    priorityRevenueMeta: $('priorityRevenueMeta'),
+    priorityRevenueHint: $('priorityRevenueHint'),
+    priorityRevenuePreview: $('priorityRevenuePreview'),
+    priorityTodayScheduleCount: $('priorityTodayScheduleCount'),
+    priorityTodayScheduleMeta: $('priorityTodayScheduleMeta'),
+    priorityScheduleHint: $('priorityScheduleHint'),
+    prioritySchedulePreview: $('prioritySchedulePreview'),
+    priorityPendingCount: $('priorityPendingCount'),
+    priorityPendingMeta: $('priorityPendingMeta'),
+    priorityPendingHint: $('priorityPendingHint'),
+    priorityPendingPreview: $('priorityPendingPreview'),
     heroWorkerName: $('heroWorkerName'),
     heroSummaryText: $('heroSummaryText'),
     heroAvailableJobs: $('heroAvailableJobs'),
@@ -421,6 +1138,20 @@
 
   let revenueChartInstance = null;
   let statusChartInstance = null;
+  const workerMapState = {
+    map: null,
+    tileLayer: null,
+    markersLayer: null,
+    workerMarker: null,
+    refs: null,
+    selectedBookingId: null,
+    hoveredBookingId: null,
+    workerPosition: null,
+    hasRequestedLocation: false,
+    lastPayload: null,
+    hideCardTimeout: null,
+    isHoveringInfoCard: false,
+  };
 
   const escapeHtml = (value) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const formatMoney = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`;
@@ -465,7 +1196,480 @@
     return `${capitalizedWeekday}, ${now.getDate()} Tháng ${now.getMonth()+1}, ${now.getFullYear()}`;
   };
 
-  function renderTopbar(bookings, availableJobs) {
+  const formatMetricValue = (value) => String(value > 0 && value < 10 ? `0${value}` : value);
+  const bookingDateKey = (value) => String(value ?? '').slice(0, 10);
+  const getBookingCode = (booking) => booking?.ma_don ? `#${String(booking.ma_don).slice(0, 8).toUpperCase()}` : `#${String(booking?.id ?? '').padStart(4, '0')}`;
+  const buildDashboardPriorityState = (bookings, availableJobs) => {
+    const todayKey = localDateKey();
+    const scheduleStatuses = ['da_xac_nhan', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong', 'cho_xac_nhan'];
+    const todaySchedule = [...bookings]
+      .filter((booking) => bookingDateKey(booking?.ngay_hen) === todayKey && scheduleStatuses.includes(booking?.trang_thai) && booking?.trang_thai !== 'da_huy')
+      .sort((left, right) => startTimeFromSlot(left?.khung_gio_hen).localeCompare(startTimeFromSlot(right?.khung_gio_hen)));
+    const pendingConfirm = [...bookings]
+      .filter((booking) => booking?.trang_thai === 'cho_xac_nhan')
+      .sort((left, right) => `${bookingDateKey(left?.ngay_hen)} ${startTimeFromSlot(left?.khung_gio_hen)}`.localeCompare(`${bookingDateKey(right?.ngay_hen)} ${startTimeFromSlot(right?.khung_gio_hen)}`));
+    const inProgress = bookings.filter((booking) => booking?.trang_thai === 'dang_lam');
+    const revenueStatuses = ['cho_hoan_thanh', 'cho_thanh_toan', 'da_xong'];
+    const todayRevenueBookings = [...bookings]
+      .filter((booking) => revenueStatuses.includes(booking?.trang_thai))
+      .filter((booking) => {
+        const completedToday = bookingDateKey(booking?.thoi_gian_hoan_thanh) === todayKey;
+        const scheduledToday = bookingDateKey(booking?.ngay_hen) === todayKey;
+        return completedToday || (scheduledToday && bookingTotal(booking) > 0);
+      });
+
+    return {
+      todayKey,
+      todaySchedule,
+      pendingConfirm,
+      inProgress,
+      availableJobsCount: availableJobs.length,
+      nextSchedule: todaySchedule.find((booking) => !['da_xong', 'cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)) || todaySchedule[0] || null,
+      todayRevenueBookings: [...todayRevenueBookings].sort((left, right) => bookingTotal(right) - bookingTotal(left)),
+      todayRevenue: todayRevenueBookings.reduce((sum, booking) => sum + bookingTotal(booking), 0),
+      todayCollectedCount: todayRevenueBookings.filter((booking) => booking?.trang_thai === 'da_xong').length,
+      todayWaitingPayoutCount: todayRevenueBookings.filter((booking) => ['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)).length,
+    };
+  };
+  const buildPriorityPreviewItem = ({ href, icon, title, subtitle, chip }) => `
+    <a href="${href}" class="worker-priority-preview-item">
+      <span class="worker-priority-preview-copy">
+        <span class="worker-priority-preview-icon">
+          <span class="material-symbols-outlined text-[18px]">${icon}</span>
+        </span>
+        <span class="min-w-0">
+          <span class="worker-priority-preview-title">${escapeHtml(title)}</span>
+          <span class="worker-priority-preview-subtitle">${escapeHtml(subtitle)}</span>
+        </span>
+      </span>
+      <span class="worker-priority-preview-chip">${escapeHtml(chip)}</span>
+    </a>
+  `;
+  const getCoordinateValue = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const isValidCoordinatePair = (lat, lng) => Number.isFinite(lat)
+    && Number.isFinite(lng)
+    && Math.abs(lat) <= 90
+    && Math.abs(lng) <= 180
+    && !(lat === 0 && lng === 0);
+  const getBookingPoint = (booking) => {
+    const lat = getCoordinateValue(booking?.vi_do);
+    const lng = getCoordinateValue(booking?.kinh_do);
+    return isValidCoordinatePair(lat, lng) ? { lat, lng } : null;
+  };
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const calculateHaversineKm = (fromLat, fromLng, toLat, toLng) => {
+    const earthRadiusKm = 6371;
+    const dLat = toRadians(toLat - fromLat);
+    const dLng = toRadians(toLng - fromLng);
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(toRadians(fromLat)) * Math.cos(toRadians(toLat)) * Math.sin(dLng / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusKm * c;
+  };
+  const formatDistanceLabel = (distanceKm) => {
+    if (!Number.isFinite(distanceKm)) return 'Chưa có GPS';
+    if (distanceKm < 1) return `${Math.max(1, Math.round(distanceKm * 1000))} m`;
+    return `${distanceKm < 10 ? distanceKm.toFixed(1) : distanceKm.toFixed(0)} km`;
+  };
+  const formatBookingDateLabel = (value) => {
+    if (!value) return 'Chưa có ngày';
+    return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' }).format(new Date(`${bookingDateKey(value)}T00:00:00`));
+  };
+  const isClaimableBooking = (booking) => !booking?.tho_id && booking?.trang_thai === 'cho_xac_nhan';
+  const getBookingDetailHref = (booking) => `/worker/my-bookings?status=pending&booking=${booking.id}`;
+  const getWorkerPointFromProfile = (profile) => {
+    const lat = getCoordinateValue(profile?.vi_do);
+    const lng = getCoordinateValue(profile?.kinh_do);
+    return isValidCoordinatePair(lat, lng) ? { lat, lng } : null;
+  };
+  const buildMapMarkerIcon = (variant, icon) => window.L.divIcon({
+    className: '',
+    html: `<div class="dashboard-map-marker dashboard-map-marker--${variant}"><span class="material-symbols-outlined">${icon}</span></div>`,
+    iconSize: [40, 50],
+    iconAnchor: [20, 42],
+    tooltipAnchor: [0, -30],
+  });
+  const ensureJobMapShell = () => {
+    if (workerMapState.refs?.canvas && document.body.contains(workerMapState.refs.canvas)) {
+      return workerMapState.refs;
+    }
+
+    dom.jobSpotlightList.className = 'block';
+    dom.jobSpotlightList.innerHTML = `
+      <div class="dashboard-map-shell">
+        <div class="dashboard-map-head">
+          <div>
+            <p class="text-sm font-semibold text-slate-900">Bản đồ khách hàng</p>
+            <p class="text-xs text-slate-500">Hiện vị trí của bạn, đơn đã nhận và đơn chưa có thợ.</p>
+          </div>
+          <div class="dashboard-map-meta">
+            <span id="jobMapCountText">Đang tải dữ liệu bản đồ</span>
+          </div>
+        </div>
+        <div class="dashboard-map-stage">
+          <div id="jobMapCanvas" class="dashboard-map-canvas"></div>
+          <div id="jobMapStatus" class="dashboard-map-status">
+            <span class="material-symbols-outlined text-base">my_location</span>
+            Đang tìm vị trí của bạn...
+          </div>
+          <div class="dashboard-map-legend">
+            <span class="dashboard-map-chip">
+              <span class="dashboard-map-chip__dot dashboard-map-chip__dot--worker"></span>
+              Vị trí của bạn
+            </span>
+            <span class="dashboard-map-chip">
+              <span class="dashboard-map-chip__dot dashboard-map-chip__dot--mine"></span>
+              Đơn của tôi
+            </span>
+            <span class="dashboard-map-chip">
+              <span class="dashboard-map-chip__dot dashboard-map-chip__dot--open"></span>
+              Đơn chưa có thợ
+            </span>
+          </div>
+          <div id="jobMapEmptyState" class="dashboard-map-empty">
+            <span class="material-symbols-outlined">map_search</span>
+            <div class="space-y-1">
+              <p class="font-bold text-slate-900">Đang tải đơn và vị trí trên bản đồ</p>
+              <p class="text-sm text-slate-500">Marker khách sẽ hiện tại đây khi hệ thống có tọa độ hợp lệ.</p>
+            </div>
+          </div>
+          <div id="jobMapInfoCard" class="dashboard-map-card is-hidden">
+            <div class="dashboard-map-card__eyebrow">
+              <span id="jobMapInfoEyebrow">Đơn trên bản đồ</span>
+              <span id="jobMapInfoStatus" class="dashboard-map-card__status dashboard-map-card__status--open">Chờ xác nhận</span>
+            </div>
+            <p id="jobMapInfoTitle" class="dashboard-map-card__title">Di chuột vào marker để xem nhanh đơn đặt lịch.</p>
+            <p id="jobMapInfoMeta" class="dashboard-map-card__meta">Bạn có thể nhận đơn ngay tại đây hoặc mở trang chi tiết.</p>
+            <div class="dashboard-map-card__stack">
+              <div class="dashboard-map-card__line">
+                <span class="material-symbols-outlined">person</span>
+                <span id="jobMapInfoCustomer">Khách hàng</span>
+              </div>
+              <div class="dashboard-map-card__line">
+                <span class="material-symbols-outlined">schedule</span>
+                <span id="jobMapInfoSchedule">Ngày hẹn • Khung giờ</span>
+              </div>
+              <div class="dashboard-map-card__line">
+                <span class="material-symbols-outlined">distance</span>
+                <span id="jobMapInfoDistance">Khoảng cách sẽ hiện khi có GPS.</span>
+              </div>
+              <div class="dashboard-map-card__line">
+                <span class="material-symbols-outlined">place</span>
+                <span id="jobMapInfoAddress">Địa chỉ khách hàng</span>
+              </div>
+            </div>
+            <div class="dashboard-map-card__actions">
+              <button type="button" id="jobMapClaimButton" class="dashboard-map-primary-btn">
+                <span class="material-symbols-outlined text-base">task_alt</span>
+                Xác nhận đơn
+              </button>
+              <a id="jobMapDetailLink" href="/worker/my-bookings?status=pending" class="dashboard-map-secondary-btn">
+                <span class="material-symbols-outlined text-base">open_in_new</span>
+                Xem chi tiết
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    workerMapState.refs = {
+      countText: $('jobMapCountText'),
+      status: $('jobMapStatus'),
+      canvas: $('jobMapCanvas'),
+      emptyState: $('jobMapEmptyState'),
+      infoCard: $('jobMapInfoCard'),
+      infoEyebrow: $('jobMapInfoEyebrow'),
+      infoStatus: $('jobMapInfoStatus'),
+      infoTitle: $('jobMapInfoTitle'),
+      infoMeta: $('jobMapInfoMeta'),
+      infoCustomer: $('jobMapInfoCustomer'),
+      infoSchedule: $('jobMapInfoSchedule'),
+      infoDistance: $('jobMapInfoDistance'),
+      infoAddress: $('jobMapInfoAddress'),
+      claimButton: $('jobMapClaimButton'),
+      detailLink: $('jobMapDetailLink'),
+    };
+
+    workerMapState.refs.infoCard?.addEventListener('mouseenter', () => {
+      workerMapState.isHoveringInfoCard = true;
+      clearJobMapHideTimeout();
+    });
+
+    workerMapState.refs.infoCard?.addEventListener('mouseleave', () => {
+      workerMapState.isHoveringInfoCard = false;
+      scheduleMapBookingCardHide(workerMapState.refs, 120);
+    });
+
+    return workerMapState.refs;
+  };
+  const ensureJobMap = (refs) => {
+    if (!refs?.canvas || !window.L) return null;
+    if (workerMapState.map) return workerMapState.map;
+
+    workerMapState.map = window.L.map(refs.canvas, {
+      zoomControl: false,
+      attributionControl: false,
+      scrollWheelZoom: true,
+    }).setView([12.2388, 109.1967], 12);
+
+    workerMapState.tileLayer = window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(workerMapState.map);
+
+    workerMapState.markersLayer = window.L.layerGroup().addTo(workerMapState.map);
+    workerMapState.map.on('click', () => {
+      hideMapBookingCard(refs);
+    });
+
+    return workerMapState.map;
+  };
+  const updateJobMapStatus = (refs, message) => {
+    if (refs?.status) refs.status.lastChild.textContent = ` ${message}`;
+  };
+  const setJobMapEmptyState = (refs, visible, title, copy) => {
+    if (!refs?.emptyState) return;
+    refs.emptyState.classList.toggle('is-hidden', !visible);
+    if (!visible) return;
+    const titleNode = refs.emptyState.querySelector('p.font-bold');
+    const copyNode = refs.emptyState.querySelector('p.text-sm');
+    if (titleNode) titleNode.textContent = title;
+    if (copyNode) copyNode.textContent = copy;
+  };
+  const clearJobMapHideTimeout = () => {
+    if (workerMapState.hideCardTimeout) {
+      clearTimeout(workerMapState.hideCardTimeout);
+      workerMapState.hideCardTimeout = null;
+    }
+  };
+  const hideMapBookingCard = (refs) => {
+    clearJobMapHideTimeout();
+    workerMapState.selectedBookingId = null;
+    workerMapState.hoveredBookingId = null;
+    workerMapState.isHoveringInfoCard = false;
+    if (refs?.infoCard) {
+      refs.infoCard.classList.add('is-hidden');
+    }
+  };
+  const scheduleMapBookingCardHide = (refs, delay = 900) => {
+    clearJobMapHideTimeout();
+    workerMapState.hideCardTimeout = window.setTimeout(() => {
+      if (workerMapState.isHoveringInfoCard || workerMapState.hoveredBookingId !== null) {
+        return;
+      }
+      hideMapBookingCard(refs);
+    }, delay);
+  };
+  const buildDashboardMapBookings = (bookings, availableJobs) => {
+    const combined = [
+      ...bookings
+        .filter((booking) => !['da_xong', 'da_huy'].includes(booking?.trang_thai))
+        .map((booking) => ({ ...booking, mapSource: 'mine' })),
+      ...availableJobs.map((booking) => ({ ...booking, mapSource: 'open' })),
+    ];
+
+    const deduped = [];
+    const seen = new Set();
+
+    combined.forEach((booking) => {
+      if (!booking?.id || seen.has(booking.id)) return;
+      seen.add(booking.id);
+
+      const point = getBookingPoint(booking);
+      if (!point) return;
+
+      deduped.push({
+        ...booking,
+        point,
+        isClaimable: isClaimableBooking(booking),
+      });
+    });
+
+    return deduped;
+  };
+  const selectMapBooking = (booking, refs) => {
+    if (!booking || !refs) return;
+
+    clearJobMapHideTimeout();
+    workerMapState.selectedBookingId = booking.id;
+    refs.infoCard.classList.remove('is-hidden');
+    refs.infoEyebrow.textContent = booking.mapSource === 'mine' ? 'Đơn của tôi' : 'Đơn chưa có thợ';
+    refs.infoStatus.textContent = getStatusMeta(booking.trang_thai).label;
+    refs.infoStatus.className = `dashboard-map-card__status ${booking.mapSource === 'mine' ? 'dashboard-map-card__status--mine' : 'dashboard-map-card__status--open'}`;
+    refs.infoTitle.textContent = getServiceSummary(booking, 1);
+    refs.infoMeta.textContent = booking.mapSource === 'mine'
+      ? 'Đây là đơn hiện đang thuộc lịch xử lý của bạn.'
+      : 'Đơn này đang chờ thợ xác nhận. Bạn có thể nhận trực tiếp trên bản đồ.';
+    refs.infoCustomer.textContent = getCustomer(booking).name || 'Khách hàng';
+    refs.infoSchedule.textContent = `${formatBookingDateLabel(booking.ngay_hen)} • ${booking.khung_gio_hen || 'Chưa có khung giờ'}`;
+    refs.infoAddress.textContent = booking.dia_chi || 'Chưa có địa chỉ';
+
+    const distanceKm = workerMapState.workerPosition
+      ? calculateHaversineKm(workerMapState.workerPosition.lat, workerMapState.workerPosition.lng, booking.point.lat, booking.point.lng)
+      : Number.NaN;
+    refs.infoDistance.textContent = Number.isFinite(distanceKm)
+      ? `${formatDistanceLabel(distanceKm)} từ vị trí của bạn`
+      : 'Cần bật GPS để tính khoảng cách';
+
+    refs.detailLink.href = getBookingDetailHref(booking);
+
+    if (booking.isClaimable) {
+      refs.claimButton.hidden = false;
+      refs.claimButton.disabled = false;
+      refs.claimButton.innerHTML = '<span class="material-symbols-outlined text-base">task_alt</span>Xác nhận đơn';
+      refs.claimButton.onclick = () => claimJobFromDashboardMap(booking.id, refs.claimButton);
+    } else {
+      refs.claimButton.hidden = booking.mapSource === 'mine';
+      refs.claimButton.disabled = true;
+      refs.claimButton.innerHTML = `<span class="material-symbols-outlined text-base">${booking.mapSource === 'mine' ? 'assignment_turned_in' : 'block'}</span>${booking.mapSource === 'mine' ? 'Đã nhận' : 'Không khả dụng'}`;
+      refs.claimButton.onclick = null;
+    }
+  };
+  async function claimJobFromDashboardMap(bookingId, button) {
+    if (!confirm('Bạn có chắc chắn muốn nhận đơn này không?')) return;
+
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="material-symbols-outlined text-base">progress_activity</span>Đang xử lý';
+
+    try {
+      const response = await callApi(`/don-dat-lich/${bookingId}/claim`, 'POST');
+      if (!response?.ok) {
+        throw new Error(response?.data?.message || 'Không thể nhận đơn này');
+      }
+
+      showToast('Xác nhận đơn thành công', 'success');
+      await loadDashboard();
+    } catch (error) {
+      console.error('Claim job from dashboard map failed:', error);
+      showToast(error.message || 'Không thể xác nhận đơn', 'error');
+      button.disabled = false;
+      button.innerHTML = originalHtml;
+    }
+  }
+  const requestWorkerLocation = (profile) => {
+    const profilePoint = getWorkerPointFromProfile(profile);
+    if (!workerMapState.workerPosition && profilePoint) {
+      workerMapState.workerPosition = profilePoint;
+    }
+
+    if (workerMapState.hasRequestedLocation || !navigator.geolocation) {
+      return;
+    }
+
+    workerMapState.hasRequestedLocation = true;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        workerMapState.workerPosition = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        if (workerMapState.lastPayload) {
+          renderJobMapSpotlight(
+            workerMapState.lastPayload.bookings,
+            workerMapState.lastPayload.availableJobs,
+            workerMapState.lastPayload.profile
+          );
+        }
+      },
+      () => {
+        if (workerMapState.lastPayload) {
+          renderJobMapSpotlight(
+            workerMapState.lastPayload.bookings,
+            workerMapState.lastPayload.availableJobs,
+            workerMapState.lastPayload.profile
+          );
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 6000,
+        maximumAge: 60000,
+      }
+    );
+  };
+
+  function renderPrioritySummary(bookings, availableJobs) {
+    const priorityState = buildDashboardPriorityState(bookings, availableJobs);
+    const revenueItem = priorityState.todayRevenueBookings[0] || null;
+    const scheduleItem = priorityState.todaySchedule[0] || null;
+    const pendingItem = priorityState.pendingConfirm[0] || null;
+
+    dom.priorityTodayRevenue.textContent = formatMoney(priorityState.todayRevenue);
+    dom.priorityRevenueMeta.textContent = priorityState.todayRevenue > 0
+      ? `${priorityState.todayRevenueBookings.length} đơn có doanh thu hôm nay.`
+      : 'Chưa có doanh thu hôm nay.';
+    dom.priorityRevenueHint.textContent = priorityState.todayWaitingPayoutCount > 0
+      ? `${priorityState.todayWaitingPayoutCount} đơn chờ thanh toán`
+      : 'Không có đơn chờ';
+    dom.priorityRevenuePreview.innerHTML = revenueItem
+      ? buildPriorityPreviewItem({
+          href: `/worker/bookings/${revenueItem.id}`,
+          icon: 'payments',
+          title: getServiceSummary(revenueItem, 1),
+          subtitle: `${getCustomer(revenueItem).name || 'Khách hàng'} • ${getStatusMeta(revenueItem.trang_thai).label}`,
+          chip: formatCompactMoney(bookingTotal(revenueItem)),
+        })
+      : buildPriorityPreviewItem({
+          href: '/worker/my-bookings',
+          icon: 'event_available',
+          title: 'Chưa có giao dịch',
+          subtitle: 'Doanh thu sẽ hiện ở đây.',
+          chip: '0 đ',
+        });
+
+    dom.priorityTodayScheduleCount.textContent = formatMetricValue(priorityState.todaySchedule.length);
+    dom.priorityTodayScheduleMeta.textContent = priorityState.nextSchedule
+      ? `${startTimeFromSlot(priorityState.nextSchedule.khung_gio_hen)} • ${getServiceSummary(priorityState.nextSchedule, 1)}`
+      : 'Hôm nay chưa có lịch.';
+    dom.priorityScheduleHint.textContent = priorityState.inProgress.length > 0
+      ? `${priorityState.inProgress.length} đơn đang làm`
+      : `${priorityState.todaySchedule.length} lịch hôm nay`;
+    dom.prioritySchedulePreview.innerHTML = scheduleItem
+      ? buildPriorityPreviewItem({
+          href: `/worker/bookings/${scheduleItem.id}`,
+          icon: 'schedule',
+          title: `${startTimeFromSlot(scheduleItem.khung_gio_hen)} • ${getServiceSummary(scheduleItem, 1)}`,
+          subtitle: `${getCustomer(scheduleItem).name || 'Khách hàng'} • ${getStatusMeta(scheduleItem.trang_thai).label}`,
+          chip: getStatusMeta(scheduleItem.trang_thai).label,
+        })
+      : buildPriorityPreviewItem({
+          href: '/worker/my-bookings',
+          icon: 'free_cancellation',
+          title: 'Trống lịch',
+          subtitle: 'Bạn có thể nhận thêm việc.',
+          chip: 'Trống',
+        });
+
+    dom.priorityPendingCount.textContent = formatMetricValue(priorityState.pendingConfirm.length);
+    dom.priorityPendingMeta.textContent = priorityState.pendingConfirm.length > 0
+      ? `${priorityState.pendingConfirm.length} đơn cần xác nhận.`
+      : 'Không có đơn chờ xác nhận.';
+    dom.priorityPendingHint.textContent = priorityState.availableJobsCount > 0
+      ? `${priorityState.availableJobsCount} việc mới quanh bạn`
+      : 'Hộp chờ đang trống';
+    dom.priorityPendingPreview.innerHTML = pendingItem
+      ? buildPriorityPreviewItem({
+          href: `/worker/bookings/${pendingItem.id}`,
+          icon: 'mark_email_unread',
+          title: getServiceSummary(pendingItem, 1),
+          subtitle: `${formatShortDate(pendingItem.ngay_hen)} • ${startTimeFromSlot(pendingItem.khung_gio_hen)} • ${getCustomer(pendingItem).name || 'Khách hàng'}`,
+          chip: getBookingCode(pendingItem),
+        })
+      : buildPriorityPreviewItem({
+          href: '/worker/my-bookings?status=pending',
+          icon: 'verified',
+          title: priorityState.availableJobsCount > 0 ? 'Có việc mới để nhận' : 'Hộp chờ trống',
+          subtitle: priorityState.availableJobsCount > 0 ? 'Mở danh sách việc mới.' : 'Chưa có đơn cần xác nhận.',
+          chip: priorityState.availableJobsCount > 0 ? `${priorityState.availableJobsCount} việc` : 'Ổn',
+        });
+  }
+
+  function renderPriorityTopbar(bookings, availableJobs) {
     const todayKey = localDateKey();
     const todayOpen = bookings.filter((booking) => booking.ngay_hen === todayKey && !['da_xong', 'da_huy'].includes(booking.trang_thai));
     const inProgress = bookings.filter((booking) => booking.trang_thai === 'dang_lam');
@@ -491,7 +1695,7 @@
       : 'Thảnh thơi nhâm nhi ly cà phê, hoặc kiểm tra lại hồ sơ nhé!';
   }
 
-  function renderHero(bookings, availableJobs, stats) {
+  function renderHeroOverview(bookings, availableJobs, stats) {
     const todayKey = localDateKey();
     const todayJobs = bookings.filter((booking) => booking.ngay_hen === todayKey);
     const todayOpen = todayJobs.filter((b) => !['da_xong', 'da_huy'].includes(b.trang_thai));
@@ -561,7 +1765,7 @@
       const price = formatCompactMoney(bookingTotal(job) || job.phi_dich_vu);
       
       return `
-        <a href="/worker/jobs" class="block bg-surface-container-lowest p-5 rounded-2xl border-2 border-primary/10 hover:border-primary transition-all group">
+        <a href="${getBookingDetailHref(job)}" class="block bg-surface-container-lowest p-5 rounded-2xl border-2 border-primary/10 hover:border-primary transition-all group">
             <div class="flex justify-between mb-4">
                 <span class="p-2 ${tBg} rounded-lg bg-opacity-50">
                     <span class="material-symbols-outlined">${icon}</span>
@@ -577,6 +1781,122 @@
         </a>
       `;
     }).join('');
+  }
+
+  function renderJobMapSpotlight(bookings, availableJobs, profile) {
+    workerMapState.lastPayload = { bookings, availableJobs, profile };
+
+    const refs = ensureJobMapShell();
+    const map = ensureJobMap(refs);
+    const mapBookings = buildDashboardMapBookings(bookings, availableJobs);
+    const mineCount = mapBookings.filter((booking) => booking.mapSource === 'mine').length;
+    const openCount = mapBookings.filter((booking) => booking.mapSource === 'open').length;
+    const profilePoint = getWorkerPointFromProfile(profile);
+
+    dom.availableJobsBadge.textContent = openCount > 0 ? `${openCount} đơn chưa có thợ` : 'Xem danh sách';
+    refs.countText.textContent = `${mapBookings.length} điểm khách • ${mineCount} đơn của tôi • ${openCount} đơn mới`;
+    updateJobMapStatus(
+      refs,
+      workerMapState.workerPosition
+        ? 'Đã định vị vị trí của bạn'
+        : (profilePoint ? 'Đang dùng vị trí trong hồ sơ' : 'Bật GPS để tính khoảng cách')
+    );
+
+    setJobMapEmptyState(
+      refs,
+      mapBookings.length === 0,
+      'Chưa có khách nào có tọa độ hợp lệ',
+      'Đơn đã nhận hoặc đơn mới chưa có thợ sẽ hiện tại đây khi khách có vị trí GPS.'
+    );
+
+    requestWorkerLocation(profile);
+
+    if (!map || !workerMapState.markersLayer) {
+      return;
+    }
+
+    workerMapState.markersLayer.clearLayers();
+
+    if (workerMapState.workerMarker) {
+      workerMapState.map.removeLayer(workerMapState.workerMarker);
+      workerMapState.workerMarker = null;
+    }
+
+    const allBounds = [];
+
+    if (workerMapState.workerPosition) {
+      workerMapState.workerMarker = window.L.marker(
+        [workerMapState.workerPosition.lat, workerMapState.workerPosition.lng],
+        { icon: buildMapMarkerIcon('worker', 'my_location') }
+      )
+        .addTo(workerMapState.map)
+        .bindTooltip('Vị trí của bạn', { direction: 'top', offset: [0, -24] });
+
+      allBounds.push([workerMapState.workerPosition.lat, workerMapState.workerPosition.lng]);
+    }
+
+    mapBookings.forEach((booking) => {
+      const variant = booking.mapSource === 'mine' ? 'mine' : 'open';
+      const marker = window.L.marker(
+        [booking.point.lat, booking.point.lng],
+        {
+          icon: buildMapMarkerIcon(
+            variant,
+            booking.mapSource === 'mine' ? 'construction' : 'person_pin_circle'
+          ),
+        }
+      ).addTo(workerMapState.markersLayer);
+
+      marker.bindTooltip(
+        `${getCustomer(booking).name || 'Khách hàng'} • ${getServiceSummary(booking, 1)}`,
+        { direction: 'top', offset: [0, -24], opacity: 0.92 }
+      );
+
+      marker.on('mouseover', () => {
+        workerMapState.hoveredBookingId = booking.id;
+        selectMapBooking(booking, refs);
+      });
+      marker.on('mouseout', () => {
+        if (workerMapState.hoveredBookingId === booking.id) {
+          workerMapState.hoveredBookingId = null;
+        }
+        scheduleMapBookingCardHide(refs);
+      });
+      marker.on('click', () => {
+        workerMapState.hoveredBookingId = booking.id;
+        selectMapBooking(booking, refs);
+      });
+
+      allBounds.push([booking.point.lat, booking.point.lng]);
+    });
+
+    if (allBounds.length > 0) {
+      workerMapState.map.fitBounds(allBounds, {
+        padding: [60, 60],
+        maxZoom: allBounds.length === 1 ? 15 : 14,
+      });
+    } else {
+      workerMapState.map.setView(
+        workerMapState.workerPosition
+          ? [workerMapState.workerPosition.lat, workerMapState.workerPosition.lng]
+          : [12.2388, 109.1967],
+        workerMapState.workerPosition ? 14 : 12
+      );
+    }
+
+    const nextSelected = mapBookings.find((booking) => booking.id === workerMapState.hoveredBookingId)
+      || (workerMapState.isHoveringInfoCard
+        ? mapBookings.find((booking) => booking.id === workerMapState.selectedBookingId)
+        : null)
+      || null;
+
+    if (nextSelected) {
+      selectMapBooking(nextSelected, refs);
+    } else {
+      hideMapBookingCard(refs);
+    }
+
+    setTimeout(() => workerMapState.map.invalidateSize(), 0);
   }
 
   function renderTodaySchedule(bookings) {
@@ -719,6 +2039,53 @@
     `).join('');
   }
 
+  function renderTopbar(bookings, availableJobs) {
+    const priorityState = buildDashboardPriorityState(bookings, availableJobs);
+    const workerName = String(currentUser?.name || 'bạn').trim().split(' ').pop() || currentUser?.name || 'bạn';
+
+    dom.headerDate.textContent = buildDateHeader();
+    dom.heroWorkerName.textContent = workerName;
+
+    if (priorityState.pendingConfirm.length > 0) {
+      dom.liveStatusText.textContent = `${priorityState.pendingConfirm.length} ĐƠN CHỜ XÁC NHẬN`;
+      dom.heroSummaryText.textContent = `Bạn có ${priorityState.pendingConfirm.length} đơn mới cần xác nhận. Kiểm tra ngay để không bỏ lỡ lượt nhận việc trong hôm nay.`;
+      return;
+    }
+
+    if (priorityState.inProgress.length > 0) {
+      dom.liveStatusText.textContent = `${priorityState.inProgress.length} ĐƠN ĐANG XỬ LÝ`;
+      dom.heroSummaryText.textContent = `Bạn đang xử lý ${priorityState.inProgress.length} đơn. Ưu tiên hoàn tất các lịch gần nhất để giữ tiến độ trong ngày.`;
+      return;
+    }
+
+    if (priorityState.todaySchedule.length > 0) {
+      dom.liveStatusText.textContent = `${priorityState.todaySchedule.length} LỊCH HÔM NAY`;
+      dom.heroSummaryText.textContent = `Hôm nay có ${priorityState.todaySchedule.length} lịch làm việc. Lịch gần nhất đã được đẩy lên cụm ưu tiên ở đầu trang.`;
+      return;
+    }
+
+    if (priorityState.availableJobsCount > 0) {
+      dom.liveStatusText.textContent = `${priorityState.availableJobsCount} VIỆC MỚI`;
+      dom.heroSummaryText.textContent = `Có ${priorityState.availableJobsCount} việc mới quanh bạn. Mở ngay danh sách nhận việc để lấp lịch trống trong hôm nay.`;
+      return;
+    }
+
+    dom.liveStatusText.textContent = 'DỮ LIỆU ĐÃ ĐỒNG BỘ';
+    dom.heroSummaryText.textContent = 'Lịch hôm nay đang trống. Bạn có thể tranh thủ kiểm tra hồ sơ hoặc nhận thêm việc mới quanh khu vực.';
+  }
+
+  function renderHero(bookings, availableJobs, stats) {
+    const priorityState = buildDashboardPriorityState(bookings, availableJobs);
+    const monthRevenue = Number(stats?.doanh_thu_thang_nay || 0);
+
+    dom.heroAvailableMeta.textContent = 'Việc quanh bạn';
+    dom.heroTodayMeta.textContent = 'Đang làm';
+    dom.heroRevenueMeta.textContent = 'Doanh thu tháng';
+    dom.heroAvailableJobs.textContent = formatMetricValue(priorityState.availableJobsCount);
+    dom.heroTodayJobs.textContent = formatMetricValue(priorityState.inProgress.length);
+    dom.heroMonthRevenue.textContent = formatCompactMoney(monthRevenue);
+  }
+
   async function fetchResource(endpoint) {
     try { return await callApi(endpoint, 'GET'); } catch (error) { return { ok: false, error }; }
   }
@@ -728,7 +2095,7 @@
     dom.liveStatusText.textContent = 'ĐANG ĐỒNG BỘ...';
     
     const [bookingsRes, availableRes, statsRes, profileRes] = await Promise.all([
-      fetchResource('/don-dat-lich'), fetchResource('/don-dat-lich/available'), fetchResource('/worker/stats'), fetchResource(`/ho-so-tho/${currentUser.id}`)
+      fetchResource('/don-dat-lich?per_page=100'), fetchResource('/don-dat-lich/available'), fetchResource('/worker/stats'), fetchResource(`/ho-so-tho/${currentUser.id}`)
     ]);
 
     const bookings = extractList(bookingsRes).sort((l, r) => `${r.ngay_hen||''} ${startTimeFromSlot(r.khung_gio_hen)}`.localeCompare(`${l.ngay_hen||''} ${startTimeFromSlot(l.khung_gio_hen)}`));
@@ -736,11 +2103,12 @@
     const stats = statsRes?.ok ? statsRes.data : { chart_data:[] };
     const profile = profileRes?.ok ? profileRes.data : null;
 
+    renderPrioritySummary(bookings, availableJobs);
     renderTopbar(bookings, availableJobs); 
     renderHero(bookings, availableJobs, stats);
     renderProfile(profile, stats); 
     renderKpis(bookings, stats, profile); 
-    renderJobSpotlight(availableJobs);
+    renderJobMapSpotlight(bookings, availableJobs, profile);
     renderRecentActivity(bookings); 
     renderTodaySchedule(bookings); 
     renderRevenueChart(stats); 

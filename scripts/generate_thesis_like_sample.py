@@ -85,7 +85,7 @@ TABLES = [
         "heading": "3.5. Bang don_dat_lich",
         "function": "Chuc nang: Bang nghiep vu trung tam luu toan bo don dat lich va trang thai xu ly.",
         "pk": "Khoa chinh: id",
-        "important": "- khach_hang_id, tho_id\n- loai_dat_lich, ngay_hen, khung_gio_hen, thoi_gian_hen\n- dia_chi, vi_do, kinh_do\n- mo_ta_van_de, nguyen_nhan, giai_phap\n- phi_di_lai, phi_linh_kien, tien_cong, tien_thue_xe, tong_tien\n- phuong_thuc_thanh_toan, trang_thai_thanh_toan\n- hinh_anh_mo_ta, video_mo_ta, hinh_anh_ket_qua, video_ket_qua\n- trang_thai, ly_do_huy, thoi_gian_het_han_nhan",
+        "important": "- khach_hang_id, tho_id\n- loai_dat_lich, ngay_hen, khung_gio_hen, thoi_gian_hen\n- dia_chi, vi_do, kinh_do\n- mo_ta_van_de, giai_phap\n- phi_di_lai, phi_linh_kien, tien_cong, tien_thue_xe, tong_tien\n- phuong_thuc_thanh_toan, trang_thai_thanh_toan\n- hinh_anh_mo_ta, video_mo_ta, hinh_anh_ket_qua, video_ket_qua\n- trang_thai, ly_do_huy, thoi_gian_het_han_nhan",
         "relation": "- n-1 voi users theo khach_hang_id.\n- n-1 voi users theo tho_id.\n- n-n voi danh_muc_dich_vu qua don_dat_lich_dich_vu.",
         "constraint": "- enum loai_dat_lich, khung_gio_hen, trang_thai, phuong_thuc_thanh_toan",
     },

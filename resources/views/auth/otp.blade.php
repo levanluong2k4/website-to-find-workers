@@ -4,10 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Xác minh OTP - Thợ Tốt NTU</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Material+Symbols+Outlined&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"/>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
+    :root{--app-font-sans:'Be Vietnam Pro',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+    body, body *:not(.material-symbols-outlined):not(.material-symbols-rounded):not(.material-symbols-sharp):not(.fa):not(.fas):not(.far):not(.fab):not([class^="fa-"]):not([class*=" fa-"]):not(pre):not(code):not(kbd):not(samp){font-family:var(--app-font-sans)!important}
     body{min-height:100vh;background:radial-gradient(circle at top left, rgba(255, 255, 255, 0.68) 0, rgba(255, 255, 255, 0) 24rem),radial-gradient(circle at top right, rgba(255, 255, 255, 0.58) 0, rgba(255, 255, 255, 0) 18rem),linear-gradient(180deg, #8ad0ff 0%, #c7e8ff 36%, #edf7ff 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Roboto',sans-serif;position:relative;overflow:hidden;padding:1rem;}
     /* Decorative blobs */
     .blob{position:absolute;border-radius:50%;background:linear-gradient(135deg,#BAF2E9,#0EA5E9);opacity:.15;filter:blur(40px);}
@@ -16,7 +18,8 @@
 
     /* Mini brand header */
     .brand{display:flex;align-items:center;gap:.5rem;margin-bottom:2rem;z-index:1;position:relative;}
-    .brand-icon{width:2rem;height:2rem;background:linear-gradient(135deg,#0EA5E9,#0284c7);border-radius:.5rem;display:flex;align-items:center;justify-content:center;}
+    .brand-icon{width:2.8rem;height:2.8rem;border-radius:999px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.16);flex-shrink:0;}
+    .brand-icon img{width:100%;height:100%;object-fit:contain;display:block;}
     .brand-text{font-family:'DM Sans',sans-serif;font-weight:800;font-size:1rem;color:#0f172a;}
 
     /* OTP Card */
@@ -59,7 +62,7 @@
 
   <!-- Mini brand -->
   <div class="brand">
-    <div class="brand-icon"><span class="material-symbols-outlined" style="color:#fff;font-size:1rem;">home_repair_service</span></div>
+    <div class="brand-icon"><img src="{{ asset('assets/images/logontu.png') }}" alt="Logo Thợ Tốt NTU"></div>
     <span class="brand-text">Thợ Tốt NTU</span>
   </div>
 

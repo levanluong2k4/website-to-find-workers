@@ -82,7 +82,7 @@ class OpenAiChatService
                 'message' => $exception->getMessage(),
             ]);
 
-            return $this->fallbackPayload('Khong ket noi duoc AI, minh se phan tich dua tren du lieu san co.');
+            return $this->fallbackPayload('');
         }
     }
 

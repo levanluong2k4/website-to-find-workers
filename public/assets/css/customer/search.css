@@ -97,8 +97,7 @@ body {
 
 /* Sort toggle */
 .sort-toggle-group {
-  display: flex;
-  background-color: var(--surface-container-high);
+
   padding: 0.25rem;
   border-radius: 9999px;
   gap: 0.25rem;
@@ -116,9 +115,9 @@ body {
   margin: 0;
 }
 .filter-sort:checked + .sort-btn {
-  background-color: var(--surface-container-lowest);
-  color: var(--primary);
-  font-weight: 600;
+  background-color: #b5b2b273;
+    color: var(--primary);
+    font-weight: 700;
   box-shadow: var(--shadow-sm);
 }
 

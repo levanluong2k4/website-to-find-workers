@@ -86,6 +86,61 @@ export async function callApi(endpoint, method = 'GET', bodyData = null) {
     }
 }
 
+export async function downloadApiFile(endpoint, fallbackFilename = 'export.csv') {
+    let token = localStorage.getItem('access_token');
+
+    if (token === 'undefined' || token === 'null' || !token) {
+        token = null;
+    }
+
+    const headers = {
+        'Accept': 'text/csv,application/octet-stream,application/json',
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+        method: 'GET',
+        headers,
+    });
+
+    if (response.status === 401) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+        }
+        throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!');
+    }
+
+    if (!response.ok) {
+        const errorText = await response.text();
+
+        try {
+            const parsed = JSON.parse(errorText);
+            throw new Error(parsed?.message || 'Không thể tải file');
+        } catch {
+            throw new Error('Không thể tải file');
+        }
+    }
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get('Content-Disposition') || '';
+    const matchedFilename = contentDisposition.match(/filename="?([^"]+)"?/i)?.[1];
+    const filename = matchedFilename || fallbackFilename;
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+}
+
 /**
  * Các hàm tiện ích (Utils)
  */
@@ -164,7 +219,7 @@ export const showToast = (message, type = 'success') => {
             style: {
                 background: bgColor,
                 borderRadius: '8px',
-                fontFamily: 'Roboto, sans-serif',
+                fontFamily: "'Be Vietnam Pro', sans-serif",
                 fontWeight: '500',
                 boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
             }

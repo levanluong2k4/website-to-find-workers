@@ -8,7 +8,7 @@ const state = {
     sort: 'featured',
     pricedOnly: false,
     currentPage: 1,
-    pageSize: 12,
+    pageSize: 6,
 };
 
 const els = {
@@ -22,19 +22,28 @@ const els = {
     searchForm: document.getElementById('partsSearchForm'),
     sortSelect: document.getElementById('partsSortSelect'),
     pricedToggle: document.getElementById('partsPricedToggle'),
-    metricCount: document.getElementById('partsMetricCount'),
-    metricServices: document.getElementById('partsMetricServices'),
-    metricPriced: document.getElementById('partsMetricPriced'),
-    marquee: document.getElementById('partsHeroMarquee'),
 };
+
+const fallbackAssets = {
+    compressor: '/assets/images/customer/parts/compressor.png',
+    microchip: '/assets/images/customer/parts/microchip.png',
+    gear: '/assets/images/customer/parts/gear.png',
+    motor: '/assets/images/customer/parts/motor.png',
+    machinery: '/assets/images/customer/parts/machinery.png',
+};
+
+const fallbackCycle = [
+    fallbackAssets.compressor,
+    fallbackAssets.microchip,
+    fallbackAssets.gear,
+    fallbackAssets.motor,
+];
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
     maximumFractionDigits: 0,
 });
-
-const accentPalette = ['#d9f99d', '#bae6fd', '#fcd34d', '#fecdd3', '#c7d2fe', '#99f6e4'];
 
 const escapeHtml = (value = '') => String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -51,23 +60,33 @@ const getPartPriceLabel = (part) => {
     return price > 0 ? currencyFormatter.format(price) : 'Liên hệ báo giá';
 };
 
-const getThumbFallback = (part) => {
-    const service = String(part?.serviceName || '').trim();
-    const source = service || part?.ten_linh_kien || 'LK';
-    return source
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((word) => word[0])
-        .join('')
-        .toUpperCase();
+const getFallbackImage = (part, index) => {
+    const haystack = `${part?.ten_linh_kien || ''} ${part?.serviceName || ''}`.toLocaleLowerCase('vi-VN');
+
+    if (/bo|mạch|chip|sensor|điều khiển|điện tử/.test(haystack)) {
+        return fallbackAssets.microchip;
+    }
+
+    if (/motor|quạt|fan/.test(haystack)) {
+        return fallbackAssets.motor;
+    }
+
+    if (/bánh răng|truyền động|cơ khí|gear/.test(haystack)) {
+        return fallbackAssets.gear;
+    }
+
+    if (/block|máy lạnh|compressor|điện lạnh/.test(haystack)) {
+        return fallbackAssets.compressor;
+    }
+
+    return fallbackCycle[index % fallbackCycle.length];
 };
 
 const decoratePart = (part, index) => ({
     ...part,
     serviceName: part?.dich_vu?.ten_dich_vu || part?.serviceName || 'Linh kiện',
     priceValue: getNumeric(part?.gia),
-    accent: accentPalette[index % accentPalette.length],
+    imageUrl: part?.hinh_anh || getFallbackImage(part, index),
 });
 
 const getPartsByService = (serviceId) => state.parts.filter((part) =>
@@ -104,26 +123,20 @@ const getTrendMeta = (part) => {
     if (ratio <= 0.92) {
         return {
             tone: 'is-decrease',
-            icon: 'trending_down',
             label: 'Giá giảm',
-            detail: 'Thấp hơn mặt bằng cùng nhóm',
         };
     }
 
     if (ratio >= 1.08) {
         return {
             tone: 'is-increase',
-            icon: 'trending_up',
             label: 'Giá tăng',
-            detail: 'Cao hơn mặt bằng cùng nhóm',
         };
     }
 
     return {
         tone: 'is-stable',
-        icon: 'trending_flat',
         label: 'Giá ổn định',
-        detail: 'Gần sát mặt bằng cùng nhóm',
     };
 };
 
@@ -142,41 +155,14 @@ const getValueBadge = (part) => {
     if (price <= thresholdPrice) {
         return {
             tone: 'is-good',
-            icon: 'local_fire_department',
             label: 'Giá tốt',
-            detail: 'Nằm trong nhóm giá dễ tiếp cận',
         };
     }
 
     return null;
 };
 
-const buildBadgesMarkup = (part) => {
-    const trendMeta = getTrendMeta(part);
-    const valueBadge = getValueBadge(part);
-    const badges = [trendMeta, valueBadge].filter(Boolean);
-
-    if (!badges.length) {
-        return '';
-    }
-
-    return `
-        <div class="parts-tile__badges">
-            ${badges.map((badge) => `
-                <span class="parts-tile__badge ${badge.tone}" title="${escapeHtml(badge.detail)}">
-                    <span class="material-symbols-outlined">${escapeHtml(badge.icon)}</span>
-                    ${escapeHtml(badge.label)}
-                </span>
-            `).join('')}
-        </div>
-    `;
-};
-
-const getActiveServiceCount = () => new Set(
-    state.parts
-        .map((part) => String(part.dich_vu_id || ''))
-        .filter(Boolean)
-).size;
+const getPrimaryBadge = (part) => getValueBadge(part) || getTrendMeta(part);
 
 const buildFilterItems = () => {
     const counts = state.parts.reduce((map, part) => {
@@ -186,7 +172,7 @@ const buildFilterItems = () => {
     }, new Map());
 
     return [
-        { id: 'all', label: 'Tất cả', count: state.parts.length },
+        { id: 'all', label: 'Tất cả danh mục', count: state.parts.length },
         ...state.services.map((service) => ({
             id: String(service.id),
             label: service.ten_dich_vu,
@@ -233,74 +219,142 @@ const clampCurrentPage = (totalItems) => {
     state.currentPage = Math.max(1, state.currentPage);
 };
 
-const renderPagination = (totalItems) => {
-    const totalPages = getPageCount(totalItems);
+const getPaginationItems = (totalPages) => {
+    if (totalPages <= 5) {
+        return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
 
+    if (state.currentPage <= 3) {
+        return [1, 2, 3, 'ellipsis', totalPages];
+    }
+
+    if (state.currentPage >= totalPages - 2) {
+        return [1, 'ellipsis', totalPages - 2, totalPages - 1, totalPages];
+    }
+
+    return [1, 'ellipsis', state.currentPage - 1, state.currentPage, state.currentPage + 1, 'ellipsis', totalPages];
+};
+
+const renderPagination = (totalItems) => {
     if (!els.pagination) {
         return;
     }
 
-    if (totalItems <= state.pageSize) {
+    const totalPages = getPageCount(totalItems);
+
+    if (totalPages <= 1) {
         els.pagination.hidden = true;
         els.pagination.innerHTML = '';
         return;
     }
 
-    const windowPages = [];
-    const startPage = Math.max(1, state.currentPage - 2);
-    const endPage = Math.min(totalPages, state.currentPage + 2);
-
-    for (let page = startPage; page <= endPage; page += 1) {
-        windowPages.push(page);
-    }
+    const items = getPaginationItems(totalPages);
 
     els.pagination.hidden = false;
     els.pagination.innerHTML = `
-        <button class="parts-pagination__button" data-page-action="prev" ${state.currentPage === 1 ? 'disabled' : ''}>
-            ‹
+        <button class="parts-pagination__button" data-page-action="prev" ${state.currentPage === 1 ? 'disabled' : ''} aria-label="Trang trước">
+            <span class="material-symbols-outlined">chevron_left</span>
         </button>
-        ${windowPages.map((page) => `
-            <button class="parts-pagination__button ${page === state.currentPage ? 'is-active' : ''}" data-page="${page}">
-                ${page}
-            </button>
-        `).join('')}
-        <button class="parts-pagination__button" data-page-action="next" ${state.currentPage === totalPages ? 'disabled' : ''}>
-            ›
+        ${items.map((item) => {
+            if (item === 'ellipsis') {
+                return '<span class="parts-pagination__ellipsis">...</span>';
+            }
+
+            return `
+                <button
+                    class="parts-pagination__button ${item === state.currentPage ? 'is-active' : ''}"
+                    data-page="${item}"
+                    aria-label="Trang ${item}"
+                >
+                    ${item}
+                </button>
+            `;
+        }).join('')}
+        <button class="parts-pagination__button" data-page-action="next" ${state.currentPage === totalPages ? 'disabled' : ''} aria-label="Trang sau">
+            <span class="material-symbols-outlined">chevron_right</span>
         </button>
     `;
 };
 
-const renderMetrics = () => {
-    const pricedCount = state.parts.filter((part) => part.priceValue > 0).length;
-
-    els.metricCount.textContent = String(state.parts.length).padStart(2, '0');
-    els.metricServices.textContent = String(getActiveServiceCount()).padStart(2, '0');
-    els.metricPriced.textContent = String(pricedCount).padStart(2, '0');
-
-    const marqueeItems = state.parts
-        .filter((part) => part.priceValue > 0)
-        .slice(0, 6)
-        .map((part) => `<span>${escapeHtml(part.ten_linh_kien)}</span>`);
-
-    if (marqueeItems.length) {
-        els.marquee.innerHTML = marqueeItems.join('');
-    }
-};
-
 const renderFilters = () => {
+    if (!els.filters) {
+        return;
+    }
+
     const items = buildFilterItems();
 
     els.filters.innerHTML = items.map((item) => `
-        <button
-            type="button"
-            class="parts-filter-pill ${String(item.id) === String(state.serviceId) ? 'is-active' : ''}"
-            data-service-id="${escapeHtml(item.id)}"
+        <option
+            value="${escapeHtml(item.id)}"
+            ${String(item.id) === String(state.serviceId) ? 'selected' : ''}
         >
-            <span>${escapeHtml(item.label)}</span>
-            <span class="parts-filter-pill__count">${item.count}</span>
-        </button>
+            ${escapeHtml(item.label)}
+        </option>
     `).join('');
 };
+
+const buildBadgeMarkup = (part) => {
+    const badge = getPrimaryBadge(part);
+
+    if (!badge) {
+        return '';
+    }
+
+    return `<span class="parts-card__badge ${escapeHtml(badge.tone)}">${escapeHtml(badge.label)}</span>`;
+};
+
+const buildPartCardMarkup = (part) => `
+    <article class="parts-card">
+        <div class="parts-card__media">
+            ${buildBadgeMarkup(part)}
+            <img src="${escapeHtml(part.imageUrl)}" alt="${escapeHtml(part.ten_linh_kien || 'Linh kiện')}">
+        </div>
+        <div class="parts-card__content">
+            <div class="parts-card__text">
+                <div class="parts-card__service">${escapeHtml(part.serviceName)}</div>
+                <h3 class="parts-card__name">${escapeHtml(part.ten_linh_kien || 'Linh kiện')}</h3>
+                <p class="parts-card__description">
+                    ${escapeHtml(
+                        part.mo_ta
+                        || part.ghi_chu
+                        || 'Linh kiện kỹ thuật chính hãng với thông số rõ ràng, hỗ trợ lắp đặt và kiểm tra tại nơi.'
+                    )}
+                </p>
+            </div>
+            <div class="parts-card__footer">
+                <div class="parts-card__price ${part.priceValue > 0 ? '' : 'is-contact'}">${escapeHtml(getPartPriceLabel(part))}</div>
+                <div class="parts-card__actions">
+                    <a class="parts-card__link" href="/customer/linh-kien/${encodeURIComponent(part.id)}">Xem chi tiết</a>
+                    <a class="parts-card__action" href="/customer/booking?dich_vu_id=${encodeURIComponent(part.dich_vu_id || '')}">Đặt thợ ngay</a>
+                </div>
+            </div>
+        </div>
+    </article>
+`;
+
+const buildFeatureCardMarkup = () => `
+    <article class="parts-feature-card">
+        <div class="parts-feature-card__body">
+            <span class="parts-feature-card__eyebrow">Ưu đãi kỹ thuật</span>
+            <h2 class="parts-feature-card__title">Gói linh kiện bảo trì định kỳ hệ thống chiller</h2>
+            <p class="parts-feature-card__description">
+                Tiết kiệm 15% khi mua trọn bộ linh kiện bảo trì. Bao gồm lọc gas, dầu lạnh và cảm biến áp suất.
+            </p>
+            <a class="parts-feature-card__action" href="/customer/booking">Nhận báo giá ngay</a>
+        </div>
+        <div class="parts-feature-card__media">
+            <img src="${escapeHtml(fallbackAssets.machinery)}" alt="Gói linh kiện bảo trì định kỳ hệ thống chiller">
+        </div>
+    </article>
+`;
+
+const shouldShowFeatureCard = (pageItems) => (
+    state.currentPage === 1
+    && state.serviceId === 'all'
+    && state.query.trim() === ''
+    && !state.pricedOnly
+    && pageItems.length >= 5
+);
 
 const renderList = () => {
     const filtered = getFilteredParts();
@@ -308,7 +362,9 @@ const renderList = () => {
     const startIndex = (state.currentPage - 1) * state.pageSize;
     const paginatedItems = filtered.slice(startIndex, startIndex + state.pageSize);
 
-    els.loading.hidden = true;
+    if (els.loading) {
+        els.loading.hidden = true;
+    }
 
     if (!filtered.length) {
         els.list.hidden = true;
@@ -317,54 +373,33 @@ const renderList = () => {
             els.pagination.hidden = true;
             els.pagination.innerHTML = '';
         }
-        els.summary.textContent = 'Không có linh kiện khớp với bộ lọc hiện tại.';
+        if (els.summary) {
+            els.summary.textContent = 'Không có linh kiện khớp với bộ lọc hiện tại.';
+        }
         return;
     }
 
     els.empty.hidden = true;
     els.list.hidden = false;
+
     const pageStart = startIndex + 1;
     const pageEnd = Math.min(startIndex + state.pageSize, filtered.length);
-    els.summary.textContent = `Hiển thị ${pageStart}-${pageEnd} trên ${filtered.length} linh kiện phù hợp để khách hàng tham khảo giá trước khi đặt lịch.`;
 
-    els.list.innerHTML = paginatedItems.map((part, index) => `
-        <article class="parts-tile" style="--parts-thumb:${escapeHtml(part.accent)}; animation-delay:${index * 35}ms;">
-            <div class="parts-tile__thumb">
-                ${part.hinh_anh
-                    ? `<img src="${escapeHtml(part.hinh_anh)}" alt="${escapeHtml(part.ten_linh_kien)}">`
-                    : `<span>${escapeHtml(getThumbFallback(part))}</span>`}
-            </div>
+    if (els.summary) {
+        els.summary.textContent = `Hiển thị ${pageStart}-${pageEnd} trên ${filtered.length} linh kiện phù hợp.`;
+    }
 
-            <div class="parts-tile__body">
-                <span class="parts-tile__service">${escapeHtml(part.serviceName)}</span>
-                <h3 class="parts-tile__name">${escapeHtml(part.ten_linh_kien || 'Linh kiện')}</h3>
-                ${buildBadgesMarkup(part)}
-                <p class="parts-tile__note">
-                    ${part.priceValue > 0
-                        ? 'Giá tham khảo cho riêng linh kiện. Công thợ và kiểm tra thực tế sẽ được báo riêng khi tiếp nhận.'
-                        : 'Mục này chưa có giá niêm yết cố định. Bạn có thể đặt lịch để được kỹ thuật viên báo theo tình trạng thực tế.'}
-                </p>
-            </div>
+    const blocks = paginatedItems.map((part) => buildPartCardMarkup(part));
 
-            <div class="parts-tile__aside">
-                <div class="parts-tile__price ${part.priceValue > 0 ? '' : 'is-contact'}">${escapeHtml(getPartPriceLabel(part))}</div>
-                <div class="parts-tile__actions">
-                    <a class="parts-tile__link" href="/customer/linh-kien/${encodeURIComponent(part.id)}">
-                        Xem chi tiết
-                    </a>
-                    <a class="parts-tile__action" href="/customer/booking?dich_vu_id=${encodeURIComponent(part.dich_vu_id || '')}">
-                        Đặt thợ theo nhóm này
-                    </a>
-                </div>
-            </div>
-        </article>
-    `).join('');
+    if (shouldShowFeatureCard(paginatedItems)) {
+        blocks.splice(4, 0, buildFeatureCardMarkup());
+    }
 
+    els.list.innerHTML = blocks.join('');
     renderPagination(filtered.length);
 };
 
 const render = () => {
-    renderMetrics();
     renderFilters();
     renderList();
 };
@@ -389,12 +424,15 @@ const loadData = async () => {
 
         render();
     } catch (error) {
-        els.loading.hidden = false;
-        els.loading.innerHTML = `
-            <span class="material-symbols-outlined">error</span>
-            <h3>Không tải được bảng giá linh kiện</h3>
-            <p>${escapeHtml(error.message || 'Đã có lỗi xảy ra khi đồng bộ dữ liệu. Vui lòng thử lại sau.')}</p>
-        `;
+        if (els.loading) {
+            els.loading.hidden = false;
+            els.loading.innerHTML = `
+                <span class="material-symbols-outlined">error</span>
+                <h3>Không tải được bảng giá linh kiện</h3>
+                <p>${escapeHtml(error.message || 'Đã có lỗi xảy ra khi đồng bộ dữ liệu. Vui lòng thử lại sau.')}</p>
+            `;
+        }
+
         showToast(error.message || 'Không tải được dữ liệu linh kiện.', 'error');
     }
 };
@@ -426,13 +464,8 @@ els.pricedToggle?.addEventListener('click', () => {
     renderList();
 });
 
-els.filters?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-service-id]');
-    if (!button) {
-        return;
-    }
-
-    state.serviceId = button.dataset.serviceId || 'all';
+els.filters?.addEventListener('change', (event) => {
+    state.serviceId = event.target.value || 'all';
     state.currentPage = 1;
     render();
 });

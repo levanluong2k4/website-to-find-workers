@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 actionHtml = `<button class="btn btn-warning btn-sm fw-bold w-100" onclick="updateStatus(${booking.id}, 'dang_lam')">Đã tới nơi, Bắt đầu sửa</button>`;
                 actionHtml = `
                     <div class="d-flex flex-column gap-2 w-100">
-                        <button class="btn btn-outline-primary btn-sm fw-bold w-100" onclick="openCostModal(${booking.id})">Cập nhật chi phí</button>
+                        <button class="btn btn-outline-primary btn-sm fw-bold w-100" onclick="openCostModal(${booking.id})">Cập nhật giá</button>
                         <button class="btn btn-success btn-sm fw-bold w-100" onclick="requestPayment(${booking.id})">Sửa xong, Yêu cầu trả tiền</button>
                     </div>`;
             } else if (booking.trang_thai === 'cho_thanh_toan' || booking.trang_thai === 'cho_hoan_thanh') {
@@ -240,25 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const booking = allBookings.find(b => b.id === id);
         if (!booking) return;
 
-        costBookingId.value = id;
-        inputTienCong.value = booking.tien_cong || 0;
-        inputPhiLinhKien.value = booking.phi_linh_kien || 0;
-        inputGhiChuLinhKien.value = booking.ghi_chu_linh_kien || '';
-
-        const formatMoney = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
-        displayPhiDiLai.textContent = formatMoney(booking.phi_di_lai);
-
-        if (booking.thue_xe_cho) {
-            truckFeeContainer.style.display = 'block';
-            inputTienThueXe.value = booking.tien_thue_xe || 0;
-        } else {
-            truckFeeContainer.style.display = 'none';
-            inputTienThueXe.value = 0;
-        }
-
-        if (costModalInstance) {
-            costModalInstance.show();
-        }
+        window.location.href = `/worker/my-bookings/${booking.id}/pricing`;
     };
 
     // Form Update Costs Event

@@ -1,20 +1,12 @@
 @php
-  $currentRoute = Request::path();
   $menu = [
-    ['path' => 'worker/dashboard', 'icon' => 'dashboard', 'label' => 'Tổng quan'],
-    ['path' => 'worker/jobs', 'icon' => 'work', 'label' => 'Việc mới', 'badge' => 'sidebarJobBadge'],
-    ['path' => 'worker/my-bookings', 'icon' => 'calendar_month', 'label' => 'Lịch làm việc'],
-    ['path' => 'worker/analytics', 'icon' => 'history', 'label' => 'Lịch sử'],
-    ['path' => 'worker/reviews', 'icon' => 'star', 'label' => 'Đánh giá'],
-    ['path' => 'worker/profile', 'icon' => 'person', 'label' => 'Hồ sơ'],
+    ['href' => '/worker/dashboard', 'icon' => 'dashboard', 'label' => 'Tổng quan', 'active' => request()->is('worker/dashboard')],
+    ['href' => '/worker/my-bookings', 'icon' => 'calendar_month', 'label' => 'Lịch làm việc', 'active' => request()->is('worker/my-bookings*'), 'badge' => 'workerScheduleBadge', 'badgeTone' => 'info'],
+    ['href' => '/worker/analytics', 'icon' => 'payments', 'label' => 'Doanh thu', 'active' => request()->is('worker/analytics')],
+    ['href' => '/worker/reviews', 'icon' => 'star', 'label' => 'Đánh giá', 'active' => request()->is('worker/reviews'), 'badge' => 'workerReviewBadge', 'badgeTone' => 'warning'],
+    ['href' => '/worker/profile', 'icon' => 'person', 'label' => 'Hồ sơ', 'active' => request()->is('worker/profile')],
   ];
-  $mobileDock = [
-    ['path' => 'worker/dashboard', 'icon' => 'dashboard', 'label' => 'Tổng quan'],
-    ['path' => 'worker/jobs', 'icon' => 'work', 'label' => 'Việc mới', 'badge' => 'mobileDockJobsBadge'],
-    ['path' => 'worker/my-bookings', 'icon' => 'calendar_month', 'label' => 'Lịch'],
-    ['path' => 'worker/profile', 'icon' => 'person', 'label' => 'Hồ sơ'],
-  ];
-  $activeMenu = collect($menu)->first(fn ($item) => str_contains($currentRoute, $item['path'])) ?? $menu[0];
+  $activeMenu = collect($menu)->first(fn ($item) => $item['active']) ?? $menu[0];
 @endphp
 
 @push('styles')
@@ -24,7 +16,6 @@
   }
 
   .worker-mobile-topbar,
-  .worker-mobile-dock,
   .worker-sidebar-overlay {
     display: none;
   }
@@ -56,15 +47,22 @@
   }
 
   .worker-sidebar__brand-mark {
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.75rem;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    background: linear-gradient(135deg, #38bdf8 0%, #0369a1 100%);
-    box-shadow: 0 8px 20px rgba(3, 105, 161, 0.2);
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 12px 28px rgba(3, 105, 161, 0.18);
+  }
+
+  .worker-sidebar__brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
   }
 
   .sidebar-logo {
@@ -122,14 +120,12 @@
     font-size: 1.25rem;
   }
 
-  #sidebarAvatar,
-  #workerMobileAvatar {
+  #sidebarAvatar {
     overflow: hidden;
     flex-shrink: 0;
   }
 
-  #sidebarAvatar img,
-  #workerMobileAvatar img {
+  #sidebarAvatar img {
     width: 100%;
     height: 100%;
     display: block;
@@ -137,8 +133,7 @@
     border-radius: inherit;
   }
 
-  .badge-menu,
-  .worker-mobile-dock__badge {
+  .badge-menu {
     background: #ef4444;
     color: #fff;
     border-radius: 999px;
@@ -154,6 +149,18 @@
 
   .badge-menu {
     margin-left: auto;
+  }
+
+  .badge-menu--info {
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  }
+
+  .badge-menu--warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  }
+
+  .badge-menu--danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   }
 
   .sidebar-footer .dropdown-toggle::after {
@@ -195,26 +202,25 @@
       position: fixed;
       top: max(12px, env(safe-area-inset-top, 0px));
       left: 12px;
-      right: 12px;
       z-index: 220;
-      height: 68px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 0.85rem;
-      padding: 0.85rem 0.95rem;
-      background: rgba(248, 250, 252, 0.9);
+      gap: 0.75rem;
+      max-width: calc(100vw - 24px);
+      min-height: 56px;
+      padding: 0.5rem 0.85rem 0.5rem 0.5rem;
+      background: rgba(248, 250, 252, 0.94);
       border: 1px solid rgba(226, 232, 240, 0.92);
-      border-radius: 1.5rem;
-      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+      border-radius: 999px;
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
       backdrop-filter: blur(18px);
     }
 
-    .worker-mobile-topbar__trigger,
-    .worker-mobile-topbar__avatar {
+    .worker-mobile-topbar__trigger {
       width: 2.85rem;
       height: 2.85rem;
       border: 0;
-      border-radius: 1rem;
+      border-radius: 999px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -227,102 +233,18 @@
 
     .worker-mobile-topbar__meta {
       min-width: 0;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-    }
-
-    .worker-mobile-topbar__eyebrow {
-      font-size: 0.65rem;
-      font-weight: 800;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: #64748b;
     }
 
     .worker-mobile-topbar__title {
       font-family: 'DM Sans', sans-serif;
-      font-size: 1.02rem;
-      font-weight: 700;
-      line-height: 1.15;
+      display: block;
+      font-size: 0.96rem;
+      font-weight: 800;
+      line-height: 1;
       color: #020617;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .worker-mobile-topbar__hint {
-      font-size: 0.74rem;
-      font-weight: 600;
-      color: #0369a1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .worker-mobile-dock {
-      position: fixed;
-      left: 12px;
-      right: 12px;
-      bottom: max(12px, env(safe-area-inset-bottom, 0px));
-      z-index: 220;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0.45rem;
-      padding: 0.6rem;
-      background: rgba(15, 23, 42, 0.96);
-      border: 1px solid rgba(148, 163, 184, 0.14);
-      border-radius: 1.75rem;
-      box-shadow: 0 24px 42px rgba(15, 23, 42, 0.22);
-      backdrop-filter: blur(20px);
-    }
-
-    .worker-mobile-dock__item {
-      min-height: 56px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.28rem;
-      border-radius: 1.1rem;
-      color: #94a3b8;
-      text-decoration: none;
-      position: relative;
-      transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
-    }
-
-    .worker-mobile-dock__item.active {
-      background: linear-gradient(135deg, rgba(14, 165, 233, 0.26), rgba(3, 105, 161, 0.42));
-      color: #fff;
-      transform: translateY(-1px);
-    }
-
-    .worker-mobile-dock__icon-wrap {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .worker-mobile-dock__item .material-symbols-outlined {
-      font-size: 1.3rem;
-    }
-
-    .worker-mobile-dock__label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .worker-mobile-dock__badge {
-      position: absolute;
-      top: -6px;
-      right: -10px;
-      min-width: 16px;
-      height: 16px;
-      font-size: 0.6rem;
-      padding: 0 4px;
     }
 
     .worker-sidebar-overlay {
@@ -408,6 +330,19 @@
     .sidebar-footer #sidebarRole {
       color: #94a3b8 !important;
     }
+
+    .worker-main,
+    .worker-dashboard-main,
+    .worker-jobs-main,
+    .worker-revenue {
+      padding-top: calc(max(12px, env(safe-area-inset-top, 0px)) + 56px + 12px);
+    }
+
+    .dispatch-shell,
+    .worker-dashboard-content,
+    .jobs-board {
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    }
   }
 </style>
 @endpush
@@ -423,37 +358,9 @@
   </button>
 
   <div class="worker-mobile-topbar__meta">
-    <span class="worker-mobile-topbar__eyebrow">Thợ Tốt NTU</span>
     <strong class="worker-mobile-topbar__title">{{ $activeMenu['label'] }}</strong>
-    <span class="worker-mobile-topbar__hint">Điều hướng nhanh cho thợ</span>
   </div>
-
-  <a href="/worker/profile" class="worker-mobile-topbar__avatar" aria-label="Mở hồ sơ">
-    <div
-      id="workerMobileAvatar"
-      style="width:2rem; height:2rem; border-radius:999px; background:linear-gradient(135deg, #0EA5E9 0%, #2563eb 100%); color:#fff; font-weight:700; font-size:0.82rem; display:flex; align-items:center; justify-content:center; font-family:'DM Sans',sans-serif;"
-    >
-      T
-    </div>
-  </a>
 </div>
-
-<nav class="worker-mobile-dock" aria-label="Điều hướng nhanh">
-  @foreach ($mobileDock as $item)
-    <a
-      href="/{{ $item['path'] }}"
-      class="worker-mobile-dock__item {{ str_contains($currentRoute, $item['path']) ? 'active' : '' }}"
-    >
-      <span class="worker-mobile-dock__icon-wrap">
-        <span class="material-symbols-outlined">{{ $item['icon'] }}</span>
-        @if (isset($item['badge']))
-          <span class="worker-mobile-dock__badge" id="{{ $item['badge'] }}Count" style="display:none;">0</span>
-        @endif
-      </span>
-      <span class="worker-mobile-dock__label">{{ $item['label'] }}</span>
-    </a>
-  @endforeach
-</nav>
 
 <div class="worker-sidebar-overlay" id="workerSidebarOverlay"></div>
 
@@ -461,7 +368,7 @@
   <div class="worker-sidebar__head">
     <a href="/" class="d-flex align-items-center gap-2 text-decoration-none worker-sidebar__brand" data-worker-sidebar-brand>
       <div class="worker-sidebar__brand-mark">
-        <span class="material-symbols-outlined" style="font-size:1.25rem;">home_repair_service</span>
+        <img src="{{ asset('assets/images/logontu.png') }}" alt="Logo Thợ Tốt NTU">
       </div>
       <span class="sidebar-logo">Thợ Tốt <span>NTU</span></span>
     </a>
@@ -474,15 +381,15 @@
   <nav style="padding:1.25rem .75rem; flex:1; display:flex; flex-direction:column;">
     @foreach ($menu as $item)
       <a
-        href="/{{ $item['path'] }}"
-        class="sidebar-item {{ str_contains($currentRoute, $item['path']) ? 'active' : '' }}"
+        href="{{ $item['href'] }}"
+        class="sidebar-item {{ $item['active'] ? 'active' : '' }}"
         data-sidebar-link
         @if (isset($item['badge'])) id="{{ $item['badge'] }}" @endif
       >
         <span class="material-symbols-outlined">{{ $item['icon'] }}</span>
         {{ $item['label'] }}
         @if (isset($item['badge']))
-          <span class="badge-menu" id="{{ $item['badge'] }}Count" style="display:none;">0</span>
+          <span class="badge-menu badge-menu--{{ $item['badgeTone'] ?? 'danger' }}" id="{{ $item['badge'] }}Count" style="display:none;">0</span>
         @endif
       </a>
     @endforeach
@@ -542,6 +449,7 @@
   import { callApi, getCurrentUser } from "{{ asset('assets/js/api.js') }}";
 
   document.addEventListener('DOMContentLoaded', () => {
+    const ACTIVE_BOOKING_STATUSES = ['cho_xac_nhan', 'da_xac_nhan', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan'];
     const user = getCurrentUser();
     if (!user || !['worker', 'admin'].includes(user.role)) {
       window.location.href = '/login?role=worker';
@@ -551,7 +459,6 @@
     const elements = {
       sidebarName: document.getElementById('sidebarName'),
       sidebarAvatar: document.getElementById('sidebarAvatar'),
-      workerMobileAvatar: document.getElementById('workerMobileAvatar'),
       dropdownHeaderName: document.getElementById('dropdownHeaderName'),
       dropdownHeaderEmail: document.getElementById('dropdownHeaderEmail'),
       sidebar: document.getElementById('workerSidebar'),
@@ -559,6 +466,79 @@
       sidebarToggle: document.getElementById('workerSidebarToggle'),
       sidebarClose: document.getElementById('workerSidebarClose'),
       sidebarLinks: document.querySelectorAll('[data-sidebar-link], [data-worker-sidebar-brand]'),
+      scheduleBadge: document.getElementById('workerScheduleBadgeCount'),
+      reviewBadge: document.getElementById('workerReviewBadgeCount'),
+    };
+    const storageKey = `worker-sidebar-read-state:${user.id}`;
+    const currentPath = window.location.pathname || '';
+
+    const loadReadState = () => {
+      try {
+        const payload = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        return {
+          bookingsSeenAt: Number(payload?.bookingsSeenAt || 0),
+          reviewsSeenTotal: Number(payload?.reviewsSeenTotal || 0),
+        };
+      } catch (error) {
+        return {
+          bookingsSeenAt: 0,
+          reviewsSeenTotal: 0,
+        };
+      }
+    };
+
+    const readState = loadReadState();
+
+    const persistReadState = () => {
+      localStorage.setItem(storageKey, JSON.stringify(readState));
+    };
+
+    const isBookingsPage = () => currentPath.startsWith('/worker/my-bookings');
+    const isReviewsPage = () => currentPath.startsWith('/worker/reviews');
+    const toTimestamp = (value) => {
+      const parsed = Date.parse(value || '');
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
+    const getAvatarUrl = (source) => {
+      if (!source) return '';
+      if (String(source).startsWith('http')) return source;
+      if (String(source).startsWith('/')) return source;
+      return `/storage/${source}`;
+    };
+    const setAvatarContent = (element, avatarUrl, fallbackName = 'T') => {
+      if (!element) {
+        return;
+      }
+
+      const safeFallback = String(fallbackName || 'T').charAt(0).toUpperCase();
+      if (!avatarUrl) {
+        element.textContent = safeFallback;
+        return;
+      }
+
+      element.innerHTML = `<img src="${avatarUrl}" alt="${fallbackName}" style="width:100%;height:100%;display:block;object-fit:cover;border-radius:inherit;">`;
+    };
+    const syncSidebarIdentity = (payload = {}) => {
+      const nextUser = {
+        ...user,
+        ...payload,
+      };
+
+      if (elements.sidebarName) {
+        elements.sidebarName.textContent = nextUser.name || 'Thợ';
+      }
+      if (elements.dropdownHeaderName) {
+        elements.dropdownHeaderName.textContent = nextUser.name || 'Thợ';
+      }
+      if (elements.dropdownHeaderEmail) {
+        elements.dropdownHeaderEmail.textContent = nextUser.email || '';
+      }
+
+      setAvatarContent(elements.sidebarAvatar, getAvatarUrl(nextUser.avatar), nextUser.name || 'T');
+
+      if (payload && Object.keys(payload).length > 0) {
+        localStorage.setItem('user', JSON.stringify(nextUser));
+      }
     };
 
     const isMobileSidebar = () => window.innerWidth <= 768;
@@ -606,22 +586,108 @@
       }
     });
 
-    const avatarLetter = (user.name || 'T').charAt(0).toUpperCase();
-    if (elements.sidebarName) {
-      elements.sidebarName.textContent = user.name || 'Thợ';
-    }
-    if (elements.sidebarAvatar) {
-      elements.sidebarAvatar.textContent = avatarLetter;
-    }
-    if (elements.workerMobileAvatar) {
-      elements.workerMobileAvatar.textContent = avatarLetter;
-    }
-    if (elements.dropdownHeaderName) {
-      elements.dropdownHeaderName.textContent = user.name || 'Thợ';
-    }
-    if (elements.dropdownHeaderEmail) {
-      elements.dropdownHeaderEmail.textContent = user.email || '';
-    }
+    syncSidebarIdentity();
+
+    const setMenuBadge = (badge, count, { tone = 'danger', label = '' } = {}) => {
+      if (!badge) {
+        return;
+      }
+
+      const safeCount = Number(count) || 0;
+      badge.classList.remove('badge-menu--info', 'badge-menu--warning', 'badge-menu--danger');
+      badge.classList.add(`badge-menu--${tone}`);
+
+      if (safeCount <= 0) {
+        badge.style.display = 'none';
+        badge.textContent = '0';
+        badge.removeAttribute('title');
+        badge.removeAttribute('aria-label');
+        return;
+      }
+
+      badge.style.display = 'inline-flex';
+      badge.textContent = safeCount > 99 ? '99+' : String(safeCount);
+
+      if (label) {
+        badge.title = `${label}: ${safeCount}`;
+        badge.setAttribute('aria-label', `${label}: ${safeCount}`);
+      }
+    };
+
+    const refreshSidebarBadges = async () => {
+      const [bookingResult, reviewResult] = await Promise.allSettled([
+        callApi('/don-dat-lich?per_page=100', 'GET'),
+        callApi(`/ho-so-tho/${user.id}/danh-gia/summary`, 'GET'),
+      ]);
+
+      if (bookingResult.status === 'fulfilled' && bookingResult.value?.ok) {
+        const bookings = Array.isArray(bookingResult.value.data?.data)
+          ? bookingResult.value.data.data
+          : [];
+        const activeBookings = bookings.filter((booking) => ACTIVE_BOOKING_STATUSES.includes(booking?.trang_thai));
+        const latestActiveBookingAt = activeBookings.reduce((latestTimestamp, booking) => {
+          const bookingTimestamp = toTimestamp(booking?.updated_at || booking?.created_at);
+          return bookingTimestamp > latestTimestamp ? bookingTimestamp : latestTimestamp;
+        }, 0);
+
+        if (isBookingsPage()) {
+          readState.bookingsSeenAt = latestActiveBookingAt;
+          persistReadState();
+        }
+
+        const unreadBookingsCount = activeBookings.filter((booking) => {
+          const bookingTimestamp = toTimestamp(booking?.updated_at || booking?.created_at);
+          return bookingTimestamp > Number(readState.bookingsSeenAt || 0);
+        }).length;
+
+        setMenuBadge(elements.scheduleBadge, unreadBookingsCount, {
+          tone: 'info',
+          label: 'Việc mới chưa xem',
+        });
+      }
+
+      if (reviewResult.status === 'fulfilled' && reviewResult.value?.ok) {
+        const totalReviews = Number(reviewResult.value.data?.total_reviews || 0);
+        const lowRatingReviews = Number(reviewResult.value.data?.low_rating_reviews || 0);
+
+        if (isReviewsPage()) {
+          readState.reviewsSeenTotal = totalReviews;
+          persistReadState();
+        }
+
+        const unreadReviewsCount = Math.max(0, totalReviews - Number(readState.reviewsSeenTotal || 0));
+
+        setMenuBadge(elements.reviewBadge, unreadReviewsCount, {
+          tone: lowRatingReviews > 0 ? 'warning' : 'info',
+          label: 'Đánh giá mới chưa xem',
+        });
+      }
+    };
+
+    const hydrateSidebarAvatar = async () => {
+      if (getAvatarUrl(user.avatar)) {
+        return;
+      }
+
+      try {
+        const profileResult = await callApi(`/ho-so-tho/${user.id}`, 'GET');
+        if (!profileResult.ok || !profileResult.data?.user) {
+          return;
+        }
+
+        const profileUser = profileResult.data.user;
+        syncSidebarIdentity({
+          name: profileUser.name || user.name,
+          email: profileUser.email || user.email,
+          avatar: profileUser.avatar || '',
+        });
+      } catch (error) {
+        console.error('Sidebar avatar sync error:', error);
+      }
+    };
+
+    hydrateSidebarAvatar();
+    refreshSidebarBadges();
 
     window.logoutWorker = async function logoutWorker() {
       try {
@@ -635,26 +701,6 @@
       }
     };
 
-    async function updateJobBadge() {
-      try {
-        const res = await callApi('/don-dat-lich/available', 'GET');
-        if (res.ok) {
-          const jobs = res.data.data || res.data || [];
-          const count = jobs.length;
-          ['sidebarJobBadgeCount', 'mobileDockJobsBadgeCount'].forEach((badgeId) => {
-            const badge = document.getElementById(badgeId);
-            if (badge) {
-              badge.textContent = count;
-              badge.style.display = count > 0 ? 'inline-flex' : 'none';
-            }
-          });
-        }
-      } catch (error) {
-        console.warn('Badge error:', error);
-      }
-    }
-
-    updateJobBadge();
   });
 </script>
 @endpush

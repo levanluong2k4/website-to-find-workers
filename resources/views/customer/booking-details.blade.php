@@ -377,6 +377,16 @@
         margin-top: 1.35rem;
     }
 
+    .detail-summary-action-stack {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 1.35rem;
+    }
+
+    .detail-summary-action-stack .detail-summary-action {
+        margin-top: 0;
+    }
+
     .detail-outline-button,
     .detail-solid-button,
     .detail-ghost-button {
@@ -435,6 +445,11 @@
         color: var(--detail-text);
         font-size: 0.95rem;
         font-weight: 800;
+    }
+
+    .detail-summary-note--info {
+        background: rgba(17, 152, 232, 0.08);
+        border-color: rgba(17, 152, 232, 0.14);
     }
 
     .detail-worker-row {
@@ -956,6 +971,93 @@
         box-shadow: 0 16px 30px rgba(16, 185, 129, 0.18);
     }
 
+    .detail-reschedule-modal {
+        width: min(100%, 38rem);
+        border-radius: 28px;
+        padding: 1.2rem 1.2rem 1.35rem;
+    }
+
+    .detail-reschedule-note {
+        display: grid;
+        gap: 0.35rem;
+        margin-bottom: 1rem;
+        padding: 0.95rem 1rem;
+        border-radius: 18px;
+        background: rgba(17, 152, 232, 0.08);
+        color: #334155;
+        text-align: left;
+        line-height: 1.6;
+    }
+
+    .detail-reschedule-note strong {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--detail-text);
+    }
+
+    .detail-reschedule-field {
+        margin-top: 0.9rem;
+        text-align: left;
+    }
+
+    .detail-reschedule-field label {
+        display: block;
+        margin-bottom: 0.55rem;
+        color: #1f2937;
+        font-size: 0.9rem;
+        font-weight: 800;
+    }
+
+    .detail-reschedule-date {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .detail-reschedule-slot-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .detail-reschedule-slot {
+        min-height: 3rem;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid #cfd8e3;
+        border-radius: 16px;
+        background: #fff;
+        color: #111827;
+        font-size: 0.95rem;
+        font-weight: 700;
+        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+        cursor: pointer;
+    }
+
+    .detail-reschedule-slot:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: rgba(17, 152, 232, 0.45);
+    }
+
+    .detail-reschedule-slot.is-selected {
+        border-color: rgba(17, 152, 232, 0.7);
+        background: rgba(17, 152, 232, 0.1);
+        color: var(--detail-primary-deep);
+        box-shadow: 0 10px 18px rgba(17, 152, 232, 0.12);
+    }
+
+    .detail-reschedule-slot:disabled {
+        background: #f8fafc;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    .detail-reschedule-current {
+        margin-top: 1rem;
+        color: #475569;
+        font-size: 0.92rem;
+        line-height: 1.55;
+        text-align: left;
+    }
+
     .star-rating {
         display: flex;
         flex-direction: row-reverse;
@@ -1006,6 +1108,10 @@
 
         .detail-gallery-grid,
         .detail-request-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .detail-reschedule-slot-grid {
             grid-template-columns: 1fr;
         }
 
@@ -1110,6 +1216,8 @@
         </div>
     </div>
 </div>
+
+@include('customer.partials.booking-wizard-modal')
 @endsection
 
 @push('scripts')

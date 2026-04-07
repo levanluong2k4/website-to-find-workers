@@ -42,6 +42,10 @@ const port = Number(
         (appUrl.protocol === 'https:' ? '443' : '80')
 );
 const isCI = Boolean(process.env.CI);
+const webServerEnv = {
+    ...process.env,
+    MAIL_MAILER: process.env.PLAYWRIGHT_MAIL_MAILER || process.env.MAIL_MAILER || 'array',
+};
 
 export default defineConfig({
     testDir: './tests/browser',
@@ -62,6 +66,7 @@ export default defineConfig({
         command:
             process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ||
             `php artisan serve --host=${host} --port=${port}`,
+        env: webServerEnv,
         reuseExistingServer: !isCI,
         stderr: 'pipe',
         stdout: 'pipe',

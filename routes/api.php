@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\DanhMucDichVuController;
 use App\Http\Controllers\Api\DonDatLichController;
+use App\Http\Controllers\Api\HuongXuLyController;
 use App\Http\Controllers\Api\LinhKienController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PaymentController;
@@ -25,9 +26,11 @@ Route::get('/danh-muc-dich-vu', [DanhMucDichVuController::class, 'index']);
 Route::get('/danh-muc-dich-vu/{id}', [DanhMucDichVuController::class, 'show']);
 Route::get('/linh-kien', [LinhKienController::class, 'index']);
 Route::get('/linh-kien/{id}', [LinhKienController::class, 'show'])->whereNumber('id');
+Route::get('/huong-xu-ly', [HuongXuLyController::class, 'index']);
 Route::get('/travel-fee-config', [TravelFeeConfigController::class, 'public']);
 Route::get('/ho-so-tho', [\App\Http\Controllers\Api\HoSoThoController::class, 'index']);
 Route::get('/ho-so-tho/{id}', [\App\Http\Controllers\Api\HoSoThoController::class, 'show']);
+Route::get('/ho-so-tho/{id}/busy-slots', [\App\Http\Controllers\Api\HoSoThoController::class, 'busySlots']);
 
 // Payment webhooks
 Route::get('/payment/vnpay-ipn', [PaymentController::class, 'vnpayIpn']);
@@ -89,10 +92,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/don-dat-lich/calendar', [\App\Http\Controllers\Api\DonDatLichController::class, 'getCalendarView']);
         Route::get('/don-dat-lich', [\App\Http\Controllers\Api\DonDatLichController::class, 'index']);
         Route::get('/don-dat-lich/{id}', [\App\Http\Controllers\Api\DonDatLichController::class, 'show']);
+        Route::put('/don-dat-lich/{id}/reschedule', [\App\Http\Controllers\Api\DonDatLichController::class, 'reschedule']);
         Route::post('/don-dat-lich/{id}/claim', [\App\Http\Controllers\Api\DonDatLichController::class, 'claimJob']);
         Route::put('/don-dat-lich/{id}/status', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateStatus']);
         Route::put('/don-dat-lich/{id}/update-costs', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateCosts']);
         Route::post('/don-dat-lich/{id}/parts/{partIndex}/confirm-warranty', [\App\Http\Controllers\Api\DonDatLichController::class, 'confirmPartWarranty']);
+        Route::put('/bookings/{id}/payment-method', [\App\Http\Controllers\Api\DonDatLichController::class, 'updatePaymentMethod']);
         Route::post('/bookings/{id}/request-payment', [\App\Http\Controllers\Api\DonDatLichController::class, 'requestPayment']);
         Route::post('/bookings/{id}/confirm-cash-payment', [\App\Http\Controllers\Api\DonDatLichController::class, 'confirmCashPayment']);
 
@@ -103,6 +108,16 @@ Route::middleware('auth:sanctum')->group(function () {
         // Admin APIs
         Route::middleware([\App\Http\Middleware\AdminMiddleware::class])->prefix('admin')->group(function () {
             Route::get('/dashboard', [\App\Http\Controllers\Api\AdminController::class, 'getDashboardStats']);
+            Route::get('/customers', [\App\Http\Controllers\Api\AdminController::class, 'getCustomers']);
+            Route::get('/customers/{id}', [\App\Http\Controllers\Api\AdminController::class, 'getCustomerDetail']);
+            Route::get('/customers/{id}/bookings', [\App\Http\Controllers\Api\AdminController::class, 'getCustomerBookings']);
+            Route::get('/dispatch', [\App\Http\Controllers\Api\AdminDispatchController::class, 'index']);
+            Route::get('/dispatch/{bookingId}', [\App\Http\Controllers\Api\AdminDispatchController::class, 'show']);
+            Route::post('/dispatch/{bookingId}/assign', [\App\Http\Controllers\Api\AdminDispatchController::class, 'assign']);
+            Route::post('/customers/{id}/notes', [\App\Http\Controllers\Api\AdminController::class, 'storeCustomerNote']);
+            Route::get('/customer-feedback', [\App\Http\Controllers\Api\AdminController::class, 'getCustomerFeedback']);
+            Route::post('/customer-feedback/{caseKey}/claim', [\App\Http\Controllers\Api\AdminController::class, 'claimCustomerFeedbackCase']);
+            Route::post('/customer-feedback/{caseKey}/resolve', [\App\Http\Controllers\Api\AdminController::class, 'resolveCustomerFeedbackCase']);
             Route::get('/users', [\App\Http\Controllers\Api\AdminController::class, 'getUsers']);
             Route::patch('/users/{id}/toggle-status', [\App\Http\Controllers\Api\AdminController::class, 'toggleUserStatus']);
             Route::get('/worker-profiles', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerProfiles']);
@@ -112,6 +127,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/services', [\App\Http\Controllers\Api\AdminController::class, 'storeService']);
             Route::put('/services/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateService']);
             Route::delete('/services/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroyService']);
+            Route::get('/linh-kien', [\App\Http\Controllers\Api\AdminController::class, 'getParts']);
+            Route::post('/linh-kien', [\App\Http\Controllers\Api\AdminController::class, 'storePart']);
+            Route::put('/linh-kien/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updatePart']);
+            Route::delete('/linh-kien/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroyPart']);
+            Route::get('/trieu-chung', [\App\Http\Controllers\Api\AdminController::class, 'getSymptoms']);
+            Route::post('/trieu-chung', [\App\Http\Controllers\Api\AdminController::class, 'storeSymptom']);
+            Route::put('/trieu-chung/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateSymptom']);
+            Route::delete('/trieu-chung/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroySymptom']);
+            Route::get('/huong-xu-ly', [\App\Http\Controllers\Api\AdminController::class, 'getResolutions']);
+            Route::post('/huong-xu-ly', [\App\Http\Controllers\Api\AdminController::class, 'storeResolution']);
+            Route::put('/huong-xu-ly/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateResolution']);
+            Route::delete('/huong-xu-ly/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroyResolution']);
             Route::get('/ai-knowledge', [\App\Http\Controllers\Api\AdminController::class, 'getAiKnowledgeItems']);
             Route::get('/ai-knowledge/export', [\App\Http\Controllers\Api\AdminController::class, 'exportAiKnowledge']);
             Route::post('/ai-knowledge/sync', [\App\Http\Controllers\Api\AdminController::class, 'syncAiKnowledge']);

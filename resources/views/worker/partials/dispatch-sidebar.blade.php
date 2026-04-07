@@ -28,7 +28,7 @@
       ],
       [
           'href' => '/worker/analytics',
-          'label' => 'Thống kê',
+          'label' => 'Doanh thu',
           'icon' => 'monitoring',
           'active' => request()->is('worker/analytics*'),
       ],
@@ -48,7 +48,10 @@
 @endphp
 
 <aside class="dispatch-sidebar">
-  <a href="/" class="dispatch-brand {{ $brandDark ? 'dispatch-brand--dark' : '' }}">Thợ Tốt NTU</a>
+  <a href="/" class="dispatch-brand {{ $brandDark ? 'dispatch-brand--dark' : '' }}">
+    <img src="{{ asset('assets/images/logontu.png') }}" alt="Logo Thợ Tốt NTU">
+    <span>Thợ Tốt NTU</span>
+  </a>
 
   <div>
     <div class="dispatch-operating-note">

@@ -54,11 +54,25 @@
 }
 
 .dispatch-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
   font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 800;
   font-size: 1.05rem;
   color: var(--dispatch-primary);
   letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.dispatch-brand img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(3, 105, 161, 0.18);
+  flex-shrink: 0;
 }
 
 .dispatch-brand--dark {

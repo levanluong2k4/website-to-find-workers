@@ -43,6 +43,18 @@
   .worker-avatar-upload { position:relative; width:112px; height:112px; margin:0 auto 1rem; cursor:pointer; }
   .worker-avatar-preview { width:100%; height:100%; display:block; border-radius:50%; object-fit:cover; background:#fff; border:3px solid #BAF2E9; box-shadow:0 12px 28px rgba(14,165,233,.16); }
   .worker-avatar-badge { position:absolute; bottom:0; right:0; background:#0EA5E9; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
+  .worker-availability { display:flex; align-items:center; justify-content:center; gap:.75rem; padding:.875rem; border-radius:.75rem; border:1px solid transparent; transition:background-color .2s ease, border-color .2s ease, color .2s ease; }
+  .worker-availability--active { background:#f0fdf4; border-color:#bbf7d0; }
+  .worker-availability--inactive { background:#fff7ed; border-color:#fed7aa; }
+  .worker-availability__dot { font-size:1rem; }
+  .worker-availability__label { font-size:.8rem; font-weight:700; }
+  .worker-availability__select { border:none; background:transparent; font-size:.8rem; font-weight:700; cursor:pointer; padding:0; }
+  .worker-availability--active .worker-availability__dot,
+  .worker-availability--active .worker-availability__label,
+  .worker-availability--active .worker-availability__select { color:#065f46; }
+  .worker-availability--inactive .worker-availability__dot,
+  .worker-availability--inactive .worker-availability__label,
+  .worker-availability--inactive .worker-availability__select { color:#9a3412; }
   @media (max-width:768px) { .worker-main{margin-left:0;} }
 </style>
 @endpush
@@ -101,10 +113,10 @@
         </div>
 
         <!-- Online toggle -->
-        <div style="display:flex; align-items:center; justify-content:center; gap:.75rem; padding:.875rem; background:#f0fdf4; border-radius:.75rem; border:1px solid #bbf7d0;">
-          <span class="material-symbols-outlined" style="font-size:1rem; color:#10b981;">circle</span>
-          <span style="font-size:.8rem; font-weight:600; color:#065f46;">Đang hoạt động</span>
-          <select id="inputTrangThai" style="border:none; background:transparent; font-size:.8rem; font-weight:600; color:#065f46; cursor:pointer; padding:0;">
+        <div id="workerAvailabilityCard" class="worker-availability worker-availability--active">
+          <span id="workerAvailabilityDot" class="material-symbols-outlined worker-availability__dot">circle</span>
+          <span id="workerAvailabilityLabel" class="worker-availability__label">Sẵn sàng nhận việc</span>
+          <select id="inputTrangThai" class="worker-availability__select" aria-label="Trạng thái làm việc">
             <option value="1">✓ Sẵn sàng</option>
             <option value="0">Tạm nghỉ</option>
           </select>

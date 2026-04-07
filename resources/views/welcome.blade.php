@@ -4,10 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chọn Vai Trò - Thợ Tốt NTU</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Material+Symbols+Outlined&display=swap" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    :root { --app-font-sans:'Be Vietnam Pro',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+    body, body *:not(.material-symbols-outlined):not(.material-symbols-rounded):not(.material-symbols-sharp):not(.fa):not(.fas):not(.far):not(.fab):not([class^="fa-"]):not([class*=" fa-"]):not(pre):not(code):not(kbd):not(samp) { font-family:var(--app-font-sans) !important; }
     html, body { height:100vh; overflow:hidden; font-family:'Roboto',sans-serif; display:flex; background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.68) 0, rgba(255, 255, 255, 0) 24rem), radial-gradient(circle at top right, rgba(255, 255, 255, 0.58) 0, rgba(255, 255, 255, 0) 18rem), linear-gradient(180deg, #8ad0ff 0%, #c7e8ff 36%, #edf7ff 100%); }
 
     /* ── LEFT ── */
@@ -29,10 +31,12 @@
 
     .logo { display:flex; align-items:center; gap:.5rem; z-index:1; position:relative; flex-shrink:0; }
     .logo-icon {
-      width:2.1rem; height:2.1rem; background:rgba(255,255,255,.2);
-      border-radius:.6rem; display:flex; align-items:center; justify-content:center;
-      backdrop-filter:blur(4px);
+      width:3.1rem; height:3.1rem; border-radius:999px;
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden; background:#fff; flex-shrink:0;
+      box-shadow:0 12px 28px rgba(15,23,42,.22);
     }
+    .logo-icon img { width:100%; height:100%; object-fit:contain; display:block; }
     .logo-text { color:#fff; font-family:'DM Sans',sans-serif; font-weight:800; font-size:1rem; }
 
     .hero-content {
@@ -193,7 +197,7 @@
 <div class="left-panel">
   <a href="/" class="logo" style="text-decoration:none;">
     <div class="logo-icon">
-      <span class="material-symbols-outlined" style="color:#fff;font-size:1.2rem;">home_repair_service</span>
+      <img src="{{ asset('assets/images/logontu.png') }}" alt="Logo Thợ Tốt NTU">
     </div>
     <span class="logo-text">Thợ Tốt NTU</span>
   </a>

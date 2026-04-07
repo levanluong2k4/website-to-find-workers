@@ -4,15 +4,18 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Xac minh so dien thoai - Tho Tot NTU</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700;800&family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Material+Symbols+Outlined&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"/>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
+    :root{--app-font-sans:'Be Vietnam Pro',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+    body, body *:not(.material-symbols-outlined):not(.material-symbols-rounded):not(.material-symbols-sharp):not(.fa):not(.fas):not(.far):not(.fab):not([class^="fa-"]):not([class*=" fa-"]):not(pre):not(code):not(kbd):not(samp){font-family:var(--app-font-sans)!important}
     body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.25rem;background:radial-gradient(circle at top left, rgba(255,255,255,.7) 0, rgba(255,255,255,0) 24rem),radial-gradient(circle at bottom right, rgba(186,242,233,.5) 0, rgba(186,242,233,0) 22rem),linear-gradient(180deg,#8ad0ff 0%,#dff4ff 100%);font-family:'Roboto',sans-serif;color:#0f172a}
     .shell{width:min(980px,100%);display:grid;grid-template-columns:minmax(280px,380px) minmax(320px,1fr);background:#fff;border-radius:1.5rem;overflow:hidden;box-shadow:0 24px 64px rgba(14,165,233,.14)}
     .hero{padding:2rem;background:linear-gradient(160deg,#0f3c68 0%,#0284c7 55%,#38bdf8 100%);color:#fff;display:flex;flex-direction:column;gap:1rem}
     .brand{display:flex;align-items:center;gap:.6rem}
-    .brand-icon{width:2.2rem;height:2.2rem;border-radius:.75rem;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center}
+    .brand-icon{width:3rem;height:3rem;border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 12px 28px rgba(15,23,42,.22);flex-shrink:0}
+    .brand-icon img{width:100%;height:100%;object-fit:contain;display:block}
     .brand-title{font-family:'DM Sans',sans-serif;font-weight:800;font-size:1.05rem}
     .hero-copy{margin-top:auto}
     .eyebrow{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .75rem;border-radius:999px;background:rgba(255,255,255,.14);font-size:.74rem;font-weight:700}
@@ -73,7 +76,7 @@
   <div class="shell">
     <section class="hero">
       <div class="brand">
-        <div class="brand-icon"><span class="material-symbols-outlined" style="font-size:1.1rem;color:#fff">shield_locked</span></div>
+        <div class="brand-icon"><img src="{{ asset('assets/images/logontu.png') }}" alt="Logo Thợ Tốt NTU"></div>
         <div class="brand-title">Tho Tot NTU</div>
       </div>
       <div class="hero-copy">

@@ -100,9 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             data-image="${escapeHtml(service.hinh_anh || '')}"
                             data-active="${Number(service.trang_thai) === 1 ? '1' : '0'}"
                             title="S\u1eeda d\u1ecbch v\u1ee5"
-                        >
-                            <i class="fas fa-edit me-1"></i>S\u1eeda
-                        </button>
                         <button class="btn btn-sm btn-outline-danger btn-delete-service" data-id="${service.id}" data-name="${escapeHtml(service.ten_dich_vu)}" title="X\u00f3a d\u1ecbch v\u1ee5">
                             <i class="fas fa-trash me-1"></i>X\u00f3a
                         </button>

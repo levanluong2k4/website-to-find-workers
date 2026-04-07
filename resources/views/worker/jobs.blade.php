@@ -2,7 +2,7 @@
 @section('title', 'Viá»‡c má»›i - Thá»£ Tá»‘t NTU')
 
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&family=Material+Symbols+Outlined" rel="stylesheet"/>
 <style>
   .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
@@ -230,40 +230,71 @@
   }
 
   .jobs-job-card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 184px;
-    gap: 1.1rem;
-    align-items: center;
-    padding: 1.25rem;
-    background: rgba(255, 255, 255, 0.97);
-    border: 1px solid #e2e8f0;
-    border-radius: 1.75rem;
-    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+    position: relative;
+    overflow: hidden;
+    padding: 1.35rem 1.45rem 1.4rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(247, 251, 255, 0.96));
+    border: 1px solid rgba(192, 220, 241, 0.88);
+    border-radius: 1.85rem;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.07);
   }
 
-  .jobs-job-main {
-    min-width: 0;
+  .jobs-job-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: linear-gradient(90deg, #38bdf8, #0ea5e9 48%, #7dd3fc);
   }
 
-  .jobs-job-tags,
-  .jobs-job-meta {
+  .jobs-job-header,
+  .jobs-job-footer,
+  .jobs-job-meta-inline,
+  .jobs-job-stats,
+  .jobs-job-actions,
+  .jobs-job-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
   }
 
-  .jobs-tag,
-  .jobs-meta-pill {
+  .jobs-job-header {
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .jobs-job-icon {
+    width: 3.6rem;
+    height: 3.6rem;
+    flex: 0 0 3.6rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.38rem;
-    min-height: 1.95rem;
-    padding: 0.4rem 0.72rem;
+    justify-content: center;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #d7edff, #bee3fb);
+    color: #0369a1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  .jobs-job-icon .material-symbols-outlined {
+    font-size: 1.65rem;
+    font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .jobs-job-summary {
+    min-width: 0;
+    flex: 1 1 24rem;
+  }
+
+  .jobs-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.9rem;
+    padding: 0.38rem 0.72rem;
     border-radius: 999px;
-    background: #f8fafc;
-    color: #334155;
-    font-size: 0.76rem;
-    font-weight: 700;
+    font-size: 0.73rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
   }
 
   .jobs-tag--category {
@@ -271,82 +302,253 @@
     color: #0369a1;
   }
 
-  .jobs-tag--note {
-    background: #f1f5f9;
-    color: #475569;
+  .jobs-tag--mode {
+    background: #ecfeff;
+    color: #0f766e;
   }
 
-  .jobs-meta-pill .material-symbols-outlined {
+  .jobs-job-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.42rem 0.85rem;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #0369a1;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .jobs-job-title {
+    margin: 0.72rem 0 0;
+    color: #171c1e;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+  }
+
+  .jobs-job-meta-inline {
+    margin-top: 0.45rem;
+    align-items: center;
+    gap: 0.45rem 0.72rem;
+    color: #475569;
+    font-size: 0.86rem;
+  }
+
+  .jobs-job-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    min-width: 0;
+  }
+
+  .jobs-job-meta-item .material-symbols-outlined {
     font-size: 1rem;
     color: #64748b;
   }
 
-  .jobs-job-title {
-    margin: 0.8rem 0 0;
-    color: #171c1e;
-    font-size: 1.2rem;
-    font-weight: 700;
-    line-height: 1.35;
-    letter-spacing: -0.02em;
+  .jobs-job-meta-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    flex: 0 0 auto;
   }
 
-  .jobs-job-copy {
-    margin: 0.45rem 0 0;
-    color: #64748b;
-    font-size: 0.9rem;
-    line-height: 1.65;
-  }
-
-  .jobs-job-meta {
-    margin-top: 0.9rem;
-  }
-
-  .jobs-job-side {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.8rem;
+  .jobs-job-sidehead {
+    margin-left: auto;
+    display: grid;
+    justify-items: end;
+    gap: 0.45rem;
     text-align: right;
   }
 
   .jobs-job-price {
     color: #171c1e;
-    font-size: 1.85rem;
-    font-weight: 700;
+    font-size: 1.9rem;
+    font-weight: 800;
     letter-spacing: -0.05em;
     line-height: 1;
   }
 
-  .jobs-job-duration {
+  .jobs-job-price-meta {
     color: #64748b;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     font-weight: 700;
+  }
+
+  .jobs-job-copy {
+    margin: 0.95rem 0 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.68;
+  }
+
+  .jobs-job-location {
+    margin-top: 0.95rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    color: #334155;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .jobs-job-location .material-symbols-outlined {
+    margin-top: 0.12rem;
+    font-size: 1.02rem;
+    color: #0ea5e9;
+  }
+
+  .jobs-job-note {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 1rem 1rem 1rem 0.95rem;
+    border-left: 4px solid #0ea5e9;
+    border-radius: 1.2rem;
+    background: #f0f9ff;
+  }
+
+  .jobs-job-note .material-symbols-outlined {
+    margin-top: 0.08rem;
+    font-size: 1.08rem;
+  }
+
+  .jobs-job-note strong {
+    display: block;
+    color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .jobs-job-note p {
+    margin: 0.26rem 0 0;
+    color: #475569;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+
+  .jobs-job-note-copy {
+    min-width: 0;
+  }
+
+  .jobs-job-note--warn {
+    border-left-color: #f97316;
+    background: #fff7ed;
+  }
+
+  .jobs-job-note--warn .material-symbols-outlined,
+  .jobs-job-note--warn strong {
+    color: #c2410c;
+  }
+
+  .jobs-job-note--success {
+    border-left-color: #16a34a;
+    background: #f0fdf4;
+  }
+
+  .jobs-job-note--success .material-symbols-outlined,
+  .jobs-job-note--success strong {
+    color: #166534;
+  }
+
+  .jobs-job-note--info {
+    border-left-color: #0ea5e9;
+    background: #eff6ff;
+  }
+
+  .jobs-job-note--info .material-symbols-outlined,
+  .jobs-job-note--info strong {
+    color: #0369a1;
+  }
+
+  .jobs-job-stats {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .jobs-job-stat {
+    min-width: 0;
+    padding: 0.9rem 1rem;
+    border-radius: 1.1rem;
+    border: 1px solid #e0eef7;
+    background: #f8fbff;
+  }
+
+  .jobs-job-stat-label {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .jobs-job-stat-value {
+    margin-top: 0.42rem;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+
+  .jobs-job-stat-caption {
+    margin-top: 0.28rem;
+    color: #64748b;
+    font-size: 0.79rem;
+    line-height: 1.5;
+  }
+
+  .jobs-job-footer {
+    margin-top: 1.15rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
   }
 
   .jobs-job-actions {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    align-items: center;
     gap: 0.6rem;
-    width: 100%;
+    margin-left: auto;
+    flex-wrap: wrap;
   }
 
   .jobs-link-button {
-    color: #0369a1;
-    font-size: 0.85rem;
+    min-height: 2.9rem;
+    padding: 0 1.05rem;
+    border-radius: 1rem;
+    background: #eef4f8;
+    color: #0f172a;
+    font-size: 0.88rem;
     font-weight: 700;
     text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
   }
 
   .jobs-link-button:hover {
-    color: #0c4a6e;
+    background: #e2e8f0;
+    color: #0f172a;
   }
 
   .jobs-primary-button {
-    width: 100%;
+    width: auto;
+    min-width: 9.5rem;
     min-height: 2.9rem;
     border: none;
     border-radius: 1rem;
+    padding: 0 1.2rem;
     background: linear-gradient(135deg, #0ea5e9, #0284c7);
     color: #fff;
     font-size: 0.92rem;
@@ -636,20 +838,40 @@
       grid-template-columns: 1fr;
     }
 
-    .jobs-job-card,
     .jobs-skeleton-card {
       grid-template-columns: 1fr;
     }
 
-    .jobs-job-side,
-    .jobs-job-actions {
-      align-items: flex-start;
+    .jobs-job-header {
+      display: grid;
+      grid-template-columns: 3.6rem minmax(0, 1fr);
+    }
+
+    .jobs-job-sidehead {
+      grid-column: 1 / -1;
+      margin-left: 0;
+      justify-items: start;
       text-align: left;
     }
 
+    .jobs-job-stats {
+      grid-template-columns: 1fr;
+    }
+
+    .jobs-job-footer {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .jobs-job-actions {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .jobs-link-button,
     .jobs-primary-button {
-      width: auto;
-      min-width: 9rem;
+      flex: 1 1 calc(50% - 0.35rem);
+      min-width: 0;
     }
   }
 </style>
@@ -939,6 +1161,67 @@ function formatSchedule(job) {
   return [dateLabel, timeValue].filter(Boolean).join(' · ');
 }
 
+function getTimeRange(job) {
+  const timeValue = String(job.gio_hen || job.khung_gio_hen || job.khung_gio || job.gio_du_kien || '').trim();
+  return timeValue || 'Chưa chốt giờ';
+}
+
+function getServiceModeLabel(job) {
+  return job.loai_dat_lich === 'at_home' ? 'Sửa tại nhà' : 'Sửa tại cửa hàng';
+}
+
+function getServiceIcon(job) {
+  const category = getCategoryLabel(getPrimaryService(job));
+
+  switch (category) {
+  case 'Điện lạnh':
+    return 'mode_fan';
+  case 'Điện nước':
+    return 'plumbing';
+  case 'Điện dân dụng':
+    return 'bolt';
+  case 'Gia dụng':
+    return 'home_repair_service';
+  default:
+    return 'construction';
+  }
+}
+
+function getWorkerDistanceKm(job) {
+  const numericDistance = Number(job.worker_distance_km ?? job.khoang_cach ?? 0);
+  return Number.isFinite(numericDistance) && numericDistance > 0 ? numericDistance : null;
+}
+
+function formatDistanceKm(value) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return '';
+  }
+
+  return `${value.toFixed(value >= 10 ? 0 : 1)} km`;
+}
+
+function getDistanceValueLabel(job) {
+  if (job.loai_dat_lich !== 'at_home') {
+    return 'Tại cửa hàng';
+  }
+
+  const distanceKm = getWorkerDistanceKm(job);
+  return distanceKm ? formatDistanceKm(distanceKm) : 'Chưa định vị';
+}
+
+function getDistanceCaption(job) {
+  if (job.loai_dat_lich !== 'at_home') {
+    return 'Khách mang thiết bị đến cửa hàng';
+  }
+
+  const distanceKm = getWorkerDistanceKm(job);
+  if (distanceKm) {
+    return `Cách vị trí hiện tại của bạn ${formatDistanceKm(distanceKm)}`;
+  }
+
+  return 'Cập nhật vị trí hồ sơ thợ để đo tuyến chính xác';
+}
+
 function getPriorityNote(job, index = 0) {
   const estimate = getEstimate(job);
   const isToday = (job.ngay_hen || job.ngay_dat_lich) === localDateKey();
@@ -948,6 +1231,45 @@ function getPriorityNote(job, index = 0) {
   if (estimate >= 1200000) return 'Giá trị cao, nên mở chi tiết sớm';
   if (index === 0) return 'Đơn nổi bật đang được đề xuất đầu ca';
   return 'Mô tả đủ rõ để xử lý nhanh';
+}
+
+function getPriorityPanel(job, index = 0) {
+  const estimate = getEstimate(job);
+  const isToday = (job.ngay_hen || job.ngay_dat_lich) === localDateKey();
+
+  if (isToday && estimate >= 800000) {
+    return {
+      tone: 'success',
+      icon: 'target',
+      title: 'Đơn hôm nay nên chốt sớm',
+      body: 'Giá trị tốt, khung giờ gần và phù hợp để gom tuyến xử lý trong ngày.',
+    };
+  }
+
+  if (isToday) {
+    return {
+      tone: 'warn',
+      icon: 'event_upcoming',
+      title: 'Ưu tiên nhận trong hôm nay',
+      body: 'Khung giờ gần nhất đang mở, nên mở chi tiết sớm để khóa lịch cho tuyến hiện tại.',
+    };
+  }
+
+  if (estimate >= 1200000) {
+    return {
+      tone: 'info',
+      icon: 'workspace_premium',
+      title: 'Đơn giá trị cao',
+      body: 'Nên kiểm tra mô tả lỗi và linh kiện dự kiến trước để chuẩn bị tuyến sửa phù hợp.',
+    };
+  }
+
+  return {
+    tone: 'info',
+    icon: 'bolt',
+    title: 'Đơn nhận việc mới',
+    body: getPriorityNote(job, index),
+  };
 }
 
 function getDistinctSlots(jobs) {
@@ -1185,36 +1507,90 @@ function renderJobs(jobs) {
     const estimate = getEstimate(job);
     const shortAddress = getShortAddress(job.dia_chi);
     const area = getArea(job.dia_chi);
-    const note = getPriorityNote(job, index);
-    const schedule = formatSchedule(job);
+    const note = getPriorityPanel(job, index);
+    const dateLabel = getDateLabel(job.ngay_hen || job.ngay_dat_lich);
+    const timeRange = getTimeRange(job);
     const detailLink = `${baseUrl}/worker/jobs/${job.id}`;
     const badge = (job.ngay_hen || job.ngay_dat_lich) === localDateKey() ? 'Hôm nay' : 'Sắp tới';
+    const modeLabel = getServiceModeLabel(job);
+    const distanceValue = getDistanceValueLabel(job);
+    const distanceCaption = getDistanceCaption(job);
+    const travelFee = Number(job.phi_di_lai || 0);
+    const travelFeeLabel = travelFee > 0 ? formatCompactMoney(travelFee) : '0đ';
+    const duration = estimateDurationLabel(job);
+    const serviceIcon = getServiceIcon(job);
+    const description = job.mo_ta_van_de || 'Khách hàng đã để lại mô tả ngắn. Mở chi tiết để xem hiện trạng và thiết bị cụ thể.';
 
     return `
       <article class="jobs-job-card">
-        <div class="jobs-job-main">
-          <div class="jobs-job-tags">
-            <span class="jobs-tag jobs-tag--category">${escapeHtml(category)}</span>
-            <span class="jobs-tag jobs-tag--note">${escapeHtml(badge)}</span>
+        <div class="jobs-job-header">
+          <div class="jobs-job-icon">
+            <span class="material-symbols-outlined">${escapeHtml(serviceIcon)}</span>
           </div>
 
-          <h2 class="jobs-job-title">${escapeHtml(title)}</h2>
-          <p class="jobs-job-copy">${escapeHtml(job.mo_ta_van_de || 'Khách hàng đã để lại mô tả ngắn. Mở chi tiết để xem hiện trạng và thiết bị cụ thể.')}</p>
+          <div class="jobs-job-summary">
+            <div class="jobs-job-tags">
+              <span class="jobs-tag jobs-tag--category">${escapeHtml(category)}</span>
+              <span class="jobs-tag jobs-tag--mode">${escapeHtml(modeLabel)}</span>
+            </div>
 
-          <div class="jobs-job-meta">
-            <span class="jobs-meta-pill"><span class="material-symbols-outlined">schedule</span>${escapeHtml(schedule)}</span>
-            <span class="jobs-meta-pill"><span class="material-symbols-outlined">location_on</span>${escapeHtml(shortAddress)}</span>
-            <span class="jobs-meta-pill"><span class="material-symbols-outlined">person</span>${escapeHtml(customerName)}</span>
-            <span class="jobs-meta-pill"><span class="material-symbols-outlined">bolt</span>${escapeHtml(note)}</span>
+            <h2 class="jobs-job-title">${escapeHtml(title)}</h2>
+            <div class="jobs-job-meta-inline">
+              <span class="jobs-job-meta-item"><span class="material-symbols-outlined">calendar_month</span><span>${escapeHtml(dateLabel)}</span></span>
+              <span class="jobs-job-meta-dot"></span>
+              <span class="jobs-job-meta-item"><span class="material-symbols-outlined">schedule</span><span>${escapeHtml(timeRange)}</span></span>
+              <span class="jobs-job-meta-dot"></span>
+              <span class="jobs-job-meta-item"><span class="material-symbols-outlined">person</span><span>${escapeHtml(customerName)}</span></span>
+            </div>
+          </div>
+
+          <div class="jobs-job-sidehead">
+            <span class="jobs-job-status">${escapeHtml(badge)}</span>
+            <div class="jobs-job-price">${escapeHtml(formatMoney(estimate))}</div>
+            <div class="jobs-job-price-meta">${escapeHtml(`${duration} · ${area}`)}</div>
           </div>
         </div>
 
-        <div class="jobs-job-side">
-          <div class="jobs-job-price">${escapeHtml(formatMoney(estimate))}</div>
-          <div class="jobs-job-duration">${escapeHtml(`${estimateDurationLabel(job)} · ${area}`)}</div>
+        <p class="jobs-job-copy">${escapeHtml(description)}</p>
 
+        <div class="jobs-job-location">
+          <span class="material-symbols-outlined">location_on</span>
+          <span>${escapeHtml(shortAddress)}</span>
+        </div>
+
+        <div class="jobs-job-note jobs-job-note--${escapeHtml(note.tone)}">
+          <span class="material-symbols-outlined">${escapeHtml(note.icon)}</span>
+          <div class="jobs-job-note-copy">
+            <div>
+              <strong>${escapeHtml(note.title)}</strong>
+              <p>${escapeHtml(note.body)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="jobs-job-stats">
+          <div class="jobs-job-stat">
+            <div class="jobs-job-stat-label">Khoảng cách</div>
+            <div class="jobs-job-stat-value">${escapeHtml(distanceValue)}</div>
+            <div class="jobs-job-stat-caption">${escapeHtml(distanceCaption)}</div>
+          </div>
+
+          <div class="jobs-job-stat">
+            <div class="jobs-job-stat-label">Thời lượng</div>
+            <div class="jobs-job-stat-value">${escapeHtml(duration)}</div>
+            <div class="jobs-job-stat-caption">${escapeHtml(`Phù hợp tuyến ${area}`)}</div>
+          </div>
+
+          <div class="jobs-job-stat">
+            <div class="jobs-job-stat-label">Phục vụ</div>
+            <div class="jobs-job-stat-value">${escapeHtml(modeLabel)}</div>
+            <div class="jobs-job-stat-caption">${escapeHtml(job.loai_dat_lich === 'at_home' ? `Phí đi lại ${travelFeeLabel}` : 'Không cần di chuyển tới khách')}</div>
+          </div>
+        </div>
+
+        <div class="jobs-job-footer">
           <div class="jobs-job-actions">
-            <a href="${detailLink}" class="jobs-link-button">Chi tiết</a>
+            <a href="${detailLink}" class="jobs-link-button"><span class="material-symbols-outlined">visibility</span><span>Chi tiết</span></a>
             <button type="button" onclick="claimJob(${job.id}, event)" class="jobs-primary-button">Nhận việc</button>
           </div>
         </div>

@@ -65,7 +65,7 @@
                 </ol>
             </nav>
             <h2 class="fw-bold mb-1" style="color:#0f172a;">Qu&#7843;n l&#253; d&#7883;ch v&#7909;</h2>
-            <p class="text-muted mb-0">Th&#234;m, s&#7917;a, &#7849;n hi&#7879;n v&#224; x&#243;a m&#7873;m d&#7883;ch v&#7909; trong c&#7917;a h&#224;ng.</p>
+            <p class="text-muted mb-0">Th&#234;m, s&#7917;a, &#7849;n hi&#7879;n v&#224; x&#243;a d&#7883;ch v&#7909; trong c&#7917;a h&#224;ng.</p>
         </div>
 
         <div class="d-flex align-items-center gap-2">

@@ -168,6 +168,22 @@
                                     <textarea id="bookingWizardDescription" name="mo_ta_van_de" rows="5" placeholder="Ví dụ: Điều hòa không lạnh sâu, máy chạy nhưng gió yếu và có tiếng ồn bất thường."></textarea>
                                 </label>
 
+                                <div class="booking-problem-assist">
+                                    <div class="booking-problem-suggest d-none" id="bookingWizardProblemSuggest">
+                                        <div class="booking-problem-suggest-head">
+                                            <div class="booking-problem-suggest-title">Triệu chứng gợi ý từ danh mục</div>
+                                            <div class="booking-problem-suggest-copy" id="bookingWizardProblemSuggestCopy">Bấm vào gợi ý để tự điền mô tả nhanh hơn.</div>
+                                        </div>
+                                        <div class="booking-problem-chip-list" id="bookingWizardProblemSuggestList"></div>
+                                    </div>
+
+                                    <div class="booking-problem-price d-none" id="bookingWizardProblemPriceCard">
+                                        <div class="booking-problem-price-label">Giá tham khảo</div>
+                                        <div class="booking-problem-price-value" id="bookingWizardProblemPriceValue">Liên hệ báo giá</div>
+                                        <div class="booking-problem-price-meta" id="bookingWizardProblemPriceMeta">Khoảng giá sẽ hiện khi bạn chọn một triệu chứng phù hợp.</div>
+                                    </div>
+                                </div>
+
                                 <div>
                                     <div class="booking-upload-label">Hình ảnh &amp; video minh họa</div>
                                     <button type="button" class="booking-upload-dropzone" id="bookingWizardUploadZone">
@@ -240,6 +256,16 @@
                             <div class="booking-summary-travel-price" id="bookingSummaryTravelFee">0 ₫</div>
                         </div>
                         <div class="booking-summary-item-meta" id="bookingSummaryTravelMeta">Sẽ tính sau khi bạn chọn vị trí.</div>
+                    </div>
+                </div>
+
+                <div class="booking-summary-travel booking-summary-highlight d-none" id="bookingSummaryReferencePriceCard">
+                    <div class="booking-summary-item-body">
+                        <div class="booking-summary-travel-top">
+                            <div class="booking-summary-item-label">Giá tham khảo</div>
+                            <div class="booking-summary-price" id="bookingSummaryReferencePrice">Liên hệ</div>
+                        </div>
+                        <div class="booking-summary-item-meta" id="bookingSummaryReferenceMeta">Chỉ hiện khi mô tả khớp với một triệu chứng trong danh mục.</div>
                     </div>
                 </div>
 

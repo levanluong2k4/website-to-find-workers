@@ -248,7 +248,6 @@ class ChatbotApiTest extends TestCase
                 'tho_id' => $airconWorkerId,
                 'dich_vu_id' => $airconServiceId,
                 'mo_ta_van_de' => 'May lanh khong mat',
-                'nguyen_nhan' => 'Thieu gas',
                 'giai_phap' => 'Nap gas va ve sinh',
                 'trang_thai' => 'da_xong',
                 'created_at' => now(),
@@ -258,7 +257,6 @@ class ChatbotApiTest extends TestCase
                 'tho_id' => $washerWorkerId,
                 'dich_vu_id' => $washerServiceId,
                 'mo_ta_van_de' => 'May giat khong vat',
-                'nguyen_nhan' => 'Hong day curoa',
                 'giai_phap' => 'Thay day curoa',
                 'trang_thai' => 'da_xong',
                 'created_at' => now(),
@@ -341,11 +339,34 @@ class ChatbotApiTest extends TestCase
                 $table->unsignedBigInteger('tho_id')->nullable();
                 $table->unsignedBigInteger('dich_vu_id')->nullable();
                 $table->text('mo_ta_van_de')->nullable();
-                $table->text('nguyen_nhan')->nullable();
                 $table->text('giai_phap')->nullable();
                 $table->json('hinh_anh_mo_ta')->nullable();
                 $table->json('hinh_anh_ket_qua')->nullable();
                 $table->string('trang_thai')->default('da_xong');
+                $table->timestamps();
+            });
+        }
+
+        if (!Schema::hasTable('ai_knowledge_items')) {
+            Schema::create('ai_knowledge_items', function (Blueprint $table) {
+                $table->id();
+                $table->string('source_type', 50);
+                $table->unsignedBigInteger('source_id')->nullable();
+                $table->string('source_key')->unique();
+                $table->unsignedBigInteger('primary_service_id')->nullable();
+                $table->string('service_name')->nullable();
+                $table->string('title');
+                $table->longText('content');
+                $table->longText('normalized_content')->nullable();
+                $table->text('symptom_text')->nullable();
+                $table->text('cause_text')->nullable();
+                $table->text('solution_text')->nullable();
+                $table->text('price_context')->nullable();
+                $table->decimal('rating_avg', 3, 2)->nullable();
+                $table->decimal('quality_score', 5, 4)->default(0);
+                $table->json('metadata')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->timestamp('published_at')->nullable();
                 $table->timestamps();
             });
         }
@@ -390,6 +411,7 @@ class ChatbotApiTest extends TestCase
     {
         foreach ([
             'chat_magic',
+            'ai_knowledge_items',
             'danh_gia',
             'don_dat_lich',
             'tho_dich_vu',

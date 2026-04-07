@@ -1,271 +1,876 @@
 @extends('layouts.app')
 
-@section('title', 'Trung tâm điều phối - Thợ Tốt NTU')
+@section('title', 'Điều phối đơn - Thợ Tốt')
 
 @push('styles')
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap');
+
+    :root {
+        --dispatch-bg: #f8f9ff;
+        --dispatch-surface: #ffffff;
+        --dispatch-soft: #eff4ff;
+        --dispatch-primary: #0058be;
+        --dispatch-primary-soft: #d8e2ff;
+        --dispatch-line: rgba(194, 198, 214, 0.28);
+        --dispatch-line-soft: rgba(194, 198, 214, 0.1);
+        --dispatch-text: #0b1c30;
+        --dispatch-muted: #424754;
+        --dispatch-muted-soft: #6b7280;
+        --dispatch-danger: #ba1a1a;
+        --dispatch-success: #16a34a;
+        --dispatch-success-soft: #d1fae5;
+        --dispatch-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        --dispatch-shadow-soft: 0 12px 32px rgba(11, 28, 48, 0.06);
+    }
+
+    body {
+        background: var(--dispatch-bg) !important;
+    }
+
+    body.app-admin-shell {
+        background: var(--dispatch-bg) !important;
+    }
+
+    .admin-dispatch-page {
+        height: calc(100vh - 80px);
+        background: var(--dispatch-bg);
+        overflow: hidden;
+    }
+
+    .admin-dispatch-shell {
+        display: grid;
+        grid-template-columns: 35% 65%;
+        height: 100%;
+    }
+
+    .admin-dispatch-queue {
+        border-right: 1px solid var(--dispatch-line-soft);
+        background: var(--dispatch-bg);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .admin-dispatch-main {
+        background: var(--dispatch-bg);
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .admin-dispatch-main::-webkit-scrollbar {
+        width: 6px;
+    }
+    .admin-dispatch-main::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .admin-dispatch-main::-webkit-scrollbar-thumb {
+        background-color: rgba(194, 198, 214, 0.4);
+        border-radius: 10px;
+    }
+
+    .admin-dispatch-queue__head {
+        padding: 2rem;
+        flex-shrink: 0;
+    }
+
+    .admin-dispatch-queue__title,
+    .admin-dispatch-section__title,
+    .admin-dispatch-card__title,
+    .admin-dispatch-worker__name {
+        margin: 0;
+        color: var(--dispatch-text);
+        font-family: 'Manrope', sans-serif;
+        font-weight: 800;
+    }
+
+    .admin-dispatch-queue__title {
+        font-size: 1.95rem;
+        line-height: 1.2;
+    }
+
+    .admin-dispatch-queue__meta {
+        margin-top: 0.15rem;
+        color: var(--dispatch-danger);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    .admin-dispatch-filters {
+        display: grid;
+        gap: 1rem;
+        margin-top: 1.75rem;
+    }
+
+    .admin-dispatch-segmented {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        padding: 0.25rem;
+        border-radius: 0.75rem;
+        background: var(--dispatch-soft);
+    }
+
+    .admin-dispatch-segmented__btn,
+    .admin-dispatch-date {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        min-height: 2.75rem;
+        border-right: 2px solid #000;
+        border-radius: 0.5rem;
+        background: transparent;
+        color: var(--dispatch-muted);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.78rem;
+        font-weight: 600;
+        box-shadow: none;
+        transition: all 0.2s ease;
+    }
+
+    .admin-dispatch-date {
+        padding-right: 1.5rem !important;
+        background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 0.65rem auto;
+    }
+
+    .admin-dispatch-segmented__btn.is-active,
+    .admin-dispatch-date.is-active {
+        background-color: #fff;
+        color: var(--dispatch-primary);
+        box-shadow: var(--dispatch-shadow);
+    }
+
+    .admin-dispatch-date.is-active {
+        background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%230058be%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    }
+
+    .admin-dispatch-search {
+        position: relative;
+    }
+
+    .admin-dispatch-search input {
+        width: 100%;
+        min-height: 3rem;
+        padding: 0.8rem 1rem 0.8rem 2.75rem;
+        border: 0;
+        border-radius: 0.75rem;
+        background: #fff;
+        box-shadow: var(--dispatch-shadow);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.88rem;
+        color: var(--dispatch-text);
+    }
+
+    .admin-dispatch-search input::placeholder {
+        color: #c2c6d6;
+    }
+
+    .admin-dispatch-search i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        color: #a7b0c1;
+        transform: translateY(-50%);
+        font-size: 0.95rem;
+    }
+
+    .admin-dispatch-queue__list {
+        padding: 0 2rem 2rem;
+        display: grid;
+        align-content: start;
+        gap: 1rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .admin-dispatch-queue__list::-webkit-scrollbar {
+        width: 6px;
+    }
+    .admin-dispatch-queue__list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .admin-dispatch-queue__list::-webkit-scrollbar-thumb {
+        background-color: rgba(194, 198, 214, 0.4);
+        border-radius: 10px;
+    }
+
+    .admin-dispatch-queue-item {
+        display: block;
+        width: 100%;
+        padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+        border: 0;
+        border-radius: 0.75rem;
+        background: #fff;
+        box-shadow: var(--dispatch-shadow);
+        text-align: left;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .admin-dispatch-queue-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 32px rgba(11, 28, 48, 0.08);
+    }
+
+    .admin-dispatch-queue-item.is-active {
+        background: var(--dispatch-primary-soft);
+        border: 2px solid var(--dispatch-primary);
+        padding-left: calc(1.5rem - 4px);
+    }
+
+    .admin-dispatch-queue-item__top,
+    .admin-dispatch-worker__top,
+    .admin-dispatch-worker__foot,
+    .admin-dispatch-card__row,
+    .admin-dispatch-section__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .admin-dispatch-code {
+        color: var(--dispatch-primary);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .admin-dispatch-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.64rem;
+        font-weight: 700;
+        line-height: 1.4;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .admin-dispatch-badge--primary {
+        background: var(--dispatch-primary-soft);
+        color: var(--dispatch-primary);
+    }
+
+    .admin-dispatch-badge--success {
+        background: var(--dispatch-success-soft);
+        color: var(--dispatch-success);
+    }
+
+    .admin-dispatch-badge--danger {
+        background: rgba(186, 26, 26, 0.14);
+        color: var(--dispatch-danger);
+    }
+
+    .admin-dispatch-badge--muted {
+        background: rgba(194, 198, 214, 0.4);
+        color: var(--dispatch-muted);
+    }
+
+    .admin-dispatch-badge--soft {
+        background: var(--dispatch-soft);
+        color: var(--dispatch-muted);
+    }
+
+    .admin-dispatch-queue-item__layout {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .admin-dispatch-queue-item__avatar {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, #0b1c30, #2170e4);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Manrope', sans-serif;
+        font-size: 0.9rem;
+        font-weight: 800;
+        overflow: hidden;
+        flex-shrink: 0;
+        margin-top: 0.2rem;
+    }
+
+    .admin-dispatch-queue-item__avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .admin-dispatch-queue-item__content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .admin-dispatch-queue-item__name {
+        margin: 0.35rem 0 0;
+        color: var(--dispatch-text);
+        font-family: 'Manrope', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .admin-dispatch-line,
+    .admin-dispatch-subline,
+    .admin-dispatch-chip,
+    .admin-dispatch-empty__copy,
+    .admin-dispatch-card__copy,
+    .admin-dispatch-worker__meta {
+        color: var(--dispatch-muted);
+        font-family: 'Inter', sans-serif;
+    }
+
+    .admin-dispatch-line,
+    .admin-dispatch-subline {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-top: 0.35rem;
+        font-size: 0.8rem;
+        line-height: 1.45;
+    }
+
+    .admin-dispatch-line i,
+    .admin-dispatch-subline i,
+    .admin-dispatch-card__meta i,
+    .admin-dispatch-worker__meta i {
+        color: #7b8497;
+        font-size: 0.82rem;
+    }
+
+    .admin-dispatch-main__inner {
+        display: grid;
+        gap: 2rem;
+        padding: 2.5rem;
+    }
+
+    .admin-dispatch-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1.5rem 2rem;
+        border-radius: 1.5rem;
+        border: 2px solid var(--dispatch-primary);
+        background: var(--dispatch-soft);
+        box-shadow: var(--dispatch-shadow);
+    }
+
+    .admin-dispatch-card__left {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        min-width: 0;
+    }
+
+    .admin-dispatch-avatar {
+        width: 5rem;
+        height: 5rem;
+        border-radius: 1rem;
+        border: 4px solid #fff;
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        background: linear-gradient(135deg, #0b1c30, #2170e4);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Manrope', sans-serif;
+        font-size: 1.35rem;
+        font-weight: 800;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .admin-dispatch-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .admin-dispatch-card__title {
+        font-size: 2rem;
+        line-height: 1.1;
+    }
+
+    .admin-dispatch-card__copy {
+        margin-top: 0.35rem;
+        font-size: 1rem;
+        line-height: 1.55;
+    }
+
+    .admin-dispatch-card__right {
+        text-align: right;
+    }
+
+    .admin-dispatch-card__eyebrow {
+        color: var(--dispatch-muted-soft);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .admin-dispatch-card__time {
+        margin-top: 0.2rem;
+        color: var(--dispatch-text);
+        font-family: 'Manrope', sans-serif;
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .admin-dispatch-section {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .admin-dispatch-section__title {
+        font-size: 1.65rem;
+        line-height: 1.15;
+    }
+
+    .admin-dispatch-section__count {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .admin-dispatch-section__count-value {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2rem;
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+        background: var(--dispatch-success-soft);
+        color: var(--dispatch-success);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    .admin-dispatch-section--unavailable .admin-dispatch-section__count-value {
+        background: rgba(194, 198, 214, 0.32);
+        color: var(--dispatch-muted);
+    }
+
+    .admin-dispatch-link {
+        color: var(--dispatch-primary);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .admin-dispatch-worker-list {
+        display: grid;
+        align-content: start;
+        gap: 1rem;
+        max-height: 55vh;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .admin-dispatch-worker-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    .admin-dispatch-worker-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .admin-dispatch-worker-list::-webkit-scrollbar-thumb {
+        background-color: rgba(194, 198, 214, 0.4);
+        border-radius: 10px;
+    }
+
+    .admin-dispatch-worker {
+        padding: 1.25rem 1rem 1rem 1.1rem;
+        border-radius: 1.125rem;
+        background: var(--dispatch-surface);
+        box-shadow: var(--dispatch-shadow);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        position: relative;
+    }
+
+    .admin-dispatch-worker__badge-corner {
+        position: absolute;
+        top: 0;
+        right: 0;
+        border-radius: 0 1.125rem 0 0.75rem;
+        padding: 0.35rem 0.75rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: var(--dispatch-success-soft);
+        color: var(--dispatch-success);
+        z-index: 1;
+    }
+
+    .admin-dispatch-worker__badge-corner--muted {
+        background: rgba(194, 198, 214, 0.4);
+        color: var(--dispatch-muted);
+    }
+
+    .admin-dispatch-worker__badge-corner--danger {
+        background: rgba(255, 214, 214, 0.85);
+        color: var(--dispatch-danger);
+    }
+
+    .admin-dispatch-worker__badge-corner--warning {
+        background: rgba(254, 243, 199, 1);
+        color: #d97706;
+    }
+
+    .admin-dispatch-worker:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 28px rgba(11, 28, 48, 0.08);
+    }
+
+    .admin-dispatch-worker.is-unavailable {
+        background: rgba(239, 244, 255, 0.72);
+        color: rgba(11, 28, 48, 0.6);
+    }
+
+    .admin-dispatch-worker__body {
+        display: grid;
+        gap: 0.95rem;
+    }
+
+    .admin-dispatch-worker__identity {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-width: 0;
+    }
+
+    .admin-dispatch-worker__avatar {
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, #0b1c30, #2170e4);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Manrope', sans-serif;
+        font-size: 1rem;
+        font-weight: 800;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .admin-dispatch-worker__avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .admin-dispatch-worker__name {
+        font-size: 1.1rem;
+        line-height: 1.25;
+    }
+
+    .admin-dispatch-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.55rem;
+    }
+
+    .admin-dispatch-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.45rem;
+        border-radius: 0.3rem;
+        background: var(--dispatch-soft);
+        font-size: 0.68rem;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+
+    .admin-dispatch-chip--danger {
+        background: rgba(255, 214, 214, 0.85);
+        color: var(--dispatch-danger);
+    }
+
+    .admin-dispatch-worker__meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .admin-dispatch-worker__meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.78rem;
+        font-weight: 400;
+    }
+
+    .admin-dispatch-rating {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        color: #d97706;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .admin-dispatch-btn {
+        border: 0;
+        border-radius: 0.75rem;
+        min-width: 8rem;
+        min-height: 2.875rem;
+        padding: 0.75rem 1rem;
+        background: linear-gradient(168deg, #0058be 0%, #2170e4 100%);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        color: #fff;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9rem;
+        font-weight: 700;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .admin-dispatch-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+    }
+
+    .admin-dispatch-btn:disabled {
+        background: #c2c6d6;
+        box-shadow: none;
+        color: rgba(255, 255, 255, 0.85);
+        cursor: not-allowed;
+    }
+
+    .admin-dispatch-empty,
+    .admin-dispatch-skeleton {
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: var(--dispatch-shadow);
+    }
+
+    .admin-dispatch-empty {
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .admin-dispatch-empty__title {
+        margin: 0;
+        color: var(--dispatch-text);
+        font-family: 'Manrope', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .admin-dispatch-empty__copy {
+        margin: 0.45rem 0 0;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    .admin-dispatch-skeleton {
+        height: 6.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .admin-dispatch-skeleton::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, rgba(239, 244, 255, 0.85) 0%, rgba(255, 255, 255, 0.98) 50%, rgba(239, 244, 255, 0.85) 100%);
+        animation: dispatch-shimmer 1.3s infinite;
+    }
+
+    @keyframes dispatch-shimmer {
+        0% {
+            transform: translateX(-100%);
         }
-        .glass-panel {
-            background: rgba(14, 165, 233, 0.8);
-            backdrop-filter: blur(12px);
+
+        100% {
+            transform: translateX(100%);
         }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
+    }
+
+    @media (max-width: 1200px) {
+        .admin-dispatch-card {
+            grid-template-columns: 1fr;
         }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+    }
+
+    @media (max-width: 991.98px) {
+        .admin-dispatch-page {
+            height: auto;
+            overflow: visible;
         }
-        .orchestrator-pulse {
-            position: relative;
+
+        .admin-dispatch-shell {
+            grid-template-columns: 1fr;
+            height: auto;
         }
-        .orchestrator-pulse::after {
-            content: '';
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            background: #6d3bd7;
-            border-radius: 50%;
-            top: 0;
-            right: -8px;
-            box-shadow: 0 0 0 rgba(109, 59, 215, 0.4);
-            animation: pulse-ring 2s infinite;
+
+        .admin-dispatch-queue {
+            border-right: 0;
+            border-bottom: 1px solid var(--dispatch-line-soft);
+            height: auto;
+            overflow: visible;
         }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.8); box-shadow: 0 0 0 0px rgba(109, 59, 215, 0.7); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(109, 59, 215, 0); }
-            100% { transform: scale(0.8); box-shadow: 0 0 0 0px rgba(109, 59, 215, 0); }
+
+        .admin-dispatch-queue__list {
+            overflow-y: visible;
         }
-        body {
-            background-color: #f7fafc;
+
+        .admin-dispatch-main {
+            height: auto;
+            overflow: visible;
         }
-    </style>
+    }
+
+    @media (max-width: 767.98px) {
+
+        .admin-dispatch-queue__head,
+        .admin-dispatch-queue__list,
+        .admin-dispatch-main__inner {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .admin-dispatch-main__inner {
+            padding-top: 1.25rem;
+            padding-bottom: 1.25rem;
+        }
+
+        .admin-dispatch-card,
+        .admin-dispatch-worker__top,
+        .admin-dispatch-worker__foot,
+        .admin-dispatch-section__head {
+            gap: 1rem;
+        }
+
+        .admin-dispatch-card__left,
+        .admin-dispatch-worker__top,
+        .admin-dispatch-worker__foot {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .admin-dispatch-worker__foot .admin-dispatch-btn {
+            width: 100%;
+        }
+    }
+</style>
 @endpush
 
 @section('content')
 <app-navbar></app-navbar>
 
-<div class="container-fluid" style="padding-top: 8rem; padding-bottom: 3rem;">
-<div class="px-4 min-w-[1200px]">
-    <!-- Dashboard Header Section -->
-    <div class="tw-flex tw-items-end tw-justify-between tw-mb-8">
-        <div>
-            <h2 class="tw-text-4xl tw-font-bold tw-text-[#181c1e] tw-tracking-tight tw-mb-2" style="font-size: 2rem;">Trung tâm điều phối</h2>
-            <p class="tw-text-sm tw-text-[#6e7881] orchestrator-pulse tw-inline-block">Trực tiếp: 14 kỹ thuật viên đang hoạt động</p>
-        </div>
-        <div class="tw-flex tw-space-x-4">
-            <div class="tw-bg-[#f1f4f6] tw-p-1 tw-rounded-xl tw-flex">
-                <button class="tw-px-4 tw-py-2 tw-bg-white tw-shadow-sm tw-rounded-lg tw-text-sm tw-font-semibold tw-text-[#181c1e] tw-border-0 tw-outline-none">Tất cả thợ</button>
-                <button class="tw-px-4 tw-py-2 tw-text-sm tw-font-medium tw-text-[#6e7881] tw-border-0 tw-bg-transparent tw-outline-none">Khu vực Quận 1</button>
-                <button class="tw-px-4 tw-py-2 tw-text-sm tw-font-medium tw-text-[#6e7881] tw-border-0 tw-bg-transparent tw-outline-none">Khu vực Quận 7</button>
-            </div>
-        </div>
-    </div>
+<div class="admin-dispatch-page">
+    <div class="admin-dispatch-shell">
+        <aside class="admin-dispatch-queue">
+            <div class="admin-dispatch-queue__head">
+                <h1 class="admin-dispatch-queue__title">Danh sách chờ</h1>
+                <div class="admin-dispatch-queue__meta" id="dispatchQueueMeta">Đang tải hàng chờ điều phối...</div>
 
-    <!-- Kanban Grid -->
-    <div class="tw-grid tw-grid-cols-4 tw-gap-6 tw-items-start font-body">
-        
-        <!-- COLUMN: Sắp Tới -->
-        <div class="tw-flex tw-flex-col tw-space-y-4">
-            <div class="tw-flex tw-items-center tw-justify-between tw-px-2 tw-mb-2">
-                <h3 class="tw-text-lg tw-font-bold tw-text-[#181c1e] tw-flex tw-items-center tw-space-x-2 m-0 p-0">
-                    <span>Sắp Tới</span>
-                    <span class="tw-text-xs tw-bg-[#e0e3e5] tw-px-2 tw-py-0.5 tw-rounded-full">04</span>
-                </h3>
-                <span class="material-symbols-outlined tw-text-[#6e7881] tw-cursor-pointer">more_horiz</span>
-            </div>
-            
-            <div class="tw-bg-[#f1f4f6] tw-p-4 tw-rounded-xl tw-space-y-4">
-                <!-- Card 1 -->
-                <div class="tw-bg-white tw-rounded-lg tw-p-4 tw-shadow-sm tw-border-l-4 tw-border-[#bec8d2]/30 hover:tw-shadow-md tw-transition-shadow tw-cursor-grab">
-                    <div class="tw-flex tw-justify-between tw-items-start tw-mb-3">
-                        <span class="tw-text-xs tw-px-2 tw-py-0.5 tw-bg-[#e5e9eb] tw-text-[#3e4850] tw-rounded font-mono">#JOB-8821</span>
-                        <span class="tw-text-sm tw-font-medium tw-text-[#006591]">09:30 AM</span>
+                <div class="admin-dispatch-filters">
+                    <div class="admin-dispatch-segmented">
+                        <button type="button" class="admin-dispatch-segmented__btn" id="dispatchTodayBtn">Hôm nay</button>
+                        <select id="dispatchDateFilter" class="admin-dispatch-date" style="outline: none; cursor: pointer; padding: 0 1rem; text-align: center; appearance: none; -webkit-appearance: none;">
+                            <option value="">Tất cả ngày</option>
+                        </select>
                     </div>
-                    <h4 class="tw-text-base tw-font-bold tw-text-[#181c1e] tw-mb-1 m-0 p-0" style="font-size: 1rem;">Trần Anh Tuấn</h4>
-                    <p class="tw-text-sm tw-text-[#6e7881] tw-mb-3 m-0 p-0 leading-snug">241 Bis Cách Mạng Tháng 8, P.4, Q.3</p>
-                    <div class="tw-flex tw-items-center tw-space-x-2 m-0 p-0">
-                        <span class="material-symbols-outlined tw-text-sm tw-text-[#6e7881]">build</span>
-                        <span class="tw-text-sm tw-font-medium tw-text-[#181c1e]">Sửa máy lạnh Inverter</span>
-                    </div>
-                </div>
 
-                <!-- Card 2 -->
-                <div class="tw-bg-white tw-rounded-lg tw-p-4 tw-shadow-sm tw-border-l-4 tw-border-[#bec8d2]/30 hover:tw-shadow-md tw-transition-shadow tw-cursor-grab">
-                    <div class="tw-flex tw-justify-between tw-items-start tw-mb-3">
-                        <span class="tw-text-xs tw-px-2 tw-py-0.5 tw-bg-[#e5e9eb] tw-text-[#3e4850] tw-rounded font-mono">#JOB-8824</span>
-                        <span class="tw-text-sm tw-font-medium tw-text-[#006591]">10:45 AM</span>
-                    </div>
-                    <h4 class="tw-text-base tw-font-bold tw-text-[#181c1e] tw-mb-1 m-0 p-0" style="font-size: 1rem;">Lê Minh Hoàng</h4>
-                    <p class="tw-text-sm tw-text-[#6e7881] tw-mb-3 m-0 p-0 leading-snug">12 Nguyễn Hữu Cảnh, P.22, Bình Thạnh</p>
-                    <div class="tw-flex tw-items-center tw-space-x-2 m-0 p-0">
-                        <span class="material-symbols-outlined tw-text-sm tw-text-[#6e7881]">electric_bolt</span>
-                        <span class="tw-text-sm tw-font-medium tw-text-[#181c1e]">Xử lý chập điện</span>
+                    <div class="admin-dispatch-search">
+                        <i class="fas fa-search"></i>
+                        <input
+                            type="search"
+                            id="dispatchSearch"
+                            placeholder="Tìm tên khách hàng..."
+                            autocomplete="off">
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- COLUMN: Đang Sửa Tận Nơi -->
-        <div class="tw-flex tw-flex-col tw-space-y-4">
-            <div class="tw-flex tw-items-center tw-justify-between tw-px-2 tw-mb-2">
-                <h3 class="tw-text-lg tw-font-bold tw-text-[#181c1e] tw-flex tw-items-center tw-space-x-2 m-0 p-0">
-                    <span>Đang Sửa</span>
-                    <span class="tw-text-xs tw-bg-[#ffc329] tw-px-2 tw-py-0.5 tw-rounded-full tw-text-[#6f5100]">02</span>
-                </h3>
-                <span class="material-symbols-outlined tw-text-[#6e7881] tw-cursor-pointer">more_horiz</span>
+            <div class="admin-dispatch-queue__list" id="dispatchQueueList">
+                <div class="admin-dispatch-skeleton"></div>
+                <div class="admin-dispatch-skeleton"></div>
+                <div class="admin-dispatch-skeleton"></div>
             </div>
-            <div class="tw-bg-[#f1f4f6] tw-p-4 tw-rounded-xl tw-space-y-4">
-                <!-- Card Active Repair -->
-                <div class="tw-bg-white tw-rounded-lg tw-overflow-hidden tw-shadow-lg tw-border-t-4 tw-border-[#ffc329] tw-transform tw-scale-[1.02] tw-ring-2 tw-ring-[#006591]/5">
-                    <div class="tw-p-4">
-                        <div class="tw-flex tw-justify-between tw-items-start tw-mb-3">
-                            <span class="tw-text-xs tw-px-2 tw-py-0.5 tw-bg-[#ffc329] tw-text-[#6f5100] tw-rounded tw-font-bold">TRỰC TIẾP</span>
-                            <div class="tw-px-2 tw-py-0.5 tw-bg-[#89ceff] tw-text-[#001e2f] tw-rounded tw-font-mono tw-text-[10px] tw-font-bold">01:24:18</div>
+        </aside>
+
+        <section class="admin-dispatch-main">
+            <div class="admin-dispatch-main__inner">
+                <div id="dispatchDetailContent">
+                    <div class="admin-dispatch-empty">
+                        <h2 class="admin-dispatch-empty__title">Chọn một đơn để xem bối cảnh</h2>
+                        <p class="admin-dispatch-empty__copy">Thông tin khách hàng, yêu cầu và khung giờ sẽ hiện ở đây.</p>
+                    </div>
+                </div>
+
+                <section class="admin-dispatch-section">
+                    <div class="admin-dispatch-section__head">
+                        <div class="admin-dispatch-section__count">
+                            <h2 class="admin-dispatch-section__title">Thợ sẵn sàng</h2>
+                            <span class="admin-dispatch-section__count-value" id="dispatchCandidateCount">0</span>
                         </div>
-                        <h4 class="tw-text-base tw-font-bold tw-text-[#181c1e] tw-mb-1 m-0 p-0" style="font-size: 1rem;">Nguyễn Thị Mai</h4>
-                        <p class="tw-text-sm tw-text-[#6e7881] tw-mb-4 m-0 p-0 leading-snug">Landmark 81, P.22, Bình Thạnh, TP.HCM</p>
-                        
-                        <div class="tw-bg-[#f1f4f6] tw-rounded tw-p-3 tw-mb-4">
-                            <div class="tw-text-[10px] tw-uppercase tw-font-bold tw-text-[#bec8d2] tw-mb-2 tw-tracking-wider">Kiểm tra linh kiện</div>
-                            <div class="tw-space-y-2">
-                                <div class="tw-flex tw-items-center tw-space-x-2">
-                                    <span class="material-symbols-outlined tw-text-[#006591] tw-text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                                    <span class="tw-text-sm tw-line-through tw-text-[#6e7881]">Kiểm tra nguồn cấp</span>
-                                </div>
-                                <div class="tw-flex tw-items-center tw-space-x-2">
-                                    <span class="material-symbols-outlined tw-text-[#bec8d2] tw-text-sm">radio_button_unchecked</span>
-                                    <span class="tw-text-sm tw-text-[#181c1e] tw-font-medium">Thay thế tụ điện 45uF</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="tw-flex tw-items-center tw-justify-between tw-pt-2 tw-border-t tw-border-[#bec8d2]/10">
-                            <div class="tw-flex tw--space-x-2">
-                                <img class="tw-w-6 tw-h-6 tw-rounded-full tw-border-2 tw-border-white" data-alt="Worker profile photo headshot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBozZgmlt7DBLnXtRtzqiovlgXpPueF1ExU95RLtcIw7AcuxdxPtIbTV7ZoSLaqm1f_eeexEmmwbLsIHA36JYQTnG1N_iBHv_qhTPlGt6NKAJEIjHcmyjImlb1CqDKahNCLBDY8_qL3lDFzdekDQWeT29WVgp2SEZ3Az77_L5quRukw7DXC1-LzX90Xkl8EwCRVjCnt6CQ00L3mzmwAKn1yYXLCCtL1bDhLVr4mFWonEN8l6dQliAyG9WQsHBz1a-rdEcWvtI7M6s7y"/>
-                                <div class="tw-w-6 tw-h-6 tw-rounded-full tw-bg-[#0ea5e9] tw-text-[8px] tw-flex tw-items-center tw-justify-center tw-text-white tw-font-bold tw-border-2 tw-border-white">+1</div>
-                            </div>
-                            <button class="btn btn-link tw-text-xs tw-font-bold tw-text-[#006591] tw-flex tw-items-center tw-p-0 tw-text-decoration-none">
-                                CHI TIẾT <span class="material-symbols-outlined tw-text-sm">chevron_right</span>
-                            </button>
+                        <a href="/admin/users" class="admin-dispatch-link">Xem tất cả</a>
+                    </div>
+
+                    <div class="admin-dispatch-worker-list" id="dispatchCandidatesList">
+                        <div class="admin-dispatch-empty">
+                            <h3 class="admin-dispatch-empty__title">Đang đợi dữ liệu</h3>
+                            <p class="admin-dispatch-empty__copy">Hệ thống sẽ gọi danh sách thợ sau khi bạn chọn một đơn.</p>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
+                </section>
 
-        <!-- COLUMN: Chờ Thanh Toán -->
-        <div class="tw-flex tw-flex-col tw-space-y-4">
-            <div class="tw-flex tw-items-center tw-justify-between tw-px-2 tw-mb-2">
-                <h3 class="tw-text-lg tw-font-bold tw-text-[#181c1e] tw-flex tw-items-center tw-space-x-2 m-0 p-0">
-                    <span>Chờ Thanh Toán</span>
-                    <span class="tw-text-xs tw-bg-[#a986ff]/30 tw-px-2 tw-py-0.5 tw-rounded-full tw-text-[#3e0097]">01</span>
-                </h3>
-                <span class="material-symbols-outlined tw-text-[#6e7881] tw-cursor-pointer">more_horiz</span>
-            </div>
-            <div class="tw-bg-[#f1f4f6] tw-p-4 tw-rounded-xl tw-space-y-4">
-                <!-- Card Pending Payment -->
-                <div class="tw-bg-white tw-rounded-lg tw-p-0.5 tw-bg-gradient-to-br tw-from-[#a986ff] tw-to-[#ffc329] tw-shadow-md">
-                    <div class="tw-bg-white tw-rounded-[calc(0.5rem-2px)] tw-p-4">
-                        <div class="tw-flex tw-justify-between tw-items-start tw-mb-3">
-                            <span class="tw-text-xs tw-px-2 tw-py-0.5 tw-bg-[#e9ddff] tw-text-[#23005c] tw-rounded tw-font-bold font-mono">#JOB-8799</span>
-                            <span class="tw-text-sm tw-font-bold tw-text-[#181c1e]">1,250,000đ</span>
-                        </div>
-                        <h4 class="tw-text-base tw-font-bold tw-text-[#181c1e] tw-mb-1 m-0 p-0" style="font-size: 1rem;">Phạm Gia Bảo</h4>
-                        <p class="tw-text-sm tw-text-[#6e7881] tw-mb-3 m-0 p-0 leading-snug">78 Lê Lợi, P. Bến Thành, Q.1</p>
-                        
-                        <div class="tw-flex tw-items-center tw-justify-between">
-                            <div class="tw-flex tw-items-center tw-space-x-1 tw-text-[#6d3bd7] tw-font-bold">
-                                <span class="material-symbols-outlined tw-text-sm">payments</span>
-                                <span class="tw-text-[10px] tw-uppercase">Chờ xác nhận</span>
-                            </div>
-                            <button class="btn btn-light bg-[#e5e9eb] hover:bg-[#e0e3e5] tw-p-2 tw-rounded-lg tw-transition-colors tw-border-0">
-                                <span class="material-symbols-outlined tw-text-sm m-0 p-0 tw-leading-none" style="display:flex;">receipt_long</span>
-                            </button>
+                <section class="admin-dispatch-section admin-dispatch-section--unavailable">
+                    <div class="admin-dispatch-section__head">
+                        <div class="admin-dispatch-section__count">
+                            <h2 class="admin-dispatch-section__title">Thợ không khả dụng</h2>
+                            <span class="admin-dispatch-section__count-value" id="dispatchUnavailableCount">0</span>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- COLUMN: Đã Hoàn Thành -->
-        <div class="tw-flex tw-flex-col tw-space-y-4">
-            <div class="tw-flex tw-items-center tw-justify-between tw-px-2 tw-mb-2">
-                <h3 class="tw-text-lg tw-font-bold tw-text-[#181c1e] tw-flex tw-items-center tw-space-x-2 m-0 p-0">
-                    <span>Hoàn Thành</span>
-                    <span class="tw-text-xs tw-bg-[#e0e3e5] tw-px-2 tw-py-0.5 tw-rounded-full">08</span>
-                </h3>
-                <span class="material-symbols-outlined tw-text-[#6e7881] tw-cursor-pointer">more_horiz</span>
-            </div>
-            <div class="tw-bg-[#f1f4f6] tw-p-4 tw-rounded-xl tw-space-y-4 tw-opacity-70">
-                <!-- Card Done 1 -->
-                <div class="tw-bg-white/80 tw-rounded-lg tw-p-4 tw-shadow-sm tw-border-l-4 tw-border-[#006591]/20 tw-grayscale-[0.5]">
-                    <div class="tw-flex tw-justify-between tw-items-start tw-mb-3">
-                        <span class="tw-text-xs tw-px-2 tw-py-0.5 tw-bg-[#e5e9eb] tw-text-[#6e7881] tw-rounded font-mono">#JOB-8790</span>
-                        <span class="material-symbols-outlined tw-text-[#006591]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    <div class="admin-dispatch-worker-list" id="dispatchUnavailableList">
+                        <div class="admin-dispatch-empty">
+                            <h3 class="admin-dispatch-empty__title">Chưa có dữ liệu loại trừ</h3>
+                            <p class="admin-dispatch-empty__copy">Lý do không khả dụng sẽ hiển thị tại đây để admin ra quyết định nhanh.</p>
+                        </div>
                     </div>
-                    <h4 class="tw-text-base tw-font-bold tw-text-[#6e7881] tw-mb-1 m-0 p-0" style="font-size: 1rem;">Bùi Thế Hiển</h4>
-                    <p class="tw-text-sm tw-text-[#6e7881]/60 tw-mb-3 m-0 p-0 leading-snug">KDC Trung Sơn, Bình Chánh</p>
-                    <div class="tw-text-[10px] tw-text-[#6e7881] tw-italic">Hoàn thành lúc 08:15 AM</div>
-                </div>
-                
-                <!-- Card Done 2 -->
-                <div class="tw-bg-white/80 tw-rounded-lg tw-p-4 tw-shadow-sm tw-border-l-4 tw-border-[#006591]/20 tw-grayscale-[0.5]">
-                    <div class="tw-flex tw-justify-between tw-items-start tw-mb-3">
-                        <span class="tw-text-xs tw-px-2 tw-py-0.5 tw-bg-[#e5e9eb] tw-text-[#6e7881] tw-rounded font-mono">#JOB-8785</span>
-                        <span class="material-symbols-outlined tw-text-[#006591]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                    </div>
-                    <h4 class="tw-text-base tw-font-bold tw-text-[#6e7881] tw-mb-1 m-0 p-0" style="font-size: 1rem;">Võ Thành Nam</h4>
-                    <p class="tw-text-sm tw-text-[#6e7881]/60 tw-mb-3 m-0 p-0 leading-snug">Chung cư Estella, Q.2</p>
-                    <div class="tw-text-[10px] tw-text-[#6e7881] tw-italic">Hoàn thành lúc 07:30 AM</div>
-                </div>
+                </section>
             </div>
-        </div>
-    </div>
-</div>
-</div>
-
-<!-- Floating Glass Dashboard Detail -->
-<div class="tw-fixed tw-bottom-8 tw-right-8 tw-w-80 glass-panel tw-p-6 tw-rounded-2xl tw-shadow-2xl tw-border tw-border-white/20 tw-text-white z-50">
-    <div class="tw-flex tw-items-center tw-justify-between tw-mb-4">
-        <h5 class="tw-text-sm tw-font-bold tw-uppercase tw-tracking-widest m-0 p-0" style="font-size: 0.875rem;">Hiệu suất đội ngũ</h5>
-        <span class="material-symbols-outlined">analytics</span>
-    </div>
-    <div class="tw-space-y-4">
-        <div>
-            <div class="tw-flex tw-justify-between tw-text-[10px] tw-mb-1">
-                <span>TIẾN ĐỘ CÔNG VIỆC</span>
-                <span>82%</span>
-            </div>
-            <div class="tw-w-full tw-bg-white/20 tw-h-1.5 tw-rounded-full tw-overflow-hidden">
-                <div class="tw-bg-white tw-h-full tw-w-[82%] tw-rounded-full tw-shadow-[0_0_10px_#fff]"></div>
-            </div>
-        </div>
-        <div class="tw-grid tw-grid-cols-2 tw-gap-4 tw-pt-2">
-            <div class="tw-bg-white/10 tw-p-3 tw-rounded-xl tw-border tw-border-white/10">
-                <div class="tw-text-white/60 tw-text-[10px] tw-uppercase tw-font-bold tw-mb-1">Hoàn tất</div>
-                <div class="tw-text-xl tw-font-black m-0 p-0 leading-none">24</div>
-            </div>
-            <div class="tw-bg-white/10 tw-p-3 tw-rounded-xl tw-border tw-border-white/10">
-                <div class="tw-text-white/60 tw-text-[10px] tw-uppercase tw-font-bold tw-mb-1">Doanh thu</div>
-                <div class="tw-text-xl tw-font-black m-0 p-0 leading-none">12.5M</div>
-            </div>
-        </div>
+        </section>
     </div>
 </div>
 @endsection
 
 @push('scripts')
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = {
-            prefix: 'tw-',
-            corePlugins: {
-                preflight: false,
-            }
-        }
-    </script>
+<script type="module" src="{{ asset('assets/js/admin/dispatch.js') }}"></script>
 @endpush

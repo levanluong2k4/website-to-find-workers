@@ -91,4 +91,26 @@ class User extends Authenticatable
     {
         return $this->hasMany(DanhGia::class, 'nguoi_danh_gia_id');
     }
+
+    public function customerNotes()
+    {
+        return $this->hasMany(CustomerNote::class, 'customer_id')->latest();
+    }
+
+    public function customerTags()
+    {
+        return $this->belongsToMany(CustomerTag::class, 'customer_tag_assignments', 'customer_id', 'tag_id')
+            ->withPivot('admin_id')
+            ->withTimestamps();
+    }
+
+    public function customerFollowUps()
+    {
+        return $this->hasMany(CustomerFollowUp::class, 'customer_id')->latest('scheduled_at');
+    }
+
+    public function assignedCustomerFollowUps()
+    {
+        return $this->hasMany(CustomerFollowUp::class, 'assigned_admin_id')->latest('scheduled_at');
+    }
 }

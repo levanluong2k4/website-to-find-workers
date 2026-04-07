@@ -92,6 +92,70 @@ class PaymentWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_customer_can_switch_updated_booking_to_transfer_before_worker_finishes(): void
+    {
+        $customer = $this->createUser('customer', 'switch-transfer-customer@example.com');
+        $worker = $this->createUser('worker', 'switch-transfer-worker@example.com');
+        $token = $customer->createToken('switch-transfer')->plainTextToken;
+
+        $bookingId = $this->createBooking([
+            'khach_hang_id' => $customer->id,
+            'tho_id' => $worker->id,
+            'trang_thai' => 'dang_lam',
+            'gia_da_cap_nhat' => true,
+            'phuong_thuc_thanh_toan' => 'cod',
+            'tong_tien' => 930000,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson("/api/bookings/{$bookingId}/payment-method", [
+                'phuong_thuc_thanh_toan' => 'transfer',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('booking.trang_thai', 'dang_lam')
+            ->assertJsonPath('booking.phuong_thuc_thanh_toan', 'transfer');
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'trang_thai' => 'dang_lam',
+            'phuong_thuc_thanh_toan' => 'transfer',
+        ]);
+    }
+
+    public function test_customer_can_switch_pending_cod_booking_to_online_payment(): void
+    {
+        $customer = $this->createUser('customer', 'switch-pending-transfer@example.com');
+        $worker = $this->createUser('worker', 'switch-pending-transfer-worker@example.com');
+        $token = $customer->createToken('switch-pending-transfer')->plainTextToken;
+
+        $bookingId = $this->createBooking([
+            'khach_hang_id' => $customer->id,
+            'tho_id' => $worker->id,
+            'trang_thai' => 'cho_hoan_thanh',
+            'gia_da_cap_nhat' => true,
+            'phuong_thuc_thanh_toan' => 'cod',
+            'tong_tien' => 640000,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson("/api/bookings/{$bookingId}/payment-method", [
+                'phuong_thuc_thanh_toan' => 'transfer',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('booking.trang_thai', 'cho_thanh_toan')
+            ->assertJsonPath('booking.phuong_thuc_thanh_toan', 'transfer');
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'trang_thai' => 'cho_thanh_toan',
+            'phuong_thuc_thanh_toan' => 'transfer',
+        ]);
+    }
+
     public function test_customer_test_payment_completes_transfer_booking(): void
     {
         $customer = $this->createUser('customer', 'transfer-customer@example.com');
@@ -153,6 +217,7 @@ class PaymentWorkflowTest extends TestCase
             'tho_id' => null,
             'trang_thai' => 'cho_xac_nhan',
             'phuong_thuc_thanh_toan' => 'cod',
+            'gia_da_cap_nhat' => false,
             'tong_tien' => 0,
             'phi_di_lai' => 0,
             'phi_linh_kien' => 0,
@@ -200,6 +265,7 @@ class PaymentWorkflowTest extends TestCase
                 $table->unsignedBigInteger('tho_id')->nullable();
                 $table->string('trang_thai')->default('cho_xac_nhan');
                 $table->string('phuong_thuc_thanh_toan')->default('cod');
+                $table->boolean('gia_da_cap_nhat')->default(false);
                 $table->decimal('tong_tien', 12, 2)->default(0);
                 $table->decimal('phi_di_lai', 12, 2)->default(0);
                 $table->decimal('phi_linh_kien', 12, 2)->default(0);
@@ -210,6 +276,12 @@ class PaymentWorkflowTest extends TestCase
                 $table->timestamps();
             });
         }
+
+        Schema::table('don_dat_lich', function (Blueprint $table) {
+            if (!Schema::hasColumn('don_dat_lich', 'gia_da_cap_nhat')) {
+                $table->boolean('gia_da_cap_nhat')->default(false)->after('phuong_thuc_thanh_toan');
+            }
+        });
 
         if (!Schema::hasTable('thanh_toan')) {
             Schema::create('thanh_toan', function (Blueprint $table) {

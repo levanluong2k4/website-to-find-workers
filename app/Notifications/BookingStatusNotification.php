@@ -78,7 +78,7 @@ class BookingStatusNotification extends Notification
             'da_xac_nhan' => 'Đã có thợ nhận',
             'dang_lam' => 'Đang xử lý',
             'cho_hoan_thanh' => 'Chờ xác nhận COD',
-            'cho_thanh_toan' => 'Chờ thanh toán',
+            'cho_thanh_toan' => 'Chờ thanh toán trực tuyến',
             'da_xong' => 'Đã hoàn tất',
             'da_huy' => 'Đã hủy',
             default => 'Đang cập nhật',

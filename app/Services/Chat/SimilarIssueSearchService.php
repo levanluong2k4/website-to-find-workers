@@ -118,7 +118,7 @@ class SimilarIssueSearchService
 
         if ($useMysqlFullText) {
             $query->selectRaw(
-                "don_dat_lich.*, MATCH(mo_ta_van_de, nguyen_nhan, giai_phap) AGAINST (? IN NATURAL LANGUAGE MODE) AS fulltext_score",
+                "don_dat_lich.*, MATCH(mo_ta_van_de, giai_phap) AGAINST (? IN NATURAL LANGUAGE MODE) AS fulltext_score",
                 [$normalizedMessage]
             );
         }
@@ -126,14 +126,13 @@ class SimilarIssueSearchService
         $query->where(function (Builder $builder) use ($tokens, $fullTextBooleanQuery, $useMysqlFullText): void {
             if ($useMysqlFullText && $fullTextBooleanQuery !== '') {
                 $builder->orWhereRaw(
-                    "MATCH(mo_ta_van_de, nguyen_nhan, giai_phap) AGAINST (? IN BOOLEAN MODE)",
+                    "MATCH(mo_ta_van_de, giai_phap) AGAINST (? IN BOOLEAN MODE)",
                     [$fullTextBooleanQuery]
                 );
             }
 
             foreach ($tokens as $token) {
                 $builder->orWhere('mo_ta_van_de', 'like', "%{$token}%")
-                    ->orWhere('nguyen_nhan', 'like', "%{$token}%")
                     ->orWhere('giai_phap', 'like', "%{$token}%");
             }
         });
@@ -232,18 +231,15 @@ class SimilarIssueSearchService
             ?: 'Dich vu sua chua'
         );
         $symptom = (string) ($job->mo_ta_van_de ?? '');
-        $cause = (string) ($job->nguyen_nhan ?? '');
         $solution = (string) ($job->giai_phap ?? '');
         $combined = implode(' ', array_filter([
             $symptom,
-            $cause,
             $solution,
             $serviceType,
         ]));
 
         $serviceScore = $this->serviceScore($tokens, $serviceType);
         $symptomScore = $this->fieldScore($tokens, $normalizedMessage, $symptom);
-        $causeScore = $this->fieldScore($tokens, $normalizedMessage, $cause);
         $solutionScore = $this->fieldScore($tokens, $normalizedMessage, $solution);
         $contentScore = $this->contentScore($tokens, $normalizedMessage, $combined, (float) ($job->fulltext_score ?? 0));
         $phraseBoost = max(
@@ -255,7 +251,6 @@ class SimilarIssueSearchService
 
         $score = (0.18 * $serviceScore)
             + (0.32 * $symptomScore)
-            + (0.10 * $causeScore)
             + (0.16 * $solutionScore)
             + (0.10 * $contentScore)
             + (0.05 * $phraseBoost)
@@ -269,7 +264,7 @@ class SimilarIssueSearchService
             'id' => $job->id,
             'service_type' => $serviceType,
             'problem_description' => $symptom,
-            'cause' => $cause,
+            'cause' => '',
             'solution' => $solution,
             'before_image' => $beforeImages[0] ?? null,
             'after_image' => $afterImages[0] ?? null,

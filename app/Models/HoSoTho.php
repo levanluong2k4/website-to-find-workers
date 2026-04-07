@@ -8,6 +8,11 @@ class HoSoTho extends Model
 {
     protected $table = 'ho_so_tho';
 
+    protected $casts = [
+        'dang_hoat_dong' => 'boolean',
+        'danh_gia_trung_binh' => 'float',
+    ];
+
     protected $fillable = [
         'user_id',
         'cccd',

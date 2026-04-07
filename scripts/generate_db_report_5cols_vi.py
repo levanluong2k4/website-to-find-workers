@@ -93,7 +93,6 @@ TABLES = [
             ("vi_do", "decimal", "-90..90", "Vĩ độ"),
             ("kinh_do", "decimal", "-180..180", "Kinh độ"),
             ("mo_ta_van_de", "text", "Văn bản dài", "Mô tả lỗi"),
-            ("nguyen_nhan", "text", "Văn bản dài", "Nguyên nhân"),
             ("giai_phap", "text", "Văn bản dài", "Giải pháp"),
             ("hinh_anh_mo_ta", "json", "Mảng URL ảnh", "Ảnh trước sửa"),
             ("video_mo_ta", "varchar(255)", "URL video", "Video mô tả"),

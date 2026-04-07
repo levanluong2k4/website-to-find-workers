@@ -91,13 +91,36 @@ Route::prefix('worker')->group(function () {
         return view('worker.my-bookings');
     })->name('worker.my-bookings');
 
+    Route::get('/my-bookings/{id}/pricing', function ($id) {
+        return redirect()->route('worker.my-bookings');
+    })->whereNumber('id')->name('worker.my-bookings.pricing');
+
     Route::get('/jobs', function () {
-        return view('worker.jobs');
+        return redirect()->route('worker.my-bookings', ['status' => 'pending']);
     })->name('worker.jobs');
 
     Route::get('/jobs/{id}', function ($id) {
-        return view('worker.job-details', ['id' => $id]);
-    })->name('worker.job-details');
+        $statusMap = [
+            'cho_xac_nhan' => 'pending',
+            'da_xac_nhan' => 'upcoming',
+            'dang_lam' => 'inprogress',
+            'cho_hoan_thanh' => 'payment',
+            'cho_thanh_toan' => 'payment',
+            'da_xong' => 'done',
+            'da_huy' => 'cancelled',
+        ];
+
+        $bookingStatus = \App\Models\DonDatLich::query()
+            ->whereKey($id)
+            ->value('trang_thai');
+
+        $redirectParams = ['booking' => $id];
+        if ($bookingStatus && isset($statusMap[$bookingStatus])) {
+            $redirectParams['status'] = $statusMap[$bookingStatus];
+        }
+
+        return redirect()->route('worker.my-bookings', $redirectParams);
+    })->whereNumber('id')->name('worker.job-details');
 
     Route::get('/profile', function () {
         return view('worker.profile');
@@ -122,6 +145,22 @@ Route::prefix('admin')->group(function () {
         return view('admin.dashboard');
     })->name('admin.dashboard');
 
+    Route::get('/customers', function () {
+        return view('admin.customers');
+    })->name('admin.customers');
+
+    Route::get('/customers/{id}', function ($id) {
+        return view('admin.customer-detail', ['id' => $id]);
+    })->whereNumber('id')->name('admin.customers.show');
+
+    Route::get('/customers/{id}/bookings', function ($id) {
+        return view('admin.customer-bookings', ['id' => $id]);
+    })->whereNumber('id')->name('admin.customers.bookings');
+
+    Route::get('/customer-feedback', function () {
+        return view('admin.customer-feedback');
+    })->name('admin.customer-feedback');
+
     Route::get('/users', function () {
         return view('admin.users');
     })->name('admin.users');
@@ -129,6 +168,18 @@ Route::prefix('admin')->group(function () {
     Route::get('/services', function () {
         return view('admin.services');
     })->name('admin.services');
+
+    Route::get('/linh-kien', function () {
+        return view('admin.parts');
+    })->name('admin.parts');
+
+    Route::get('/trieu-chung', function () {
+        return view('admin.symptoms');
+    })->name('admin.symptoms');
+
+    Route::get('/huong-xu-ly', function () {
+        return view('admin.resolutions');
+    })->name('admin.resolutions');
 
     Route::get('/assistant-soul', function () {
         return view('admin.assistant-soul');

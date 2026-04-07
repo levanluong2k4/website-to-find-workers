@@ -1,127 +1,199 @@
 @extends('layouts.app')
-
-@section('title', 'Đánh Giá Của Tôi - Thợ Tốt')
+@section('title', 'Đánh giá khách hàng - Thợ Tốt NTU')
 
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-<style>
-    body {
-        background-color: #f8fafc;
-    }
-
-    .header-banner {
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
-        padding: 3rem 0;
-        margin-bottom: 2rem;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    .rating-summary-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 2rem;
-        text-align: center;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-
-    .big-rating {
-        font-size: 4rem;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1;
-    }
-
-    .stars-display .material-symbols-outlined {
-        font-variation-settings: 'FILL' 1;
-        color: #fbbf24;
-        font-size: 2rem;
-    }
-
-    .review-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1.5rem;
-        transition: all 0.3s ease;
-        margin-bottom: 1rem;
-    }
-
-    .review-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-
-    .rating-stars {
-        color: #fbbf24;
-    }
-
-    .rating-stars i {
-        font-size: 0.9rem;
-    }
-</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="{{ asset('assets/css/worker/reviews.css') }}"/>
 @endpush
 
 @section('content')
-<app-navbar></app-navbar>
+<div class="worker-reviews-shell">
+  <x-worker-sidebar />
 
-<div class="header-banner">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="fw-bold text-dark mb-2" style="letter-spacing: -0.5px;">Đánh Giá Của Khách Hàng</h1>
-                <p class="text-secondary mb-0 fs-5">Xem nhận xét và độ hài lòng của khách sau khi sửa chữa.</p>
-            </div>
+  <main class="worker-reviews">
+    <header class="worker-reviews__header">
+      <div>
+        <div class="worker-reviews__eyebrow">
+          <span class="material-symbols-outlined">reviews</span>
+          <span>Worker Reputation Workspace</span>
         </div>
-    </div>
+        <h1>Đánh giá khách hàng</h1>
+        <p id="reviewHeaderCopy">Tổng hợp mức độ hài lòng, các phản hồi cần xem lại và những dịch vụ đang giúp bạn giữ uy tín tốt nhất.</p>
+      </div>
+
+      <div class="worker-reviews__header-actions">
+        <a href="/worker/profile" class="worker-review-action worker-review-action--ghost">
+          <span class="material-symbols-outlined">person</span>
+          <span>Hồ sơ thợ</span>
+        </a>
+        <button type="button" id="reviewRefreshButton" class="worker-review-action worker-review-action--primary">
+          <span class="material-symbols-outlined">refresh</span>
+          <span>Làm mới đánh giá</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="worker-review-overview">
+      <article class="review-hero worker-review-surface">
+        <div class="review-hero__top">
+          <div>
+            <span class="review-hero__label">Điểm uy tín hiện tại</span>
+            <div class="review-hero__headline" id="reviewAverageScore">0.0</div>
+            <div class="review-stars review-stars--light" id="reviewAverageStars" aria-label="Đánh giá trung bình">
+              <span class="material-symbols-outlined">star</span>
+              <span class="material-symbols-outlined">star</span>
+              <span class="material-symbols-outlined">star</span>
+              <span class="material-symbols-outlined">star</span>
+              <span class="material-symbols-outlined">star</span>
+            </div>
+          </div>
+
+          <div>
+            <p class="review-hero__title" id="reviewHeroTitle">Chưa có đủ dữ liệu để đánh giá.</p>
+            <p class="review-hero__copy" id="reviewHeroCopy">Khi khách hoàn tất đơn và để lại phản hồi, hệ thống sẽ gom lại để bạn nhìn ra chất lượng phục vụ theo thời gian.</p>
+          </div>
+        </div>
+
+        <div class="review-hero__meta">
+          <div class="review-hero__meta-card">
+            <span>Tổng số phản hồi</span>
+            <strong id="reviewTotalCount">0 đánh giá</strong>
+          </div>
+          <div class="review-hero__meta-card">
+            <span>Tỷ lệ 5 sao</span>
+            <strong id="reviewFiveStarRatio">0%</strong>
+          </div>
+          <div class="review-hero__meta-card">
+            <span>Phản hồi 30 ngày gần đây</span>
+            <strong id="reviewRecentCount">0 phản hồi</strong>
+          </div>
+        </div>
+      </article>
+
+      <aside class="review-breakdown worker-review-surface">
+        <div class="review-panel__kicker">
+          <span class="material-symbols-outlined">stacked_bar_chart</span>
+          <span>Rating Breakdown</span>
+        </div>
+        <h2>Phân bố theo số sao</h2>
+        <p>Bấm trực tiếp vào từng mức sao để lọc danh sách phản hồi phía dưới.</p>
+        <div class="review-breakdown__list" id="reviewBreakdownBars"></div>
+      </aside>
+    </section>
+
+    <section class="review-metric-grid">
+      <article class="review-metric-card worker-review-surface">
+        <div class="review-metric-card__label">
+          <span class="material-symbols-outlined">forum</span>
+          <span>Tổng phản hồi</span>
+        </div>
+        <strong id="reviewMetricTotal">0</strong>
+        <p>Tổng số lượt khách đã để lại đánh giá cho những đơn hoàn thành.</p>
+      </article>
+
+      <article class="review-metric-card worker-review-surface">
+        <div class="review-metric-card__label">
+          <span class="material-symbols-outlined">workspace_premium</span>
+          <span>5 sao</span>
+        </div>
+        <strong id="reviewMetricFiveStar">0</strong>
+        <p>Số phản hồi ở mức hài lòng cao nhất. Đây là tín hiệu mạnh nhất về uy tín phục vụ.</p>
+      </article>
+
+      <article class="review-metric-card worker-review-surface">
+        <div class="review-metric-card__label">
+          <span class="material-symbols-outlined">notification_important</span>
+          <span>Cần xem lại</span>
+        </div>
+        <strong id="reviewMetricLow">0</strong>
+        <p>Các phản hồi từ 1 đến 3 sao nên được xem lại để rút kinh nghiệm cho lịch sau.</p>
+      </article>
+
+      <article class="review-metric-card worker-review-surface">
+        <div class="review-metric-card__label">
+          <span class="material-symbols-outlined">chat</span>
+          <span>Có nhận xét chữ</span>
+        </div>
+        <strong id="reviewMetricCommented">0%</strong>
+        <p>Tỷ lệ phản hồi có nội dung chi tiết, hữu ích hơn cho việc cải thiện thao tác và cách phục vụ.</p>
+      </article>
+    </section>
+
+    <section class="review-toolbar worker-review-surface">
+      <div class="review-toolbar__group" id="reviewRatingFilters">
+        <button type="button" class="review-filter-chip is-active" data-rating-filter="all">Tất cả</button>
+        <button type="button" class="review-filter-chip" data-rating-filter="5">5 sao</button>
+        <button type="button" class="review-filter-chip" data-rating-filter="4">4 sao</button>
+        <button type="button" class="review-filter-chip" data-rating-filter="3">3 sao</button>
+        <button type="button" class="review-filter-chip" data-rating-filter="2">2 sao</button>
+        <button type="button" class="review-filter-chip" data-rating-filter="1">1 sao</button>
+      </div>
+
+      <div class="review-toolbar__controls">
+        <select id="reviewServiceFilter" class="review-select" aria-label="Lọc theo dịch vụ">
+          <option value="all">Tất cả dịch vụ</option>
+        </select>
+
+        <select id="reviewSortSelect" class="review-select" aria-label="Sắp xếp đánh giá">
+          <option value="latest">Mới nhất</option>
+          <option value="lowest">Điểm thấp nhất</option>
+          <option value="highest">Điểm cao nhất</option>
+          <option value="oldest">Cũ nhất</option>
+        </select>
+
+        <button type="button" id="reviewHasCommentToggle" class="review-toggle" aria-pressed="false">
+          <span class="material-symbols-outlined">article</span>
+          <span>Chỉ hiện review có nhận xét</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="review-content">
+      <aside class="review-insights">
+        <article class="review-insight-card worker-review-surface">
+          <div class="review-panel__kicker">
+            <span class="material-symbols-outlined">tips_and_updates</span>
+            <span>Quick Insight</span>
+          </div>
+          <h2>Bức tranh nhanh</h2>
+          <p id="reviewInsightLead">Hệ thống sẽ gom các tín hiệu quan trọng để bạn biết nên giữ điều gì và cần xử lý điểm nào trước.</p>
+          <div class="review-insight-list" id="reviewInsightList"></div>
+        </article>
+
+        <article class="review-insight-card worker-review-surface">
+          <div class="review-panel__kicker">
+            <span class="material-symbols-outlined">checklist</span>
+            <span>Action Queue</span>
+          </div>
+          <h2>Việc nên làm tiếp theo</h2>
+          <p id="reviewActionLead">Mỗi gợi ý đều bám vào số liệu hiện tại thay vì chỉ hiển thị cảm tính.</p>
+          <div class="review-insight-steps" id="reviewActionSteps"></div>
+        </article>
+      </aside>
+
+      <article class="review-feed worker-review-surface">
+        <div class="review-feed__head">
+          <div>
+            <h2>Tất cả phản hồi</h2>
+            <p>Danh sách này đi kèm bối cảnh đơn hàng để bạn không phải đoán review đó xuất phát từ lịch nào.</p>
+          </div>
+          <div class="review-feed__count" id="reviewFeedCount">Đang tải...</div>
+        </div>
+
+        <div class="review-feed__list" id="reviewsListContainer">
+          <div class="review-loading">
+            <span class="material-symbols-outlined">hourglass_top</span>
+            <div>Đang tải phản hồi từ khách hàng...</div>
+          </div>
+        </div>
+
+        <div id="paginationControls" class="review-pagination d-none">
+          <ul class="review-pagination__list" id="paginationList"></ul>
+        </div>
+      </article>
+    </section>
+  </main>
 </div>
-
-<div class="container mb-5">
-    <div class="row">
-        <!-- Sidebar or Header Summary -->
-        <div class="col-lg-4 mb-4">
-            <div class="rating-summary-card sticky-top" style="top: 100px;">
-                <h5 class="fw-bold text-dark mb-4">Điểm trung bình</h5>
-                <div class="big-rating mb-2" id="avgRatingValue">0.0</div>
-                <div class="stars-display mb-3" id="avgRatingStars">
-                    <span class="material-symbols-outlined text-muted" style="font-variation-settings: 'FILL' 0;">star</span>
-                    <span class="material-symbols-outlined text-muted" style="font-variation-settings: 'FILL' 0;">star</span>
-                    <span class="material-symbols-outlined text-muted" style="font-variation-settings: 'FILL' 0;">star</span>
-                    <span class="material-symbols-outlined text-muted" style="font-variation-settings: 'FILL' 0;">star</span>
-                    <span class="material-symbols-outlined text-muted" style="font-variation-settings: 'FILL' 0;">star</span>
-                </div>
-                <div class="text-secondary">Dựa trên <span class="fw-bold text-dark" id="totalReviewCount">0</span> bài đánh giá</div>
-            </div>
-        </div>
-
-        <!-- Review List -->
-        <div class="col-lg-8">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="fw-bold text-dark mb-0">Tất cả nhận xét</h5>
-            </div>
-
-            <div id="reviewsListContainer">
-                <!-- Skeleton Loading -->
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Đang tải...</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pagination Controls -->
-            <div id="paginationControls" class="d-flex justify-content-center mt-4 d-none">
-                <nav aria-label="Page navigation">
-                    <ul class="pagination mb-0" id="paginationList">
-                        <!-- Render by JS -->
-                    </ul>
-                </nav>
-            </div>
-
-        </div>
-    </div>
-</div>
-
 @endsection
 
 @push('scripts')

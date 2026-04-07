@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\HoSoTho\UpdateHoSoThoRequest;
+use App\Models\DonDatLich;
 use App\Models\HoSoTho;
 use Illuminate\Http\Request;
 
@@ -71,12 +72,12 @@ class HoSoThoController extends Controller
 
         if ($request->filled('ngay_hen') && $request->filled('khung_gio_hen')) {
             $ngayHen = $request->ngay_hen;
-            $khungGioHen = $request->khung_gio_hen;
+            $khungGioHen = DonDatLich::normalizeTimeSlot($request->khung_gio_hen);
 
             $query->whereDoesntHave('user.donDatLichAsTho', function ($q) use ($ngayHen, $khungGioHen) {
-                $q->where('ngay_hen', $ngayHen)
-                    ->where('khung_gio_hen', $khungGioHen)
-                    ->whereIn('trang_thai', ['cho_xac_nhan', 'da_xac_nhan', 'dang_lam', 'cho_hoan_thanh']);
+                $q->whereDate('ngay_hen', $ngayHen)
+                    ->whereRaw("REPLACE(khung_gio_hen, ' ', '') = ?", [$khungGioHen])
+                    ->whereIn('trang_thai', DonDatLich::scheduleBlockingStatuses());
             });
         }
 
@@ -118,6 +119,45 @@ class HoSoThoController extends Controller
         return response()->json($hoSo);
     }
 
+    public function busySlots(Request $request, string $id)
+    {
+        $hoSo = HoSoTho::where('user_id', $id)->first();
+
+        if (!$hoSo) {
+            return response()->json(['message' => 'Khong tim thay ho so tho'], 404);
+        }
+
+        $dateFrom = \Illuminate\Support\Carbon::parse($request->query('date_from', now()->toDateString()))->toDateString();
+        $dateTo = \Illuminate\Support\Carbon::parse($request->query('date_to', now()->addDays(6)->toDateString()))->toDateString();
+
+        if ($dateTo < $dateFrom) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
+        $busySlots = DonDatLich::query()
+            ->select(['ngay_hen', 'khung_gio_hen'])
+            ->where('tho_id', (int) $id)
+            ->whereBetween('ngay_hen', [$dateFrom, $dateTo])
+            ->whereIn('trang_thai', DonDatLich::scheduleBlockingStatuses())
+            ->orderBy('ngay_hen')
+            ->get()
+            ->groupBy(fn (DonDatLich $booking) => optional($booking->ngay_hen)->toDateString() ?: (string) $booking->ngay_hen)
+            ->map(fn ($items) => $items
+                ->map(fn (DonDatLich $booking) => DonDatLich::normalizeTimeSlot($booking->khung_gio_hen))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all()
+            );
+
+        return response()->json([
+            'worker_id' => (int) $id,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'busy_slots' => $busySlots,
+        ]);
+    }
+
     public function update(UpdateHoSoThoRequest $request)
     {
         $user = $request->user();
@@ -137,6 +177,15 @@ class HoSoThoController extends Controller
         }
 
         $validated = $request->validated();
+        $hasAvailabilityInput = $request->has('dang_hoat_dong');
+        $nextAvailability = $hasAvailabilityInput
+            ? (bool) $request->boolean('dang_hoat_dong')
+            : (bool) $hoSo->dang_hoat_dong;
+        $nextOperationalStatus = $hoSo->trang_thai_hoat_dong;
+
+        if ($hasAvailabilityInput && $hoSo->trang_thai_hoat_dong !== 'tam_khoa') {
+            $nextOperationalStatus = $nextAvailability ? 'dang_hoat_dong' : 'ngung_hoat_dong';
+        }
 
         $hoSo->update([
             'cccd' => $validated['cccd'] ?? $hoSo->cccd,
@@ -146,7 +195,8 @@ class HoSoThoController extends Controller
             'vi_do' => $validated['vi_do'] ?? $hoSo->vi_do,
             'kinh_do' => $validated['kinh_do'] ?? $hoSo->kinh_do,
             'ban_kinh_phuc_vu' => $validated['ban_kinh_phuc_vu'] ?? $hoSo->ban_kinh_phuc_vu,
-            'dang_hoat_dong' => $validated['dang_hoat_dong'] ?? $hoSo->dang_hoat_dong,
+            'dang_hoat_dong' => $nextAvailability,
+            'trang_thai_hoat_dong' => $nextOperationalStatus,
         ]);
 
         if (isset($validated['dich_vu_ids'])) {

@@ -10,16 +10,33 @@ class LinhKienSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->seedServiceParts(
+            'Sửa điều hòa (Máy lạnh)',
+            'Sửa chữa, bảo dưỡng, bơm ga điều hòa treo tường, âm trần,...',
+            'ac_unit',
+            $this->airConditionerParts()
+        );
+
+        $this->seedServiceParts(
+            'Sửa lò vi sóng',
+            'Sửa lò vi sóng không nóng, đĩa không quay, hỏng phím bấm,...',
+            'microwave',
+            $this->microwaveParts()
+        );
+    }
+
+    private function seedServiceParts(string $serviceName, string $description, string $serviceImage, array $parts): void
+    {
         $service = DanhMucDichVu::query()->updateOrCreate(
-            ['ten_dich_vu' => 'Sửa điều hòa (Máy lạnh)'],
+            ['ten_dich_vu' => $serviceName],
             [
-                'mo_ta' => 'Sửa chữa, bảo dưỡng, bơm ga điều hòa treo tường, âm trần,...',
-                'hinh_anh' => 'ac_unit',
+                'mo_ta' => $description,
+                'hinh_anh' => $serviceImage,
                 'trang_thai' => true,
             ]
         );
 
-        foreach ($this->airConditionerParts() as $part) {
+        foreach ($parts as $part) {
             LinhKien::query()->updateOrCreate(
                 [
                     'dich_vu_id' => $service->id,
@@ -31,6 +48,61 @@ class LinhKienSeeder extends Seeder
                 ]
             );
         }
+    }
+
+    private function microwaveParts(): array
+    {
+        return array_map(function (array $row): array {
+            return [
+                'ten_linh_kien' => $row[0],
+                'hinh_anh' => $this->normalizeImage($row[1] ?? null),
+                'gia' => $this->normalizePrice($row[2] ?? null),
+            ];
+        }, [
+            ['Đĩa Lò Vi Sóng Electrolux 24.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Electrolux 25.5cm', null, '108.000 ₫'],
+            ['Đĩa Thủy Tinh Lò Vi Sóng Electrolux 27cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Panasonic 24.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Panasonic 25.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Panasonic 27cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Samsung 24.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Samsung 25.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Samsung 27cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Sharp 24.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Sharp 25.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Sharp 27cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Smeg 24.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Smeg 25.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Smeg 27cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Teka 24.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Teka 25.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Teka 27cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Toshiba 24.5cm', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Toshiba 25.5cm (Dùng cho Lò 20l)', null, '108.000 ₫'],
+            ['Đĩa Lò Vi Sóng Toshiba 27cm', null, '108.000 ₫'],
+            ['Tụ Lò Vi Sóng Electrolux 1uf', null, '84.000 ₫'],
+            ['Tụ Lò Vi Sóng Panasonic', null, '84.000 ₫'],
+            ['Tụ Lò Vi Sóng Samsung', null, '84.000 ₫'],
+            ['Tụ Lò Vi Sóng Sharp 1uf', null, '84.000 ₫'],
+            ['Tụ Lò Vi Sóng Smeg 1uf', null, '84.000 ₫'],
+            ['Tụ Lò Vi Sóng Teka 1uf', null, '84.000 ₫'],
+            ['Tụ Lò Vi Sóng Toshiba', null, '84.000 ₫'],
+            ['Bóng Cao Tần Lò Vi Sóng Electrolux', null, '336.000 ₫'],
+            ['Bóng Cao Tần Lò Vi Sóng Panasonic', null, '336.000 ₫'],
+            ['Bóng Cao Tần Lò Vi Sóng Samsung', null, '336.000 ₫'],
+            ['Bóng Cao Tần Lò Vi Sóng Sharp', null, '280.000 ₫'],
+            ['Bóng Cao Tần Lò Vi Sóng Smeg', null, '280.000 ₫'],
+            ['Bóng Cao Tần Lò Vi Sóng Teka', null, '280.000 ₫'],
+            ['Bóng Cao Tần Lò Vi Sóng Toshiba', null, '280.000 ₫'],
+            ['Bóng Đèn Chiếu Sáng Lò Vi Sóng Sharp (25W-220V)', null, '235.000 ₫'],
+            ['Cầu Chì Lò Vi Sóng Electrolux', null, '42.000 ₫'],
+            ['Cầu Chì Lò Vi Sóng Panasonic', null, '42.000 ₫'],
+            ['Cầu Chì Lò Vi Sóng Samsung', null, '42.000 ₫'],
+            ['Cầu Chì Lò Vi Sóng Sharp', null, '42.000 ₫'],
+            ['Cầu Chì Lò Vi Sóng Smeg', null, '42.000 ₫'],
+            ['Cầu Chì Lò Vi Sóng Teka', null, '42.000 ₫'],
+            ['Cầu Chì Lò Vi Sóng Toshiba', null, '42.000 ₫'],
+        ]);
     }
 
     private function airConditionerParts(): array

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\DonDatLich;
 
+use App\Models\DonDatLich;
 use App\Models\HoSoTho;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -10,6 +11,7 @@ class StoreDonDatLichRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $serviceIds = $this->input('dich_vu_ids', []);
+        $timeSlot = DonDatLich::normalizeTimeSlot($this->input('khung_gio_hen'));
 
         if ((is_array($serviceIds) && empty($serviceIds)) || $serviceIds === null || $serviceIds === '') {
             $serviceIds = $this->input('dich_vu_id', []);
@@ -29,6 +31,7 @@ class StoreDonDatLichRequest extends FormRequest
         $this->merge([
             'dich_vu_ids' => $serviceIds,
             'dich_vu_id' => $serviceIds[0] ?? null,
+            'khung_gio_hen' => $timeSlot,
         ]);
     }
 
@@ -55,7 +58,7 @@ class StoreDonDatLichRequest extends FormRequest
             'dich_vu_ids.*' => 'required|exists:danh_muc_dich_vu,id',
             'tho_id' => 'nullable|exists:users,id',
             'ngay_hen' => "required|date|after_or_equal:today|before_or_equal:{$latestBookingDate}",
-            'khung_gio_hen' => 'required|in:08:00-10:00,10:00-12:00,12:00-14:00,14:00-17:00,08:00 - 10:00,10:00 - 12:00,12:00 - 14:00,14:00 - 17:00',
+            'khung_gio_hen' => 'required|in:08:00-10:00,10:00-12:00,12:00-14:00,14:00-17:00',
             'dia_chi' => 'required_if:loai_dat_lich,at_home|nullable|string',
             'vi_do' => 'required_if:loai_dat_lich,at_home|nullable|numeric',
             'kinh_do' => 'required_if:loai_dat_lich,at_home|nullable|numeric',
@@ -78,6 +81,8 @@ class StoreDonDatLichRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $workerId = $this->input('tho_id');
+            $bookingDate = $this->input('ngay_hen');
+            $timeSlot = DonDatLich::normalizeTimeSlot($this->input('khung_gio_hen'));
             $serviceIds = collect($this->input('dich_vu_ids', []))
                 ->map(static fn ($id) => (int) $id)
                 ->filter()
@@ -111,6 +116,13 @@ class StoreDonDatLichRequest extends FormRequest
 
             if ($missingServiceIds->isNotEmpty()) {
                 $validator->errors()->add('dich_vu_ids', 'Danh sach dich vu da chon co muc thợ nay khong the sua.');
+            }
+            if (
+                $bookingDate
+                && $timeSlot !== ''
+                && DonDatLich::query()->conflictsWithWorkerSchedule((int) $workerId, $bookingDate, $timeSlot)->exists()
+            ) {
+                $validator->errors()->add('khung_gio_hen', 'Tho da co lich vao thoi diem nay.');
             }
         });
     }

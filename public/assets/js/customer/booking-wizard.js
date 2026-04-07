@@ -21,13 +21,32 @@ document.addEventListener('DOMContentLoaded', () => {
         5: ['Bước 5 trên 5', 'MÔ TẢ & HÌNH ẢNH', 'Bổ sung mô tả, hình ảnh và video để thợ chuẩn bị dụng cụ sát với tình trạng thực tế.'],
     };
     const params = new URLSearchParams(window.location.search);
+    const normalizePrefillServiceIds = (value) => {
+        const values = Array.isArray(value) ? value : [value];
+
+        return values
+            .flatMap((item) => String(item || '').split(','))
+            .map((item) => Number(String(item || '').trim()))
+            .filter((item) => Number.isInteger(item) && item > 0)
+            .filter((item, index, array) => array.indexOf(item) === index);
+    };
     const isStandalone = root.dataset.standalone === '1';
-    const standalonePrefill = { workerId: params.get('worker_id') || '', serviceName: params.get('service_name') || '' };
+    const standalonePrefill = {
+        workerId: params.get('worker_id') || '',
+        serviceName: params.get('service_name') || '',
+        serviceIds: normalizePrefillServiceIds([
+            params.get('service_ids'),
+            params.get('dich_vu_id'),
+            ...params.getAll('dich_vu_ids[]'),
+            ...params.getAll('service_ids[]'),
+        ]),
+    };
     const state = {
-        addressData: [], currentStep: 1, workerId: null, worker: null, prefillServiceName: '', services: [], serviceIds: [],
+        addressData: [], currentStep: 1, workerId: null, worker: null, prefillServiceName: '', prefillServiceIds: [], services: [], serviceIds: [],
         repairMode: null, tinh: '', huyen: '', xa: '', soNha: '', lat: '', lng: '', travelFee: 0, distanceKm: null,
         travelMessage: 'Sẽ tính sau khi bạn chọn vị trí.', date: '', timeSlot: '', description: '', images: [], video: null,
         transportRequested: false, isOutOfRange: false, isOpen: false, locationSource: '',
+        symptomCatalog: [], symptomCatalogKey: '', symptomCatalogPromise: null, selectedSymptomId: null, busySlotsByDate: {},
     };
     const $ = (id) => document.getElementById(id);
     const refs = {
@@ -40,6 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
         transportToggle: $('bookingWizardTransportToggle'), getLocation: $('bookingWizardGetLocation'), locationStatus: $('bookingWizardLocationStatus'),
         tinh: $('bookingWizardTinh'), huyen: $('bookingWizardHuyen'), xa: $('bookingWizardXa'), soNha: $('bookingWizardSoNha'),
         dateCards: $('bookingWizardDateCards'), timeSlots: $('bookingWizardTimeSlots'), description: $('bookingWizardDescription'),
+        problemSuggest: $('bookingWizardProblemSuggest'), problemSuggestCopy: $('bookingWizardProblemSuggestCopy'), problemSuggestList: $('bookingWizardProblemSuggestList'),
+        problemPriceCard: $('bookingWizardProblemPriceCard'), problemPriceValue: $('bookingWizardProblemPriceValue'), problemPriceMeta: $('bookingWizardProblemPriceMeta'),
         uploadZone: $('bookingWizardUploadZone'), mediaPicker: $('bookingWizardMediaPicker'), imagesInput: $('bookingWizardImages'),
         videoInput: $('bookingWizardVideo'), preview: $('bookingWizardPreview'), success: $('bookingWizardSuccess'), successCode: $('bookingWizardSuccessCode'),
         hiddenWorkerId: $('bookingWizardWorkerId'), hiddenRepairMode: $('bookingWizardRepairMode'),
@@ -52,17 +73,43 @@ document.addEventListener('DOMContentLoaded', () => {
         sumModeCard: $('bookingSummaryModeCard'), sumTimeCard: $('bookingSummaryTimeCard'), sumAddressCard: $('bookingSummaryAddressCard'),
         sumModeValue: $('bookingSummaryModeValue'), sumModeMeta: $('bookingSummaryModeMeta'), sumTimeValue: $('bookingSummaryTimeValue'),
         sumTimeMeta: $('bookingSummaryTimeMeta'), sumAddressValue: $('bookingSummaryAddressValue'), sumAddressMeta: $('bookingSummaryAddressMeta'),
-        sumTravelCard: $('bookingSummaryTravelCard'),
+        sumTravelCard: $('bookingSummaryTravelCard'), sumReferencePriceCard: $('bookingSummaryReferencePriceCard'),
         sumTravelFee: $('bookingSummaryTravelFee'), sumTravelMeta: $('bookingSummaryTravelMeta'),
+        sumReferencePrice: $('bookingSummaryReferencePrice'), sumReferenceMeta: $('bookingSummaryReferenceMeta'),
     };
     const panels = Array.from(root.querySelectorAll('[data-step-panel]'));
     const stepButtons = Array.from(root.querySelectorAll('[data-step-target]'));
     const repairCards = Array.from(root.querySelectorAll('[data-repair-mode]'));
+    const compactViewportState = { frame: 0 };
     const norm = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
     const money = (v) => `${Math.round(Number(v) || 0).toLocaleString('vi-VN')} ₫`;
     const selectedServices = () => state.services.filter((item) => state.serviceIds.includes(Number(item.id)));
     const heavyService = () => selectedServices().some((service) => ['may giat', 'tu lanh', 'tivi', 'may lanh', 'dieu hoa'].some((k) => norm(service.ten_dich_vu).includes(k)));
     const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const normalizeTimeSlotValue = (value) => String(value || '').replace(/\s+/g, '');
+    const hasWorkerReferenceCoordinates = () => {
+        const rawLat = state.worker?.vi_do;
+        const rawLng = state.worker?.kinh_do;
+
+        if (rawLat === null || rawLat === undefined || rawLng === null || rawLng === undefined) {
+            return false;
+        }
+
+        if (String(rawLat).trim() === '' || String(rawLng).trim() === '') {
+            return false;
+        }
+
+        const lat = Number(rawLat);
+        const lng = Number(rawLng);
+
+        return Number.isFinite(lat)
+            && Number.isFinite(lng)
+            && lat >= -90
+            && lat <= 90
+            && lng >= -180
+            && lng <= 180
+            && !(lat === 0 && lng === 0);
+    };
     const relativeDateLabel = (offset) => {
         if (offset === 0) return 'Hôm nay';
         if (offset === 1) return 'Ngày mai';
@@ -141,6 +188,271 @@ document.addEventListener('DOMContentLoaded', () => {
     let addressLookupTimer = null;
     let addressLookupRequestId = 0;
     let suppressAddressGeocode = false;
+    let symptomSuggestTimer = null;
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function getSymptomCatalogServiceKey() {
+        return [...state.serviceIds]
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0)
+            .sort((a, b) => a - b)
+            .join(',');
+    }
+
+    function getSymptomQueryText(value = refs.description?.value || '') {
+        return norm(String(value || '').replace(/\s+/g, ' ').trim());
+    }
+
+    function formatReferencePriceRange(min, max) {
+        const normalizedMin = Number(min || 0);
+        const normalizedMax = Number(max || 0);
+        if (normalizedMin > 0 && normalizedMax > 0) {
+            return normalizedMin === normalizedMax ? money(normalizedMin) : `${money(normalizedMin)} - ${money(normalizedMax)}`;
+        }
+        return 'Lien he bao gia';
+    }
+
+    function getSelectedSymptomSuggestion() {
+        return (Array.isArray(state.symptomCatalog) ? state.symptomCatalog : [])
+            .find((item) => Number(item?.id || 0) === Number(state.selectedSymptomId || 0)) || null;
+    }
+
+    function renderProblemReferencePrice(symptom) {
+        const hasSymptom = Boolean(symptom);
+        const priceMin = Number(symptom?.gia_tham_khao_tu || 0);
+        const priceMax = Number(symptom?.gia_tham_khao_den || 0);
+        const causeCount = Array.isArray(symptom?.nguyen_nhan_names) ? symptom.nguyen_nhan_names.length : 0;
+        const resolutionCount = Number(symptom?.huong_xu_ly_count || 0);
+        const causePreview = Array.isArray(symptom?.nguyen_nhan_names) ? symptom.nguyen_nhan_names.slice(0, 2).join(', ') : '';
+        const hasAnyPrice = priceMin > 0 || priceMax > 0;
+        const priceLabel = formatReferencePriceRange(priceMin, priceMax);
+        const metaText = !hasSymptom
+            ? 'Khoang gia se hien khi ban chon mot trieu chung phu hop.'
+            : hasAnyPrice
+                ? `Theo ${resolutionCount || 0} huong xu ly${causeCount ? ` va ${causeCount} nguyen nhan lien quan` : ''}.${causePreview ? ` Thuong gap: ${causePreview}.` : ''}`
+                : 'Trieu chung nay da co trong danh muc nhung chua duoc khai bao gia tham khao.';
+
+        if (refs.problemPriceCard) refs.problemPriceCard.classList.toggle('d-none', !hasSymptom);
+        if (refs.problemPriceValue) refs.problemPriceValue.textContent = priceLabel;
+        if (refs.problemPriceMeta) refs.problemPriceMeta.textContent = metaText;
+        if (refs.sumReferencePriceCard) refs.sumReferencePriceCard.classList.toggle('d-none', !hasSymptom);
+        if (refs.sumReferencePrice) refs.sumReferencePrice.textContent = priceLabel;
+        if (refs.sumReferenceMeta) refs.sumReferenceMeta.textContent = metaText;
+    }
+
+    function rankSymptomSuggestion(item, query) {
+        const symptomText = getSymptomQueryText(item?.ten_trieu_chung || '');
+        const queryText = getSymptomQueryText(query);
+        if (!symptomText || !queryText) return -1;
+        if (symptomText === queryText) return 400;
+        if (symptomText.startsWith(queryText)) return 320;
+        if (symptomText.includes(queryText)) return 250;
+
+        const secondaryFields = [
+            item?.dich_vu_name || '',
+            ...(Array.isArray(item?.nguyen_nhan_names) ? item.nguyen_nhan_names : []),
+            ...(Array.isArray(item?.huong_xu_ly_names) ? item.huong_xu_ly_names : []),
+        ].map((value) => getSymptomQueryText(value)).filter(Boolean);
+
+        return secondaryFields.some((field) => field.includes(queryText)) ? 140 : -1;
+    }
+
+    function findMatchingSymptomSuggestions(query) {
+        const queryText = getSymptomQueryText(query);
+        if (!queryText) return [];
+
+        return (Array.isArray(state.symptomCatalog) ? state.symptomCatalog : [])
+            .map((item) => ({ item, score: rankSymptomSuggestion(item, queryText) }))
+            .filter((entry) => entry.score >= 0)
+            .sort((entryA, entryB) => {
+                if (entryB.score !== entryA.score) return entryB.score - entryA.score;
+                return String(entryA.item?.ten_trieu_chung || '').localeCompare(String(entryB.item?.ten_trieu_chung || ''), 'vi');
+            })
+            .slice(0, 8)
+            .map((entry) => entry.item);
+    }
+
+    function renderProblemSuggestions(items, options = {}) {
+        if (!refs.problemSuggest || !refs.problemSuggestList || !refs.problemSuggestCopy) return;
+
+        const queryText = getSymptomQueryText(refs.description?.value);
+        const loading = Boolean(options.loading);
+        refs.problemSuggest.classList.toggle('d-none', queryText === '');
+
+        if (queryText === '') {
+            refs.problemSuggestList.innerHTML = '';
+            return;
+        }
+
+        if (loading) {
+            refs.problemSuggestCopy.textContent = 'Dang doi chieu mo ta voi trieu chung co san...';
+            refs.problemSuggestList.innerHTML = '<div class="booking-problem-chip-empty">Dang tim goi y phu hop...</div>';
+            return;
+        }
+
+        refs.problemSuggestCopy.textContent = items.length
+            ? 'Bam vao goi y de dien nhanh mo ta va xem khoang gia tham khao.'
+            : 'Khong tim thay trieu chung khop voi noi dung ban vua nhap.';
+
+        refs.problemSuggestList.innerHTML = items.length
+            ? items.map((item) => {
+                const isActive = Number(item?.id || 0) === Number(state.selectedSymptomId || 0);
+                const serviceMeta = state.serviceIds.length > 1 && item?.dich_vu_name
+                    ? `<small>${escapeHtml(item.dich_vu_name)}</small>`
+                    : '';
+                return `<button type="button" class="booking-problem-chip ${isActive ? 'is-active' : ''}" data-problem-symptom-id="${Number(item?.id || 0)}">${escapeHtml(item?.ten_trieu_chung || 'Trieu chung')}${serviceMeta}</button>`;
+            }).join('')
+            : '<div class="booking-problem-chip-empty">Thu mo ta ngan gon hon hoac chon dich vu cu the de he thong goi y chinh xac hon.</div>';
+
+        refs.problemSuggestList.querySelectorAll('[data-problem-symptom-id]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const symptomId = Number(button.getAttribute('data-problem-symptom-id') || 0);
+                const symptom = (Array.isArray(state.symptomCatalog) ? state.symptomCatalog : [])
+                    .find((item) => Number(item?.id || 0) === symptomId);
+                if (!symptom) return;
+
+                state.selectedSymptomId = symptomId;
+                state.description = symptom.ten_trieu_chung || '';
+                if (refs.description) {
+                    refs.description.value = state.description;
+                    refs.description.focus();
+                    const textLength = refs.description.value.length;
+                    refs.description.setSelectionRange(textLength, textLength);
+                }
+
+                renderProblemSuggestions(findMatchingSymptomSuggestions(state.description));
+                renderProblemReferencePrice(symptom);
+                queueViewportFit();
+            });
+        });
+    }
+
+    function resetProblemAssistState() {
+        state.symptomCatalog = [];
+        state.symptomCatalogKey = '';
+        state.symptomCatalogPromise = null;
+        state.selectedSymptomId = null;
+        if (symptomSuggestTimer) {
+            window.clearTimeout(symptomSuggestTimer);
+            symptomSuggestTimer = null;
+        }
+        renderProblemSuggestions([]);
+        renderProblemReferencePrice(null);
+    }
+
+    async function ensureSymptomCatalogLoaded() {
+        const serviceKey = getSymptomCatalogServiceKey();
+        if (!serviceKey) {
+            state.symptomCatalog = [];
+            state.symptomCatalogKey = '';
+            state.symptomCatalogPromise = null;
+            return [];
+        }
+
+        if (state.symptomCatalogKey === serviceKey && state.symptomCatalog.length > 0) {
+            return state.symptomCatalog;
+        }
+
+        if (state.symptomCatalogKey === serviceKey && state.symptomCatalogPromise) {
+            return state.symptomCatalogPromise;
+        }
+
+        state.symptomCatalogKey = serviceKey;
+        state.symptomCatalogPromise = (async () => {
+            const response = await callApi(`/huong-xu-ly?group_by_symptom=1&dich_vu_ids=${encodeURIComponent(serviceKey)}`, 'GET');
+            if (!response.ok) {
+                throw new Error(response.data?.message || 'Khong tai duoc danh muc trieu chung.');
+            }
+
+            const payload = Array.isArray(response.data) ? response.data : [];
+            state.symptomCatalog = payload;
+            return payload;
+        })();
+
+        try {
+            return await state.symptomCatalogPromise;
+        } finally {
+            state.symptomCatalogPromise = null;
+        }
+    }
+
+    async function refreshProblemAssist() {
+        const query = refs.description?.value || '';
+        const queryText = getSymptomQueryText(query);
+        state.description = query;
+
+        if (!queryText) {
+            state.selectedSymptomId = null;
+            renderProblemSuggestions([]);
+            renderProblemReferencePrice(null);
+            return;
+        }
+
+        if (!state.serviceIds.length) {
+            state.selectedSymptomId = null;
+            renderProblemSuggestions([]);
+            renderProblemReferencePrice(null);
+            return;
+        }
+
+        renderProblemSuggestions([], { loading: true });
+
+        try {
+            await ensureSymptomCatalogLoaded();
+            const suggestions = findMatchingSymptomSuggestions(query);
+            const selected = getSelectedSymptomSuggestion();
+            const isSelectedStillExact = selected && getSymptomQueryText(selected.ten_trieu_chung) === queryText;
+            if (!isSelectedStillExact) {
+                state.selectedSymptomId = null;
+            }
+            const exactMatch = suggestions.find((item) => getSymptomQueryText(item?.ten_trieu_chung || '') === queryText) || null;
+            const activeSymptom = isSelectedStillExact ? selected : exactMatch;
+            if (activeSymptom) {
+                state.selectedSymptomId = Number(activeSymptom.id || 0);
+            }
+
+            renderProblemSuggestions(suggestions);
+            renderProblemReferencePrice(activeSymptom);
+        } catch (error) {
+            state.selectedSymptomId = null;
+            if (refs.problemSuggest) refs.problemSuggest.classList.remove('d-none');
+            if (refs.problemSuggestCopy) refs.problemSuggestCopy.textContent = error.message || 'Khong tai duoc goi y trieu chung.';
+            if (refs.problemSuggestList) refs.problemSuggestList.innerHTML = '<div class="booking-problem-chip-empty">Tam thoi khong tai duoc goi y. Vui long thu lai sau.</div>';
+            renderProblemReferencePrice(null);
+        } finally {
+            queueViewportFit();
+        }
+    }
+
+    function scheduleProblemAssist() {
+        if (symptomSuggestTimer) {
+            window.clearTimeout(symptomSuggestTimer);
+            symptomSuggestTimer = null;
+        }
+
+        symptomSuggestTimer = window.setTimeout(() => {
+            refreshProblemAssist();
+        }, 220);
+    }
+
+    const queueViewportFit = () => {
+        if (!isStandalone || !refs.main) return;
+        if (compactViewportState.frame) window.cancelAnimationFrame(compactViewportState.frame);
+        compactViewportState.frame = window.requestAnimationFrame(() => {
+            compactViewportState.frame = 0;
+            root.classList.remove('is-fit-compact');
+            if (!state.isOpen || window.innerWidth < 1200) return;
+            if (refs.main.scrollHeight - refs.main.clientHeight > 8) root.classList.add('is-fit-compact');
+        });
+    };
 
     function renderProvinceOptions() {
         refs.tinh.innerHTML = '<option value="">Chọn tỉnh / thành phố</option>' + state.addressData.map((t) => `<option value="${t.name}" data-code="${t.code}">${t.name}</option>`).join('');
@@ -154,9 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const addressData = state.addressData;
         Object.assign(state, {
             addressData, currentStep: 1, workerId: prefill.workerId ? Number(prefill.workerId) : null, worker: null,
-            prefillServiceName: String(prefill.serviceName || ''), services: [], serviceIds: [], repairMode: null,
+            prefillServiceName: String(prefill.serviceName || ''), prefillServiceIds: normalizePrefillServiceIds(prefill.serviceIds), services: [], serviceIds: [], repairMode: null,
             tinh: '', huyen: '', xa: '', soNha: '', lat: '', lng: '', travelFee: 0, distanceKm: null, travelMessage: 'Sẽ tính sau khi bạn chọn vị trí.',
-            date: '', timeSlot: '', description: '', images: [], video: null, transportRequested: false, isOutOfRange: false, locationSource: '',
+            date: '', timeSlot: '', description: '', images: [], video: null, transportRequested: false, isOutOfRange: false, locationSource: '', busySlotsByDate: {},
         });
         refs.form.reset();
         refs.success.classList.add('d-none');
@@ -205,6 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const showTransport = atStore && heavyService();
         refs.transportWrap.classList.toggle('d-none', !showTransport);
         if (!showTransport) state.transportRequested = false;
+        queueViewportFit();
     }
 
     function updateSummary() {
@@ -290,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSummary();
             return;
         }
-        const refPoint = Number.isFinite(Number(state.worker?.vi_do)) && Number.isFinite(Number(state.worker?.kinh_do))
+        const refPoint = hasWorkerReferenceCoordinates()
             ? { lat: Number(state.worker.vi_do), lng: Number(state.worker.kinh_do), maxDistance: Number(state.worker?.ban_kinh_phuc_vu ?? 10), label: state.worker?.user?.name || 'thợ đã chọn' }
             : STORE_REFERENCE;
         const distanceKm = distKm(refPoint.lat, refPoint.lng, lat, lng);
@@ -416,6 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateHeader();
         refs.main?.scrollTo({ top: 0, behavior: skipAnimation ? 'auto' : 'smooth' });
+        queueViewportFit();
     }
 
     function clearDisabledTimeSlot() {
@@ -438,34 +752,99 @@ document.addEventListener('DOMContentLoaded', () => {
             syncHidden();
             updateSummary();
         }));
+        queueViewportFit();
+    }
+
+    async function fetchWorkerBusySlots() {
+        if (!state.workerId) {
+            state.busySlotsByDate = {};
+            return;
+        }
+
+        const dateFrom = localDate(new Date());
+        const dateToDate = new Date();
+        dateToDate.setHours(0, 0, 0, 0);
+        dateToDate.setDate(dateToDate.getDate() + BOOKING_WINDOW_DAYS - 1);
+        const dateTo = localDate(dateToDate);
+        const result = await callApi(`/ho-so-tho/${state.workerId}/busy-slots?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`, 'GET');
+
+        if (!result.ok) {
+            throw new Error(result.data?.message || 'Khong tai duoc lich ban cua tho.');
+        }
+
+        state.busySlotsByDate = Object.fromEntries(Object.entries(result.data?.busy_slots || {}).map(([date, slots]) => [
+            date,
+            Array.isArray(slots) ? slots.map((slot) => normalizeTimeSlotValue(slot)).filter(Boolean) : [],
+        ]));
+    }
+
+    function getSlotDisableReason(slot, index, targetIndex) {
+        const busySlots = Array.isArray(state.busySlotsByDate?.[state.date]) ? state.busySlotsByDate[state.date] : [];
+
+        if (busySlots.includes(slot)) {
+            return 'Tho da co lich vao thoi diem nay';
+        }
+
+        if (index < targetIndex) {
+            return 'Khung gio nay da qua';
+        }
+
+        return '';
     }
 
     function availableTimeSlots() {
-        const slots = TIME_SLOTS.map((slot) => ({ value: slot, disabled: false }));
+        const slots = TIME_SLOTS.map((slot) => ({ value: slot, disabled: false, reason: '' }));
         if (!state.date) return slots;
         const now = new Date();
-        if (state.date > localDate(now)) return slots;
         const mins = now.getHours() * 60 + now.getMinutes();
         let target = mins < 480 ? 0 : mins < 600 ? 1 : mins < 720 ? 2 : mins < 840 ? 3 : 4;
         if (state.repairMode === 'at_home') target += 1;
-        return slots.map((slot, index) => ({ ...slot, disabled: index < target }));
+
+        return slots.map((slot, index) => {
+            const reason = getSlotDisableReason(slot.value, index, state.date > localDate(now) ? 0 : target);
+            return {
+                ...slot,
+                disabled: reason !== '',
+                reason,
+            };
+        });
     }
 
     function renderTimeSlots() {
-        refs.timeSlots.innerHTML = availableTimeSlots().map((slot) => `<button type="button" class="booking-time-slot ${slot.value === state.timeSlot ? 'is-selected' : ''} ${slot.disabled ? 'is-disabled' : ''}" data-time-slot="${slot.value}" ${slot.disabled ? 'disabled' : ''}>${slot.value.replace('-', ' - ')}</button>`).join('');
+        refs.timeSlots.innerHTML = availableTimeSlots().map((slot) => `
+            <button
+                type="button"
+                class="booking-time-slot ${slot.value === state.timeSlot ? 'is-selected' : ''} ${slot.disabled ? 'is-disabled' : ''} ${slot.reason ? 'has-reason' : ''}"
+                data-time-slot="${slot.value}"
+                data-disabled="${slot.disabled ? '1' : '0'}"
+                data-disabled-reason="${slot.reason || ''}"
+                aria-disabled="${slot.disabled ? 'true' : 'false'}"
+                title="${slot.reason || ''}"
+            >
+                <span class="booking-time-slot-label">${slot.value.replace('-', ' - ')}</span>
+                ${slot.reason ? `<span class="booking-time-slot-hint">${slot.reason}</span>` : ''}
+            </button>
+        `).join('');
         refs.timeSlots.querySelectorAll('[data-time-slot]').forEach((button) => button.addEventListener('click', () => {
-            if (button.disabled) return;
+            if (button.dataset.disabled === '1') {
+                showToast(button.dataset.disabledReason || 'Khung gio nay khong con kha dung.', 'error');
+                return;
+            }
             state.timeSlot = button.dataset.timeSlot;
             renderTimeSlots();
             syncHidden();
             updateSummary();
         }));
+        queueViewportFit();
     }
 
     function renderServices() {
         refs.servicesEmpty.classList.toggle('d-none', state.services.length > 0);
         refs.servicesWrap.classList.toggle('d-none', state.services.length === 0);
-        if (!state.services.length) return;
+        if (!state.services.length) {
+            queueViewportFit();
+            return;
+        }
         refs.servicesWrap.innerHTML = state.services.map((service) => {
             const serviceId = Number(service.id);
             return `<button type="button" class="booking-service-card ${state.serviceIds.includes(serviceId) ? 'is-selected' : ''}" data-service-id="${serviceId}"><div class="booking-service-card-check">✓</div><div class="booking-service-card-media"><img src="${service.hinh_anh || '/assets/images/logontu.png'}" alt="${service.ten_dich_vu}" onerror="this.src='/assets/images/logontu.png'"></div><div class="booking-service-card-body"><div class="booking-service-card-title">${service.ten_dich_vu}</div><p class="booking-service-card-copy">${service.mo_ta || 'Dịch vụ sửa chữa chuyên sâu, kỹ thuật viên sẽ kiểm tra và xử lý theo tình trạng thực tế.'}</p></div></button>`;
@@ -474,13 +853,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const serviceId = Number(button.dataset.serviceId);
             state.serviceIds = state.serviceIds.includes(serviceId) ? state.serviceIds.filter((id) => id !== serviceId) : [...state.serviceIds, serviceId];
             state.transportRequested = false;
+            state.symptomCatalog = [];
+            state.symptomCatalogKey = '';
+            state.symptomCatalogPromise = null;
+            state.selectedSymptomId = null;
             refs.transportToggle.checked = false;
+            renderProblemReferencePrice(null);
             renderServices();
             syncHidden();
             updateAddressPanels();
             updateTravelEstimate();
             updateSummary();
+            scheduleProblemAssist();
         }));
+        queueViewportFit();
     }
 
     async function autoFillAdministrativeAddress(geoData) {
@@ -604,7 +990,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!result.ok) throw new Error(result.data?.message || 'Không tải được danh mục dịch vụ.');
                 state.services = Array.isArray(result.data) ? result.data : [];
             }
-            if (state.prefillServiceName) {
+            if (state.prefillServiceIds.length) {
+                state.serviceIds = state.services
+                    .map((service) => Number(service.id))
+                    .filter((serviceId) => state.prefillServiceIds.includes(serviceId));
+            }
+            if (!state.serviceIds.length && state.prefillServiceName) {
                 const target = norm(state.prefillServiceName);
                 const matched = state.services.find((service) => {
                     const name = norm(service.ten_dich_vu);
@@ -613,6 +1004,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (matched) state.serviceIds = [Number(matched.id)];
             }
             if (!state.serviceIds.length && state.services.length === 1) state.serviceIds = [Number(state.services[0].id)];
+            if (state.workerId) {
+                try {
+                    await fetchWorkerBusySlots();
+                } catch (busySlotsError) {
+                    state.busySlotsByDate = {};
+                    showToast(busySlotsError.message || 'Khong tai duoc lich ban cua tho.', 'error');
+                }
+                clearDisabledTimeSlot();
+                renderTimeSlots();
+            }
             renderServices();
             syncHidden();
             updateAddressPanels();
@@ -659,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.serviceIds.forEach((serviceId) => formData.append('dich_vu_ids[]', String(serviceId)));
         formData.set('loai_dat_lich', state.repairMode);
         formData.set('ngay_hen', state.date);
-        formData.set('khung_gio_hen', state.timeSlot);
+        formData.set('khung_gio_hen', normalizeTimeSlotValue(state.timeSlot));
         formData.set('mo_ta_van_de', state.description || '');
         formData.set('thue_xe_cho', state.transportRequested ? '1' : '0');
         if (state.repairMode === 'at_home') formData.set('dia_chi', `${state.soNha}, ${refs.hiddenDiaChi.value}`);
@@ -673,6 +1074,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await callApi('/don-dat-lich', 'POST', formData);
             if (!result.ok) {
                 const errorData = result.data;
+                if ((result.status === 409 || result.status === 422) && state.workerId) {
+                    try {
+                        await fetchWorkerBusySlots();
+                        clearDisabledTimeSlot();
+                        renderTimeSlots();
+                        updateSummary();
+                    } catch (busySlotsError) {
+                        state.busySlotsByDate = {};
+                    }
+                }
                 showToast(errorData?.errors ? Object.values(errorData.errors).flat().join('\n') : (errorData?.message || 'Có lỗi xảy ra khi đặt lịch.'), 'error');
                 return;
             }
@@ -689,7 +1100,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function openModal(options = {}) {
         if (!ensureAuth()) return;
-        resetState({ workerId: options.workerId ?? (isStandalone ? standalonePrefill.workerId : ''), serviceName: options.serviceName ?? (isStandalone ? standalonePrefill.serviceName : '') });
+        resetState({
+            workerId: options.workerId ?? (isStandalone ? standalonePrefill.workerId : ''),
+            serviceName: options.serviceName ?? (isStandalone ? standalonePrefill.serviceName : ''),
+            serviceIds: options.serviceIds ?? (isStandalone ? standalonePrefill.serviceIds : []),
+        });
         renderDateCards();
         renderTimeSlots();
         updateAddressPanels();
@@ -702,8 +1117,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = 'hidden';
         document.body.classList.add('booking-wizard-open');
         state.isOpen = true;
+        queueViewportFit();
         await loadAddressData();
         await loadWorkerAndServices();
+        queueViewportFit();
     }
 
     function closeModal() {
@@ -714,6 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         refs.success.classList.add('d-none');
         root.classList.remove('is-open');
+        root.classList.remove('is-fit-compact');
         root.setAttribute('aria-hidden', 'true');
         state.isOpen = false;
         window.setTimeout(() => {
@@ -800,7 +1218,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     refs.xa.addEventListener('change', () => { state.xa = refs.xa.value; syncHidden(); updateSummary(); queueAddressRecalculation(); });
     refs.soNha.addEventListener('input', () => { state.soNha = refs.soNha.value; syncHidden(); updateSummary(); queueAddressRecalculation(); });
-    refs.description.addEventListener('input', () => { state.description = refs.description.value; });
+    refs.description.addEventListener('input', () => {
+        state.description = refs.description.value;
+        const selected = getSelectedSymptomSuggestion();
+        const queryText = getSymptomQueryText(state.description);
+        const isExactSelected = selected && getSymptomQueryText(selected.ten_trieu_chung) === queryText;
+
+        if (!isExactSelected) {
+            state.selectedSymptomId = null;
+            renderProblemReferencePrice(null);
+        }
+
+        scheduleProblemAssist();
+    });
     refs.getLocation.addEventListener('click', () => {
         if (!navigator.geolocation) {
             showToast('Trình duyệt không hỗ trợ định vị.', 'error');
@@ -853,6 +1283,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.preview.innerHTML = state.images.map((file, index) => `<div class="booking-preview-tile"><img src="${URL.createObjectURL(file)}" alt="Ảnh mô tả ${index + 1}"><button type="button" class="booking-preview-remove" data-remove-image="${index}">×</button></div>`).join('') + (state.video ? '<div class="booking-preview-tile"><div class="booking-preview-video">VIDEO</div><button type="button" class="booking-preview-remove" data-remove-video="1">×</button></div>' : '');
         refs.preview.querySelectorAll('[data-remove-image]').forEach((button) => button.addEventListener('click', () => { state.images.splice(Number(button.dataset.removeImage), 1); syncFiles(); }));
         refs.preview.querySelectorAll('[data-remove-video]').forEach((button) => button.addEventListener('click', () => { state.video = null; syncFiles(); }));
+        queueViewportFit();
     };
     refs.uploadZone.addEventListener('click', () => refs.mediaPicker.click());
     refs.mediaPicker.addEventListener('change', async () => {
@@ -896,6 +1327,7 @@ document.addEventListener('DOMContentLoaded', () => {
             workerId: prefill.workerId ? Number(prefill.workerId) : null,
             worker: null,
             prefillServiceName: String(prefill.serviceName || ''),
+            prefillServiceIds: normalizePrefillServiceIds(prefill.serviceIds),
             services: [],
             serviceIds: [],
             repairMode: null,
@@ -917,6 +1349,11 @@ document.addEventListener('DOMContentLoaded', () => {
             isOutOfRange: false,
             isOpen: false,
             locationSource: '',
+            symptomCatalog: [],
+            symptomCatalogKey: '',
+            symptomCatalogPromise: null,
+            selectedSymptomId: null,
+            busySlotsByDate: {},
         });
         refs.form.reset();
         refs.success.classList.add('d-none');
@@ -924,6 +1361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.sumWorkerCard.classList.add('d-none');
         refs.locationStatus.textContent = 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.';
         refs.preview.innerHTML = '';
+        resetProblemAssistState();
         if (addressLookupTimer) {
             window.clearTimeout(addressLookupTimer);
             addressLookupTimer = null;
@@ -958,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const workerMaxDistance = Number(state.worker?.ban_kinh_phuc_vu ?? 8);
-        const refPoint = Number.isFinite(Number(state.worker?.vi_do)) && Number.isFinite(Number(state.worker?.kinh_do))
+        const refPoint = hasWorkerReferenceCoordinates()
             ? {
                 lat: Number(state.worker.vi_do),
                 lng: Number(state.worker.kinh_do),
@@ -1389,6 +1827,7 @@ document.addEventListener('DOMContentLoaded', () => {
             workerId: prefill.workerId ? Number(prefill.workerId) : null,
             worker: null,
             prefillServiceName: String(prefill.serviceName || ''),
+            prefillServiceIds: normalizePrefillServiceIds(prefill.serviceIds),
             services: [],
             serviceIds: [],
             repairMode: null,
@@ -1410,6 +1849,11 @@ document.addEventListener('DOMContentLoaded', () => {
             isOutOfRange: false,
             isOpen: false,
             locationSource: '',
+            symptomCatalog: [],
+            symptomCatalogKey: '',
+            symptomCatalogPromise: null,
+            selectedSymptomId: null,
+            busySlotsByDate: {},
         });
         refs.form.reset();
         refs.success.classList.add('d-none');
@@ -1417,6 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.sumWorkerCard.classList.add('d-none');
         refs.locationStatus.textContent = 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.';
         refs.preview.innerHTML = '';
+        resetProblemAssistState();
         if (addressLookupTimer) {
             window.clearTimeout(addressLookupTimer);
             addressLookupTimer = null;
@@ -1645,5 +2090,6 @@ document.addEventListener('DOMContentLoaded', () => {
     syncHidden();
     updateSummary();
     loadTravelFeeConfig();
+    window.addEventListener('resize', queueViewportFit);
     if (isStandalone) openModal();
 });

@@ -15,7 +15,7 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'don_dat_lich_id' => 'required|exists:don_dat_lich,id',
-            'phuong_thuc' => 'required|in:test',
+            'phuong_thuc' => 'required|in:test,vnpay,momo,zalopay',
         ]);
 
         $booking = DonDatLich::findOrFail($validated['don_dat_lich_id']);
@@ -57,7 +57,12 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        return $this->createTestPayment($booking, $totalAmount);
+        return match ($validated['phuong_thuc']) {
+            'vnpay' => $this->createVnpayPayment($request, $booking, $totalAmount),
+            'momo' => $this->createMomoPayment($request, $booking, $totalAmount),
+            'zalopay' => $this->createZalopayPayment($request, $booking, $totalAmount),
+            default => $this->createTestPayment($booking, $totalAmount),
+        };
     }
 
     public function vnpayReturn(Request $request)

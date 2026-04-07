@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Services\Media\CloudinaryUploadService;
+use Cloudinary\Api\ApiResponse;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Http\UploadedFile;
+use Mockery;
 use Tests\TestCase;
 
 class WorkerPricingFlowTest extends TestCase
@@ -39,9 +43,7 @@ class WorkerPricingFlowTest extends TestCase
         ]);
 
         $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->postJson("/api/bookings/{$bookingId}/request-payment", [
-                'phuong_thuc_thanh_toan' => 'cod',
-            ]);
+            ->postJson("/api/bookings/{$bookingId}/request-payment");
 
         $response->assertStatus(422)
             ->assertJsonPath('message', 'Vui lòng cập nhật giá trước khi báo hoàn thành.');
@@ -73,9 +75,7 @@ class WorkerPricingFlowTest extends TestCase
         ]);
 
         $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->postJson("/api/bookings/{$bookingId}/request-payment", [
-                'phuong_thuc_thanh_toan' => 'cod',
-            ]);
+            ->postJson("/api/bookings/{$bookingId}/request-payment");
 
         $response->assertOk()
             ->assertJsonPath('success', true)
@@ -85,6 +85,93 @@ class WorkerPricingFlowTest extends TestCase
             'id' => $bookingId,
             'trang_thai' => 'cho_hoan_thanh',
             'gia_da_cap_nhat' => 1,
+        ]);
+    }
+
+    public function test_worker_can_request_payment_with_completion_image_upload(): void
+    {
+        Notification::fake();
+
+        [$worker, $customer, $token] = $this->createWorkerContext();
+        $bookingId = DB::table('don_dat_lich')->insertGetId([
+            'khach_hang_id' => $customer->id,
+            'tho_id' => $worker->id,
+            'trang_thai' => 'dang_lam',
+            'gia_da_cap_nhat' => true,
+            'phi_di_lai' => 8000,
+            'phi_linh_kien' => 50000,
+            'tien_cong' => 120000,
+            'tien_thue_xe' => 0,
+            'tong_tien' => 178000,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $uploadService = Mockery::mock(CloudinaryUploadService::class);
+        $uploadService->shouldReceive('uploadUploadedFile')
+            ->once()
+            ->with(
+                Mockery::type(UploadedFile::class),
+                Mockery::on(static fn (array $options): bool => ($options['folder'] ?? null) === 'bookings/results/images')
+            )
+            ->andReturn(new ApiResponse([
+                'secure_url' => 'https://example.com/bookings/results/images/completed.jpg',
+            ], []));
+
+        $this->app->instance(CloudinaryUploadService::class, $uploadService);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->post("/api/bookings/{$bookingId}/request-payment", [
+                'hinh_anh_ket_qua' => [UploadedFile::fake()->image('completed.jpg')],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('booking.trang_thai', 'cho_hoan_thanh')
+            ->assertJsonPath('booking.hinh_anh_ket_qua.0', 'https://example.com/bookings/results/images/completed.jpg');
+
+        $storedImages = DB::table('don_dat_lich')
+            ->where('id', $bookingId)
+            ->value('hinh_anh_ket_qua');
+
+        $this->assertSame(
+            ['https://example.com/bookings/results/images/completed.jpg'],
+            json_decode((string) $storedImages, true, 512, JSON_THROW_ON_ERROR)
+        );
+    }
+
+    public function test_worker_request_payment_respects_customer_selected_transfer_method(): void
+    {
+        Notification::fake();
+
+        [$worker, $customer, $token] = $this->createWorkerContext();
+        $bookingId = DB::table('don_dat_lich')->insertGetId([
+            'khach_hang_id' => $customer->id,
+            'tho_id' => $worker->id,
+            'trang_thai' => 'dang_lam',
+            'gia_da_cap_nhat' => true,
+            'phuong_thuc_thanh_toan' => 'transfer',
+            'phi_di_lai' => 8000,
+            'phi_linh_kien' => 50000,
+            'tien_cong' => 120000,
+            'tien_thue_xe' => 0,
+            'tong_tien' => 178000,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson("/api/bookings/{$bookingId}/request-payment");
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('booking.trang_thai', 'cho_thanh_toan')
+            ->assertJsonPath('booking.phuong_thuc_thanh_toan', 'transfer');
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'trang_thai' => 'cho_thanh_toan',
+            'phuong_thuc_thanh_toan' => 'transfer',
         ]);
     }
 
@@ -210,6 +297,97 @@ class WorkerPricingFlowTest extends TestCase
             'tien_cong' => 120000.00,
             'phi_linh_kien' => 460000.00,
             'tong_tien' => 590000.00,
+            'gia_da_cap_nhat' => 1,
+        ]);
+    }
+
+    public function test_worker_can_update_costs_by_selecting_catalog_labor(): void
+    {
+        Notification::fake();
+
+        [$worker, $customer, $token] = $this->createWorkerContext();
+        $serviceId = DB::table('danh_muc_dich_vu')->insertGetId([
+            'ten_dich_vu' => 'Sua may giat',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $symptomId = DB::table('trieu_chung')->insertGetId([
+            'dich_vu_id' => $serviceId,
+            'ten_trieu_chung' => 'May rung lac manh khi vat',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $causeId = DB::table('nguyen_nhan')->insertGetId([
+            'ten_nguyen_nhan' => 'Hong bo giam xoc',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('trieu_chung_nguyen_nhan')->insert([
+            'trieu_chung_id' => $symptomId,
+            'nguyen_nhan_id' => $causeId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $resolutionId = DB::table('huong_xu_ly')->insertGetId([
+            'nguyen_nhan_id' => $causeId,
+            'ten_huong_xu_ly' => 'Thay phuoc nhun may giat',
+            'gia_tham_khao' => 450000,
+            'mo_ta_cong_viec' => 'Thao gam may va thay cap phuoc nhun moi.',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $bookingId = DB::table('don_dat_lich')->insertGetId([
+            'khach_hang_id' => $customer->id,
+            'tho_id' => $worker->id,
+            'trang_thai' => 'dang_lam',
+            'gia_da_cap_nhat' => false,
+            'phi_di_lai' => 10000,
+            'phi_linh_kien' => 0,
+            'tien_cong' => 0,
+            'tien_thue_xe' => 0,
+            'tong_tien' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('don_dat_lich_dich_vu')->insert([
+            'don_dat_lich_id' => $bookingId,
+            'dich_vu_id' => $serviceId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson("/api/don-dat-lich/{$bookingId}/update-costs", [
+                'chi_tiet_tien_cong' => [
+                    [
+                        'huong_xu_ly_id' => $resolutionId,
+                        'noi_dung' => 'Gia bi sua tay',
+                        'so_tien' => 1,
+                    ],
+                ],
+                'chi_tiet_linh_kien' => [],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.chi_tiet_tien_cong.0.huong_xu_ly_id', $resolutionId)
+            ->assertJsonPath('data.chi_tiet_tien_cong.0.nguyen_nhan_id', $causeId)
+            ->assertJsonPath('data.chi_tiet_tien_cong.0.noi_dung', 'Thay phuoc nhun may giat')
+            ->assertJsonPath('data.chi_tiet_tien_cong.0.so_tien', 450000)
+            ->assertJsonPath('data.chi_tiet_tien_cong.0.mo_ta_cong_viec', 'Thao gam may va thay cap phuoc nhun moi.')
+            ->assertJsonPath('data.tien_cong', 450000)
+            ->assertJsonPath('data.tong_tien', 460000);
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'tien_cong' => 450000.00,
+            'phi_linh_kien' => 0.00,
+            'tong_tien' => 460000.00,
             'gia_da_cap_nhat' => 1,
         ]);
     }
@@ -344,6 +522,43 @@ class WorkerPricingFlowTest extends TestCase
             });
         }
 
+        if (!Schema::hasTable('trieu_chung')) {
+            Schema::create('trieu_chung', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('dich_vu_id');
+                $table->string('ten_trieu_chung');
+                $table->timestamps();
+            });
+        }
+
+        if (!Schema::hasTable('nguyen_nhan')) {
+            Schema::create('nguyen_nhan', function (Blueprint $table) {
+                $table->id();
+                $table->string('ten_nguyen_nhan');
+                $table->timestamps();
+            });
+        }
+
+        if (!Schema::hasTable('trieu_chung_nguyen_nhan')) {
+            Schema::create('trieu_chung_nguyen_nhan', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('trieu_chung_id');
+                $table->unsignedBigInteger('nguyen_nhan_id');
+                $table->timestamps();
+            });
+        }
+
+        if (!Schema::hasTable('huong_xu_ly')) {
+            Schema::create('huong_xu_ly', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('nguyen_nhan_id');
+                $table->string('ten_huong_xu_ly');
+                $table->decimal('gia_tham_khao', 12, 2)->nullable();
+                $table->text('mo_ta_cong_viec')->nullable();
+                $table->timestamps();
+            });
+        }
+
         if (!Schema::hasTable('don_dat_lich_dich_vu')) {
             Schema::create('don_dat_lich_dich_vu', function (Blueprint $table) {
                 $table->id();
@@ -403,7 +618,7 @@ class WorkerPricingFlowTest extends TestCase
 
     private function truncateTables(): void
     {
-        foreach (['thanh_toan', 'danh_gia', 'don_dat_lich_dich_vu', 'linh_kien', 'danh_muc_dich_vu', 'personal_access_tokens', 'don_dat_lich', 'users'] as $table) {
+        foreach (['thanh_toan', 'danh_gia', 'don_dat_lich_dich_vu', 'huong_xu_ly', 'trieu_chung_nguyen_nhan', 'nguyen_nhan', 'trieu_chung', 'linh_kien', 'danh_muc_dich_vu', 'personal_access_tokens', 'don_dat_lich', 'users'] as $table) {
             if (Schema::hasTable($table)) {
                 DB::table($table)->delete();
             }

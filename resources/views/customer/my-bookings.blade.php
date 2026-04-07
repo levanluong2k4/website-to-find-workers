@@ -1607,6 +1607,8 @@
         </div>
     </div>
 </div>
+
+@include('customer.partials.booking-wizard-modal')
 @endsection
 
 @push('scripts')

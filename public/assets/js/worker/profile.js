@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         inputEmail: document.getElementById('inputEmail'),
         inputAddress: document.getElementById('inputAddress'),
         inputTrangThai: document.getElementById('inputTrangThai'),
+        workerAvailabilityCard: document.getElementById('workerAvailabilityCard'),
+        workerAvailabilityLabel: document.getElementById('workerAvailabilityLabel'),
         inputKinhNghiem: document.getElementById('inputKinhNghiem'),
         inputChungChi: document.getElementById('inputChungChi'),
         btnUpdateProfile: document.getElementById('btnUpdateProfile'),
@@ -43,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     prepareServiceManagerUi(el);
 
     bindAvatarUpload(el);
+    bindAvailabilityField(el);
     bindFormSubmit(el);
 
     populateUserFields(el, state.user);
@@ -180,9 +183,8 @@ function bindServiceModalEvents(el) {
     el.serviceModalTrigger?.addEventListener('click', () => openServiceModal(el));
     el.serviceModalClose?.addEventListener('click', () => closeServiceModal(el, { restore: true }));
     el.serviceModalCancel?.addEventListener('click', () => closeServiceModal(el, { restore: true }));
-    el.serviceModalApply?.addEventListener('click', () => {
-        closeServiceModal(el, { restore: false });
-        showToast('Da cap nhat danh sach tam thoi. Bam "Luu thay doi" de luu len ho so.');
+    el.serviceModalApply?.addEventListener('click', async () => {
+        await saveWorkerServices(el);
     });
     el.serviceManagerModal?.addEventListener('click', (event) => {
         if (event.target === el.serviceManagerModal) {
@@ -334,6 +336,82 @@ function renderServices(el, selectedIds = []) {
     renderSelectedServices(el);
 }
 
+function syncAvailabilityUi(el) {
+    if (!el.inputTrangThai || !el.workerAvailabilityCard || !el.workerAvailabilityLabel) {
+        return;
+    }
+
+    const isActive = el.inputTrangThai.value === '1';
+    el.workerAvailabilityCard.classList.toggle('worker-availability--active', isActive);
+    el.workerAvailabilityCard.classList.toggle('worker-availability--inactive', !isActive);
+    el.workerAvailabilityLabel.textContent = isActive ? 'Sẵn sàng nhận việc' : 'Tạm nghỉ nhận việc';
+}
+
+function bindAvailabilityField(el) {
+    el.inputTrangThai?.addEventListener('change', () => {
+        syncAvailabilityUi(el);
+    });
+}
+
+function getProfileServiceIds(profile = state.profile) {
+    const rawServices = profile?.user?.dich_vus ?? profile?.user?.dichVus ?? [];
+
+    if (!Array.isArray(rawServices)) {
+        return [];
+    }
+
+    return rawServices
+        .map((service) => Number(service?.id))
+        .filter((serviceId) => Number.isInteger(serviceId) && serviceId > 0);
+}
+
+function setServiceModalLoading(el, isLoading) {
+    if (!el.serviceModalApply) return;
+
+    if (isLoading) {
+        el.serviceModalApply.disabled = true;
+        el.serviceModalApply.dataset.originalText = el.serviceModalApply.textContent || 'Cap nhat danh sach';
+        el.serviceModalApply.textContent = 'Dang luu...';
+        return;
+    }
+
+    el.serviceModalApply.disabled = false;
+    el.serviceModalApply.textContent = el.serviceModalApply.dataset.originalText || 'Cap nhat danh sach';
+    delete el.serviceModalApply.dataset.originalText;
+}
+
+async function saveWorkerServices(el) {
+    const selectedServiceIds = getSelectedServiceIdsFromDom();
+
+    if (selectedServiceIds.length === 0) {
+        showToast('Vui long chon it nhat mot dich vu ban nhan lam.', 'error');
+        return;
+    }
+
+    setServiceModalLoading(el, true);
+
+    try {
+        const workerResponse = await callApi('/ho-so-tho', 'PUT', {
+            dich_vu_ids: selectedServiceIds,
+        });
+
+        if (!workerResponse.ok) {
+            throw new Error(workerResponse.data?.message || 'Khong cap nhat duoc danh sach dich vu.');
+        }
+
+        state.profile = workerResponse.data?.data || state.profile;
+        state.selectedServiceIds = selectedServiceIds;
+        state.pendingServiceIds = [...selectedServiceIds];
+        renderSelectedServices(el);
+        closeServiceModal(el, { restore: false });
+        showToast('Da luu danh sach dich vu vao ho so.');
+    } catch (error) {
+        showToast(error.message || 'Khong luu duoc danh sach dich vu.', 'error');
+    } finally {
+        setServiceModalLoading(el, false);
+    }
+}
+
 async function loadServices(el, selectedIds = []) {
     try {
         const response = await callApi('/danh-muc-dich-vu', 'GET');
@@ -356,11 +434,10 @@ async function loadProfile(el) {
 
         state.profile = profileResponse.data;
         const workerProfile = profileResponse.data;
-        const selectedIds = Array.isArray(workerProfile?.user?.dich_vus)
-            ? workerProfile.user.dich_vus.map((service) => Number(service.id)).filter(Boolean)
-            : [];
+        const selectedIds = getProfileServiceIds(workerProfile);
 
         if (el.inputTrangThai) el.inputTrangThai.value = workerProfile.dang_hoat_dong ? '1' : '0';
+        syncAvailabilityUi(el);
         if (el.inputKinhNghiem) el.inputKinhNghiem.value = workerProfile.kinh_nghiem || '';
         if (el.inputChungChi) el.inputChungChi.value = workerProfile.chung_chi || '';
         if (el.statRating) el.statRating.textContent = Number(workerProfile.danh_gia_trung_binh || 0).toFixed(1);
@@ -401,9 +478,9 @@ function renderReviews(el, reviews = []) {
     }
 
     el.reviewsList.innerHTML = reviews.slice(0, 3).map((review) => {
-        const reviewerName = review?.nguoi_danh_gia?.name || 'Khach hang';
+        const reviewerName = review?.khach_hang?.name || review?.nguoi_danh_gia?.name || 'Khach hang';
         const comment = review?.nhan_xet || 'Khong co nhan xet chi tiet.';
-        const stars = '★'.repeat(Number(review?.so_sao || 0)) + '☆'.repeat(Math.max(0, 5 - Number(review?.so_sao || 0)));
+        const stars = '★'.repeat(Number(review?.so_sao || review?.rating || 0)) + '☆'.repeat(Math.max(0, 5 - Number(review?.so_sao || review?.rating || 0)));
 
         return `
             <div class="review-card">
@@ -550,9 +627,15 @@ function bindFormSubmit(el) {
                 throw new Error(workerResponse.data?.message || 'Khong cap nhat duoc ho so tho.');
             }
 
+            state.profile = workerResponse.data?.data || state.profile;
             updateLocalUser(userResponse.data?.user || {});
-            populateUserFields(el, state.user, workerResponse.data?.data || state.profile);
+            populateUserFields(el, state.user, state.profile);
+            if (el.inputTrangThai) {
+                el.inputTrangThai.value = state.profile?.dang_hoat_dong ? '1' : '0';
+            }
+            syncAvailabilityUi(el);
             state.selectedServiceIds = selectedServiceIds;
+            state.pendingServiceIds = [...selectedServiceIds];
             renderSelectedServices(el);
             showToast('Da cap nhat ho so thanh cong.');
         } catch (error) {

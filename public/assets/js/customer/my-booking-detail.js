@@ -20,12 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const reviewModalInstance = reviewModalEl ? new bootstrap.Modal(reviewModalEl) : null;
     const bookingId = Number(window.customerBookingDetailId || pageRoot?.dataset.bookingId || 0);
     const storeAddress = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
+    const isLocalPaymentSandbox = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
     const cancelReasonOptions = {
         doi_y_khong_muon_dat: 'Đổi ý không muốn đặt',
-        thay_doi_thoi_gian_dat: 'Thay đổi thời gian đặt',
         khong_co_tho_nao_nhan: 'Không có thợ nào nhận',
         cho_qua_lau: 'Chờ quá lâu',
     };
+    const defaultRescheduleSlots = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'];
     let currentBooking = null;
 
     const escapeHtml = (value = '') => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -60,6 +61,40 @@ document.addEventListener('DOMContentLoaded', () => {
         : 'Chưa hoàn thành';
     const formatMoney = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`;
     const formatOrderCode = (id) => `#ORD-${String(id || 0).padStart(4, '0')}`;
+    const getBookingRebookPayload = (booking) => {
+        const services = Array.isArray(booking?.dich_vus) ? booking.dich_vus : [];
+        const serviceIds = services
+            .map((service) => Number(service?.id || 0))
+            .filter((serviceId) => Number.isInteger(serviceId) && serviceId > 0);
+        const firstServiceName = services[0]?.ten_dich_vu || '';
+        const workerId = Number(booking?.tho?.id || booking?.tho_id || 0);
+
+        return {
+            workerId: workerId > 0 ? workerId : null,
+            serviceIds,
+            serviceName: firstServiceName,
+        };
+    };
+    const openRebookBooking = (booking) => {
+        const payload = getBookingRebookPayload(booking);
+
+        if (window.BookingWizardModal?.open) {
+            window.BookingWizardModal.open(payload);
+            return;
+        }
+
+        const targetUrl = new URL('/customer/booking', window.location.origin);
+        if (payload.workerId) {
+            targetUrl.searchParams.set('worker_id', String(payload.workerId));
+        }
+        if (payload.serviceIds.length) {
+            targetUrl.searchParams.set('service_ids', payload.serviceIds.join(','));
+        } else if (payload.serviceName) {
+            targetUrl.searchParams.set('service_name', payload.serviceName);
+        }
+
+        window.location.href = targetUrl.toString();
+    };
     const maskPhone = (phone) => {
         const raw = String(phone || '').trim();
         const digits = raw.replace(/\D/g, '');
@@ -72,6 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const getLatestPayment = (booking) => getSortedItemsByCreatedAt(booking?.thanh_toans)[0] || null;
     const getBookingPaymentMethod = (booking) => booking?.phuong_thuc_thanh_toan === 'transfer' ? 'transfer' : 'cod';
     const isCashPaymentBooking = (booking) => getBookingPaymentMethod(booking) === 'cod';
+    const buildOnlineGatewayOptions = () => ({
+        momo: 'Ví MoMo',
+        zalopay: 'Ví ZaloPay',
+        vnpay: 'VNPAY / Thẻ ngân hàng',
+        ...(isLocalPaymentSandbox ? { test: 'Thanh toán test nội bộ' } : {}),
+    });
     const normalizeLookupKey = (value = '') => String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9()]+/g, ' ').replace(/\s+/g, ' ').trim();
     const beautifyServiceName = (value = '') => ({
         'sua dieu hoa (may lanh)': 'Sửa điều hòa (Máy lạnh)',
@@ -119,8 +160,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const items = getStoredCostItems(booking, 'chi_tiet_linh_kien');
         if (items.length) return items;
         return Number(booking?.phi_linh_kien || 0) > 0 || String(booking?.ghi_chu_linh_kien || '').trim() !== ''
-            ? [{ noi_dung: getLegacyFirstLine(booking?.ghi_chu_linh_kien), so_tien: Number(booking?.phi_linh_kien || 0), bao_hanh_thang: null, bao_hanh_da_su_dung: false }]
+            ? [{ noi_dung: getLegacyFirstLine(booking?.ghi_chu_linh_kien), don_gia: Number(booking?.phi_linh_kien || 0), so_luong: 1, so_tien: Number(booking?.phi_linh_kien || 0), bao_hanh_thang: null, bao_hanh_da_su_dung: false }]
             : [];
+    };
+    const getPartQuantity = (item) => {
+        const quantity = Math.trunc(Number(item?.so_luong || 1));
+        return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+    };
+    const getPartUnitPrice = (item) => {
+        const explicitUnitPrice = Number(item?.don_gia || 0);
+        if (Number.isFinite(explicitUnitPrice) && explicitUnitPrice > 0) return explicitUnitPrice;
+
+        const quantity = getPartQuantity(item);
+        const total = Number(item?.so_tien || 0);
+        return quantity > 0 ? total / quantity : total;
+    };
+    const getPartMetaText = (item, warrantyLabel = '') => {
+        const quantity = getPartQuantity(item);
+        const unitPrice = getPartUnitPrice(item);
+        return [`SL ${quantity}`, unitPrice > 0 ? `${formatMoney(unitPrice)}/cái` : '', warrantyLabel].filter(Boolean).join(' • ');
     };
     const formatWarrantyText = (months) => {
         const value = Number(months);
@@ -157,6 +215,56 @@ document.addEventListener('DOMContentLoaded', () => {
         const months = Math.floor(remainingDays / 30);
         const days = remainingDays % 30;
         return days === 0 ? `còn ${months} tháng` : `còn ${months} tháng ${days} ngày`;
+    };
+    const formatSlotLabel = (slot = '') => String(slot || '').replace('-', ' - ');
+    const getReschedulePolicy = (booking) => booking?.reschedule_policy || {};
+    const getRescheduleSlots = (booking) => {
+        const policySlots = getReschedulePolicy(booking)?.time_slots;
+        return Array.isArray(policySlots) && policySlots.length ? policySlots : defaultRescheduleSlots;
+    };
+    const compareIsoDateStrings = (left = '', right = '') => String(left || '').localeCompare(String(right || ''));
+    const canRescheduleBooking = (booking) => Boolean(getReschedulePolicy(booking)?.can_reschedule);
+    const getRescheduleStatusText = (booking) => {
+        const policy = getReschedulePolicy(booking);
+        if (!policy || typeof policy !== 'object') return '';
+        const windowDays = Number(policy.window_days || 7);
+        if (!policy.status_allows_reschedule) return 'Chỉ được đổi lịch sau khi thợ đã xác nhận đơn.';
+        if (Number(policy.remaining_changes || 0) <= 0) {
+            return `Bạn đã dùng hết ${Number(policy.max_changes || 1)}/${Number(policy.max_changes || 1)} lần đổi lịch cho đơn này.`;
+        }
+
+        let rangeText = ` Lịch mới chỉ được đặt trong ${windowDays} ngày tới.`;
+        if (policy.minimum_allowed_label && policy.maximum_allowed_label) {
+            rangeText = ` Lịch mới phải từ ${policy.minimum_allowed_label} đến hết ngày ${policy.maximum_allowed_label}.`;
+        } else if (policy.minimum_allowed_label) {
+            rangeText = ` Lịch mới phải từ ${policy.minimum_allowed_label} trở đi.`;
+        } else if (policy.maximum_allowed_label) {
+            rangeText = ` Lịch mới chỉ được đổi đến hết ngày ${policy.maximum_allowed_label}.`;
+        }
+
+        return `Bạn còn ${Number(policy.remaining_changes || 0)}/${Number(policy.max_changes || 1)} lần đổi lịch.${rangeText}`;
+    };
+    const buildRescheduleNote = (booking) => {
+        const message = getRescheduleStatusText(booking);
+        return message
+            ? `<div class="detail-summary-note detail-summary-note--info"><strong>Đổi lịch hẹn</strong>${escapeHtml(message)}</div>`
+            : '';
+    };
+    const getRescheduleSlotOptions = (booking, selectedDate) => {
+        const policy = getReschedulePolicy(booking);
+        const minDate = String(policy.minimum_allowed_date || '');
+        const maxDate = String(policy.maximum_allowed_date || '');
+        const minSlot = String(policy.minimum_allowed_slot || '');
+        const slots = getRescheduleSlots(booking);
+        const minSlotIndex = slots.indexOf(minSlot);
+
+        return slots.map((slot, index) => ({
+            value: slot,
+            disabled: !selectedDate
+                || (minDate !== '' && compareIsoDateStrings(selectedDate, minDate) < 0)
+                || (maxDate !== '' && compareIsoDateStrings(selectedDate, maxDate) > 0)
+                || (selectedDate === minDate && minSlotIndex >= 0 && index < minSlotIndex),
+        }));
     };
     const hasUsedWarranty = (item) => item?.bao_hanh_da_su_dung === true || item?.da_dung_bao_hanh === true || item?.used_warranty === true;
     const getWarrantyStatusMeta = (booking, item) => {
@@ -230,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="detail-cost-item-card__top">
                     <div class="detail-cost-item-card__copy">
                         <strong>${escapeHtml(item?.noi_dung || (type === 'part' ? 'Linh kiện' : 'Tiền công'))}</strong>
-                        <small>${escapeHtml(type === 'part' ? formatWarrantyText(item?.bao_hanh_thang) : 'Tiền công sửa chữa')}</small>
+                        <small>${escapeHtml(type === 'part' ? getPartMetaText(item, formatWarrantyText(item?.bao_hanh_thang)) : 'Tiền công sửa chữa')}</small>
                     </div>
                     <span>${escapeHtml(formatMoney(item?.so_tien || 0))}</span>
                 </div>
@@ -250,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="detail-cost-item-card__top">
                     <div class="detail-cost-item-card__copy">
                         <strong>${escapeHtml(item?.noi_dung || (type === 'part' ? 'Linh kiện' : 'Tiền công'))}</strong>
-                        <small>${escapeHtml(type === 'part' ? warrantyMeta?.warrantyLabel : 'Tiền công sửa chữa')}</small>
+                        <small>${escapeHtml(type === 'part' ? getPartMetaText(item, warrantyMeta?.warrantyLabel) : 'Tiền công sửa chữa')}</small>
                         ${type === 'part' && warrantyMeta ? `<div class="detail-warranty-meta"><span class="detail-warranty-pill ${warrantyMeta.tone}">${escapeHtml(warrantyMeta.label)}</span><p>${escapeHtml(warrantyMeta.detail)}</p></div>` : ''}
                     </div>
                     <span>${escapeHtml(formatMoney(item?.so_tien || 0))}</span>
@@ -267,13 +375,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const distance = Number(booking?.khoang_cach || 0);
         return distance > 0 ? `${distance.toFixed(1)} km từ điểm hỗ trợ` : 'Chưa cập nhật khoảng cách';
     };
-    const formatPaymentMethod = (value) => ({ cod: 'Tiền mặt', cash: 'Tiền mặt', transfer: 'Chuyển khoản test', test: 'Thanh toán test', vnpay: 'Ví VNPAY / Thẻ', momo: 'Ví MOMO', zalopay: 'Ví ZaloPay' }[value] || 'Phương thức thanh toán');
+    const formatPaymentMethod = (value) => ({ cod: 'Tiền mặt', cash: 'Tiền mặt', transfer: 'Chuyển khoản online', test: 'Thanh toán test nội bộ', vnpay: 'Ví VNPAY / Thẻ', momo: 'Ví MoMo', zalopay: 'Ví ZaloPay' }[value] || 'Phương thức thanh toán');
     const getStatusMeta = (status) => ({
         cho_xac_nhan: { label: 'Đang chờ tiếp nhận', summary: 'Hệ thống đang tìm kỹ thuật viên phù hợp cho yêu cầu của bạn.' },
         da_xac_nhan: { label: 'Đã nhận đơn', summary: 'Kỹ thuật viên đã xác nhận đơn và sẽ đến theo lịch hẹn.' },
         dang_lam: { label: 'Đang xử lý', summary: 'Thiết bị đang được kiểm tra và xử lý tại thời điểm hiện tại.' },
         cho_hoan_thanh: { label: 'Chờ thợ xác nhận COD', summary: 'Bạn thanh toán tiền mặt trực tiếp cho thợ. Đơn sẽ hoàn tất sau khi thợ xác nhận đã thu tiền.' },
-        cho_thanh_toan: { label: 'Chờ thanh toán test', summary: 'Đơn đang chờ bạn xác nhận thanh toán test trên hệ thống.' },
+        cho_thanh_toan: { label: 'Chờ thanh toán online', summary: 'Đơn đang chờ bạn chọn ví điện tử hoặc cổng thanh toán để hoàn tất.' },
         da_xong: { label: 'Hoàn tất', summary: 'Đơn hàng đã hoàn tất. Bạn có thể xem kết quả và gửi đánh giá.' },
         da_huy: { label: 'Đã hủy', summary: 'Yêu cầu này đã được hủy và không còn được xử lý.' },
     }[status] || { label: 'Đang cập nhật', summary: 'Thông tin đơn hàng đang được hệ thống cập nhật.' });
@@ -322,21 +430,38 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isPaid) return { label: 'ĐÃ THANH TOÁN', style: 'background: rgba(236, 253, 245, 0.95); color: #059669;' };
         if (booking?.trang_thai === 'da_huy') return { label: 'ĐÃ HỦY', style: 'background: rgba(254, 242, 242, 0.95); color: #dc2626;' };
         if (isPayable) {
-            return { label: isCashPaymentBooking(booking) ? 'CHỜ XÁC NHẬN COD' : 'CHỜ THANH TOÁN TEST', style: '' };
+            return { label: isCashPaymentBooking(booking) ? 'CHỜ XÁC NHẬN COD' : 'CHỜ THANH TOÁN ONLINE', style: '' };
         }
         return { label: 'THANH TOÁN SAU', style: 'background: rgba(241, 245, 249, 0.95); color: #475569;' };
+    };
+    const buildSummaryPrimaryActionV2 = (booking) => {
+        const review = getLatestReview(booking);
+        if (['cho_xac_nhan', 'da_xac_nhan'].includes(booking?.trang_thai)) {
+            const actions = [];
+            if (canRescheduleBooking(booking)) {
+                actions.push('<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="reschedule">Đổi lịch hẹn</button></div>');
+            }
+            actions.push('<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div>');
+            return `<div class="detail-summary-action-stack">${actions.join('')}</div>${buildRescheduleNote(booking)}`;
+        }
+        if (['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)) {
+            return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="pay">Chọn cách thanh toán</button></div>';
+        }
+        if (booking?.trang_thai === 'da_xong' && !review) return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="review">Gửi đánh giá</button></div>';
+        if (booking?.trang_thai === 'da_huy') return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="rebook">Đặt lịch mới</button></div>';
+        return '<div class="detail-summary-note"><strong>Cập nhật mới nhất</strong>Hệ thống sẽ tiếp tục cập nhật tiến độ xử lý tại các thẻ thông tin bên dưới.</div>';
     };
     const buildSummaryPrimaryAction = (booking) => {
         const review = getLatestReview(booking);
         if (['cho_xac_nhan', 'da_xac_nhan'].includes(booking?.trang_thai)) return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div>';
         if (['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)) {
-            return `<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="pay">${isCashPaymentBooking(booking) ? 'Hướng dẫn COD' : 'Thanh toán test'}</button></div>`;
+            return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="pay">Chọn cách thanh toán</button></div>';
         }
         if (booking?.trang_thai === 'da_xong' && !review) return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="review">Gửi đánh giá</button></div>';
-        if (booking?.trang_thai === 'da_huy') return '<div class="detail-summary-action"><a href="/customer/home" class="detail-outline-button">Đặt lịch mới</a></div>';
+        if (booking?.trang_thai === 'da_huy') return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="rebook">Đặt lịch mới</button></div>';
         return '<div class="detail-summary-note"><strong>Cập nhật mới nhất</strong>Hệ thống sẽ tiếp tục cập nhật tiến độ xử lý tại các thẻ thông tin bên dưới.</div>';
     };
-    const buildSummaryCard = (booking) => `<section class="detail-card detail-summary-card"><div class="detail-summary-top"><span class="${getStatusPillClass(booking?.trang_thai)}">${escapeHtml(getStatusMeta(booking?.trang_thai).label)}</span><div class="detail-summary-order"><span>Mã đơn hàng</span><strong>${escapeHtml(formatOrderCode(booking?.id))}</strong></div></div><h1 class="detail-service-title">${escapeHtml(getPrimaryServiceName(booking))}</h1><div class="detail-summary-meta"><span class="material-symbols-outlined" style="font-size:1.15rem;">calendar_month</span><span>${escapeHtml(getSummarySchedule(booking))}</span></div><div class="detail-estimate-box"><span>Tổng phí dự kiến</span><strong>${escapeHtml(formatMoney(getBookingTotal(booking)))}</strong></div>${buildSummaryPrimaryAction(booking)}</section>`;
+    const buildSummaryCard = (booking) => `<section class="detail-card detail-summary-card"><div class="detail-summary-top"><span class="${getStatusPillClass(booking?.trang_thai)}">${escapeHtml(getStatusMeta(booking?.trang_thai).label)}</span><div class="detail-summary-order"><span>Mã đơn hàng</span><strong>${escapeHtml(formatOrderCode(booking?.id))}</strong></div></div><h1 class="detail-service-title">${escapeHtml(getPrimaryServiceName(booking))}</h1><div class="detail-summary-meta"><span class="material-symbols-outlined" style="font-size:1.15rem;">calendar_month</span><span>${escapeHtml(getSummarySchedule(booking))}</span></div><div class="detail-estimate-box"><span>Tổng phí dự kiến</span><strong>${escapeHtml(formatMoney(getBookingTotal(booking)))}</strong></div>${buildSummaryPrimaryActionV2(booking)}</section>`;
     const buildInitialMediaCard = (booking) => `<section class="detail-card"><div class="detail-card-head"><h2>Tình trạng ban đầu</h2><span>${countFiles(booking?.hinh_anh_mo_ta, booking?.video_mo_ta)} FILE</span></div>${buildGalleryGrid(booking?.hinh_anh_mo_ta, booking?.video_mo_ta, 'Chưa có thêm file', 'Tình trạng ban đầu')}</section>`;
     const buildWorkerCard = (booking) => {
         const worker = booking?.tho;
@@ -362,11 +487,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isPayable) {
             description = isCashPaymentBooking(booking)
                 ? 'Bạn thanh toán tiền mặt trực tiếp cho thợ. Đơn chỉ hoàn tất khi thợ xác nhận đã thu tiền.'
-                : 'Đây là payment test nội bộ. Bấm thanh toán test để hoàn tất đơn, không tạo giao dịch thật.';
+                : 'Bạn có thể đổi sang ví điện tử hoặc cổng thanh toán online. Đơn sẽ tự hoàn tất ngay khi giao dịch thành công.';
         }
         else if (isPaid) description = latestPayment?.ma_giao_dich ? `Mã giao dịch: ${latestPayment.ma_giao_dich}` : 'Đơn hàng đã được ghi nhận thanh toán thành công.';
         else if (booking?.trang_thai === 'da_huy') description = 'Đơn hàng đã hủy nên không còn chờ thanh toán.';
-        return `<section class="detail-card detail-payment-action-card"><div class="detail-payment-action-head"><span class="detail-payment-icon"><span class="material-symbols-outlined">account_balance_wallet</span></span><div class="detail-payment-copy"><div class="detail-payment-title-row"><strong>${escapeHtml(paymentMethod)}</strong><span class="detail-payment-badge"${badge.style ? ` style="${badge.style}"` : ''}>${escapeHtml(badge.label)}</span></div><p>${escapeHtml(description)}</p></div></div><div class="detail-payment-action">${isPayable ? `<button type="button" class="detail-solid-button" data-booking-action="pay">${isCashPaymentBooking(booking) ? 'Hướng dẫn COD' : 'Thanh toán test'}</button>` : '<a href="/customer/my-bookings" class="detail-ghost-button">Quay lại lịch sử</a>'}</div></section>`;
+        return `<section class="detail-card detail-payment-action-card"><div class="detail-payment-action-head"><span class="detail-payment-icon"><span class="material-symbols-outlined">account_balance_wallet</span></span><div class="detail-payment-copy"><div class="detail-payment-title-row"><strong>${escapeHtml(paymentMethod)}</strong><span class="detail-payment-badge"${badge.style ? ` style="${badge.style}"` : ''}>${escapeHtml(badge.label)}</span></div><p>${escapeHtml(description)}</p></div></div><div class="detail-payment-action">${isPayable ? '<button type="button" class="detail-solid-button" data-booking-action="pay">Chọn cách thanh toán</button>' : '<a href="/customer/my-bookings" class="detail-ghost-button">Quay lại lịch sử</a>'}</div></section>`;
     };
     const buildProgressCard = (booking) => {
         const review = getLatestReview(booking);
@@ -383,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : (status === 'da_huy' ? formatTimelineDateTime(booking?.updated_at) : '');
         const payableDescription = isCashPaymentBooking(booking)
             ? 'Bạn thanh toán tiền mặt trực tiếp cho thợ. Đơn sẽ hoàn tất khi thợ xác nhận đã thu tiền.'
-            : 'Bạn có thể thanh toán test ngay trên hệ thống để hoàn tất đơn.';
+            : 'Bạn có thể chọn ví điện tử hoặc cổng thanh toán online để hoàn tất đơn.';
         const steps = [
             { icon: 'check', title: 'Đã tạo yêu cầu', time: getBookingCreatedTimeText(booking), description: '', stateClass: 'is-complete' },
             { icon: accepted ? 'check' : 'manage_accounts', title: accepted ? 'Đã nhận đơn' : 'Đang tìm kỹ thuật viên', time: accepted ? formatTimelineDateTime(booking?.updated_at) : '', description: accepted ? `${worker?.name || 'Kỹ thuật viên'} đã tiếp nhận đơn hàng của bạn.` : 'Hệ thống đang tìm kỹ thuật viên phù hợp.', stateClass: accepted ? 'is-complete' : (status === 'cho_xac_nhan' ? 'is-active' : 'is-disabled') },
@@ -394,6 +519,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<section class="detail-card"><div class="detail-card-head"><h2>Tiến độ dịch vụ</h2></div><div class="detail-progress-list">${steps.map((step) => `<div class="detail-progress-item ${step.stateClass}"><span class="detail-progress-icon"><span class="material-symbols-outlined" style="font-size:1rem;">${step.icon}</span></span><div class="detail-progress-copy"><strong>${escapeHtml(step.title)}</strong>${step.time ? `<time>${escapeHtml(step.time)}</time>` : ''}${step.description ? `<p>${escapeHtml(step.description)}</p>` : ''}</div></div>`).join('')}</div></section>`;
     };
     const buildRequestInfo = (icon, label, value, subValue = '', badge = '') => `<article class="detail-request-info"><span class="detail-request-icon"><span class="material-symbols-outlined">${icon}</span></span><div class="detail-request-copy"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong>${subValue ? `<small>${escapeHtml(subValue)}</small>` : ''}${badge ? `<div class="detail-service-badge">${escapeHtml(badge)}</div>` : ''}</div></article>`;
+    const buildRequestCardV2 = (booking) => {
+        const problemText = booking?.mo_ta_van_de ? `"${booking.mo_ta_van_de}"` : 'Khách hàng chưa để lại mô tả chi tiết cho thiết bị này.';
+        const rescheduleMeta = getReschedulePolicy(booking);
+        const scheduleMeta = !rescheduleMeta.status_allows_reschedule
+            ? `Chờ thợ xác nhận để mở ${Number(rescheduleMeta.max_changes || 1)}/${Number(rescheduleMeta.max_changes || 1)} lần đổi lịch trong ${Number(rescheduleMeta.window_days || 7)} ngày tới.`
+            : Number(rescheduleMeta.remaining_changes || 0) > 0
+                ? `Còn ${Number(rescheduleMeta.remaining_changes || 0)}/${Number(rescheduleMeta.max_changes || 1)} lần đổi lịch trong ${Number(rescheduleMeta.window_days || 7)} ngày tới.`
+                : `Đã dùng hết ${Number(rescheduleMeta.max_changes || 1)}/${Number(rescheduleMeta.max_changes || 1)} lần đổi lịch.`;
+
+        return `<section class="detail-card"><div class="detail-card-head"><h2>Thông tin chi tiết yêu cầu</h2></div><div class="detail-request-grid">${buildRequestInfo('location_on', 'Địa chỉ dịch vụ', getLocationText(booking), booking?.loai_dat_lich === 'at_home' ? getDistanceText(booking) : '', getLocationModeLabel(booking))}${buildRequestInfo('event_available', 'Lịch hẹn hiện tại', getSummarySchedule(booking), scheduleMeta)}${buildRequestInfo('schedule', 'Thời gian tạo yêu cầu', getBookingCreatedTimeText(booking), booking?.thoi_gian_hen ? 'Dự kiến xử lý theo lịch hẹn' : 'Dự kiến xử lý trong ngày')}${buildRequestInfo('task_alt', 'Thời gian hoàn thành', getBookingCompletedTimeText(booking), booking?.thoi_gian_hoan_thanh ? 'Đơn đã hoàn tất trên hệ thống' : 'Sẽ được ghi nhận khi đơn hoàn tất')}<div class="detail-problem-block"><div class="detail-request-info"><span class="detail-request-icon"><span class="material-symbols-outlined">description</span></span><div class="detail-request-copy"><span>Mô tả vấn đề</span><div class="detail-problem-box">${escapeHtml(problemText)}</div></div></div></div></div></section>`;
+    };
     const buildRequestCard = (booking) => {
         const problemText = booking?.mo_ta_van_de ? `"${booking.mo_ta_van_de}"` : 'Khách hàng chưa để lại mô tả chi tiết cho thiết bị này.';
         return `<section class="detail-card"><div class="detail-card-head"><h2>Thông tin chi tiết yêu cầu</h2></div><div class="detail-request-grid">${buildRequestInfo('location_on', 'Địa chỉ dịch vụ', getLocationText(booking), booking?.loai_dat_lich === 'at_home' ? getDistanceText(booking) : '', getLocationModeLabel(booking))}${buildRequestInfo('schedule', 'Thời gian đặt', getBookingCreatedTimeText(booking), booking?.thoi_gian_hen ? 'Dự kiến xử lý theo lịch hẹn' : 'Dự kiến xử lý trong ngày')}${buildRequestInfo('task_alt', 'Thời gian hoàn thành', getBookingCompletedTimeText(booking), booking?.thoi_gian_hoan_thanh ? 'Đơn đã hoàn tất trên hệ thống' : 'Sẽ được ghi nhận khi đơn hoàn tất')}<div class="detail-problem-block"><div class="detail-request-info"><span class="detail-request-icon"><span class="material-symbols-outlined">description</span></span><div class="detail-request-copy"><span>Mô tả vấn đề</span><div class="detail-problem-box">${escapeHtml(problemText)}</div></div></div></div></div></section>`;
@@ -446,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingEl?.classList.add('d-none');
         errorEl?.classList.add('d-none');
         contentEl?.classList.remove('d-none');
-        contentEl.innerHTML = `<div class="detail-dashboard"><div class="detail-main-column">${buildInitialMediaCard(booking)}${buildProgressCard(booking)}${buildRequestCard(booking)}${buildResultMediaCard(booking)}${buildReviewCard(booking)}${buildCancellationCard(booking)}</div><aside class="detail-side-column">${buildSummaryCard(booking)}${buildWorkerCard(booking)}${buildCostCard(booking)}${buildPaymentActionCard(booking)}</aside></div>`;
+        contentEl.innerHTML = `<div class="detail-dashboard"><div class="detail-main-column">${buildInitialMediaCard(booking)}${buildProgressCard(booking)}${buildRequestCardV2(booking)}${buildResultMediaCard(booking)}${buildReviewCard(booking)}${buildCancellationCard(booking)}</div><aside class="detail-side-column">${buildSummaryCard(booking)}${buildWorkerCard(booking)}${buildCostCard(booking)}${buildPaymentActionCard(booking)}</aside></div>`;
         hydrateWarrantyStatus(booking);
         attachActionListeners();
     };
@@ -455,35 +591,106 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Thanh toán tiền mặt',
             html: `
                 <div style="text-align:left; line-height:1.65;">
-                    <p style="margin-bottom:0.75rem;">Đơn này đang ở chế độ <strong>tiền mặt</strong>.</p>
+                    <p style="margin-bottom:0.75rem;">Thợ đã chốt đơn này với phương thức <strong>tiền mặt</strong>.</p>
                     <p style="margin-bottom:0.75rem;">Bạn thanh toán trực tiếp cho thợ sau khi kiểm tra kết quả sửa chữa.</p>
-                    <p style="margin:0;">Đơn chỉ chuyển sang <strong>hoàn tất</strong> khi thợ xác nhận đã thu đủ tiền mặt.</p>
+                    <p style="margin:0;">Nếu đơn chưa hoàn tất ngay, vui lòng liên hệ thợ hoặc cửa hàng để được hỗ trợ đối soát.</p>
                 </div>
             `,
             icon: 'info',
             confirmButtonText: 'Đã hiểu',
         });
     };
-    const startTestPayment = async (id) => {
+    const syncBookingPaymentMethod = async (booking, paymentMethod) => {
+        if (getBookingPaymentMethod(booking) === paymentMethod) {
+            return booking;
+        }
+
+        const response = ensureOk(
+            await callApi(`/bookings/${booking.id}/payment-method`, 'PUT', {
+                phuong_thuc_thanh_toan: paymentMethod,
+            }),
+            'Không thể cập nhật phương thức thanh toán'
+        );
+
+        currentBooking = response.data?.booking || booking;
+        showToast(response.data?.message || 'Đã cập nhật phương thức thanh toán.');
+
+        return currentBooking;
+    };
+    const selectPendingPaymentMode = async (booking) => {
         const result = await Swal.fire({
-            title: 'Thanh toán test',
-            text: 'Đây là payment test nội bộ, không phát sinh chuyển khoản thật. Bạn muốn tiếp tục?',
+            title: 'Chọn cách thanh toán',
+            input: 'radio',
+            inputOptions: {
+                cod: 'Tiền mặt trực tiếp cho thợ',
+                transfer: 'Chuyển khoản online / ví điện tử',
+            },
+            inputValue: getBookingPaymentMethod(booking),
+            inputValidator: (value) => (!value ? 'Vui lòng chọn cách thanh toán.' : undefined),
+            showCancelButton: true,
+            confirmButtonText: 'Tiếp tục',
+            cancelButtonText: 'Đóng',
+        });
+
+        return result.isConfirmed ? result.value : null;
+    };
+    const selectOnlineGateway = async () => {
+        const gatewayOptions = buildOnlineGatewayOptions();
+        const gatewayKeys = Object.keys(gatewayOptions);
+        const result = await Swal.fire({
+            title: 'Chọn ví điện tử',
+            input: 'radio',
+            inputOptions: gatewayOptions,
+            inputValue: gatewayKeys[0] || 'momo',
+            inputValidator: (value) => (!value ? 'Vui lòng chọn ví hoặc cổng thanh toán.' : undefined),
+            showCancelButton: true,
+            confirmButtonText: 'Mở thanh toán',
+            cancelButtonText: 'Quay lại',
+        });
+
+        return result.isConfirmed ? result.value : null;
+    };
+    const startOnlinePayment = async (booking, gateway) => {
+        const result = await Swal.fire({
+            title: gateway === 'test' ? 'Thanh toán test nội bộ' : 'Chuyển sang cổng thanh toán',
+            text: gateway === 'test'
+                ? 'Đây là payment test nội bộ, không phát sinh chuyển khoản thật. Bạn muốn tiếp tục?'
+                : 'Hệ thống sẽ chuyển bạn sang ví điện tử hoặc cổng thanh toán đã chọn để hoàn tất đơn hàng.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Thanh toán test',
+            confirmButtonText: gateway === 'test' ? 'Thanh toán test' : 'Tiếp tục',
             cancelButtonText: 'Đóng',
         });
         if (!result.isConfirmed) return;
-        const response = ensureOk(await callApi('/payment/create', 'POST', { don_dat_lich_id: id, phuong_thuc: 'test' }), 'Không tạo được giao dịch thanh toán test');
-        showToast(response.data?.message || 'Thanh toán test thành công.');
+
+        const response = ensureOk(
+            await callApi('/payment/create', 'POST', {
+                don_dat_lich_id: booking.id,
+                phuong_thuc: gateway,
+            }),
+            gateway === 'test' ? 'Không tạo được giao dịch thanh toán test' : 'Không tạo được giao dịch thanh toán'
+        );
+
+        if (response.data?.url) {
+            window.location.href = response.data.url;
+            return;
+        }
+
+        showToast(response.data?.message || 'Thanh toán thành công.');
         await loadBooking();
     };
     const openPaymentAction = async (booking) => {
-        if (isCashPaymentBooking(booking)) {
+        if (getBookingPaymentMethod(booking) !== 'transfer') {
             await showCashPaymentInstructions();
             return;
         }
-        await startTestPayment(booking.id);
+
+        const selectedGateway = await selectOnlineGateway();
+        if (!selectedGateway) {
+            return;
+        }
+
+        await startOnlinePayment(booking, selectedGateway);
     };
     const cancelBooking = async () => {
         if (!currentBooking) return;
@@ -503,6 +710,135 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!result.isConfirmed) return;
         ensureOk(await callApi(`/don-dat-lich/${currentBooking.id}/status`, 'PUT', { trang_thai: 'da_huy', ma_ly_do_huy: result.value }), 'Không thể hủy đơn');
         showToast('Hủy đơn thành công');
+        await loadBooking();
+    };
+    const openRescheduleModal = async () => {
+        if (!currentBooking) return;
+
+        const policy = getReschedulePolicy(currentBooking);
+        if (!policy?.can_reschedule) {
+            showToast(getRescheduleStatusText(currentBooking) || 'Đơn này hiện không thể đổi lịch.', 'error');
+            return;
+        }
+
+        const minimumAllowedDate = String(policy.minimum_allowed_date || '');
+        const maximumAllowedDate = String(policy.maximum_allowed_date || '');
+        const currentBookingDate = String(currentBooking?.ngay_hen || '');
+        const isCurrentDateWithinWindow = currentBookingDate !== ''
+            && (minimumAllowedDate === '' || compareIsoDateStrings(currentBookingDate, minimumAllowedDate) >= 0)
+            && (maximumAllowedDate === '' || compareIsoDateStrings(currentBookingDate, maximumAllowedDate) <= 0);
+        const defaultDate = isCurrentDateWithinWindow
+            ? currentBookingDate
+            : (minimumAllowedDate || maximumAllowedDate || currentBookingDate);
+        let selectedSlot = '';
+
+        const result = await Swal.fire({
+            title: 'Đổi lịch hẹn',
+            html: `
+                <div class="detail-reschedule-note">
+                    <strong>Quy tắc đổi lịch</strong>
+                    <span>${escapeHtml(getRescheduleStatusText(currentBooking))}</span>
+                </div>
+                <div class="detail-reschedule-field">
+                    <label for="bookingDetailRescheduleDate">Ngày hẹn mới</label>
+                    <input id="bookingDetailRescheduleDate" class="swal2-input detail-reschedule-date" type="date" min="${escapeHtml(minimumAllowedDate)}" ${maximumAllowedDate ? `max="${escapeHtml(maximumAllowedDate)}"` : ''} value="${escapeHtml(defaultDate)}">
+                </div>
+                <div class="detail-reschedule-field">
+                    <label>Khung giờ cố định của cửa hàng</label>
+                    <div class="detail-reschedule-slot-grid" id="bookingDetailRescheduleSlots"></div>
+                </div>
+                <div class="detail-reschedule-current">Lịch hiện tại: <strong>${escapeHtml(policy.current_schedule_label || getSummarySchedule(currentBooking))}</strong></div>
+            `,
+            customClass: {
+                popup: 'detail-reschedule-modal',
+            },
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Cập nhật lịch hẹn',
+            cancelButtonText: 'Đóng',
+            didOpen: () => {
+                const popup = Swal.getPopup();
+                const dateInput = popup?.querySelector('#bookingDetailRescheduleDate');
+                const slotsWrap = popup?.querySelector('#bookingDetailRescheduleSlots');
+
+                const renderSlots = () => {
+                    const chosenDate = dateInput?.value || String(policy.minimum_allowed_date || '');
+                    const slotOptions = getRescheduleSlotOptions(currentBooking, chosenDate);
+                    const availableSlot = slotOptions.find((slot) => !slot.disabled)?.value || '';
+                    if (!slotOptions.some((slot) => slot.value === selectedSlot && !slot.disabled)) {
+                        selectedSlot = availableSlot;
+                    }
+
+                    if (!slotsWrap) return;
+
+                    slotsWrap.innerHTML = slotOptions.map((slot) => `
+                        <button
+                            type="button"
+                            class="detail-reschedule-slot ${slot.value === selectedSlot ? 'is-selected' : ''}"
+                            data-slot-value="${slot.value}"
+                            ${slot.disabled ? 'disabled' : ''}
+                        >${escapeHtml(formatSlotLabel(slot.value))}</button>
+                    `).join('');
+
+                    slotsWrap.querySelectorAll('[data-slot-value]').forEach((button) => {
+                        button.addEventListener('click', () => {
+                            if (button.disabled) return;
+                            selectedSlot = button.getAttribute('data-slot-value') || '';
+                            renderSlots();
+                        });
+                    });
+                };
+
+                dateInput?.addEventListener('change', renderSlots);
+                renderSlots();
+            },
+            preConfirm: () => {
+                const popup = Swal.getPopup();
+                const dateInput = popup?.querySelector('#bookingDetailRescheduleDate');
+                const ngayHen = dateInput?.value || '';
+
+                if (!ngayHen) {
+                    Swal.showValidationMessage('Vui lòng chọn ngày hẹn mới.');
+                    return false;
+                }
+
+                if (minimumAllowedDate && compareIsoDateStrings(ngayHen, minimumAllowedDate) < 0) {
+                    Swal.showValidationMessage(`Lịch mới phải từ ${policy.minimum_allowed_label || minimumAllowedDate} trở đi.`);
+                    return false;
+                }
+
+                if (maximumAllowedDate && compareIsoDateStrings(ngayHen, maximumAllowedDate) > 0) {
+                    Swal.showValidationMessage(`Lịch mới chỉ được đổi đến hết ngày ${policy.maximum_allowed_label || maximumAllowedDate}.`);
+                    return false;
+                }
+
+                if (!selectedSlot) {
+                    Swal.showValidationMessage('Vui lòng chọn khung giờ hợp lệ.');
+                    return false;
+                }
+
+                if (
+                    String(currentBooking?.ngay_hen || '') === ngayHen
+                    && String(currentBooking?.khung_gio_hen || '') === selectedSlot
+                ) {
+                    Swal.showValidationMessage('Lịch mới phải khác lịch hiện tại.');
+                    return false;
+                }
+
+                return {
+                    ngay_hen: ngayHen,
+                    khung_gio_hen: selectedSlot,
+                };
+            },
+        });
+
+        if (!result.isConfirmed || !result.value) return;
+
+        const response = ensureOk(
+            await callApi(`/don-dat-lich/${currentBooking.id}/reschedule`, 'PUT', result.value),
+            'Không thể cập nhật lịch hẹn mới'
+        );
+        showToast(response.data?.message || 'Đã cập nhật lịch hẹn thành công.');
         await loadBooking();
     };
     const openReviewModal = () => {
@@ -540,6 +876,17 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadBooking();
     };
     const attachActionListeners = () => {
+        document.querySelectorAll('[data-booking-action="reschedule"]').forEach((button) => button.addEventListener('click', async (event) => {
+            const target = event.currentTarget;
+            try {
+                target.disabled = true;
+                await openRescheduleModal();
+            } catch (error) {
+                showToast(error.message || 'Không thể đổi lịch hẹn lúc này', 'error');
+            } finally {
+                target.disabled = false;
+            }
+        }));
         document.querySelectorAll('[data-booking-action="cancel"]').forEach((button) => button.addEventListener('click', async () => {
             try {
                 await cancelBooking();
@@ -559,6 +906,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }));
         document.querySelectorAll('[data-booking-action="review"]').forEach((button) => button.addEventListener('click', () => openReviewModal()));
+        document.querySelectorAll('[data-booking-action="rebook"]').forEach((button) => button.addEventListener('click', () => {
+            if (!currentBooking) {
+                showToast('Không tìm thấy đơn để đặt lại.', 'error');
+                return;
+            }
+
+            openRebookBooking(currentBooking);
+        }));
         document.querySelectorAll('[data-booking-action="confirm-warranty"]').forEach((button) => button.addEventListener('click', async (event) => {
             const target = event.currentTarget;
             try {

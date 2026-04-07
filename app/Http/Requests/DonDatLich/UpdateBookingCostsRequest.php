@@ -26,6 +26,8 @@ class UpdateBookingCostsRequest extends FormRequest
         ) {
             $partsItems = [[
                 'noi_dung' => $this->extractLegacyPartDescription((string) $this->input('ghi_chu_linh_kien', '')),
+                'don_gia' => $this->normalizeAmount($this->input('phi_linh_kien')),
+                'so_luong' => 1,
                 'so_tien' => $this->normalizeAmount($this->input('phi_linh_kien')),
                 'bao_hanh_thang' => null,
             ]];
@@ -62,12 +64,15 @@ class UpdateBookingCostsRequest extends FormRequest
             'phi_linh_kien' => 'nullable|numeric|min:0',
             'ghi_chu_linh_kien' => 'nullable|string',
             'chi_tiet_tien_cong' => 'required|array|min:1',
+            'chi_tiet_tien_cong.*.huong_xu_ly_id' => 'nullable|integer|exists:huong_xu_ly,id',
             'chi_tiet_tien_cong.*.noi_dung' => 'required|string|max:255',
             'chi_tiet_tien_cong.*.so_tien' => 'required|numeric|min:0',
             'chi_tiet_linh_kien' => 'nullable|array',
             'chi_tiet_linh_kien.*.linh_kien_id' => 'nullable|integer|exists:linh_kien,id',
             'chi_tiet_linh_kien.*.noi_dung' => 'required|string|max:255',
+            'chi_tiet_linh_kien.*.don_gia' => 'nullable|numeric|min:0',
             'chi_tiet_linh_kien.*.so_tien' => 'required|numeric|min:0',
+            'chi_tiet_linh_kien.*.so_luong' => 'nullable|integer|min:1|max:999',
             'chi_tiet_linh_kien.*.bao_hanh_thang' => 'nullable|integer|min:0|max:60',
         ];
     }
@@ -81,6 +86,7 @@ class UpdateBookingCostsRequest extends FormRequest
             'chi_tiet_tien_cong.*.so_tien.required' => 'Moi dong tien cong can co so tien.',
             'chi_tiet_linh_kien.*.noi_dung.required' => 'Moi linh kien can co ten hoac noi dung thay the.',
             'chi_tiet_linh_kien.*.so_tien.required' => 'Moi linh kien can co gia tien.',
+            'chi_tiet_linh_kien.*.so_luong.integer' => 'So luong linh kien phai la so nguyen hop le.',
             'chi_tiet_linh_kien.*.bao_hanh_thang.integer' => 'Bao hanh linh kien phai la so thang hop le.',
         ];
     }
@@ -100,6 +106,16 @@ class UpdateBookingCostsRequest extends FormRequest
             }
 
             return [
+                'huong_xu_ly_id' => isset($item['huong_xu_ly_id']) && $item['huong_xu_ly_id'] !== ''
+                    ? (int) $item['huong_xu_ly_id']
+                    : null,
+                'nguyen_nhan_id' => isset($item['nguyen_nhan_id']) && $item['nguyen_nhan_id'] !== ''
+                    ? (int) $item['nguyen_nhan_id']
+                    : null,
+                'dich_vu_id' => isset($item['dich_vu_id']) && $item['dich_vu_id'] !== ''
+                    ? (int) $item['dich_vu_id']
+                    : null,
+                'mo_ta_cong_viec' => $this->normalizeNullableString($item['mo_ta_cong_viec'] ?? null),
                 'noi_dung' => $description,
                 'so_tien' => $amount,
             ];
@@ -114,13 +130,20 @@ class UpdateBookingCostsRequest extends FormRequest
             }
 
             $description = trim((string) ($item['noi_dung'] ?? ''));
-            $amount = $this->normalizeAmount($item['so_tien'] ?? 0);
+            $lineTotal = $this->normalizeAmount($item['so_tien'] ?? 0);
+            $quantity = isset($item['so_luong']) && $item['so_luong'] !== ''
+                ? max(1, (int) $item['so_luong'])
+                : 1;
+            $hasUnitPrice = array_key_exists('don_gia', $item) && $item['don_gia'] !== '' && $item['don_gia'] !== null;
+            $unitPrice = $hasUnitPrice
+                ? $this->normalizeAmount($item['don_gia'])
+                : ($quantity > 0 ? $lineTotal / $quantity : $lineTotal);
             $warrantyMonths = $item['bao_hanh_thang'] ?? null;
             $warrantyMonths = $warrantyMonths === '' || $warrantyMonths === null
                 ? null
                 : (int) $warrantyMonths;
 
-            if ($description === '' && $amount <= 0 && $warrantyMonths === null) {
+            if ($description === '' && $lineTotal <= 0 && $unitPrice <= 0 && $warrantyMonths === null) {
                 return null;
             }
 
@@ -129,7 +152,9 @@ class UpdateBookingCostsRequest extends FormRequest
                     ? (int) $item['linh_kien_id']
                     : null,
                 'noi_dung' => $description,
-                'so_tien' => $amount,
+                'don_gia' => $unitPrice,
+                'so_luong' => $quantity,
+                'so_tien' => $hasUnitPrice ? ($unitPrice * $quantity) : $lineTotal,
                 'bao_hanh_thang' => $warrantyMonths,
             ];
         }, $this->normalizeItemPayload($items))));

@@ -1,13 +1,23 @@
-/* Bo font chung toan site: DM Sans cho tieu de/UI, Roboto cho noi dung, Libre Baskerville lam accent khi can */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+/* Font chung toan site: dung 1 sans duy nhat de chu Viet nam deu net va on dinh hon */
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --app-font-sans: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
 
 body {
-  font-family: 'Roboto', sans-serif;
+  font-family: var(--app-font-sans) !important;
   background: var(--bg-gradient) !important;
   background-attachment: fixed;
   color: var(--bs-body-color);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   min-height: 100vh;
+}
+
+body *:not(.material-symbols-outlined):not(.material-symbols-rounded):not(.material-symbols-sharp):not(.fa):not(.fas):not(.far):not(.fab):not([class^="fa-"]):not([class*=" fa-"]):not(pre):not(code):not(kbd):not(samp) {
+  font-family: var(--app-font-sans) !important;
 }
 
 .worker-main {
@@ -15,7 +25,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6, .brand-font {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--app-font-sans) !important;
   letter-spacing: -0.02em;
 }
 
@@ -26,7 +36,7 @@ h1, h2, h3, h4, h5, h6, .brand-font {
 /* Nút Bấm (Button) siêu mượt */
 .btn {
   border-radius: var(--border-radius-md);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--app-font-sans) !important;
   font-weight: 600;
   padding: 0.8rem 1.5rem;
   letter-spacing: 0.01em;

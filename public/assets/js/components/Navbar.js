@@ -6,7 +6,6 @@ class AppNavbar extends HTMLElement {
         this.cleanupFns = [];
         this.notificationPollId = null;
         this.notificationBootTimeoutId = null;
-        this.notificationToastShownIds = new Set();
         this.handleUserUpdated = this.handleUserUpdated.bind(this);
     }
 
@@ -19,6 +18,7 @@ class AppNavbar extends HTMLElement {
     disconnectedCallback() {
         this.cleanupEvents();
         this.clearNotificationPolling();
+        this.syncLayoutMode(null);
         window.removeEventListener('user-updated', this.handleUserUpdated);
     }
 
@@ -34,6 +34,13 @@ class AppNavbar extends HTMLElement {
             const normalizedPath = (path || '').replace(/\/+$/, '') || '/';
             return currentPath === normalizedPath || (normalizedPath !== '/' && currentPath.startsWith(`${normalizedPath}/`));
         });
+        this.syncLayoutMode(user);
+
+        if (user?.role === 'admin') {
+            this.renderAdminNavbar({ user, currentPath, isCurrentPath });
+            return;
+        }
+
         const navLinkClass = (isActive) => `nav-link px-3 app-navbar-link${isActive ? ' active fw-bold' : ''}`;
         const navLinkStyle = (defaultColor = '#64748B') => `--app-nav-color: ${defaultColor};`;
 
@@ -100,8 +107,13 @@ class AppNavbar extends HTMLElement {
             const userMenuHtml = user.role === 'admin'
                 ? `
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/dashboard') ? ' active' : ''}" href="/admin/dashboard"><i class="fas fa-chart-pie me-2 text-muted"></i>Tổng quan</a></li>
+                    <li><a class="dropdown-item py-2${isCurrentPath('/admin/customers') ? ' active' : ''}" href="/admin/customers"><i class="fas fa-user-friends me-2 text-muted"></i>Khách hàng</a></li>
+                    <li><a class="dropdown-item py-2${isCurrentPath('/admin/customer-feedback') ? ' active' : ''}" href="/admin/customer-feedback"><i class="fas fa-headset me-2 text-muted"></i>Feedback KH</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/users') ? ' active' : ''}" href="/admin/users"><i class="fas fa-users-cog me-2 text-muted"></i>Thành viên</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/services') ? ' active' : ''}" href="/admin/services"><i class="fas fa-list me-2 text-muted"></i>Dịch vụ</a></li>
+                    <li><a class="dropdown-item py-2${isCurrentPath('/admin/linh-kien') ? ' active' : ''}" href="/admin/linh-kien"><i class="fas fa-microchip me-2 text-muted"></i>Linh kiện</a></li>
+                    <li><a class="dropdown-item py-2${isCurrentPath('/admin/trieu-chung') ? ' active' : ''}" href="/admin/trieu-chung"><i class="fas fa-stethoscope me-2 text-muted"></i>Triệu chứng</a></li>
+                    <li><a class="dropdown-item py-2${isCurrentPath('/admin/huong-xu-ly') ? ' active' : ''}" href="/admin/huong-xu-ly"><i class="fas fa-screwdriver-wrench me-2 text-muted"></i>Hướng xử lý</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/travel-fee-config') ? ' active' : ''}" href="/admin/travel-fee-config"><i class="fas fa-route me-2 text-muted"></i>Phí đi lại</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/assistant-soul') ? ' active' : ''}" href="/admin/assistant-soul"><i class="fas fa-robot me-2 text-muted"></i>ASSISTANT SOUL</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/bookings') ? ' active' : ''}" href="/admin/bookings"><i class="fas fa-clipboard-check me-2 text-muted"></i>Đơn hàng</a></li>
@@ -182,6 +194,12 @@ class AppNavbar extends HTMLElement {
                     <a class="${navLinkClass(isCurrentPath('/admin/dashboard'))}" href="/admin/dashboard" style="${navLinkStyle()}">Thống kê</a>
                 </li>
                 <li class="nav-item">
+                    <a class="${navLinkClass(isCurrentPath('/admin/customers'))}" href="/admin/customers" style="${navLinkStyle()}">Khách hàng</a>
+                </li>
+                <li class="nav-item">
+                    <a class="${navLinkClass(isCurrentPath('/admin/customer-feedback'))}" href="/admin/customer-feedback" style="${navLinkStyle()}">Feedback KH</a>
+                </li>
+                <li class="nav-item">
                     <a class="${navLinkClass(isCurrentPath('/admin/users'))}" href="/admin/users" style="${navLinkStyle()}">Cộng đồng</a>
                 </li>
                 <li class="nav-item">
@@ -192,6 +210,15 @@ class AppNavbar extends HTMLElement {
                 </li>
                 <li class="nav-item">
                     <a class="${navLinkClass(isCurrentPath('/admin/services'))}" href="/admin/services" style="${navLinkStyle()}">Dịch vụ</a>
+                </li>
+                <li class="nav-item">
+                    <a class="${navLinkClass(isCurrentPath('/admin/linh-kien'))}" href="/admin/linh-kien" style="${navLinkStyle()}">Linh kiện</a>
+                </li>
+                <li class="nav-item">
+                    <a class="${navLinkClass(isCurrentPath('/admin/trieu-chung'))}" href="/admin/trieu-chung" style="${navLinkStyle()}">Triệu chứng</a>
+                </li>
+                <li class="nav-item">
+                    <a class="${navLinkClass(isCurrentPath('/admin/huong-xu-ly'))}" href="/admin/huong-xu-ly" style="${navLinkStyle()}">Hướng xử lý</a>
                 </li>
                 <li class="nav-item">
                     <a class="${navLinkClass(isCurrentPath('/admin/travel-fee-config'))}" href="/admin/travel-fee-config" style="${navLinkStyle()}">Phí đi lại</a>
@@ -340,22 +367,23 @@ class AppNavbar extends HTMLElement {
                 }
 
                 .app-navbar-brand-mark {
-                    width: 44px;
-                    height: 44px;
+                    width: 56px;
+                    height: 56px;
                     border-radius: 50%;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    background: radial-gradient(circle at 30% 30%, #2d8cff 0%, #1E78EA 55%, #155fcc 100%);
-                    box-shadow: 0 10px 18px rgba(30, 120, 234, 0.24);
+                    background: #ffffff;
+                    border: 1px solid rgba(186, 242, 233, 0.9);
+                    box-shadow: 0 12px 24px rgba(14, 165, 233, 0.18);
                     flex-shrink: 0;
+                    overflow: hidden;
                 }
 
                 .app-navbar-brand-mark img {
-                    width: 23px;
-                    height: 23px;
+                    width: 100%;
+                    height: 100%;
                     object-fit: contain;
-                    filter: brightness(0) invert(1);
                 }
 
                 .app-navbar-brand-text {
@@ -602,7 +630,7 @@ class AppNavbar extends HTMLElement {
                     align-items: center;
                     justify-content: center;
                     font-weight: bold;
-                    font-family: 'Inter', sans-serif;
+                    font-family: 'Be Vietnam Pro', sans-serif;
                     overflow: hidden;
                     flex-shrink: 0;
                     box-shadow: 0 2px 6px rgba(14, 165, 233, 0.3);
@@ -925,6 +953,741 @@ class AppNavbar extends HTMLElement {
         `;
     }
 
+    syncLayoutMode(user) {
+        document.body.classList.toggle('app-admin-shell', user?.role === 'admin');
+    }
+
+    renderAdminNavbar({ user, currentPath, isCurrentPath }) {
+        const roleLabel = 'Điều phối viên';
+        const notificationOverview = this.resolveNotificationOverview(user);
+        const section = this.resolveAdminSection(currentPath, isCurrentPath);
+        const initials = this.getInitials(user.name);
+        const avatarUrl = this.resolveAvatarUrl(user.avatar);
+        const avatarHtml = `
+            <div class="app-admin-avatar">
+                ${avatarUrl
+                    ? `<img src="${avatarUrl}" alt="${this.escapeHtml(user.name || 'Avatar')}" class="app-admin-avatar-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <span class="app-admin-avatar-fallback" style="display:none;">${initials}</span>`
+                    : `<span class="app-admin-avatar-fallback">${initials}</span>`}
+            </div>
+        `;
+        const userMenuHtml = `
+            <ul class="dropdown-menu dropdown-menu-end border-0 app-navbar-dropdown app-admin-user-menu" id="navbarUserMenuDesktop" style="position: absolute; top: 100%; right: 0;">
+                <li><a class="dropdown-item py-2${isCurrentPath('/admin/dashboard') ? ' active' : ''}" href="/admin/dashboard"><i class="fas fa-chart-pie me-2 text-muted"></i>Bảng điều khiển</a></li>
+                <li><a class="dropdown-item py-2${isCurrentPath('/admin/dispatch') ? ' active' : ''}" href="/admin/dispatch"><i class="fas fa-diagram-project me-2 text-muted"></i>Điều phối</a></li>
+                <li><a class="dropdown-item py-2${isCurrentPath('/admin/customers') ? ' active' : ''}" href="/admin/customers"><i class="fas fa-user-friends me-2 text-muted"></i>Khách hàng</a></li>
+                <li><a class="dropdown-item py-2${isCurrentPath('/admin/users') ? ' active' : ''}" href="/admin/users"><i class="fas fa-users-cog me-2 text-muted"></i>Thành viên</a></li>
+                <li><a class="dropdown-item py-2${isCurrentPath('/admin/services') ? ' active' : ''}" href="/admin/services"><i class="fas fa-layer-group me-2 text-muted"></i>Dịch vụ</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item py-2 text-danger fw-bold cursor-pointer" data-navbar-logout="1">Đăng xuất</a></li>
+            </ul>
+        `;
+        const navLinks = this.renderAdminNavLinks(isCurrentPath);
+
+        this.innerHTML = `
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap');
+
+                body.app-admin-shell {
+                    padding-left: 256px;
+                    background: #f8f9ff !important;
+                    transition: padding-left 0.25s ease;
+                }
+
+                .app-admin-sidebar {
+                    position: fixed;
+                    inset: 0 auto 0 0;
+                    width: 256px;
+                    display: flex;
+                    flex-direction: column;
+                    background: rgba(248, 249, 255, 0.92);
+                    backdrop-filter: blur(12px);
+                    box-shadow: 0 12px 32px rgba(11, 28, 48, 0.06);
+                    border-right: 1px solid rgba(239, 244, 255, 0.9);
+                    z-index: 1045;
+                    transition: transform 0.25s ease;
+                }
+
+                .app-admin-sidebar__brand {
+                    padding: 1.5rem 1.5rem 2rem;
+                    text-decoration: none;
+                    color: #0b1c30;
+                    font-family: 'Manrope', sans-serif;
+                    font-size: 1.35rem;
+                    font-weight: 800;
+                    letter-spacing: -0.03em;
+                }
+
+                .app-admin-sidebar__nav {
+                    display: grid;
+                    gap: 0.25rem;
+                    padding: 0 0 1rem;
+                }
+
+                .app-admin-sidebar__link {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    padding: 0.8rem 1.5rem;
+                    color: rgba(11, 28, 48, 0.6);
+                    text-decoration: none;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    border-left: 4px solid transparent;
+                    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+                }
+
+                .app-admin-sidebar__link:hover {
+                    color: #0b1c30;
+                    background: rgba(216, 226, 255, 0.45);
+                }
+
+                .app-admin-sidebar__link.is-active {
+                    color: #0058be;
+                    background: #d8e2ff;
+                    border-left-color: #3b82f6;
+                }
+
+                .app-admin-sidebar__cta {
+                    margin: auto 1.5rem 1.5rem;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.55rem;
+                    min-height: 3rem;
+                    border-radius: 0.85rem;
+                    background: linear-gradient(168deg, #0058be 0%, #2170e4 100%);
+                    color: #fff;
+                    text-decoration: none;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+                }
+
+                .app-admin-sidebar__footer {
+                    padding: 1.5rem;
+                    border-top: 1px solid rgba(239, 244, 255, 0.9);
+                    display: grid;
+                    gap: 1rem;
+                }
+
+                .app-admin-profile {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                }
+
+                .app-admin-avatar {
+                    width: 2.75rem;
+                    height: 2.75rem;
+                    border-radius: 0.85rem;
+                    background: linear-gradient(135deg, #0b1c30, #2170e4);
+                    color: #fff;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: 'Manrope', sans-serif;
+                    font-size: 0.95rem;
+                    font-weight: 800;
+                    overflow: hidden;
+                    flex-shrink: 0;
+                }
+
+                .app-admin-avatar-image {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+
+                .app-admin-profile__name {
+                    color: #0b1c30;
+                    font-family: 'Manrope', sans-serif;
+                    font-size: 0.92rem;
+                    font-weight: 700;
+                }
+
+                .app-admin-profile__status {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    color: #006c49;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.68rem;
+                }
+
+                .app-admin-status-dot {
+                    width: 0.45rem;
+                    height: 0.45rem;
+                    border-radius: 999px;
+                    background: #006c49;
+                }
+
+                .app-admin-sidebar__utility {
+                    display: grid;
+                    gap: 0.2rem;
+                }
+
+                .app-admin-sidebar__utility a,
+                .app-admin-sidebar__utility button {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    padding: 0.5rem 0;
+                    border: 0;
+                    background: transparent;
+                    color: rgba(11, 28, 48, 0.6);
+                    text-decoration: none;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    text-align: left;
+                }
+
+                .app-admin-sidebar__utility button {
+                    color: #ba1a1a;
+                }
+
+                .app-admin-topbar {
+                    position: fixed;
+                    top: 0;
+                    left: 256px;
+                    right: 0;
+                    height: 80px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 1.5rem;
+                    padding: 0 2rem;
+                    background: rgba(248, 249, 255, 0.94);
+                    border-bottom: 1px solid rgba(239, 244, 255, 0.9);
+                    z-index: 1040;
+                    transition: left 0.25s ease;
+                }
+
+                .app-admin-topbar__left {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    min-width: 0;
+                    flex: 1;
+                }
+
+                .app-admin-sidebar-toggle {
+                    width: 2.75rem;
+                    height: 2.75rem;
+                    border-radius: 0.85rem;
+                    border: 0;
+                    background: #fff;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                    color: #0b1c30;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .app-admin-topbar__search {
+                    max-width: 384px;
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    padding: 0.95rem 1rem;
+                    border-radius: 0.9rem;
+                    background: #fff;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                    color: #6b7280;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.88rem;
+                }
+
+                .app-admin-topbar__search input {
+                    border: 0;
+                    outline: 0;
+                    background: transparent;
+                    width: 100%;
+                    color: #0b1c30;
+                }
+
+                .app-admin-topbar__right {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    flex-shrink: 0;
+                }
+
+                .app-admin-topbar__icons {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    color: #6b7280;
+                }
+
+                .app-admin-topbar__divider {
+                    width: 1px;
+                    height: 2rem;
+                    background: rgba(194, 198, 214, 0.3);
+                }
+
+                .app-admin-topbar__section {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.55rem;
+                    padding: 0.7rem 1rem;
+                    border-radius: 0.85rem;
+                    background: #d8e2ff;
+                    color: #0058be;
+                    text-decoration: none;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.88rem;
+                    font-weight: 700;
+                }
+
+                .app-admin-topbar__user {
+                    position: relative;
+                }
+
+                .app-admin-user-trigger {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.7rem;
+                    border: 0;
+                    background: transparent;
+                    padding: 0;
+                }
+
+                .app-admin-user-copy {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 0.1rem;
+                    text-align: left;
+                }
+
+                .app-admin-user-copy strong {
+                    color: #0b1c30;
+                    font-family: 'Manrope', sans-serif;
+                    font-size: 0.92rem;
+                    font-weight: 700;
+                    line-height: 1.2;
+                }
+
+                .app-admin-user-copy span {
+                    color: #6b7280;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.72rem;
+                    font-weight: 500;
+                }
+
+                .app-admin-user-menu {
+                    min-width: 15rem;
+                    margin-top: 0.85rem !important;
+                    border-radius: 1rem !important;
+                    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.14) !important;
+                    padding: 0.6rem !important;
+                }
+
+                .app-navbar-dropdown.show {
+                    display: block;
+                }
+
+                .app-navbar-notification-wrap {
+                    position: relative;
+                }
+
+                .app-navbar-notification-trigger {
+                    width: 2.75rem;
+                    height: 2.75rem;
+                    border-radius: 0.85rem;
+                    border: 0;
+                    background: #fff;
+                    color: #6b7280;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                }
+
+                .app-navbar-notification-trigger.is-active,
+                .app-navbar-notification-trigger:hover {
+                    color: #0058be;
+                }
+
+                .app-navbar-notification-badge {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    transform: translate(35%, -30%);
+                    min-width: 1.15rem;
+                    height: 1.15rem;
+                    padding: 0 0.28rem;
+                    border-radius: 999px;
+                    background: #ef4444;
+                    color: #fff;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.62rem;
+                    font-weight: 700;
+                }
+
+                .app-navbar-notification-menu {
+                    width: min(360px, calc(100vw - 1.5rem)) !important;
+                    min-width: min(360px, calc(100vw - 1.5rem)) !important;
+                    margin-top: 0.85rem !important;
+                    border-radius: 1rem !important;
+                    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.14) !important;
+                    padding: 0 !important;
+                    overflow: hidden;
+                }
+
+                .app-navbar-notification-head,
+                .app-navbar-notification-foot {
+                    padding: 0.95rem 1rem;
+                    background: #fff;
+                }
+
+                .app-navbar-notification-head {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    gap: 0.75rem;
+                    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+                }
+
+                .app-navbar-notification-title {
+                    display: grid;
+                    gap: 0.2rem;
+                }
+
+                .app-navbar-notification-title strong {
+                    color: #0f172a;
+                    font-family: 'Manrope', sans-serif;
+                    font-size: 0.92rem;
+                    font-weight: 700;
+                }
+
+                .app-navbar-notification-title small {
+                    color: #64748b;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.74rem;
+                }
+
+                .app-navbar-mark-read {
+                    border: 0;
+                    background: transparent;
+                    color: #0058be;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.74rem;
+                    font-weight: 700;
+                }
+
+                .app-navbar-notification-list {
+                    max-height: 22rem;
+                    overflow: auto;
+                    background: #fff;
+                }
+
+                .app-navbar-notification-item {
+                    display: block;
+                    padding: 0.95rem 1rem;
+                    text-decoration: none;
+                    border-bottom: 1px solid rgba(239, 244, 255, 0.9);
+                }
+
+                .app-navbar-notification-item:hover {
+                    background: #f8fbff;
+                }
+
+                .app-navbar-notification-item.is-unread {
+                    background: #f8fbff;
+                }
+
+                .app-navbar-notification-row {
+                    display: grid;
+                    grid-template-columns: 2.35rem minmax(0, 1fr);
+                    gap: 0.75rem;
+                    align-items: start;
+                }
+
+                .app-navbar-notification-icon {
+                    width: 2.35rem;
+                    height: 2.35rem;
+                    border-radius: 0.8rem;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(14, 165, 233, 0.12);
+                    color: #0284c7;
+                    font-size: 0.9rem;
+                }
+
+                .app-navbar-notification-icon.is-warning {
+                    background: rgba(245, 158, 11, 0.14);
+                    color: #d97706;
+                }
+
+                .app-navbar-notification-icon.is-success {
+                    background: rgba(22, 163, 74, 0.14);
+                    color: #16a34a;
+                }
+
+                .app-navbar-notification-icon.is-danger {
+                    background: rgba(239, 68, 68, 0.14);
+                    color: #dc2626;
+                }
+
+                .app-navbar-notification-copy strong {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.45rem;
+                    color: #0f172a;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    line-height: 1.35;
+                }
+
+                .app-navbar-notification-copy p {
+                    margin: 0.35rem 0 0;
+                    color: #475569;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.78rem;
+                    line-height: 1.45;
+                }
+
+                .app-navbar-notification-meta {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.35rem;
+                    margin-top: 0.55rem;
+                }
+
+                .app-navbar-notification-chip {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 0.2rem 0.45rem;
+                    border-radius: 999px;
+                    background: #f8fafc;
+                    border: 1px solid rgba(226, 232, 240, 0.9);
+                    color: #475569;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.68rem;
+                    font-weight: 700;
+                }
+
+                .app-navbar-notification-unread-dot {
+                    width: 0.45rem;
+                    height: 0.45rem;
+                    border-radius: 999px;
+                    background: #0ea5e9;
+                    flex-shrink: 0;
+                }
+
+                .app-navbar-notification-empty {
+                    padding: 1.25rem;
+                    text-align: center;
+                    color: #64748b;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.82rem;
+                }
+
+                .app-navbar-notification-foot {
+                    border-top: 1px solid rgba(226, 232, 240, 0.9);
+                }
+
+                .app-navbar-notification-foot a {
+                    color: #0058be;
+                    text-decoration: none;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.8rem;
+                    font-weight: 700;
+                }
+
+                .app-admin-sidebar-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(11, 28, 48, 0.28);
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.2s ease;
+                    z-index: 1038;
+                }
+
+                .app-navbar-spacer--admin {
+                    height: 80px;
+                }
+
+                @media (max-width: 991.98px) {
+                    body.app-admin-shell {
+                        padding-left: 0;
+                    }
+
+                    .app-admin-sidebar {
+                        transform: translateX(-100%);
+                    }
+
+                    .app-admin-sidebar.is-open {
+                        transform: translateX(0);
+                    }
+
+                    .app-admin-topbar {
+                        left: 0;
+                        padding: 0 1rem;
+                    }
+
+                    .app-admin-sidebar-toggle {
+                        display: inline-flex;
+                    }
+
+                    .app-admin-topbar__search {
+                        max-width: none;
+                    }
+
+                    .app-admin-sidebar-overlay.is-open {
+                        opacity: 1;
+                        pointer-events: auto;
+                    }
+                }
+
+                @media (max-width: 767.98px) {
+                    .app-admin-topbar__search {
+                        display: none;
+                    }
+
+                    .app-admin-user-copy {
+                        display: none;
+                    }
+
+                    .app-admin-topbar {
+                        gap: 0.75rem;
+                    }
+                }
+            </style>
+
+            <aside class="app-admin-sidebar" id="adminSidebar">
+                <a class="app-admin-sidebar__brand" href="/admin/dispatch">Điều phối</a>
+
+                <nav class="app-admin-sidebar__nav">
+                    ${navLinks}
+                </nav>
+
+                <a class="app-admin-sidebar__cta" href="/admin/bookings">
+                    <i class="fas fa-plus"></i>
+                    <span>Đơn hàng</span>
+                </a>
+
+                <div class="app-admin-sidebar__footer">
+                    <div class="app-admin-profile">
+                        ${avatarHtml}
+                        <div>
+                            <div class="app-admin-profile__name">${this.escapeHtml(user.name || roleLabel)}</div>
+                            <div class="app-admin-profile__status">
+                                <span class="app-admin-status-dot"></span>
+                                <span>Hệ thống trực tuyến</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="app-admin-sidebar__utility">
+                        <a href="/admin/assistant-soul"><i class="fas fa-circle-question"></i><span>Trợ giúp</span></a>
+                        <button type="button" data-navbar-logout="1"><i class="fas fa-right-from-bracket"></i><span>Đăng xuất</span></button>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="app-admin-sidebar-overlay" id="adminSidebarOverlay"></div>
+
+            <header class="app-admin-topbar">
+                <div class="app-admin-topbar__left">
+                    <button type="button" class="app-admin-sidebar-toggle" id="adminNavToggle" aria-label="Mở menu admin">
+                        <i class="fas fa-bars"></i>
+                    </button>
+
+                    <label class="app-admin-topbar__search" aria-label="Tìm kiếm admin">
+                        <i class="fas fa-search"></i>
+                        <input type="search" placeholder="Tìm kiếm mã vận đơn, khách hàng..." />
+                    </label>
+                </div>
+
+                <div class="app-admin-topbar__right">
+                    <div class="app-admin-topbar__icons">
+                        ${this.buildNotificationDropdownHtml({
+                            suffix: 'Desktop',
+                            viewAllHref: notificationOverview.href,
+                            viewAllLabel: notificationOverview.label,
+                            wrapClass: '',
+                        })}
+                    </div>
+
+                    <div class="app-admin-topbar__divider"></div>
+
+                    <a href="${section.href}" class="app-admin-topbar__section">
+                        <span>${this.escapeHtml(section.label)}</span>
+                        <i class="fas fa-circle-user"></i>
+                    </a>
+
+                    <div class="dropdown app-admin-topbar__user">
+                        <button class="app-admin-user-trigger" type="button" id="navbarUserDropdownDesktop">
+                            ${avatarHtml}
+                            <span class="app-admin-user-copy">
+                                <strong>${this.escapeHtml(user.name || roleLabel)}</strong>
+                                <span>${roleLabel}</span>
+                            </span>
+                        </button>
+                        ${userMenuHtml}
+                    </div>
+                </div>
+            </header>
+
+            <div class="app-navbar-spacer app-navbar-spacer--admin" aria-hidden="true"></div>
+        `;
+    }
+
+    renderAdminNavLinks(isCurrentPath) {
+        const links = [
+            { href: '/admin/dashboard', label: 'Bảng điều khiển', icon: 'fas fa-table-columns', active: isCurrentPath('/admin/dashboard') },
+            { href: '/admin/dispatch', label: 'Điều phối', icon: 'fas fa-route', active: isCurrentPath('/admin/dispatch') },
+            { href: '/admin/customers', label: 'Khách hàng', icon: 'fas fa-user-group', active: isCurrentPath('/admin/customers') },
+            { href: '/admin/users', label: 'Thành viên', icon: 'fas fa-user-gear', active: isCurrentPath('/admin/users') },
+            { href: '/admin/services', label: 'Dịch vụ', icon: 'fas fa-screwdriver-wrench', active: isCurrentPath('/admin/services', '/admin/linh-kien', '/admin/trieu-chung', '/admin/huong-xu-ly') },
+            { href: '/admin/customer-feedback', label: 'Báo cáo', icon: 'fas fa-chart-simple', active: isCurrentPath('/admin/customer-feedback', '/admin/bookings') },
+            { href: '/admin/travel-fee-config', label: 'Cài đặt', icon: 'fas fa-gear', active: isCurrentPath('/admin/travel-fee-config', '/admin/assistant-soul') },
+        ];
+
+        return links.map((link) => `
+            <a href="${link.href}" class="app-admin-sidebar__link ${link.active ? 'is-active' : ''}">
+                <i class="${link.icon}"></i>
+                <span>${link.label}</span>
+            </a>
+        `).join('');
+    }
+
+    resolveAdminSection(currentPath, isCurrentPath) {
+        if (isCurrentPath('/admin/dispatch')) {
+            return { href: '/admin/dispatch', label: 'Điều phối' };
+        }
+
+        if (isCurrentPath('/admin/customers', '/admin/customer-feedback')) {
+            return { href: '/admin/customers', label: 'Khách hàng' };
+        }
+
+        if (isCurrentPath('/admin/users')) {
+            return { href: '/admin/users', label: 'Thành viên' };
+        }
+
+        if (isCurrentPath('/admin/services', '/admin/linh-kien', '/admin/trieu-chung', '/admin/huong-xu-ly')) {
+            return { href: '/admin/services', label: 'Danh mục' };
+        }
+
+        if (isCurrentPath('/admin/travel-fee-config', '/admin/assistant-soul')) {
+            return { href: '/admin/travel-fee-config', label: 'Cài đặt' };
+        }
+
+        return { href: '/admin/dashboard', label: 'Bảng điều khiển' };
+    }
+
     setupEvents() {
         this.cleanupEvents();
         this.clearNotificationPolling();
@@ -967,6 +1730,45 @@ class AppNavbar extends HTMLElement {
             btnLogout.addEventListener('click', handleLogout);
             this.cleanupFns.push(() => btnLogout.removeEventListener('click', handleLogout));
         });
+
+        const adminSidebar = this.querySelector('#adminSidebar');
+        const adminSidebarOverlay = this.querySelector('#adminSidebarOverlay');
+        const adminNavToggle = this.querySelector('#adminNavToggle');
+
+        if (adminSidebar && adminSidebarOverlay && adminNavToggle) {
+            const closeSidebar = () => {
+                adminSidebar.classList.remove('is-open');
+                adminSidebarOverlay.classList.remove('is-open');
+            };
+
+            const openSidebar = () => {
+                adminSidebar.classList.add('is-open');
+                adminSidebarOverlay.classList.add('is-open');
+            };
+
+            const handleToggle = () => {
+                if (adminSidebar.classList.contains('is-open')) {
+                    closeSidebar();
+                    return;
+                }
+
+                openSidebar();
+            };
+
+            const handleOverlayClick = () => closeSidebar();
+            const handleResize = () => {
+                if (window.innerWidth > 991) {
+                    closeSidebar();
+                }
+            };
+
+            adminNavToggle.addEventListener('click', handleToggle);
+            adminSidebarOverlay.addEventListener('click', handleOverlayClick);
+            window.addEventListener('resize', handleResize);
+            this.cleanupFns.push(() => adminNavToggle.removeEventListener('click', handleToggle));
+            this.cleanupFns.push(() => adminSidebarOverlay.removeEventListener('click', handleOverlayClick));
+            this.cleanupFns.push(() => window.removeEventListener('resize', handleResize));
+        }
 
         const btnCustomerBooking = this.querySelector('#btnCustomerBooking');
         if (btnCustomerBooking) {
@@ -1042,24 +1844,6 @@ class AppNavbar extends HTMLElement {
                     badge.classList.remove('d-none');
                     badge.innerText = count > 99 ? '99+' : count;
 
-                    if (count > currentCount) {
-                        showToast('Bạn có đơn đặt lịch mới từ khách hàng!', 'success');
-                        try {
-                            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                            const oscillator = audioCtx.createOscillator();
-                            const gainNode = audioCtx.createGain();
-                            oscillator.connect(gainNode);
-                            gainNode.connect(audioCtx.destination);
-                            oscillator.type = 'sine';
-                            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-                            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-                            oscillator.start();
-                            oscillator.stop(audioCtx.currentTime + 0.5);
-                        } catch (error) {
-                            console.error('Audio notification failed', error);
-                        }
-                    }
                 } else {
                     badge.classList.add('d-none');
                 }
@@ -1155,7 +1939,7 @@ class AppNavbar extends HTMLElement {
 
     resolveNotificationOverview(user) {
         if (user?.role === 'worker') {
-            return { href: '/worker/jobs', label: 'Xem danh sách đơn' };
+            return { href: '/worker/my-bookings?status=pending', label: 'Xem danh sách đơn' };
         }
 
         if (user?.role === 'admin') {
@@ -1166,8 +1950,6 @@ class AppNavbar extends HTMLElement {
     }
 
     setupNotifications(user) {
-        this.restoreNotificationToastState(user);
-
         const controls = ['Desktop', 'Mobile']
             .map((suffix) => ({
                 suffix,
@@ -1262,15 +2044,6 @@ class AppNavbar extends HTMLElement {
                     });
                 });
 
-                normalizedNotifications
-                    .filter((notification) => !notification.read_at && !this.notificationToastShownIds.has(notification.id))
-                    .slice(0, currentCount === 0 ? 3 : 2)
-                    .forEach((notification) => {
-                        this.notificationToastShownIds.add(notification.id);
-                        this.persistNotificationToastState(user);
-                        this.showNotificationToast(notification);
-                    });
-
                 currentCount = unreadCount;
             } catch (error) {
                 console.error('Polling error', error);
@@ -1331,6 +2104,13 @@ class AppNavbar extends HTMLElement {
 
     normalizeNotificationLink(link, user) {
         if (typeof link === 'string' && link.trim() !== '') {
+            if (user?.role === 'worker') {
+                const normalizedLink = link.trim();
+                if (normalizedLink === '/worker/jobs') {
+                    return '/worker/my-bookings?status=pending';
+                }
+            }
+
             return link;
         }
 
@@ -1348,65 +2128,6 @@ class AppNavbar extends HTMLElement {
             console.error('Mark notification as read failed', error);
         }
     }
-
-    showNotificationToast(notification) {
-        const data = notification.data || {};
-        const toastText = [data.title || 'Thông báo mới', data.message || 'Đơn đặt lịch của bạn vừa được cập nhật.']
-            .filter(Boolean)
-            .join(' - ');
-
-        if (typeof Toastify === 'undefined') {
-            return;
-        }
-
-        Toastify({
-            text: toastText,
-            duration: 6000,
-            close: true,
-            gravity: 'bottom',
-            position: 'right',
-            stopOnFocus: true,
-            onClick: async () => {
-                await this.markNotificationAsRead(notification.id);
-                if (notification.link) {
-                    window.location.href = notification.link;
-                }
-            },
-            style: {
-                background: 'linear-gradient(135deg, #0f172a 0%, #0284c7 100%)',
-                borderRadius: '16px',
-                fontFamily: 'Roboto, sans-serif',
-                fontWeight: '600',
-                boxShadow: '0 18px 36px rgba(15, 23, 42, 0.28)',
-            },
-        }).showToast();
-    }
-
-    getNotificationToastStorageKey(user) {
-        return `app-navbar-notification-toast-seen:${user?.id || 'guest'}`;
-    }
-
-    restoreNotificationToastState(user) {
-        try {
-            const rawValue = sessionStorage.getItem(this.getNotificationToastStorageKey(user));
-            const parsed = rawValue ? JSON.parse(rawValue) : [];
-            this.notificationToastShownIds = new Set(Array.isArray(parsed) ? parsed : []);
-        } catch (error) {
-            this.notificationToastShownIds = new Set();
-        }
-    }
-
-    persistNotificationToastState(user) {
-        try {
-            sessionStorage.setItem(
-                this.getNotificationToastStorageKey(user),
-                JSON.stringify(Array.from(this.notificationToastShownIds).slice(-200))
-            );
-        } catch (error) {
-            console.error('Persist notification toast state failed', error);
-        }
-    }
-
     getNotificationVisual(type) {
         switch (type) {
         case 'new_booking':

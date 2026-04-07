@@ -22,8 +22,8 @@ class AiKnowledgeSyncServiceTest extends TestCase
     public function test_sync_completed_booking_case_into_ai_knowledge_library(): void
     {
         $serviceId = DB::table('danh_muc_dich_vu')->insertGetId([
-            'ten_dich_vu' => 'Sửa máy giặt',
-            'mo_ta' => 'Xử lý lỗi máy giặt tại nhà',
+            'ten_dich_vu' => 'Sua may giat',
+            'mo_ta' => 'Xu ly loi may giat tai nha',
             'trang_thai' => true,
             'created_at' => now(),
             'updated_at' => now(),
@@ -31,9 +31,8 @@ class AiKnowledgeSyncServiceTest extends TestCase
 
         $bookingId = DB::table('don_dat_lich')->insertGetId([
             'trang_thai' => 'da_xong',
-            'mo_ta_van_de' => 'Máy giặt bị rò nước ở đáy',
-            'nguyen_nhan' => 'Ống xả bị nứt và kẹp lỏng',
-            'giai_phap' => 'Thay ống xả mới và siết lại kẹp giữ',
+            'mo_ta_van_de' => 'May giat bi ro nuoc o day',
+            'giai_phap' => 'Thay ong xa moi va siet lai kep giu',
             'phi_di_lai' => 10000,
             'phi_linh_kien' => 400000,
             'tien_cong' => 50000,
@@ -41,10 +40,10 @@ class AiKnowledgeSyncServiceTest extends TestCase
             'tong_tien' => 460000,
             'gia_da_cap_nhat' => true,
             'chi_tiet_tien_cong' => json_encode([
-                ['noi_dung' => 'Sửa vòi rỉ nước', 'so_tien' => 50000],
+                ['noi_dung' => 'Sua voi ri nuoc', 'so_tien' => 50000],
             ], JSON_UNESCAPED_UNICODE),
             'chi_tiet_linh_kien' => json_encode([
-                ['noi_dung' => 'Thay vòi', 'so_tien' => 400000, 'bao_hanh_thang' => 6],
+                ['noi_dung' => 'Thay voi', 'so_tien' => 400000, 'bao_hanh_thang' => 6],
             ], JSON_UNESCAPED_UNICODE),
             'created_at' => now(),
             'updated_at' => now(),
@@ -60,7 +59,7 @@ class AiKnowledgeSyncServiceTest extends TestCase
         DB::table('danh_gia')->insert([
             'don_dat_lich_id' => $bookingId,
             'so_sao' => 5,
-            'nhan_xet' => 'Sửa nhanh, gọn và sạch.',
+            'nhan_xet' => 'Sua nhanh, gon va sach.',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -71,15 +70,15 @@ class AiKnowledgeSyncServiceTest extends TestCase
         $this->assertDatabaseHas('ai_knowledge_items', [
             'source_key' => 'booking_case:' . $bookingId,
             'source_type' => 'booking_case',
-            'service_name' => 'Sửa máy giặt',
+            'service_name' => 'Sua may giat',
         ]);
     }
 
     public function test_similar_issue_search_prefers_ai_knowledge_library(): void
     {
         $serviceId = DB::table('danh_muc_dich_vu')->insertGetId([
-            'ten_dich_vu' => 'Sửa máy giặt',
-            'mo_ta' => 'Xử lý lỗi máy giặt tại nhà',
+            'ten_dich_vu' => 'Sua may giat',
+            'mo_ta' => 'Xu ly loi may giat tai nha',
             'trang_thai' => true,
             'created_at' => now(),
             'updated_at' => now(),
@@ -90,14 +89,14 @@ class AiKnowledgeSyncServiceTest extends TestCase
             'source_id' => 99,
             'source_key' => 'booking_case:99',
             'primary_service_id' => $serviceId,
-            'service_name' => 'Sửa máy giặt',
-            'title' => 'Ca sửa chữa máy giặt rò nước',
-            'content' => 'Dịch vụ: Sửa máy giặt. Triệu chứng: máy giặt rò nước ở đáy. Nguyên nhân: ống xả bị nứt. Giải pháp: thay ống xả mới.',
-            'normalized_content' => 'dich vu sua may giat trieu chung may giat ro nuoc o day nguyen nhan ong xa bi nut giai phap thay ong xa moi',
-            'symptom_text' => 'Máy giặt rò nước ở đáy',
-            'cause_text' => 'Ống xả bị nứt',
-            'solution_text' => 'Thay ống xả mới',
-            'price_context' => 'tiền công 50000 VND, linh kiện 400000 VND',
+            'service_name' => 'Sua may giat',
+            'title' => 'Ca sua chua may giat ro nuoc',
+            'content' => 'Dich vu: Sua may giat. Trieu chung: may giat ro nuoc o day. Giai phap: thay ong xa moi.',
+            'normalized_content' => 'dich vu sua may giat trieu chung may giat ro nuoc o day giai phap thay ong xa moi',
+            'symptom_text' => 'May giat ro nuoc o day',
+            'cause_text' => null,
+            'solution_text' => 'Thay ong xa moi',
+            'price_context' => 'tien cong 50000 VND, linh kien 400000 VND',
             'rating_avg' => 4.80,
             'quality_score' => 0.9300,
             'metadata' => json_encode(['before_image' => null, 'after_image' => null], JSON_UNESCAPED_UNICODE),
@@ -107,12 +106,12 @@ class AiKnowledgeSyncServiceTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $results = app(SimilarIssueSearchService::class)->search('máy giặt bị rỉ nước ở đáy', 1);
+        $results = app(SimilarIssueSearchService::class)->search('may giat bi ro nuoc o day', 1);
 
         $this->assertCount(1, $results);
-        $this->assertSame('Sửa máy giặt', $results[0]['service_type']);
-        $this->assertSame('Ống xả bị nứt', $results[0]['cause']);
-        $this->assertSame('Thay ống xả mới', $results[0]['solution']);
+        $this->assertSame('Sua may giat', $results[0]['service_type']);
+        $this->assertSame('', $results[0]['cause']);
+        $this->assertSame('Thay ong xa moi', $results[0]['solution']);
     }
 
     private function prepareSchema(): void
@@ -132,7 +131,6 @@ class AiKnowledgeSyncServiceTest extends TestCase
                 $table->id();
                 $table->string('trang_thai')->default('cho_xac_nhan');
                 $table->text('mo_ta_van_de')->nullable();
-                $table->text('nguyen_nhan')->nullable();
                 $table->text('giai_phap')->nullable();
                 $table->decimal('phi_di_lai', 12, 2)->default(0);
                 $table->decimal('phi_linh_kien', 12, 2)->default(0);

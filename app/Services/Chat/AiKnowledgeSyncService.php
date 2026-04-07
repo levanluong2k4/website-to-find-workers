@@ -108,11 +108,10 @@ class AiKnowledgeSyncService
     private function buildBookingCasePayload(DonDatLich $booking): ?array
     {
         $symptom = trim((string) $booking->mo_ta_van_de);
-        $cause = trim((string) ($booking->nguyen_nhan ?? ''));
         $solution = trim((string) ($booking->giai_phap ?? ''));
         $serviceNames = $booking->dichVus->pluck('ten_dich_vu')->filter()->values();
         $serviceName = $serviceNames->implode(', ');
-        $hasUsableContent = $symptom !== '' || $cause !== '' || $solution !== '' || $serviceName !== '';
+        $hasUsableContent = $symptom !== '' || $solution !== '' || $serviceName !== '';
 
         if (!$hasUsableContent) {
             return null;
@@ -132,7 +131,6 @@ class AiKnowledgeSyncService
         $content = implode("\n", array_filter([
             $serviceName !== '' ? 'Dịch vụ: ' . $serviceName : null,
             $symptom !== '' ? 'Triệu chứng: ' . $symptom : null,
-            $cause !== '' ? 'Nguyên nhân: ' . $cause : null,
             $solution !== '' ? 'Giải pháp: ' . $solution : null,
             $priceContext !== '' ? 'Chi phí: ' . $priceContext : null,
             $ratingAvg !== null ? 'Đánh giá trung bình: ' . $ratingAvg . '/5' : null,
@@ -141,7 +139,6 @@ class AiKnowledgeSyncService
 
         $qualityScore = $this->calculateBookingQualityScore(
             $symptom,
-            $cause,
             $solution,
             $serviceName,
             $ratingAvg,
@@ -159,7 +156,7 @@ class AiKnowledgeSyncService
             'content' => $content,
             'normalized_content' => TextNormalizer::normalize($content),
             'symptom_text' => $symptom !== '' ? $symptom : null,
-            'cause_text' => $cause !== '' ? $cause : null,
+            'cause_text' => null,
             'solution_text' => $solution !== '' ? $solution : null,
             'price_context' => $priceContext !== '' ? $priceContext : null,
             'rating_avg' => $ratingAvg,
@@ -214,7 +211,6 @@ class AiKnowledgeSyncService
 
     private function calculateBookingQualityScore(
         string $symptom,
-        string $cause,
         string $solution,
         string $serviceName,
         ?float $ratingAvg,
@@ -223,7 +219,6 @@ class AiKnowledgeSyncService
     ): float {
         $score = 0.0;
         $score += $symptom !== '' ? 0.28 : 0.0;
-        $score += $cause !== '' ? 0.20 : 0.0;
         $score += $solution !== '' ? 0.24 : 0.0;
         $score += $serviceName !== '' ? 0.08 : 0.0;
         $score += $hasUpdatedPricing ? 0.08 : 0.0;

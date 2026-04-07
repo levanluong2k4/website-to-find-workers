@@ -4,11 +4,13 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Đăng ký - Thợ Tốt NTU</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Material+Symbols+Outlined&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"/>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root{--app-font-sans:'Be Vietnam Pro',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+    body, body *:not(.material-symbols-outlined):not(.material-symbols-rounded):not(.material-symbols-sharp):not(.fa):not(.fas):not(.far):not(.fab):not([class^="fa-"]):not([class*=" fa-"]):not(pre):not(code):not(kbd):not(samp){font-family:var(--app-font-sans)!important}
     html, body { height: 100vh; overflow: hidden; font-family: 'Roboto', sans-serif; display: flex; background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.68) 0, rgba(255, 255, 255, 0) 24rem), radial-gradient(circle at top right, rgba(255, 255, 255, 0.58) 0, rgba(255, 255, 255, 0) 18rem), linear-gradient(180deg, #8ad0ff 0%, #c7e8ff 36%, #edf7ff 100%); }
 
     /* ===== LEFT PANEL: gradient background with framed carousel ===== */
@@ -53,12 +55,15 @@
       flex-shrink: 0;
     }
     .left-logo-icon {
-      width: 2.25rem; height: 2.25rem;
-      background: rgba(255,255,255,.15);
-      border-radius: .625rem;
+      width: 3.15rem; height: 3.15rem;
+      background: #fff;
+      border-radius: 999px;
       display: flex; align-items: center; justify-content: center;
-      border: 1px solid rgba(255,255,255,.2);
+      overflow: hidden;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24);
+      flex-shrink: 0;
     }
+    .left-logo-icon img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .left-logo-text {
       color: #fff;
       font-family: 'DM Sans', sans-serif;
@@ -343,7 +348,7 @@
   <!-- Logo top -->
   <div class="left-logo">
     <div class="left-logo-icon">
-      <span class="material-symbols-outlined" style="color:#fff;font-size:1.15rem;">home_repair_service</span>
+      <img src="{{ asset('assets/images/logontu.png') }}" alt="Logo Thợ Tốt NTU">
     </div>
     <div>
       <span class="left-logo-text">Thợ Tốt NTU</span>

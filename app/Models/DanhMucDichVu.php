@@ -30,6 +30,11 @@ class DanhMucDichVu extends Model
         return $this->hasMany(LinhKien::class, 'dich_vu_id');
     }
 
+    public function trieuChungs()
+    {
+        return $this->hasMany(TrieuChung::class, 'dich_vu_id');
+    }
+
     protected function hinhAnh(): Attribute
     {
         return Attribute::make(
