@@ -25,15 +25,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookingTravelFeeText = document.getElementById('bookingTravelFeeText');
     const bookingDistanceText = document.getElementById('bookingDistanceText');
     const bookingTravelFeeHint = document.getElementById('bookingTravelFeeHint');
+    const bookingStoreAddressText = document.getElementById('bookingStoreAddressText');
+    const bookingStoreTransportHint = document.getElementById('bookingStoreTransportHint');
+    const bookingStoreFeeText = document.getElementById('bookingStoreFeeText');
+    const bookingTransportCheckbox = document.getElementById('booking_thue_xe_cho');
 
     let allBookingServices = [];
     let selectedServiceIds = new Set();
     let addressData = [];
     let selectedWorkerContext = null;
+    const DEFAULT_FREE_DISTANCE_KM = 1;
     const DEFAULT_TRAVEL_FEE_PER_KM = 5000;
+    const DEFAULT_STORE_TRANSPORT_FEE = 0;
+    const DEFAULT_STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
     const TRAVEL_FEE_PER_KM = DEFAULT_TRAVEL_FEE_PER_KM;
+    let storeAddress = DEFAULT_STORE_ADDRESS;
+    let storeTransportFee = DEFAULT_STORE_TRANSPORT_FEE;
     let travelFeeConfig = {
+        free_distance_km: DEFAULT_FREE_DISTANCE_KM,
         default_per_km: DEFAULT_TRAVEL_FEE_PER_KM,
+        store_address: DEFAULT_STORE_ADDRESS,
+        store_transport_fee: DEFAULT_STORE_TRANSPORT_FEE,
         tiers: [],
     };
     const DEFAULT_REFERENCE_POINT = {
@@ -83,24 +95,114 @@ document.addEventListener('DOMContentLoaded', () => {
         return (travelFeeConfig.tiers || []).find((tier) => distanceKm >= Number(tier.from_km || 0) && distanceKm <= Number(tier.to_km || 0)) || null;
     }
 
+    function getTierTravelFee(tier) {
+        return Number(tier?.travel_fee ?? tier?.fee ?? 0);
+    }
+
+    function getTierTransportFee(tier) {
+        return Number(tier?.transport_fee ?? 0);
+    }
+
+    function normalizeTravelFeeTiers(tiers) {
+        return (Array.isArray(tiers) ? tiers : []).map((tier) => ({
+            ...tier,
+            travel_fee: getTierTravelFee(tier),
+            fee: getTierTravelFee(tier),
+            transport_fee: getTierTransportFee(tier),
+        }));
+    }
+
+    function deriveStoreTransportFeeFromTiers(tiers) {
+        return normalizeTravelFeeTiers(tiers)
+            .map((tier) => tier.transport_fee)
+            .find((fee) => Number.isFinite(fee) && fee > 0) ?? DEFAULT_STORE_TRANSPORT_FEE;
+    }
+
+    function getFreeDistanceKm() {
+        return Math.max(0, Number(travelFeeConfig.free_distance_km ?? DEFAULT_FREE_DISTANCE_KM));
+    }
+
     function resolveTravelFee(distanceKm) {
+        if (distanceKm < getFreeDistanceKm()) {
+            return 0;
+        }
+
         const tier = findTravelFeeTier(distanceKm);
 
         if (tier) {
-            return Number(tier.fee || 0);
+            return getTierTravelFee(tier);
         }
 
         return Math.round(distanceKm * Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM));
     }
 
-    function describeTravelFee(referenceLabel, roundedDistance, fee) {
-        const tier = findTravelFeeTier(roundedDistance);
+    function describeTravelFee(referenceLabel, roundedDistance, fee, distanceKm = roundedDistance) {
+        const freeDistanceKm = getFreeDistanceKm();
+        if (freeDistanceKm > 0 && distanceKm < freeDistanceKm) {
+            return `Táº¡m tÃ­nh theo khoáº£ng cÃ¡ch tá»« ${referenceLabel}: ${roundedDistance} km Ä‘ang Ä‘Æ°á»£c miá»…n phÃ­ vÃ¬ dÆ°á»›i ${freeDistanceKm.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km.`;
+        }
+
+        const tier = findTravelFeeTier(distanceKm);
 
         if (tier) {
             return `Tạm tính theo bảng khoảng cách từ ${referenceLabel}: ${roundedDistance} km áp dụng mức ${formatCurrency(fee)} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
         }
 
         return `Tạm tính theo khoảng cách từ ${referenceLabel}: ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km.`;
+    }
+
+    function resolveTravelFeeLinear(distanceKm) {
+        if (distanceKm < getFreeDistanceKm()) {
+            return 0;
+        }
+
+        const tier = findTravelFeeTier(distanceKm);
+        if (tier) {
+            return getTierTravelFee(tier);
+        }
+
+        return Math.round(distanceKm * Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM));
+    }
+
+    function describeTravelFeeLinear(referenceLabel, roundedDistance, distanceKm = roundedDistance) {
+        const freeDistanceKm = getFreeDistanceKm();
+        if (freeDistanceKm > 0 && distanceKm < freeDistanceKm) {
+            return `Tạm tính theo khoảng cách từ ${referenceLabel}: ${roundedDistance} km đang được miễn phí vì dưới ${freeDistanceKm.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km.`;
+        }
+
+        return `Tạm tính theo khoảng cách từ ${referenceLabel}: ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km.`;
+    }
+
+    function describeTravelTierFee(referenceLabel, roundedDistance, distanceKm = roundedDistance) {
+        const freeDistanceKm = getFreeDistanceKm();
+        if (freeDistanceKm > 0 && distanceKm < freeDistanceKm) {
+            return `Tạm tính theo khoảng cách từ ${referenceLabel}: ${roundedDistance} km đang được miễn phí vì dưới ${freeDistanceKm.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km.`;
+        }
+
+        const tier = findTravelFeeTier(distanceKm);
+        if (tier) {
+            return `Tạm tính theo bảng khoảng cách từ ${referenceLabel}: ${roundedDistance} km áp dụng mức ${formatCurrency(getTierTravelFee(tier))} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
+        }
+
+        return `Tạm tính theo khoảng cách từ ${referenceLabel}: ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km.`;
+    }
+
+    function buildStoreTransportText() {
+        return bookingTransportCheckbox?.checked
+            ? `Đang áp dụng phí thuê xe chở thiết bị hai chiều ${formatCurrency(storeTransportFee)}.`
+            : 'Bạn tự mang thiết bị đến cửa hàng nên không phát sinh phí đưa đón.';
+    }
+
+    function updateStoreTransportSummary() {
+        if (bookingStoreAddressText) {
+            bookingStoreAddressText.textContent = storeAddress;
+        }
+        if (bookingStoreFeeText) {
+            bookingStoreFeeText.textContent = formatCurrency(bookingTransportCheckbox?.checked ? storeTransportFee : 0);
+        }
+        if (bookingStoreTransportHint) {
+            bookingStoreTransportHint.textContent = buildStoreTransportText();
+        }
     }
 
     async function loadTravelFeeConfig() {
@@ -112,10 +214,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const config = res.data?.data?.config;
             if (config && typeof config === 'object') {
+                const tiers = normalizeTravelFeeTiers(config.tiers);
+                const derivedStoreTransportFee = deriveStoreTransportFeeFromTiers(tiers);
+
+                storeAddress = String(config.store_address || DEFAULT_STORE_ADDRESS).trim() || DEFAULT_STORE_ADDRESS;
+                storeTransportFee = Number(config.store_transport_fee ?? derivedStoreTransportFee ?? DEFAULT_STORE_TRANSPORT_FEE);
                 travelFeeConfig = {
-                    default_per_km: Number(config.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM),
-                    tiers: Array.isArray(config.tiers) ? config.tiers : [],
+                    free_distance_km: Number(config.free_distance_km ?? DEFAULT_FREE_DISTANCE_KM),
+                    default_per_km: Number(config.default_per_km ?? DEFAULT_TRAVEL_FEE_PER_KM),
+                    store_address: storeAddress,
+                    store_transport_fee: storeTransportFee,
+                    tiers,
                 };
+                updateStoreTransportSummary();
                 updateTravelFeeEstimate();
             }
         } catch (error) {
@@ -145,9 +256,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bookingTravelFeeText) bookingTravelFeeText.textContent = '0 ₫';
         if (bookingDistanceText) bookingDistanceText.textContent = 'Miễn phí di chuyển';
         if (bookingTravelFeeHint) {
-            bookingTravelFeeHint.textContent = 'Bạn chọn mang thiết bị đến cửa hàng nên không phát sinh phí đi lại.';
+            bookingTravelFeeHint.textContent = buildStoreTransportText();
             bookingTravelFeeHint.className = 'text-muted';
         }
+        updateStoreTransportSummary();
     }
 
     function updateTravelFeeEstimate() {
@@ -170,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reference = getReferencePoint();
         const distanceKm = calculateDistanceKm(reference.lat, reference.lng, lat, lng);
         const roundedDistance = Number(distanceKm.toFixed(1));
-        const fee = resolveTravelFee(distanceKm);
+        const fee = resolveTravelFeeLinear(distanceKm);
         const maxDistance = Number(reference.maxDistance || DEFAULT_REFERENCE_POINT.maxDistance);
         const isOutOfRange = roundedDistance > maxDistance;
 
@@ -183,12 +295,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bookingTravelFeeHint) {
             bookingTravelFeeHint.textContent = isOutOfRange
                 ? `Khoảng cách hiện tại vượt phạm vi phục vụ ${maxDistance} km của ${reference.label}.`
-                : `Tạm tính theo khoảng cách từ ${reference.label}: ${roundedDistance} km × ${TRAVEL_FEE_PER_KM.toLocaleString('vi-VN')} ₫/km.`;
+                : `Tạm tính theo khoảng cách từ ${reference.label}: ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km.`;
             bookingTravelFeeHint.className = isOutOfRange ? 'text-danger' : 'text-muted';
         }
 
         if (bookingTravelFeeHint && !isOutOfRange) {
-            bookingTravelFeeHint.textContent = describeTravelFee(reference.label, roundedDistance, fee);
+            bookingTravelFeeHint.textContent = describeTravelTierFee(reference.label, roundedDistance, distanceKm);
         }
     }
 
@@ -536,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('booking_vi_do').value = '';
                     document.getElementById('booking_kinh_do').value = '';
                     document.getElementById('booking_dia_chi').value = '';
-                    showFreeTravelEstimate();
+                    updateTravelFeeEstimate();
                     bookingLocationStatus.textContent = 'Vui lòng lấy vị trí tự động hoặc chọn địa chỉ thủ công.';
                 }
 
@@ -743,7 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isAtStore = document.getElementById('loai_store')?.checked;
         const transportGroup = document.getElementById('transportRentalGroup');
-        const transportCheckbox = document.getElementById('booking_thue_xe_cho');
+        const transportCheckbox = bookingTransportCheckbox;
 
         if (transportGroup && transportCheckbox) {
             if (isHeavy && isAtStore) {
@@ -753,6 +865,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 transportCheckbox.checked = false;
             }
         }
+
+        updateStoreTransportSummary();
     }
 
     function findBestMatch(targetStr, listStr) {
@@ -799,6 +913,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             renderMediaPreview();
+        });
+    }
+
+    if (bookingTransportCheckbox) {
+        bookingTransportCheckbox.addEventListener('change', () => {
+            updateTravelFeeEstimate();
         });
     }
 
@@ -889,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadTravelFeeConfig();
         bookingModal.addEventListener('show.bs.modal', async () => {
             loadAddressData();
+            updateStoreTransportSummary();
 
             if (window.WORKER_ID) {
                 bookingThoInput.value = window.WORKER_ID;

@@ -6,6 +6,13 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreDanhGiaRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'video_duration' => $this->normalizeVideoDuration($this->input('video_duration')),
+        ]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -24,7 +31,20 @@ class StoreDanhGiaRequest extends FormRequest
         return [
             'don_dat_lich_id' => 'required|exists:don_dat_lich,id',
             'so_sao' => 'required|integer|min:1|max:5',
-            'nhan_xet' => 'nullable|string|max:1000'
+            'nhan_xet' => 'nullable|string|max:1000',
+            'hinh_anh_danh_gia' => 'nullable|array|max:5',
+            'hinh_anh_danh_gia.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+            'video_danh_gia' => 'nullable|file|mimes:mp4,mov,avi,wmv,webm|max:20480',
+            'video_duration' => 'nullable|numeric|max:20',
         ];
+    }
+
+    private function normalizeVideoDuration(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (float) $value : null;
     }
 }

@@ -52,6 +52,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formatMoney = (value) => currency.format(Number(value || 0));
     const formatNumber = (value) => number.format(Number(value || 0));
+    const buildLogisticsBreakdown = (booking) => {
+        const travelFee = Number(booking?.travel_fee || 0);
+        const transportFee = Number(booking?.transport_fee || 0);
+        const transportRequested = booking?.transport_requested === true || booking?.transport_requested === 1 || booking?.transport_requested === '1';
+        const items = [];
+
+        if (travelFee > 0) {
+            items.push(`Đi lại ${formatMoney(travelFee)}`);
+        }
+
+        if (transportRequested || transportFee > 0) {
+            items.push(`Thuê xe ${formatMoney(transportFee)}`);
+        }
+
+        return items.length ? items.join(' • ') : 'Không có phụ phí logistics';
+    };
 
     const toneClass = (tone) => {
         switch (tone) {
@@ -154,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><span class="customer-history-pill ${toneClass(booking.payment_tone)}">${escapeHtml(booking.payment_label || '--')}</span></td>
                 <td>
                     <div class="customer-history-name">${escapeHtml(formatMoney(booking.total_amount || 0))}</div>
+                    <div class="customer-history-subcopy">${escapeHtml(buildLogisticsBreakdown(booking))}</div>
                 </td>
             </tr>
         `).join('');
@@ -192,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="customer-history-pill ${toneClass(booking.status_tone)}">${escapeHtml(booking.status_label || '--')}</span>
                     <span class="customer-history-pill ${toneClass(booking.payment_tone)}" style="margin-left:8px;">${escapeHtml(booking.payment_label || '--')}</span>
                     <div class="customer-history-subcopy" style="margin-top:10px;">Tong tien ${escapeHtml(formatMoney(booking.total_amount || 0))}</div>
+                    <div class="customer-history-subcopy" style="margin-top:6px;">${escapeHtml(buildLogisticsBreakdown(booking))}</div>
                 </div>
             </div>
             <div class="customer-history-preview-actions">

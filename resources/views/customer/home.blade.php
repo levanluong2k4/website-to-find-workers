@@ -28,6 +28,10 @@
   }
 </script>
 <style>
+  html {
+    scroll-behavior: smooth;
+  }
+
   .material-symbols-outlined {
     font-family: 'Material Symbols Outlined';
     font-weight: normal;
@@ -248,6 +252,10 @@
     display: block;
     width: 100%;
   }
+
+  .customer-home-services {
+    scroll-margin-top: 8rem;
+  }
 </style>
 <script>
   (() => {
@@ -434,7 +442,7 @@
   </section>
 
   <!-- ===================== SERVICES ===================== -->
-  <section id="services" class="max-w-7xl mx-auto px-6 py-16">
+  <section id="services" class="customer-home-services max-w-7xl mx-auto px-6 py-16">
     <div class="mb-10 flex items-end justify-between">
       <div>
         <h2 class="text-3xl font-black tracking-tight text-slate-900">Dịch vụ sửa chữa tại Nha Trang</h2>
@@ -454,8 +462,8 @@
       ['Ấm siêu tốc','Không vào điện, cháy rơ le','kettle','/assets/images/suaamsieutoc.png'],
       ];
       @endphp
-      @foreach($services as [$name, $desc, $icon, $img])
-      <div class="group flex flex-col rounded-2xl bg-white p-5 soft-shadow border border-transparent hover:border-primary-dark transition-all cursor-pointer" onclick="openBookingModal('{{ $name }}')">
+      @foreach($services as $index => [$name, $desc, $icon, $img])
+      <div class="customer-service-card {{ $index >= 4 ? 'customer-service-card--extra hidden' : '' }} group flex flex-col rounded-2xl bg-white p-5 soft-shadow border border-transparent hover:border-primary-dark transition-all cursor-pointer" onclick="openBookingModal('{{ $name }}')">
         <div class="mb-4 aspect-square w-full overflow-hidden rounded-xl bg-primary/10">
           <img class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" src="{{ $img }}" alt="{{ $name }}" />
         </div>
@@ -477,6 +485,17 @@
       </div>
       @endforeach
     </div>
+    @if(count($services) > 4)
+    <div class="mt-8 flex justify-center">
+      <button
+        id="toggleServicesBtn"
+        type="button"
+        class="inline-flex min-w-[220px] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all duration-300 hover:border-primary-dark hover:text-primary-dark hover:shadow-md">
+        <span id="toggleServicesLabel">Xem thêm dịch vụ</span>
+        <span id="toggleServicesIcon" class="material-symbols-outlined text-lg">expand_more</span>
+      </button>
+    </div>
+    @endif
   </section>
 
   <!-- ===================== AI DIAGNOSIS ===================== -->
@@ -770,6 +789,43 @@
       behavior: 'smooth'
     });
   });
+
+  (() => {
+    const toggleButton = document.getElementById('toggleServicesBtn');
+    const toggleLabel = document.getElementById('toggleServicesLabel');
+    const toggleIcon = document.getElementById('toggleServicesIcon');
+    const extraCards = Array.from(document.querySelectorAll('.customer-service-card--extra'));
+    const servicesSection = document.getElementById('services');
+
+    if (!toggleButton || !toggleLabel || !toggleIcon || !extraCards.length) {
+      return;
+    }
+
+    let expanded = false;
+
+    const renderServices = () => {
+      extraCards.forEach((card) => {
+        card.classList.toggle('hidden', !expanded);
+      });
+
+      toggleLabel.textContent = expanded ? 'Thu gọn dịch vụ' : 'Xem thêm dịch vụ';
+      toggleIcon.textContent = expanded ? 'expand_less' : 'expand_more';
+    };
+
+    toggleButton.addEventListener('click', () => {
+      expanded = !expanded;
+      renderServices();
+
+      if (!expanded) {
+        servicesSection?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }
+    });
+
+    renderServices();
+  })();
 
   // Hero carousel
   (() => {

@@ -50,6 +50,41 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     };
 
+    const isTruthy = (value) => value === true || value === 1 || value === '1';
+
+    const resolveTotalAmount = (booking) => {
+        const explicitTotal = Number(booking?.tong_tien);
+        if (Number.isFinite(explicitTotal) && explicitTotal > 0) {
+            return explicitTotal;
+        }
+
+        return Number(booking?.phi_di_lai || 0)
+            + Number(booking?.phi_linh_kien || 0)
+            + Number(booking?.tien_cong || 0)
+            + Number(booking?.tien_thue_xe || 0);
+    };
+
+    const buildCostBreakdownHtml = (booking) => {
+        const travelFee = Number(booking?.phi_di_lai || 0);
+        const transportFee = Number(booking?.tien_thue_xe || 0);
+        const transportRequested = isTruthy(booking?.thue_xe_cho);
+        const chips = [];
+
+        if (travelFee > 0) {
+            chips.push(`<span class="booking-cost-chip booking-cost-chip--travel"><i class="fas fa-route"></i>${formatMoney(travelFee)}</span>`);
+        }
+
+        if (transportRequested || transportFee > 0) {
+            chips.push(`<span class="booking-cost-chip booking-cost-chip--transport"><i class="fas fa-truck"></i>${formatMoney(transportFee)}</span>`);
+        }
+
+        if (!chips.length) {
+            chips.push('<span class="booking-cost-chip booking-cost-chip--muted">Không phụ phí</span>');
+        }
+
+        return chips.join('');
+    };
+
     const renderBookings = (bookings) => {
         const getBookingServices = (booking) => Array.isArray(booking.dich_vus) ? booking.dich_vus : [];
         const getBookingServiceLabel = (booking) => {
@@ -78,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const customerPhone = b.khach_hang ? b.khach_hang.phone : 'N/A';
             const workerInfo = b.tho ? `<span class="fw-bold text-dark">${b.tho.name}</span><br><small class="text-muted">${b.tho.phone}</small>` : `<span class="text-muted fst-italic">Chưa có thợ</span>`;
+            const totalAmount = resolveTotalAmount(b);
 
             return `
                 <tr>
@@ -93,7 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </td>
                     <td>${workerInfo}</td>
                     <td>
-                        <span class="fw-bold text-success">${formatMoney(b.tong_chi_phi)}</span>
+                        <div class="booking-cost-stack">
+                            <span class="booking-cost-total">${formatMoney(totalAmount)}</span>
+                            <div class="booking-cost-breakdown">${buildCostBreakdownHtml(b)}</div>
+                        </div>
                     </td>
                     <td class="text-end pe-4">
                         ${getStatusHtml(b.trang_thai)}

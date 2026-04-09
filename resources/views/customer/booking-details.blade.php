@@ -1210,6 +1210,27 @@
                         <textarea class="form-control bg-light border-0" id="bookingDetailReviewComment" name="nhan_xet" rows="4" placeholder="Kỹ thuật viên xử lý có đúng hẹn không? Chất lượng sửa chữa như thế nào?"></textarea>
                     </div>
 
+                    <div class="mb-4 text-start">
+                        <label class="form-label fw-bold">Media dinh kem (tuy chon)</label>
+                        <p class="review-media-upload__hint">Toi da 5 anh va 1 video toi da 20 giay. Media se duoc luu tren cloud.</p>
+                        <div class="review-media-upload">
+                            <div class="review-media-upload__actions">
+                                <label class="review-media-upload__picker">
+                                    <input type="file" id="bookingDetailReviewImagesInput" accept="image/*" multiple>
+                                    <span class="material-symbols-outlined">imagesmode</span>
+                                    <span>Them anh</span>
+                                </label>
+                                <label class="review-media-upload__picker review-media-upload__picker--video">
+                                    <input type="file" id="bookingDetailReviewVideoInput" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv">
+                                    <span class="material-symbols-outlined">videocam</span>
+                                    <span>Them video</span>
+                                </label>
+                                <div class="review-media-upload__summary" id="bookingDetailReviewMediaSummary">0/5 anh • 0/1 video</div>
+                            </div>
+                            <div class="review-media-gallery" id="bookingDetailReviewMediaPreview"></div>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold" id="bookingDetailSubmitReview">Gửi đánh giá</button>
                 </form>
             </div>

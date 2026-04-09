@@ -30,10 +30,12 @@ class AppNavbar extends HTMLElement {
     render() {
         const user = getCurrentUser();
         const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+        const currentHash = window.location.hash || '';
         const isCurrentPath = (...paths) => paths.some((path) => {
             const normalizedPath = (path || '').replace(/\/+$/, '') || '/';
             return currentPath === normalizedPath || (normalizedPath !== '/' && currentPath.startsWith(`${normalizedPath}/`));
         });
+        const isCurrentHash = (...hashes) => hashes.some((hash) => currentHash === hash);
         this.syncLayoutMode(user);
 
         if (user?.role === 'admin') {
@@ -239,10 +241,13 @@ class AppNavbar extends HTMLElement {
         } else {
             centerMenuHtml = `
                 <li class="nav-item">
-                    <a class="${navLinkClass(isCurrentPath('/', '/customer/home'))}" href="/customer/home" style="${navLinkStyle()}">Trang chủ</a>
+                    <a class="${navLinkClass(isCurrentPath('/', '/customer/home') && !isCurrentHash('#services'))}" href="/customer/home" style="${navLinkStyle()}">Trang chủ</a>
                 </li>
                 <li class="nav-item">
-                    <a class="${navLinkClass(isCurrentPath('/customer/search', '/customer/worker-profile'))}" href="/customer/search" style="${navLinkStyle()}">Dịch vụ</a>
+                    <a class="${navLinkClass(isCurrentPath('/customer/search', '/customer/worker-profile'))}" href="/customer/search" style="${navLinkStyle()}">Xem thợ</a>
+                </li>
+                <li class="nav-item">
+                    <a class="${navLinkClass(isCurrentPath('/customer/home') && isCurrentHash('#services'))}" href="/customer/home#services" style="${navLinkStyle()}">Dịch vụ</a>
                 </li>
             `;
         }

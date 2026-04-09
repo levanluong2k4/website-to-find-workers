@@ -371,7 +371,7 @@
                         <div id="atStoreGroup" class="col-12 d-none">
                             <div class="alert alert-info border-0 rounded-3 mb-0" style="font-size: 0.85rem;">
                                 <i class="fas fa-info-circle me-1"></i> Vui lòng mang thiết bị đến cửa hàng tại:
-                                <strong>2 Đ. Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa</strong>
+                                <strong id="bookingStoreAddressText">2 Đ. Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa</strong>
                                 đúng giờ hẹn.
                             </div>
 
@@ -382,6 +382,16 @@
                                         <span class="fw-bold" style="color: #0284c7;"><i class="fas fa-truck me-1"></i> Tôi muốn thuê xe chở thiết bị hai chiều</span>
                                         <small class="text-muted" style="font-size: 0.75rem;">Phù hợp với tủ lạnh, máy giặt, tivi, điều hòa và thiết bị nặng.</small>
                                     </label>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-light border rounded-3 mt-3 mb-0" style="background:#f8fafc;">
+                                <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+                                    <div>
+                                        <div class="fw-bold" style="color:#0f172a;">Phí đưa đón thiết bị</div>
+                                        <small class="text-muted" id="bookingStoreTransportHint">Bạn tự mang thiết bị đến cửa hàng nên không phát sinh phí đưa đón.</small>
+                                    </div>
+                                    <div class="fw-bold" id="bookingStoreFeeText" style="color:#0f172a;">0 ₫</div>
                                 </div>
                             </div>
                         </div>

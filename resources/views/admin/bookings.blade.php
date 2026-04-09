@@ -46,6 +46,49 @@
         display: inline-block;
         white-space: nowrap;
     }
+
+    .booking-cost-stack {
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .booking-cost-total {
+        font-weight: 800;
+        color: #15803d;
+    }
+
+    .booking-cost-breakdown {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .booking-cost-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.28rem 0.62rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .booking-cost-chip--travel {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .booking-cost-chip--transport {
+        background: #ffedd5;
+        color: #c2410c;
+    }
+
+    .booking-cost-chip--muted {
+        background: #f1f5f9;
+        color: #64748b;
+    }
 </style>
 @endpush
 
@@ -88,7 +131,7 @@
                     <th>Dịch vụ & Lịch</th>
                     <th>Khách hàng</th>
                     <th>Thợ phụ trách</th>
-                    <th>Tổng Phí (VNĐ)</th>
+                    <th>Tổng phí & Logistics</th>
                     <th class="text-end pe-4">Trạng thái</th>
                 </tr>
             </thead>

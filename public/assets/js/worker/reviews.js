@@ -1,4 +1,5 @@
 import { callApi, getCurrentUser, showToast } from '../api.js';
+import { setupReviewLightbox } from '../review-lightbox.js';
 
 const currentUser = getCurrentUser();
 
@@ -7,6 +8,8 @@ if (!currentUser || !['worker', 'admin'].includes(currentUser.role)) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    setupReviewLightbox(document);
+
     if (!currentUser || !['worker', 'admin'].includes(currentUser.role)) {
         return;
     }
@@ -377,6 +380,46 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<div class="review-card__comment">${escapeHtml(review.nhan_xet)}</div>`;
     };
 
+    const buildReviewMediaHtml = (review) => {
+        const images = Array.isArray(review?.hinh_anh_danh_gia) ? review.hinh_anh_danh_gia.filter(Boolean) : [];
+        const video = String(review?.video_danh_gia || '').trim();
+
+        if (!images.length && !video) {
+            return '';
+        }
+
+        return `
+            <div class="review-media-gallery">
+                ${images.map((url, index) => `
+                    <a
+                        class="review-media-item"
+                        href="${escapeHtml(url)}"
+                        data-review-media-kind="image"
+                        data-review-media-src="${escapeHtml(url)}"
+                        data-review-media-label="Anh ${index + 1}"
+                        aria-label="Xem anh ${index + 1}"
+                    >
+                        <img src="${escapeHtml(url)}" alt="Review image ${index + 1}">
+                        <span class="review-media-badge">Anh ${index + 1}</span>
+                    </a>
+                `).join('')}
+                ${video ? `
+                    <a
+                        class="review-media-item review-media-item--video"
+                        href="${escapeHtml(video)}"
+                        data-review-media-kind="video"
+                        data-review-media-src="${escapeHtml(video)}"
+                        data-review-media-label="Video danh gia"
+                        aria-label="Xem video danh gia"
+                    >
+                        <video src="${escapeHtml(video)}" preload="metadata" muted playsinline></video>
+                        <span class="review-media-badge">Video</span>
+                    </a>
+                ` : ''}
+            </div>
+        `;
+    };
+
     const renderReviews = (reviews) => {
         const list = Array.isArray(reviews) ? reviews : [];
 
@@ -434,6 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         ` : ''}
                         ${buildCommentHtml(review)}
+                        ${buildReviewMediaHtml(review)}
                         <div class="review-card__footer">
                             <span class="review-card__footer-note">Review này gắn với đơn hoàn tất của bạn.</span>
                             ${booking?.detail_url ? `

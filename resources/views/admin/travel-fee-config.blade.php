@@ -3,248 +3,276 @@
 @section('title', 'Phí đi lại - Admin')
 
 @push('styles')
-<style>
-    body {
-        background: #f8fafc;
-    }
-
-    .travel-fee-shell {
-        display: grid;
-        gap: 1.5rem;
-    }
-
-    .travel-fee-card {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 24px;
-        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.05);
-    }
-
-    .travel-fee-card--soft {
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    }
-
-    .travel-fee-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.55rem 0.9rem;
-        border-radius: 999px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        background: #eff6ff;
-        color: #1d4ed8;
-    }
-
-    .travel-fee-note {
-        border-radius: 18px;
-        padding: 1rem 1.1rem;
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        color: #1e3a8a;
-        font-size: 0.92rem;
-    }
-
-    .travel-fee-note strong {
-        color: #0f172a;
-    }
-
-    .travel-tier-list {
-        display: grid;
-        gap: 0.85rem;
-    }
-
-    .travel-tier-row {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
-        gap: 0.85rem;
-        align-items: end;
-        padding: 1rem;
-        border-radius: 18px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
-    }
-
-    .travel-tier-row__index {
-        width: 2rem;
-        height: 2rem;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #dbeafe;
-        color: #1d4ed8;
-        font-weight: 700;
-        font-size: 0.85rem;
-        margin-bottom: 0.85rem;
-    }
-
-    .travel-preview-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 0.9rem;
-    }
-
-    .travel-preview-card {
-        padding: 1rem;
-        border-radius: 18px;
-        border: 1px solid #e2e8f0;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    }
-
-    .travel-preview-card__label {
-        font-size: 0.82rem;
-        color: #64748b;
-        margin-bottom: 0.35rem;
-    }
-
-    .travel-preview-card__value {
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: #0f172a;
-    }
-
-    .travel-preview-list {
-        display: grid;
-        gap: 0.75rem;
-    }
-
-    .travel-preview-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.9rem 1rem;
-        border-radius: 16px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-    }
-
-    .travel-preview-item__title {
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .travel-preview-item__meta {
-        font-size: 0.82rem;
-        color: #64748b;
-    }
-
-    .travel-tier-empty {
-        padding: 1rem;
-        border-radius: 18px;
-        border: 1px dashed #cbd5e1;
-        color: #64748b;
-        text-align: center;
-        background: #fff;
-    }
-
-    @media (max-width: 991.98px) {
-        .travel-tier-row {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('assets/css/admin/travel-fee-config.css') }}">
 @endpush
 
 @section('content')
 <app-navbar></app-navbar>
-
-<div class="container py-5">
-    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mb-4">
-        <div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1">
-                    <li class="breadcrumb-item"><a href="/admin/dashboard" class="text-decoration-none">Dashboard</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Phí đi lại</li>
-                </ol>
-            </nav>
-            <h2 class="fw-bold mb-1" style="color:#0f172a;">Cấu hình phí đi lại theo khoảng cách</h2>
-            <p class="text-muted mb-0">Admin có thể đặt các khoảng km cố định để hệ thống tự áp phí khi khách đặt sửa tại nhà.</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            <span class="travel-fee-chip" id="travelFeeStatusChip">Đang tải cấu hình...</span>
-            <span class="travel-fee-chip d-none" id="travelFeeUpdatedChip"></span>
-        </div>
-    </div>
-
-    <div class="travel-fee-shell">
-        <div class="travel-fee-card travel-fee-card--soft p-4">
-            <div class="travel-fee-note">
-                <strong>Nguyên tắc áp phí:</strong> hệ thống sẽ ưu tiên các khoảng km bạn cấu hình. Nếu không có khoảng nào khớp,
-                hệ thống quay về cách tính mặc định theo <span class="fw-semibold">đơn giá / km</span>.
+<div class="tfc-shell tfc-shell--no-sidebar">
+    <div class="tfc-main-shell">
+        <header class="tfc-top">
+            <div class="tfc-top-left">
+                <nav aria-label="breadcrumb" class="tfc-breadcrumb">
+                    <a href="{{ route('admin.dashboard') }}">Dashboard</a>
+                    <i class="fa-solid fa-chevron-right"></i>
+                    <a href="#">Settings</a>
+                    <i class="fa-solid fa-chevron-right"></i>
+                    <span>Shipping</span>
+                </nav>
+                <h3>Cấu hình phí vận chuyển</h3>
             </div>
-        </div>
+            <div class="tfc-top-right">
+                <div class="tfc-status-chips">
+                    <span class="tfc-chip tfc-chip--info" id="travelFeeStatusChip">Đang tải cấu hình...</span>
+                    <span class="tfc-chip tfc-chip--neutral d-none" id="travelFeeUpdatedChip"></span>
+                </div>
+                <div class="tfc-user-pill">
+                    <div class="tfc-avatar">AD</div>
+                    <div>
+                        <strong>Admin User</strong>
+                        <span>System Manager</span>
+                    </div>
+                </div>
+            </div>
+        </header>
 
-        <div class="row g-4">
-            <div class="col-xl-7">
-                <div class="travel-fee-card p-4 p-lg-5 h-100">
-                    <form id="travelFeeForm" class="d-grid gap-4">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-lg-7">
-                                <label for="travelFeeDefaultPerKm" class="form-label fw-semibold">Đơn giá mặc định ngoài khoảng</label>
-                                <div class="input-group">
-                                    <input type="number" min="0" step="1000" class="form-control" id="travelFeeDefaultPerKm" placeholder="5000">
-                                    <span class="input-group-text">đ / km</span>
+        <main class="tfc-content">
+            <section class="tfc-page-head">
+                <div class="tfc-page-head__text">
+                    <div class="tfc-eyebrow">
+                        <i class="fa-solid fa-truck-fast"></i>
+                        Distance-Based Pricing
+                    </div>
+                    <h1>Cấu hình phí vận chuyển theo khoảng cách</h1>
+                    <p>Quản lý từng khoảng km với hai mức phí riêng: phí thuê xe và phí đi lại. Preview sẽ đổi realtime để admin nhìn ngay rule đang áp dụng.</p>
+                </div>
+                <div class="tfc-page-head__actions">
+                    <button type="button" class="tfc-btn tfc-btn--secondary" id="btnResetTravelFeeForm">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        Đặt lại
+                    </button>
+                    <button type="button" class="tfc-btn tfc-btn--primary" id="btnSaveTravelFee" form="travelFeeForm">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        Lưu cấu hình
+                    </button>
+                </div>
+            </section>
+
+            <div class="tfc-info-banner">
+                <div class="tfc-info-banner__icon">
+                    <i class="fa-solid fa-circle-info"></i>
+                </div>
+                <div class="tfc-info-banner__body">
+                    <strong>Nguyên tắc áp phí</strong>
+                    <p>Mỗi khoảng cách có thể mang hai mức phí: phí thuê xe và phí đi lại. Booking tại nhà ưu tiên phí đi lại theo khoảng, còn các luồng đang dùng phí thuê xe sẽ tiếp tục lấy từ cấu hình hệ thống hiện có để giữ tương thích.</p>
+                </div>
+            </div>
+
+            <div class="tfc-workspace">
+                <section class="tfc-card tfc-card--config">
+                    <form id="travelFeeForm" novalidate>
+                        <div class="tfc-form-section">
+                            <div class="tfc-section-head">
+                                <div class="tfc-section-head__icon tfc-section-head__icon--blue">
+                                    <i class="fa-solid fa-store"></i>
                                 </div>
-                                <div class="form-text">Dùng khi chưa có khoảng phù hợp hoặc admin chưa cấu hình bảng bậc giá.</div>
-                            </div>
-                            <div class="col-lg-5 d-flex justify-content-lg-end gap-2">
-                                <button type="button" class="btn btn-outline-secondary" id="btnResetTravelFeeForm">
-                                    Đặt lại 5000 đ/km
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" id="btnAddTravelTier">
-                                    <i class="fas fa-plus me-2"></i>Thêm khoảng
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    <h5 class="fw-bold mb-1" style="color:#0f172a;">Bảng khoảng cách</h5>
-                                    <p class="text-muted mb-0 small">Mỗi dòng gồm khoảng km và mức phí cố định tương ứng.</p>
+                                    <p class="tfc-section-head__eyebrow">Store Setup</p>
+                                    <h2 class="tfc-section-head__title">Địa chỉ cửa hàng</h2>
+                                    <p class="tfc-section-head__desc">Hiển thị cho khách khi cần mang thiết bị đến cửa hàng hoặc tham chiếu vị trí khi mô phỏng khoảng cách.</p>
                                 </div>
                             </div>
-                            <div id="travelTierList" class="travel-tier-list"></div>
+
+                            <div class="tfc-field">
+                                <label class="tfc-field__label" for="travelFeeStoreAddress">
+                                    Địa chỉ cửa hàng
+                                    <span class="tfc-required">*</span>
+                                </label>
+                                <div class="tfc-input-wrap tfc-input-wrap--textarea">
+                                    <span class="tfc-input-wrap__icon">
+                                        <i class="fa-solid fa-location-dot"></i>
+                                    </span>
+                                    <textarea
+                                        id="travelFeeStoreAddress"
+                                        rows="3"
+                                        placeholder="VD: 245 Nguyễn Trãi, Phường 2, Quận 5, TP.HCM"
+                                    ></textarea>
+                                </div>
+                                <p class="tfc-field__hint">Bắt buộc để booking và preview hiển thị đúng thông tin cửa hàng.</p>
+                                <div class="tfc-field__error" data-error-for="store_address"></div>
+                            </div>
                         </div>
 
-                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 pt-2">
-                            <p class="text-muted mb-0 small">
-                                Mẹo: bạn có thể đặt các mốc như <span class="fw-semibold">0 - 2 km</span>,
-                                <span class="fw-semibold">2 - 5 km</span>, <span class="fw-semibold">5 - 8 km</span>.
-                            </p>
-                            <button type="submit" class="btn btn-primary px-4 fw-semibold" id="btnSaveTravelFee">
-                                <i class="fas fa-save me-2"></i>Lưu cấu hình
+                        <div class="tfc-form-section">
+                            <div class="tfc-section-head">
+                                <div class="tfc-section-head__icon tfc-section-head__icon--purple">
+                                    <i class="fa-solid fa-table-list"></i>
+                                </div>
+                                <div class="tfc-section-head__text">
+                                    <p class="tfc-section-head__eyebrow">Distance Table</p>
+                                    <h2 class="tfc-section-head__title">Bảng cấu hình khoảng cách</h2>
+                                    <p class="tfc-section-head__desc">Mỗi dòng gồm khoảng km, phí thuê xe và phí đi lại tương ứng. Chỉnh trực tiếp từng dòng và preview sẽ cập nhật ngay.</p>
+                                </div>
+                                <button type="button" class="tfc-btn tfc-btn--ghost" id="btnAddTravelTier">
+                                    <i class="fa-solid fa-plus"></i>
+                                    Thêm khoảng
+                                </button>
+                            </div>
+
+                            <div class="tfc-tier-table">
+                                <div class="tfc-tier-table__head">
+                                    <div>Từ km</div>
+                                    <div>Đến km</div>
+                                    <div>Phí thuê xe</div>
+                                    <div>Phí đi lại</div>
+                                    <div class="text-center">Xóa</div>
+                                </div>
+                                <div class="tfc-tier-table__body" id="travelTierList"></div>
+                            </div>
+
+                            <div class="tfc-rule-hint">
+                                <i class="fa-solid fa-circle-info"></i>
+                                Ví dụ: 0 → 1 km có thể đặt 0 đ cho cả hai loại phí; 1 → 5 km có thể đặt phí thuê xe 50.000 đ và phí đi lại 17.000 đ.
+                            </div>
+                        </div>
+
+                        <div class="tfc-form-actions">
+                            <button type="button" class="tfc-btn tfc-btn--secondary" id="btnResetTravelFeeFormBottom">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                Đặt lại mặc định
+                            </button>
+                            <button type="submit" class="tfc-btn tfc-btn--primary" id="btnSaveTravelFeeBottom">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                Lưu cấu hình
                             </button>
                         </div>
                     </form>
-                </div>
-            </div>
+                </section>
 
-            <div class="col-xl-5">
-                <div class="travel-fee-card p-4 p-lg-5 h-100">
-                    <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
-                        <div>
-                            <h5 class="fw-bold mb-1" style="color:#0f172a;">Preview áp phí</h5>
-                            <p class="text-muted mb-0">Kiểm tra nhanh số tiền hệ thống sẽ áp cho vài mốc khoảng cách thường gặp.</p>
+                <aside class="tfc-card tfc-card--preview">
+                    <div class="tfc-preview">
+                        <div class="tfc-preview__head">
+                            <div>
+                                <p class="tfc-section-head__eyebrow">Realtime Preview</p>
+                                <h2 class="tfc-preview__title">Mô phỏng khoảng phí đang active</h2>
+                            </div>
+                            <div class="tfc-mode-toggle-group" role="tablist" aria-label="Chế độ preview">
+                                <button type="button" class="tfc-mode-toggle" data-preview-mode="travel_fee">Phí đi lại</button>
+                                <button type="button" class="tfc-mode-toggle" data-preview-mode="tiered">Bậc khoảng cách</button>
+                            </div>
                         </div>
-                        <span class="travel-fee-chip" id="travelFeeModeChip">Đơn giá / km</span>
-                    </div>
 
-                    <div class="travel-preview-grid mb-4" id="travelFeeSampleGrid"></div>
+                        <div class="tfc-stat-grid">
+                            <div class="tfc-stat-card">
+                                <div class="tfc-stat-card__icon tfc-stat-card__icon--blue">
+                                    <i class="fa-solid fa-truck-fast"></i>
+                                </div>
+                                <div class="tfc-stat-card__label">Phí thuê xe</div>
+                                <div class="tfc-stat-card__value" id="travelFeeTransportPreview">0 đ</div>
+                                <div class="tfc-stat-card__subvalue">Theo khoảng đang chọn</div>
+                            </div>
 
-                    <div class="mb-3">
-                        <h6 class="fw-bold mb-2" style="color:#0f172a;">Các khoảng đang áp dụng</h6>
-                        <div class="travel-preview-list" id="travelFeeTierPreview"></div>
+                            <div class="tfc-stat-card">
+                                <div class="tfc-stat-card__icon tfc-stat-card__icon--orange">
+                                    <i class="fa-solid fa-road"></i>
+                                </div>
+                                <div class="tfc-stat-card__label">Phí đi lại</div>
+                                <div class="tfc-stat-card__value" id="travelFeeTravelPreview">0 đ</div>
+                                <div class="tfc-stat-card__subvalue">Theo khoảng đang chọn</div>
+                            </div>
+
+                            <div class="tfc-stat-card">
+                                <div class="tfc-stat-card__icon tfc-stat-card__icon--teal">
+                                    <i class="fa-solid fa-ruler-horizontal"></i>
+                                </div>
+                                <div class="tfc-stat-card__label">Khoảng đang áp dụng</div>
+                                <div class="tfc-stat-card__value" id="travelFeeRangePreview">Chưa có</div>
+                                <div class="tfc-stat-card__subvalue">Highlight đổi theo simulator</div>
+                            </div>
+
+                            <div class="tfc-stat-card tfc-stat-card--wide">
+                                <div class="tfc-stat-card__icon tfc-stat-card__icon--blue">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                </div>
+                                <div class="tfc-stat-card__label">Địa chỉ cửa hàng</div>
+                                <div class="tfc-stat-card__value" id="travelFeeStoreAddressPreview">Chưa nhập địa chỉ</div>
+                            </div>
+                        </div>
+
+                        <div class="tfc-simulator">
+                            <div class="tfc-simulator__head">
+                                <div>
+                                    <p class="tfc-simulator__label">Khoảng cách kiểm tra</p>
+                                    <h3 class="tfc-simulator__title">Chọn mốc xem rule active</h3>
+                                </div>
+                                <div class="tfc-distance-badge" id="travelFeeDistanceBadge">3 km</div>
+                            </div>
+
+                            <div class="tfc-slider-wrap">
+                                <input type="range" id="travelFeeDistanceSlider" min="0" max="30" step="0.1" value="3">
+                                <div class="tfc-distance-input-wrap">
+                                    <input type="number" id="travelFeeDistanceNumber" min="0" step="0.1" value="3">
+                                    <span>km</span>
+                                </div>
+                            </div>
+
+                            <div class="tfc-active-price-card">
+                                <div class="tfc-active-price-card__eyebrow" id="travelFeeActiveRuleLabel">Phí đi lại đang áp dụng</div>
+                                <div class="tfc-active-price-card__value" id="travelFeeActivePrice">0 đ</div>
+                                <div class="tfc-active-price-card__sub" id="travelFeeActiveTransportMeta">Phí thuê xe: 0 đ</div>
+                                <p class="tfc-active-price-card__desc" id="travelFeeActiveRuleCopy">
+                                    Chỉnh dữ liệu ở cột trái để xem cách hệ thống áp dụng phí theo từng mốc khoảng cách.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="tfc-rule-group">
+                            <div class="tfc-rule-group__head">
+                                <div>
+                                    <h3>Các khoảng đang áp dụng</h3>
+                                    <p>Highlight tự động đổi theo mốc đang chọn trong simulator.</p>
+                                </div>
+                                <span class="tfc-chip tfc-chip--info" id="travelFeeModeChip">Phí đi lại</span>
+                            </div>
+                            <div class="tfc-rule-list" id="travelFeeRulePreview"></div>
+                        </div>
+
+                        <div class="tfc-rule-group">
+                            <div class="tfc-rule-group__head">
+                                <div>
+                                    <h3>Mốc xem nhanh</h3>
+                                    <p>Bấm vào từng thẻ để nhảy đến khoảng cách thường gặp.</p>
+                                </div>
+                            </div>
+                            <div class="tfc-sample-grid" id="travelFeeSampleGrid"></div>
+                        </div>
+
+                        <div class="tfc-tip-card">
+                            <div class="tfc-tip-card__head">
+                                <i class="fa-solid fa-lightbulb"></i>
+                                <strong>Gợi ý cấu hình</strong>
+                            </div>
+                            <p>Bạn có thể bắt đầu với các mốc gần như 0 → 1 km miễn phí, 1 → 5 km áp dụng mức phí cố định, sau đó mở rộng dần các khoảng xa hơn khi có thêm dữ liệu thực tế.</p>
+                        </div>
                     </div>
-                </div>
+                </aside>
             </div>
-        </div>
+        </main>
     </div>
 </div>
 @endsection
 
 @push('scripts')
 <script type="module" src="{{ asset('assets/js/admin/travel-fee-config.js') }}"></script>
+<script>
+    document.getElementById('btnResetTravelFeeFormBottom')?.addEventListener('click', () => {
+        document.getElementById('btnResetTravelFeeForm')?.click();
+    });
+    document.getElementById('btnSaveTravelFeeBottom')?.addEventListener('click', () => {
+        document.getElementById('travelFeeForm')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+</script>
 @endpush

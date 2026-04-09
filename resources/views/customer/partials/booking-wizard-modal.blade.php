@@ -139,12 +139,14 @@
                                     <div class="booking-store-badge">Miễn phí di chuyển</div>
                                     <h3>Mang thiết bị đến cửa hàng</h3>
                                     <p>Thợ Tốt NTU tiếp nhận thiết bị tại cửa hàng trong giờ hẹn đã chọn.</p>
-                                    <div class="booking-store-address">2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa</div>
+                                    <div class="booking-store-address" id="bookingWizardStoreAddress">2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa</div>
 
                                     <label class="booking-store-toggle d-none" id="bookingWizardTransportWrap">
                                         <input type="checkbox" id="bookingWizardTransportToggle">
                                         <span>Tôi muốn thuê xe chở thiết bị hai chiều</span>
                                     </label>
+
+                                    <p id="bookingWizardStoreTransportNote">Bạn tự mang thiết bị đến cửa hàng nên không phát sinh phí đưa đón.</p>
                                 </div>
                             </div>
                         </section>

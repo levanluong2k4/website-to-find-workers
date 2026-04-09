@@ -28,11 +28,15 @@ class TravelFeeConfigController extends Controller
     public function update(Request $request, TravelFeeConfigService $travelFeeConfigService)
     {
         $validator = Validator::make($request->all(), [
-            'default_per_km' => 'required|numeric|min:0|max:1000000',
-            'tiers' => 'nullable|array|max:20',
+            'free_distance_km' => 'nullable|numeric|min:0|max:1000',
+            'default_per_km' => 'nullable|numeric|min:0|max:1000000',
+            'store_address' => 'required|string|max:500',
+            'store_transport_fee' => 'nullable|numeric|min:0|max:100000000',
+            'tiers' => 'required|array|min:1|max:20',
             'tiers.*.from_km' => 'required|numeric|min:0|max:1000',
             'tiers.*.to_km' => 'required|numeric|min:0|max:1000',
-            'tiers.*.fee' => 'required|numeric|min:0|max:100000000',
+            'tiers.*.transport_fee' => 'required|numeric|min:0|max:100000000',
+            'tiers.*.travel_fee' => 'required|numeric|min:0|max:100000000',
         ]);
 
         $validator->after(function ($validator) use ($request) {
@@ -64,10 +68,10 @@ class TravelFeeConfigController extends Controller
                     );
                 }
 
-                if ($previousToKm !== null && $tier['from_km'] < $previousToKm) {
+                if ($previousToKm !== null && $tier['from_km'] <= $previousToKm) {
                     $validator->errors()->add(
                         'tiers.' . $tier['index'] . '.from_km',
-                        'Khoang cach dang bi chong len voi dong truoc.'
+                        'Khoang cach dang bi chong len hoac cham moc ket thuc cua dong truoc.'
                     );
                 }
 
@@ -83,14 +87,28 @@ class TravelFeeConfigController extends Controller
             ], 422);
         }
 
-        $state = $travelFeeConfigService->updateConfig([
-            'default_per_km' => (float) $request->input('default_per_km', 5000),
+        $payload = [
+            'store_address' => $request->input('store_address'),
             'tiers' => $request->input('tiers', []),
-        ], $request->user());
+        ];
+
+        if ($request->exists('free_distance_km')) {
+            $payload['free_distance_km'] = (float) $request->input('free_distance_km');
+        }
+
+        if ($request->exists('default_per_km')) {
+            $payload['default_per_km'] = (float) $request->input('default_per_km');
+        }
+
+        if ($request->exists('store_transport_fee')) {
+            $payload['store_transport_fee'] = (float) $request->input('store_transport_fee');
+        }
+
+        $state = $travelFeeConfigService->updateConfig($payload, $request->user());
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Da cap nhat bang phi di lai',
+            'message' => 'Da cap nhat bang phi van chuyen theo khoang cach',
             'data' => $state,
         ]);
     }

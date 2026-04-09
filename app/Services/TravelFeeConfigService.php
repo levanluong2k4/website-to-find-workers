@@ -12,6 +12,12 @@ class TravelFeeConfigService
 
     private const DEFAULT_PER_KM = 5000;
 
+    private const DEFAULT_FREE_DISTANCE_KM = 1;
+
+    private const DEFAULT_STORE_ADDRESS = '2 Duong Nguyen Dinh Chieu, Vinh Tho, Nha Trang, Khanh Hoa';
+
+    private const DEFAULT_STORE_TRANSPORT_FEE = 0;
+
     /**
      * @var array<string, mixed>|null
      */
@@ -73,7 +79,24 @@ class TravelFeeConfigService
      */
     public function updateConfig(array $config, ?User $user = null): array
     {
-        $normalized = $this->normalizeConfig($config);
+        $currentConfig = $this->getConfig();
+        $normalized = $this->normalizeConfig([
+            'free_distance_km' => array_key_exists('free_distance_km', $config)
+                ? $config['free_distance_km']
+                : ($currentConfig['free_distance_km'] ?? self::DEFAULT_FREE_DISTANCE_KM),
+            'default_per_km' => array_key_exists('default_per_km', $config)
+                ? $config['default_per_km']
+                : ($currentConfig['default_per_km'] ?? self::DEFAULT_PER_KM),
+            'store_address' => array_key_exists('store_address', $config)
+                ? $config['store_address']
+                : ($currentConfig['store_address'] ?? self::DEFAULT_STORE_ADDRESS),
+            'store_transport_fee' => array_key_exists('store_transport_fee', $config)
+                ? $config['store_transport_fee']
+                : ($currentConfig['store_transport_fee'] ?? self::DEFAULT_STORE_TRANSPORT_FEE),
+            'tiers' => array_key_exists('tiers', $config)
+                ? $config['tiers']
+                : ($currentConfig['tiers'] ?? []),
+        ]);
 
         if ($this->settingsTableExists()) {
             AppSetting::query()->updateOrCreate(
@@ -96,14 +119,39 @@ class TravelFeeConfigService
     {
         $distance = round(max(0, $distanceKm), 2);
         $config = $this->getConfig();
+        $tier = $this->resolveTier($distance);
 
-        foreach ($config['tiers'] as $tier) {
-            if ($this->matchesTier($distance, $tier)) {
-                return (float) $tier['fee'];
-            }
+        if ($tier !== null) {
+            return $this->resolveTierTravelFee($tier);
+        }
+
+        if ($distance < (float) ($config['free_distance_km'] ?? self::DEFAULT_FREE_DISTANCE_KM)) {
+            return 0;
         }
 
         return round($distance * (float) $config['default_per_km']);
+    }
+
+    public function resolveFreeDistanceKm(): float
+    {
+        return (float) ($this->getConfig()['free_distance_km'] ?? self::DEFAULT_FREE_DISTANCE_KM);
+    }
+
+    public function resolveStoreAddress(): string
+    {
+        return (string) ($this->getConfig()['store_address'] ?? self::DEFAULT_STORE_ADDRESS);
+    }
+
+    public function resolveStoreTransportFee(): float
+    {
+        $config = $this->getConfig();
+        $configuredFee = round(max(0, (float) ($config['store_transport_fee'] ?? self::DEFAULT_STORE_TRANSPORT_FEE)));
+
+        if ($configuredFee > 0) {
+            return $configuredFee;
+        }
+
+        return $this->deriveStoreTransportFee($config['tiers'] ?? []) ?? self::DEFAULT_STORE_TRANSPORT_FEE;
     }
 
     /**
@@ -160,13 +208,20 @@ class TravelFeeConfigService
     private function normalizeConfig(array $config): array
     {
         $defaultPerKm = round(max(0, (float) ($config['default_per_km'] ?? self::DEFAULT_PER_KM)));
+        $storeAddress = trim((string) ($config['store_address'] ?? self::DEFAULT_STORE_ADDRESS));
+        $rawStoreTransportFee = round(max(0, (float) ($config['store_transport_fee'] ?? self::DEFAULT_STORE_TRANSPORT_FEE)));
         $tiers = collect($config['tiers'] ?? [])
             ->filter(static fn ($tier) => is_array($tier))
-            ->map(function (array $tier): array {
+            ->map(function (array $tier) use ($rawStoreTransportFee): array {
+                $travelFee = round(max(0, (float) ($tier['travel_fee'] ?? $tier['fee'] ?? 0)));
+                $transportFee = round(max(0, (float) ($tier['transport_fee'] ?? $rawStoreTransportFee)));
+
                 return [
                     'from_km' => round(max(0, (float) ($tier['from_km'] ?? 0)), 2),
                     'to_km' => round(max(0, (float) ($tier['to_km'] ?? 0)), 2),
-                    'fee' => round(max(0, (float) ($tier['fee'] ?? 0))),
+                    'transport_fee' => $transportFee,
+                    'travel_fee' => $travelFee,
+                    'fee' => $travelFee,
                 ];
             })
             ->filter(static fn (array $tier) => $tier['to_km'] > $tier['from_km'])
@@ -179,9 +234,22 @@ class TravelFeeConfigService
             })
             ->values()
             ->all();
+        $freeDistanceKm = round(max(0, (float) (
+            $config['free_distance_km']
+            ?? $this->deriveFreeDistanceKm($tiers)
+            ?? self::DEFAULT_FREE_DISTANCE_KM
+        )), 2);
+        $storeTransportFee = round(max(0, (float) (
+            $config['store_transport_fee']
+            ?? $this->deriveStoreTransportFee($tiers)
+            ?? self::DEFAULT_STORE_TRANSPORT_FEE
+        )));
 
         return [
+            'free_distance_km' => $freeDistanceKm,
             'default_per_km' => $defaultPerKm,
+            'store_address' => $storeAddress !== '' ? $storeAddress : self::DEFAULT_STORE_ADDRESS,
+            'store_transport_fee' => $storeTransportFee,
             'tiers' => $tiers,
         ];
     }
@@ -195,18 +263,34 @@ class TravelFeeConfigService
         $samples = [1, 3, 5, 8];
 
         return [
+            'store' => [
+                'address' => $config['store_address'],
+                'transport_fee' => $config['store_transport_fee'],
+            ],
+            'free_distance_km' => $config['free_distance_km'],
+            'default_per_km' => $config['default_per_km'],
             'tiers' => array_map(function (array $tier): array {
+                $travelFee = $this->resolveTierTravelFee($tier);
+
                 return [
                     'from_km' => $tier['from_km'],
                     'to_km' => $tier['to_km'],
-                    'fee' => $tier['fee'],
+                    'transport_fee' => $this->resolveTierTransportFee($tier),
+                    'travel_fee' => $travelFee,
+                    'fee' => $travelFee,
                     'label' => $this->formatTierLabel($tier),
                 ];
             }, $config['tiers']),
             'samples' => array_map(function (float $distanceKm): array {
+                $tier = $this->resolveTier($distanceKm);
+                $travelFee = $this->resolveFee($distanceKm);
+
                 return [
                     'distance_km' => $distanceKm,
-                    'fee' => $this->resolveFee($distanceKm),
+                    'transport_fee' => $tier ? $this->resolveTierTransportFee($tier) : 0,
+                    'travel_fee' => $travelFee,
+                    'fee' => $travelFee,
+                    'label' => $tier ? $this->formatTierLabel($tier) : null,
                 ];
             }, $samples),
         ];
@@ -230,5 +314,55 @@ class TravelFeeConfigService
             . ' - '
             . rtrim(rtrim(number_format((float) $tier['to_km'], 2, '.', ''), '0'), '.')
             . ' km';
+    }
+
+    /**
+     * @param  array<string, mixed>  $tier
+     */
+    private function resolveTierTravelFee(array $tier): float
+    {
+        return round(max(0, (float) ($tier['travel_fee'] ?? $tier['fee'] ?? 0)));
+    }
+
+    /**
+     * @param  array<string, mixed>  $tier
+     */
+    private function resolveTierTransportFee(array $tier): float
+    {
+        return round(max(0, (float) ($tier['transport_fee'] ?? 0)));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $tiers
+     */
+    private function deriveFreeDistanceKm(array $tiers): ?float
+    {
+        foreach ($tiers as $tier) {
+            if ((float) ($tier['from_km'] ?? 0) !== 0.0) {
+                continue;
+            }
+
+            if ($this->resolveTierTravelFee($tier) === 0.0) {
+                return round(max(0, (float) ($tier['to_km'] ?? 0)), 2);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $tiers
+     */
+    private function deriveStoreTransportFee(array $tiers): ?float
+    {
+        foreach ($tiers as $tier) {
+            $transportFee = $this->resolveTierTransportFee($tier);
+
+            if ($transportFee > 0) {
+                return $transportFee;
+            }
+        }
+
+        return null;
     }
 }

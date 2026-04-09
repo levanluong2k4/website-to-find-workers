@@ -155,26 +155,7 @@ class AdminController extends Controller
             ->orderByDesc('total')
             ->first();
 
-        $trendStart = Carbon::today()->subDays(6)->startOfDay();
-        $trendRaw = DonDatLich::query()
-            ->whereIn('trang_thai', $completedStatuses)
-            ->whereBetween(
-                DB::raw('COALESCE(thoi_gian_hoan_thanh, created_at)'),
-                [$trendStart, $range['today_end']]
-            )
-            ->selectRaw('DATE(COALESCE(thoi_gian_hoan_thanh, created_at)) as report_date, SUM(tong_tien) as total')
-            ->groupBy('report_date')
-            ->pluck('total', 'report_date');
-
-        $trend = collect(range(0, 6))->map(function (int $offset) use ($trendStart, $trendRaw) {
-            $day = $trendStart->copy()->addDays($offset);
-
-            return [
-                'label' => $this->dashboardDayLabel($day),
-                'date' => $day->toDateString(),
-                'value' => (float) ($trendRaw[$day->toDateString()] ?? 0),
-            ];
-        })->values();
+        $trend = $this->buildDashboardRevenueTrend($range, $completedStatuses);
 
         $recentRevenueRows = DonDatLich::query()
             ->with([
@@ -323,6 +304,7 @@ class AdminController extends Controller
                     'low_rating' => $lowRatingWorkers,
                     'watch_items' => $workerWatchItems,
                 ],
+                'workers_map' => $this->buildDashboardWorkerMap($now),
                 'revenue_table' => $recentRevenueRows,
                 'complaints' => [
                     'new' => $complaintsNew,
@@ -334,15 +316,315 @@ class AdminController extends Controller
         ]);
     }
 
+    private function buildDashboardWorkerMap(Carbon $now): array
+    {
+        $workers = User::query()
+            ->with([
+                'hoSoTho:user_id,vi_do,kinh_do,trang_thai_duyet,dang_hoat_dong,trang_thai_hoat_dong,danh_gia_trung_binh,tong_so_danh_gia',
+                'dichVus:id,ten_dich_vu',
+                'donDatLichAsTho' => function ($query) {
+                    $query
+                        ->select(['id', 'tho_id', 'dia_chi', 'ngay_hen', 'khung_gio_hen', 'trang_thai', 'created_at'])
+                        ->with('dichVus:id,ten_dich_vu')
+                        ->whereIn('trang_thai', DonDatLich::scheduleBlockingStatuses())
+                        ->orderByRaw("
+                            CASE trang_thai
+                                WHEN 'dang_lam' THEN 0
+                                WHEN 'da_xac_nhan' THEN 1
+                                WHEN 'cho_hoan_thanh' THEN 2
+                                WHEN 'cho_thanh_toan' THEN 3
+                                WHEN 'cho_xac_nhan' THEN 4
+                                ELSE 5
+                            END ASC
+                        ")
+                        ->orderBy('ngay_hen')
+                        ->orderByDesc('created_at');
+                },
+            ])
+            ->where('role', 'worker')
+            ->where('is_active', true)
+            ->whereHas('hoSoTho', function ($query) {
+                $query->where('trang_thai_duyet', 'da_duyet');
+            })
+            ->get();
+
+        $snapshots = $workers->map(function (User $worker) {
+            $profile = $worker->hoSoTho;
+            $lat = $this->normalizeDashboardCoordinate($profile?->vi_do, -90, 90);
+            $lng = $this->normalizeDashboardCoordinate($profile?->kinh_do, -180, 180);
+            $hasCoordinates = $lat !== null && $lng !== null;
+            $currentBooking = $this->resolveDashboardWorkerCurrentBooking($worker->donDatLichAsTho ?? collect());
+            $status = $this->resolveDashboardWorkerMapStatus($worker, $currentBooking);
+            $serviceNames = $worker->dichVus->pluck('ten_dich_vu')->filter()->values();
+            $servicesLabel = $serviceNames->take(2)->implode(', ');
+
+            if ($serviceNames->count() > 2) {
+                $servicesLabel .= ' +' . ($serviceNames->count() - 2);
+            }
+
+            $ratingAvg = (float) ($profile?->danh_gia_trung_binh ?? 0);
+            $ratingCount = (int) ($profile?->tong_so_danh_gia ?? 0);
+            $bookingServiceLabel = $currentBooking
+                ? ($currentBooking->dichVus->pluck('ten_dich_vu')->filter()->implode(', ') ?: 'Don dang mo')
+                : null;
+
+            return [
+                'id' => (int) $worker->id,
+                'name' => $worker->name ?: 'Tho ky thuat',
+                'avatar' => $worker->avatar ?: '/assets/images/user-default.png',
+                'point' => [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                ],
+                'map_status' => $status['key'],
+                'map_tone' => $status['tone'],
+                'map_status_label' => $status['label'],
+                'status_detail' => $status['detail'],
+                'services_label' => $servicesLabel !== '' ? $servicesLabel : 'Chua gan nhom dich vu',
+                'rating_label' => $ratingCount > 0
+                    ? number_format($ratingAvg, 1) . '/5 • ' . $ratingCount . ' danh gia'
+                    : 'Chua co danh gia',
+                'schedule_label' => $this->buildDashboardWorkerScheduleLabel($currentBooking),
+                'area_label' => $this->extractCustomerArea($currentBooking?->dia_chi ?: $worker->address) ?: 'Chua co khu vuc',
+                'current_job_label' => $currentBooking
+                    ? $this->formatDashboardBookingCode($currentBooking->id) . ' • ' . $bookingServiceLabel
+                    : 'Khong co don dang mo',
+                'has_coordinates' => $hasCoordinates,
+                'status_sort' => $this->resolveDashboardWorkerStatusOrder($status['key']),
+            ];
+        });
+
+        $trackedWorkers = $snapshots
+            ->where('has_coordinates', true)
+            ->sortBy(function (array $worker) {
+                return sprintf(
+                    '%02d-%s',
+                    (int) ($worker['status_sort'] ?? 99),
+                    Str::lower((string) ($worker['name'] ?? ''))
+                );
+            })
+            ->values()
+            ->map(function (array $worker) {
+                unset($worker['has_coordinates'], $worker['status_sort']);
+
+                return $worker;
+            })
+            ->values();
+
+        $defaultCenter = [
+            'lat' => 12.2388,
+            'lng' => 109.1967,
+        ];
+
+        $center = $trackedWorkers->isNotEmpty()
+            ? [
+                'lat' => round((float) $trackedWorkers->avg(fn (array $worker) => (float) data_get($worker, 'point.lat', 0)), 6),
+                'lng' => round((float) $trackedWorkers->avg(fn (array $worker) => (float) data_get($worker, 'point.lng', 0)), 6),
+            ]
+            : $defaultCenter;
+
+        return [
+            'center' => $center,
+            'tracked_count' => $trackedWorkers->count(),
+            'repairing_count' => $trackedWorkers->where('map_status', 'repairing')->count(),
+            'scheduled_count' => $trackedWorkers->where('map_status', 'scheduled')->count(),
+            'available_count' => $trackedWorkers->where('map_status', 'available')->count(),
+            'offline_count' => $trackedWorkers->where('map_status', 'offline')->count(),
+            'missing_location_count' => $snapshots->where('has_coordinates', false)->count(),
+            'poll_interval_seconds' => 30,
+            'workers' => $trackedWorkers->all(),
+            'updated_at' => $now->format('H:i'),
+        ];
+    }
+
+    private function resolveDashboardWorkerCurrentBooking(Collection $bookings): ?DonDatLich
+    {
+        if ($bookings->isEmpty()) {
+            return null;
+        }
+
+        return $bookings
+            ->sortBy(function (DonDatLich $booking) {
+                $priority = match ((string) $booking->trang_thai) {
+                    'dang_lam' => 0,
+                    'da_xac_nhan' => 1,
+                    'cho_hoan_thanh' => 2,
+                    'cho_thanh_toan' => 3,
+                    'cho_xac_nhan' => 4,
+                    default => 5,
+                };
+                $timestamp = $booking->ngay_hen?->startOfDay()?->timestamp
+                    ?? $booking->created_at?->timestamp
+                    ?? PHP_INT_MAX;
+
+                return sprintf('%02d-%020d', $priority, $timestamp);
+            })
+            ->first();
+    }
+
+    private function resolveDashboardWorkerMapStatus(User $worker, ?DonDatLich $currentBooking): array
+    {
+        $profile = $worker->hoSoTho;
+        $operationalStatus = (string) ($profile?->trang_thai_hoat_dong ?: 'dang_hoat_dong');
+        $isOperational = (bool) ($profile?->dang_hoat_dong ?? false);
+
+        if ($currentBooking) {
+            return match ((string) $currentBooking->trang_thai) {
+                'dang_lam' => [
+                    'key' => 'repairing',
+                    'tone' => 'busy',
+                    'label' => 'Dang sua chua',
+                    'detail' => 'Dang xu ly ' . ($currentBooking->dichVus->pluck('ten_dich_vu')->filter()->implode(', ') ?: 'mot don dang mo'),
+                ],
+                'cho_hoan_thanh', 'cho_thanh_toan' => [
+                    'key' => 'scheduled',
+                    'tone' => 'scheduled',
+                    'label' => 'Cho chot don',
+                    'detail' => 'Dang o giai doan hoan tat / thanh toan don hien tai.',
+                ],
+                default => [
+                    'key' => 'scheduled',
+                    'tone' => 'scheduled',
+                    'label' => 'Dang co lich',
+                    'detail' => 'Tho da nhan lich va dang bi khoa slot lam viec.',
+                ],
+            };
+        }
+
+        if ($operationalStatus === 'tam_khoa') {
+            return [
+                'key' => 'offline',
+                'tone' => 'offline',
+                'label' => 'Tam khoa',
+                'detail' => 'Tai khoan tam khoa, khong the dieu phoi.',
+            ];
+        }
+
+        if (!$isOperational || $operationalStatus === 'ngung_hoat_dong') {
+            return [
+                'key' => 'offline',
+                'tone' => 'offline',
+                'label' => 'Tam nghi',
+                'detail' => 'Tho da tam dung nhan lich tren he thong.',
+            ];
+        }
+
+        if ($operationalStatus === 'dang_ban') {
+            return [
+                'key' => 'scheduled',
+                'tone' => 'scheduled',
+                'label' => 'Dang ban',
+                'detail' => 'Tho dang duoc danh dau ban va can admin kiem tra them.',
+            ];
+        }
+
+        return [
+            'key' => 'available',
+            'tone' => 'free',
+            'label' => 'Trong lich',
+            'detail' => 'Chua co lich dang mo, co the dieu phoi ngay.',
+        ];
+    }
+
+    private function buildDashboardWorkerScheduleLabel(?DonDatLich $booking): string
+    {
+        if (!$booking) {
+            return 'Chua co lich dang mo';
+        }
+
+        $dateLabel = $booking->ngay_hen?->format('d/m/Y') ?: 'Chua co ngay hen';
+        $slotLabel = trim((string) ($booking->khung_gio_hen ?? ''));
+
+        return $slotLabel !== ''
+            ? $dateLabel . ' • ' . $slotLabel
+            : $dateLabel;
+    }
+
+    private function formatDashboardBookingCode(int|string $bookingId): string
+    {
+        return 'DD-' . str_pad((string) $bookingId, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function resolveDashboardWorkerStatusOrder(string $status): int
+    {
+        return match ($status) {
+            'repairing' => 0,
+            'scheduled' => 1,
+            'available' => 2,
+            default => 3,
+        };
+    }
+
+    private function normalizeDashboardCoordinate($value, float $min, float $max): ?float
+    {
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        $normalized = (float) $value;
+
+        if ($normalized < $min || $normalized > $max || ($normalized === 0.0 && $min < 0 && $max > 0)) {
+            return null;
+        }
+
+        return $normalized;
+    }
+
     private function resolveDashboardRange(?string $period): array
     {
-        $normalizedPeriod = in_array($period, ['today', '7d', '30d'], true) ? $period : '7d';
+        $normalizedPeriod = in_array($period, ['day', 'month', 'year', 'today', '7d', '30d'], true) ? $period : 'month';
         $todayStart = Carbon::today()->startOfDay();
         $todayEnd = Carbon::today()->endOfDay();
+        $monthStart = $todayStart->copy()->startOfMonth();
+        $yearStart = $todayStart->copy()->startOfYear();
+
+        $monthElapsedDays = $monthStart->diffInDays($todayStart) + 1;
+        $previousMonthStart = $monthStart->copy()->subMonthNoOverflow()->startOfMonth();
+        $previousMonthEnd = $previousMonthStart->copy()->addDays($monthElapsedDays - 1)->endOfDay();
+        if ($previousMonthEnd->gt($previousMonthStart->copy()->endOfMonth())) {
+            $previousMonthEnd = $previousMonthStart->copy()->endOfMonth();
+        }
+
+        $yearElapsedDays = $yearStart->diffInDays($todayStart) + 1;
+        $previousYearStart = $yearStart->copy()->subYear()->startOfYear();
+        $previousYearEnd = $previousYearStart->copy()->addDays($yearElapsedDays - 1)->endOfDay();
+        if ($previousYearEnd->gt($previousYearStart->copy()->endOfYear())) {
+            $previousYearEnd = $previousYearStart->copy()->endOfYear();
+        }
 
         return match ($normalizedPeriod) {
+            'day' => [
+                'period' => 'day',
+                'label' => 'Hom nay',
+                'start' => $todayStart->copy(),
+                'end' => $todayEnd->copy(),
+                'previous_start' => $todayStart->copy()->subDay(),
+                'previous_end' => $todayEnd->copy()->subDay(),
+                'today_start' => $todayStart->copy(),
+                'today_end' => $todayEnd->copy(),
+            ],
+            'month' => [
+                'period' => 'month',
+                'label' => 'Thang nay',
+                'start' => $monthStart->copy(),
+                'end' => $todayEnd->copy(),
+                'previous_start' => $previousMonthStart->copy(),
+                'previous_end' => $previousMonthEnd->copy(),
+                'today_start' => $todayStart->copy(),
+                'today_end' => $todayEnd->copy(),
+            ],
+            'year' => [
+                'period' => 'year',
+                'label' => 'Nam nay',
+                'start' => $yearStart->copy(),
+                'end' => $todayEnd->copy(),
+                'previous_start' => $previousYearStart->copy(),
+                'previous_end' => $previousYearEnd->copy(),
+                'today_start' => $todayStart->copy(),
+                'today_end' => $todayEnd->copy(),
+            ],
             'today' => [
-                'period' => 'today',
+                'period' => 'day',
                 'label' => 'Hôm nay',
                 'start' => $todayStart->copy(),
                 'end' => $todayEnd->copy(),
@@ -377,6 +659,9 @@ class AdminController extends Controller
     private function dashboardPeriodComparisonLabel(string $period): string
     {
         return match ($period) {
+            'day' => 'so voi hom qua',
+            'month' => 'so voi thang truoc',
+            'year' => 'so voi nam truoc',
             'today' => 'so với hôm qua',
             '30d' => 'so với 30 ngày trước',
             default => 'so với 7 ngày trước',
@@ -421,6 +706,87 @@ class AdminController extends Controller
             Carbon::FRIDAY => 'T6',
             default => 'T7',
         };
+    }
+
+    private function buildDashboardRevenueTrend(array $range, array $completedStatuses): Collection
+    {
+        $timestampExpression = 'COALESCE(thoi_gian_hoan_thanh, created_at)';
+
+        return match ($range['period']) {
+            'day' => $this->buildDashboardHourlyTrend($range['start'], $range['end'], $completedStatuses, $timestampExpression),
+            'month' => $this->buildDashboardMonthTrend($range['start'], $range['end'], $completedStatuses, $timestampExpression),
+            'year' => $this->buildDashboardYearTrend($range['start'], $range['end'], $completedStatuses, $timestampExpression),
+            '30d' => $this->buildDashboardRollingDayTrend($range['start'], $range['end'], $completedStatuses, $timestampExpression, 'd/m'),
+            default => $this->buildDashboardRollingDayTrend($range['start'], $range['end'], $completedStatuses, $timestampExpression, null),
+        };
+    }
+
+    private function buildDashboardHourlyTrend(Carbon $start, Carbon $end, array $completedStatuses, string $timestampExpression): Collection
+    {
+        $trendRaw = DonDatLich::query()
+            ->whereIn('trang_thai', $completedStatuses)
+            ->whereBetween(DB::raw($timestampExpression), [$start, $end])
+            ->selectRaw('HOUR(' . $timestampExpression . ') as report_hour, SUM(tong_tien) as total')
+            ->groupBy('report_hour')
+            ->pluck('total', 'report_hour');
+
+        return collect(range(0, 23))->map(function (int $hour) use ($start, $trendRaw) {
+            return [
+                'label' => str_pad((string) $hour, 2, '0', STR_PAD_LEFT) . 'h',
+                'date' => $start->copy()->setHour($hour)->format('Y-m-d H:00:00'),
+                'value' => (float) ($trendRaw[$hour] ?? 0),
+            ];
+        })->values();
+    }
+
+    private function buildDashboardMonthTrend(Carbon $start, Carbon $end, array $completedStatuses, string $timestampExpression): Collection
+    {
+        return $this->buildDashboardRollingDayTrend($start, $end, $completedStatuses, $timestampExpression, 'd');
+    }
+
+    private function buildDashboardYearTrend(Carbon $start, Carbon $end, array $completedStatuses, string $timestampExpression): Collection
+    {
+        $trendRaw = DonDatLich::query()
+            ->whereIn('trang_thai', $completedStatuses)
+            ->whereBetween(DB::raw($timestampExpression), [$start, $end])
+            ->selectRaw('MONTH(' . $timestampExpression . ') as report_month, SUM(tong_tien) as total')
+            ->groupBy('report_month')
+            ->pluck('total', 'report_month');
+
+        return collect(range(1, (int) $end->month))->map(function (int $month) use ($start, $trendRaw) {
+            return [
+                'label' => 'T' . $month,
+                'date' => $start->copy()->month($month)->startOfMonth()->toDateString(),
+                'value' => (float) ($trendRaw[$month] ?? 0),
+            ];
+        })->values();
+    }
+
+    private function buildDashboardRollingDayTrend(
+        Carbon $start,
+        Carbon $end,
+        array $completedStatuses,
+        string $timestampExpression,
+        ?string $labelFormat
+    ): Collection {
+        $trendRaw = DonDatLich::query()
+            ->whereIn('trang_thai', $completedStatuses)
+            ->whereBetween(DB::raw($timestampExpression), [$start, $end])
+            ->selectRaw('DATE(' . $timestampExpression . ') as report_date, SUM(tong_tien) as total')
+            ->groupBy('report_date')
+            ->pluck('total', 'report_date');
+
+        $totalDays = $start->diffInDays($end) + 1;
+
+        return collect(range(0, max($totalDays - 1, 0)))->map(function (int $offset) use ($start, $trendRaw, $labelFormat) {
+            $day = $start->copy()->addDays($offset);
+
+            return [
+                'label' => $labelFormat ? $day->format($labelFormat) : $this->dashboardDayLabel($day),
+                'date' => $day->toDateString(),
+                'value' => (float) ($trendRaw[$day->toDateString()] ?? 0),
+            ];
+        })->values();
     }
 
     private function buildComplaintItems(Carbon $start, Carbon $end): array
@@ -1473,6 +1839,9 @@ class AdminController extends Controller
                         'payment_label' => $booking->trang_thai_thanh_toan ? 'Da thanh toan' : 'Chua thanh toan',
                         'payment_tone' => $booking->trang_thai_thanh_toan ? 'success' : 'warning',
                         'total_amount' => (float) ($booking->tong_tien ?? 0),
+                        'travel_fee' => (float) ($booking->phi_di_lai ?? 0),
+                        'transport_fee' => (float) ($booking->tien_thue_xe ?? 0),
+                        'transport_requested' => (bool) ($booking->thue_xe_cho ?? false),
                         'address' => $booking->loai_dat_lich === 'at_home'
                             ? ($booking->dia_chi ?: 'Chua cap nhat dia chi')
                             : 'Khach mang thiet bi den cua hang',

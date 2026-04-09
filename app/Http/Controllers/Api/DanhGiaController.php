@@ -8,13 +8,18 @@ use App\Http\Requests\DanhGia\UpdateDanhGiaRequest;
 use App\Models\DanhGia;
 use App\Models\DonDatLich;
 use App\Models\HoSoTho;
+use App\Services\Media\CloudinaryUploadService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class DanhGiaController extends Controller
 {
-    public function store(StoreDanhGiaRequest $request)
+    private const MAX_REVIEW_VIDEO_DURATION_SECONDS = 20;
+
+    public function store(StoreDanhGiaRequest $request, CloudinaryUploadService $cloudinaryUploadService)
     {
         $validated = $request->validated();
         $user = $request->user();
@@ -38,6 +43,8 @@ class DanhGiaController extends Controller
             return response()->json(['message' => 'Ban da gui danh gia cho don nay roi'], 400);
         }
 
+        $uploadedMedia = $this->uploadReviewMedia($request, $cloudinaryUploadService);
+
         DB::beginTransaction();
 
         try {
@@ -47,6 +54,8 @@ class DanhGiaController extends Controller
                 'nguoi_bi_danh_gia_id' => $booking->tho_id,
                 'so_sao' => $validated['so_sao'],
                 'nhan_xet' => $validated['nhan_xet'] ?? null,
+                'hinh_anh_danh_gia' => $uploadedMedia['images'] !== [] ? $uploadedMedia['images'] : null,
+                'video_danh_gia' => $uploadedMedia['video'],
                 'so_lan_sua' => 0,
             ]);
 
@@ -67,7 +76,7 @@ class DanhGiaController extends Controller
         }
     }
 
-    public function update(UpdateDanhGiaRequest $request, string $id)
+    public function update(UpdateDanhGiaRequest $request, string $id, CloudinaryUploadService $cloudinaryUploadService)
     {
         $validated = $request->validated();
         $user = $request->user();
@@ -86,12 +95,29 @@ class DanhGiaController extends Controller
             return response()->json(['message' => 'Ban da het so lan sua doi danh gia nay (toi da 1 lan)'], 400);
         }
 
+        $uploadedMedia = $this->uploadReviewMedia($request, $cloudinaryUploadService);
+        $keptImages = $this->normalizeMediaUrls($validated['existing_hinh_anh_danh_gia'] ?? $danhGia->hinh_anh_danh_gia);
+        $finalImages = array_values(array_unique(array_merge($keptImages, $uploadedMedia['images'])));
+
+        if (count($finalImages) > 5) {
+            throw ValidationException::withMessages([
+                'hinh_anh_danh_gia' => ['Toi da 5 anh cho moi danh gia.'],
+            ]);
+        }
+
+        $finalVideo = $uploadedMedia['video'];
+        if ($finalVideo === null && $request->boolean('keep_existing_video')) {
+            $finalVideo = $this->normalizeMediaUrl($danhGia->video_danh_gia);
+        }
+
         DB::beginTransaction();
 
         try {
             $danhGia->update([
                 'so_sao' => $validated['so_sao'],
                 'nhan_xet' => $validated['nhan_xet'] ?? $danhGia->nhan_xet,
+                'hinh_anh_danh_gia' => $finalImages !== [] ? $finalImages : null,
+                'video_danh_gia' => $finalVideo,
                 'so_lan_sua' => $danhGia->so_lan_sua + 1,
             ]);
 
@@ -264,6 +290,8 @@ class DanhGiaController extends Controller
     {
         $booking = $review->donDatLich;
         $comment = trim((string) ($review->nhan_xet ?? ''));
+        $imageUrls = $this->normalizeMediaUrls($review->hinh_anh_danh_gia);
+        $videoUrl = $this->normalizeMediaUrl($review->video_danh_gia);
         $serviceNames = $booking
             ? $booking->dichVus->pluck('ten_dich_vu')->filter()->values()->all()
             : [];
@@ -274,6 +302,12 @@ class DanhGiaController extends Controller
             'rating' => (int) ($review->so_sao ?? 0),
             'nhan_xet' => $comment !== '' ? $comment : null,
             'has_comment' => $comment !== '',
+            'hinh_anh_danh_gia' => $imageUrls,
+            'video_danh_gia' => $videoUrl,
+            'media_summary' => [
+                'image_count' => count($imageUrls),
+                'has_video' => $videoUrl !== null,
+            ],
             'created_at' => $review->created_at?->toIso8601String(),
             'created_label' => optional($review->created_at)->format('d/m/Y'),
             'tone' => $this->resolveReviewTone((int) ($review->so_sao ?? 0)),
@@ -292,6 +326,93 @@ class DanhGiaController extends Controller
                 'detail_url' => '/worker/jobs/' . $booking->id,
             ] : null,
         ];
+    }
+
+    private function uploadReviewMedia(Request $request, CloudinaryUploadService $cloudinaryUploadService): array
+    {
+        $imageUrls = [];
+
+        foreach ($request->file('hinh_anh_danh_gia', []) as $file) {
+            if (!$file instanceof UploadedFile) {
+                continue;
+            }
+
+            $uploadResult = $cloudinaryUploadService->uploadUploadedFile($file, [
+                'folder' => 'reviews/images',
+            ]);
+
+            $secureUrl = $this->normalizeMediaUrl($uploadResult['secure_url'] ?? null);
+            if ($secureUrl !== null) {
+                $imageUrls[] = $secureUrl;
+            }
+        }
+
+        $videoUrl = null;
+
+        if ($request->hasFile('video_danh_gia')) {
+            $uploadResult = $cloudinaryUploadService->uploadUploadedFile($request->file('video_danh_gia'), [
+                'folder' => 'reviews/videos',
+                'resource_type' => 'video',
+            ]);
+
+            $this->assertReviewVideoDuration(
+                $uploadResult['duration'] ?? null,
+                $request->input('video_duration')
+            );
+
+            $videoUrl = $this->normalizeMediaUrl($uploadResult['secure_url'] ?? null);
+        }
+
+        return [
+            'images' => array_values(array_unique($imageUrls)),
+            'video' => $videoUrl,
+        ];
+    }
+
+    private function assertReviewVideoDuration(mixed $uploadedDuration, mixed $reportedDuration): void
+    {
+        $duration = $this->normalizeVideoDuration($uploadedDuration);
+
+        if ($duration === null) {
+            $duration = $this->normalizeVideoDuration($reportedDuration);
+        }
+
+        if ($duration !== null && $duration > self::MAX_REVIEW_VIDEO_DURATION_SECONDS) {
+            throw ValidationException::withMessages([
+                'video_danh_gia' => ['Video review khong duoc vuot qua 20 giay.'],
+            ]);
+        }
+    }
+
+    private function normalizeVideoDuration(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function normalizeMediaUrls(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(function ($item) {
+            return $this->normalizeMediaUrl($item);
+        }, $value)));
+    }
+
+    private function normalizeMediaUrl(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $normalized = trim($value);
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     private function resolveReviewTone(int $rating): string

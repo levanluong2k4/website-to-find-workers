@@ -79,6 +79,9 @@ class DonDatLichController extends Controller
             $isFixedWorkerBooking = $assignedWorkerId !== null;
             $normalizedTimeSlot = DonDatLich::normalizeTimeSlot($validated['khung_gio_hen'] ?? '');
             $bookingDate = $validated['ngay_hen'] ?? now()->toDateString();
+            $storeAddress = $travelFeeConfigService->resolveStoreAddress();
+            $storeTransportFee = $travelFeeConfigService->resolveStoreTransportFee();
+            $transportRequested = filter_var($validated['thue_xe_cho'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
             $khoangCach = null;
             $phiDiLai = 0;
@@ -163,6 +166,9 @@ class DonDatLichController extends Controller
                 $gioBatDau,
                 $khoangCach,
                 $phiDiLai,
+                $storeAddress,
+                $storeTransportFee,
+                $transportRequested,
                 $uploadedImages,
                 $uploadedVideoUrl
             ) {
@@ -188,7 +194,7 @@ class DonDatLichController extends Controller
                 $booking->khung_gio_hen = $normalizedTimeSlot ?: '08:00-10:00';
                 $booking->thoi_gian_hen = Carbon::parse($bookingDate . ' ' . $gioBatDau . ':00');
                 $booking->mo_ta_van_de = $validated['mo_ta_van_de'] ?? null;
-                $booking->thue_xe_cho = $validated['thue_xe_cho'] ?? false;
+                $booking->thue_xe_cho = $transportRequested;
                 $booking->trang_thai = $isFixedWorkerBooking ? 'da_xac_nhan' : 'cho_xac_nhan';
                 $booking->phuong_thuc_thanh_toan = 'cod';
                 $booking->thoi_gian_het_han_nhan = null;
@@ -199,9 +205,11 @@ class DonDatLichController extends Controller
                     $booking->kinh_do = $validated['kinh_do'] ?? 0;
                     $booking->khoang_cach = round((float) $khoangCach, 2);
                     $booking->phi_di_lai = $phiDiLai;
+                    $booking->tien_thue_xe = 0;
                 } else {
-                    $booking->dia_chi = '2 Duong Nguyen Dinh Chieu, Vinh Tho, Nha Trang, Khanh Hoa';
+                    $booking->dia_chi = $storeAddress;
                     $booking->phi_di_lai = 0;
+                    $booking->tien_thue_xe = $transportRequested ? $storeTransportFee : 0;
                 }
 
                 if (!empty($uploadedImages)) {

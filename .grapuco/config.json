@@ -1,0 +1,22 @@
+{
+  "repoId": "4a9609f5-8783-4d0f-abff-bff8372fb5c5",
+  "repoName": "website-to-find-workers",
+  "server": "https://api.grapuco.com",
+  "language": "php",
+  "features": {
+    "embeddings": true,
+    "dataFlowAnalysis": true
+  },
+  "ignore": [
+    "node_modules",
+    "dist",
+    ".next",
+    ".git",
+    ".grapuco",
+    "__pycache__",
+    "vendor",
+    "target",
+    "build"
+  ],
+  "lastPush": "2026-04-09T14:00:55.481Z"
+}

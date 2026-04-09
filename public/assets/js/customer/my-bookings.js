@@ -1,4 +1,6 @@
 import { callApi, getCurrentUser, showToast } from '../api.js';
+import { createReviewMediaController } from './review-media.js';
+import { setupReviewLightbox } from '../review-lightbox.js';
 
 const user = getCurrentUser();
 if (!user || !['customer', 'admin'].includes(user.role)) {
@@ -6,6 +8,8 @@ if (!user || !['customer', 'admin'].includes(user.role)) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    setupReviewLightbox(document);
+
     const bookingsContainer = document.getElementById('myBookingsContainer');
     const paginationContainer = document.getElementById('bookingPagination');
     const paginationShell = paginationContainer?.parentElement || null;
@@ -22,6 +26,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSubmitReview = document.getElementById('btnSubmitReview');
     const reviewModalInstance = modalReviewEl ? new bootstrap.Modal(modalReviewEl) : null;
     const reviewRatingInputs = Array.from(document.querySelectorAll('input[name="so_sao"]'));
+    const reviewImagesInput = document.getElementById('reviewImagesInput');
+    const reviewVideoInput = document.getElementById('reviewVideoInput');
+    const reviewMediaPreview = document.getElementById('reviewMediaPreview');
+    const reviewMediaSummary = document.getElementById('reviewMediaSummary');
+
+    const reviewMediaController = createReviewMediaController({
+        imageInput: reviewImagesInput,
+        videoInput: reviewVideoInput,
+        previewContainer: reviewMediaPreview,
+        summaryElement: reviewMediaSummary,
+    });
 
     const storeAddress = 'Mang thiết bị tới cửa hàng (2 Đ. Nguyễn Đình Chiểu)';
     const statusConfig = {
@@ -120,14 +135,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const labelMap = {
-            1: '1 sao • Cần cải thiện nhiều',
-            2: '2 sao • Chưa như kỳ vọng',
-            3: '3 sao • Ổn',
-            4: '4 sao • Tốt',
-            5: '5 sao • Rất hài lòng',
+            1: 'Rất tệ',
+            2: 'Tệ',
+            3: 'Ổn',
+            4: 'Tốt',
+            5: 'Rất hài lòng',
         };
 
-        reviewRatingCaption.textContent = labelMap[numericRating] || `${numericRating} sao`;
+        const emojiMap = {
+            1: '😡',
+            2: '😕',
+            3: '🙂',
+            4: '😊',
+            5: '😍',
+        };
+
+        reviewRatingCaption.textContent = [emojiMap[numericRating], labelMap[numericRating] || `${numericRating} sao`]
+            .filter(Boolean)
+            .join(' ');
     };
 
     const resetReviewFormState = () => {
@@ -141,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnSubmitReview) {
             btnSubmitReview.textContent = 'Gửi đánh giá';
         }
+        reviewMediaController.reset();
         updateReviewRatingCaption();
     };
 
@@ -165,6 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 reviewComment.value = review.nhan_xet || '';
             }
 
+            reviewMediaController.reset(review);
+
             const currentRatingInput = document.querySelector(`input[name="so_sao"][value="${Number(review.so_sao || 0)}"]`);
             if (currentRatingInput) {
                 currentRatingInput.checked = true;
@@ -176,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const buildReviewActionHtml = (booking) => {
-        const review = Array.isArray(booking.danh_gias) ? booking.danh_gias[0] : null;
+        const review = getLatestReview(booking);
         if (!review) {
             return `
                 <button class="booking-action-button booking-action-button--primary btn-review" type="button" data-id="${booking.id}" data-worker="${escapeHtml(booking.tho?.name || 'thợ đã hỗ trợ đơn này')}">
@@ -186,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const canEditReview = Number(review.so_lan_sua || 0) < 1;
+        const mediaLabel = buildReviewMediaMeta(review);
 
         return `
             <div class="booking-review-summary">
@@ -219,6 +248,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getBookingServices = (booking) => Array.isArray(booking.dich_vus) ? booking.dich_vus : [];
+    const getLatestReview = (booking) => Array.isArray(booking?.danh_gias) ? booking.danh_gias[0] || null : null;
+
+    const buildReviewMediaMeta = (review) => {
+        const imageCount = Array.isArray(review?.hinh_anh_danh_gia) ? review.hinh_anh_danh_gia.filter(Boolean).length : 0;
+        const hasVideo = Boolean(review?.video_danh_gia);
+
+        if (!imageCount && !hasVideo) {
+            return '';
+        }
+
+        return [imageCount ? `${imageCount} anh` : '', hasVideo ? '1 video' : '']
+            .filter(Boolean)
+            .join(' • ');
+    };
 
     const normalizeServiceName = (value = '') => String(value).trim().toLowerCase();
     const getBookingPaymentMethod = (booking) => booking?.phuong_thuc_thanh_toan === 'transfer' ? 'transfer' : 'cod';
@@ -492,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const firstServiceName = services[0]?.ten_dich_vu || 'Dịch vụ sửa chữa';
             const statusMeta = getStatusMeta(booking.trang_thai);
             const visual = getServiceVisual(booking, services);
-            const locationText = booking.loai_dat_lich === 'at_home' ? (booking.dia_chi || 'Chưa cập nhật địa chỉ') : storeAddress;
+            const locationText = booking.loai_dat_lich === 'at_home' ? (booking.dia_chi || 'Chưa cập nhật địa chỉ') : (booking.dia_chi || storeAddress);
             const visibleTags = services.slice(0, 2).map((service) => `<span class="service-tag">${escapeHtml(service.ten_dich_vu)}</span>`);
             if (services.length > 2) {
                 visibleTags.push(`<span class="service-tag service-tag--muted">+${services.length - 2}</span>`);
@@ -885,6 +928,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-payment-choice').forEach((button) => {
             button.addEventListener('click', async (event) => {
                 const currentButton = event.currentTarget;
+                const booking = allBookings.find((item) => String(item.id) === String(currentButton.dataset.id || ''));
+                const review = getLatestReview(booking);
+
+                if (!review) {
+                    showToast('Khong tim thay danh gia de chinh sua.', 'error');
+                    return;
+                }
+
+                openReviewModal({
+                    bookingId: currentButton.dataset.id || '',
+                    workerName: currentButton.dataset.worker || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y',
+                    review,
+                });
+                return;
                 const id = currentButton.dataset.id;
                 try {
                     currentButton.disabled = true;
@@ -916,7 +973,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-review').forEach((button) => {
             button.addEventListener('click', (event) => {
                 const currentButton = event.currentTarget;
-                reviewBookingId.value = currentButton.dataset.id || '';
+                openReviewModal({
+                    bookingId: currentButton.dataset.id || '',
+                    workerName: currentButton.dataset.worker || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y',
+                });
+                return;
                 if (reviewRecordId) {
                     reviewRecordId.value = '';
                 }
@@ -979,6 +1040,41 @@ document.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({}, document.title, window.location.pathname);
     };
 
+    document.addEventListener('click', (event) => {
+        const reviewTrigger = event.target.closest('.btn-review, .btn-review-edit');
+        if (!reviewTrigger) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        const bookingId = reviewTrigger.dataset.id || '';
+        const workerName = reviewTrigger.dataset.worker || 'tho da ho tro don nay';
+
+        if (reviewTrigger.classList.contains('btn-review-edit')) {
+            const booking = allBookings.find((item) => String(item.id) === String(bookingId));
+            const review = getLatestReview(booking);
+
+            if (!review) {
+                showToast('Khong tim thay danh gia de chinh sua.', 'error');
+                return;
+            }
+
+            openReviewModal({
+                bookingId,
+                workerName,
+                review,
+            });
+            return;
+        }
+
+        openReviewModal({
+            bookingId,
+            workerName,
+        });
+    }, true);
+
     if (formReview) {
         reviewRatingInputs.forEach((input) => {
             input.addEventListener('change', () => {
@@ -1003,29 +1099,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const editingReviewId = reviewRecordId?.value || '';
+                const formData = new FormData();
+                formData.append('don_dat_lich_id', reviewBookingId.value || '');
+                formData.append('so_sao', selectedRating.value);
+                formData.append('nhan_xet', reviewComment?.value || '');
+                reviewMediaController.appendToFormData(formData);
                 if (editingReviewId) {
-                    ensureOk(await callApi(`/danh-gia/${editingReviewId}`, 'PUT', {
-                        so_sao: selectedRating.value,
-                        nhan_xet: reviewComment?.value || '',
+                    formData.append('_method', 'PUT');
+                    ensureOk(await callApi(`/danh-gia/${editingReviewId}`, 'POST', formData), 'Loi cap nhat danh gia');
+                    /* legacy review payload removed
+                    legacy review payload removed
                     }), 'Lá»—i cáº­p nháº­t Ä‘Ã¡nh giÃ¡');
                     showToast('Cập nhật đánh giá thành công!');
-                    reviewModalInstance?.hide();
+                    */ showToast('Cap nhat danh gia thanh cong!'); reviewModalInstance?.hide();
                     loadBookings();
                     return;
                 }
 
-                ensureOk(await callApi('/danh-gia', 'POST', {
+                ensureOk(await callApi('/danh-gia', 'POST', formData), 'Loi gui danh gia');
+                /*
                     don_dat_lich_id: reviewBookingId.value,
                     so_sao: selectedRating.value,
                     nhan_xet: document.getElementById('reviewComment').value,
                 }), 'Lỗi gửi đánh giá');
                 showToast('Cảm ơn bạn đã đánh giá!');
-                reviewModalInstance?.hide();
+                */ showToast('Cam on ban da danh gia!'); reviewModalInstance?.hide();
                 loadBookings();
             } catch (error) {
                 showToast(error.message || 'Lỗi gửi đánh giá', 'error');
             } finally {
                 btnSubmitReview.disabled = false;
+                setTimeout(() => {
+                    btnSubmitReview.textContent = reviewRecordId?.value ? 'Cap nhat danh gia' : 'Gui danh gia';
+                }, 0);
                 btnSubmitReview.textContent = 'Gửi đánh giá';
             }
         });

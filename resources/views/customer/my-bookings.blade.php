@@ -1601,6 +1601,27 @@
                         <textarea class="form-control bg-light border-0" id="reviewComment" name="nhan_xet" rows="4" placeholder="Thợ làm việc như thế nào? Thời gian xử lý có đúng hẹn không?"></textarea>
                     </div>
 
+                    <div class="mb-4 text-start">
+                        <label class="form-label fw-bold">Media dinh kem (tuy chon)</label>
+                        <p class="review-media-upload__hint">Toi da 5 anh va 1 video toi da 20 giay. Media se duoc luu tren cloud.</p>
+                        <div class="review-media-upload">
+                            <div class="review-media-upload__actions">
+                                <label class="review-media-upload__picker">
+                                    <input type="file" id="reviewImagesInput" accept="image/*" multiple>
+                                    <span class="material-symbols-outlined">imagesmode</span>
+                                    <span>Them anh</span>
+                                </label>
+                                <label class="review-media-upload__picker review-media-upload__picker--video">
+                                    <input type="file" id="reviewVideoInput" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv">
+                                    <span class="material-symbols-outlined">videocam</span>
+                                    <span>Them video</span>
+                                </label>
+                                <div class="review-media-upload__summary" id="reviewMediaSummary">0/5 anh • 0/1 video</div>
+                            </div>
+                            <div class="review-media-gallery" id="reviewMediaPreview"></div>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold" id="btnSubmitReview">Gửi đánh giá</button>
                 </form>
             </div>

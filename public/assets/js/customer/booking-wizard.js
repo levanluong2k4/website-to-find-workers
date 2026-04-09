@@ -4,11 +4,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const root = document.getElementById('bookingWizardModal');
     if (!root) return;
 
-    const STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
+    const DEFAULT_STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
     const STORE_REFERENCE = { lat: 12.2618, lng: 109.1995, maxDistance: 20, label: 'cửa hàng' };
+    const DEFAULT_FREE_DISTANCE_KM = 1;
     const TRAVEL_FEE_PER_KM = 5000;
+    const DEFAULT_STORE_TRANSPORT_FEE = 0;
+    let storeAddress = DEFAULT_STORE_ADDRESS;
+    let storeTransportFee = DEFAULT_STORE_TRANSPORT_FEE;
     let travelFeeConfig = {
+        free_distance_km: DEFAULT_FREE_DISTANCE_KM,
         default_per_km: TRAVEL_FEE_PER_KM,
+        store_address: DEFAULT_STORE_ADDRESS,
+        store_transport_fee: DEFAULT_STORE_TRANSPORT_FEE,
         tiers: [],
     };
     const TIME_SLOTS = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'];
@@ -56,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         servicesWrap: $('bookingWizardServices'), servicesEmpty: $('bookingWizardServicesEmpty'), workerBanner: $('bookingWizardWorkerBanner'),
         workerAvatar: $('bookingWizardWorkerAvatar'), workerName: $('bookingWizardWorkerName'), workerMeta: $('bookingWizardWorkerMeta'),
         atHome: $('bookingWizardAtHomePanel'), atStore: $('bookingWizardAtStorePanel'), transportWrap: $('bookingWizardTransportWrap'),
+        storeAddress: $('bookingWizardStoreAddress'), storeTransportNote: $('bookingWizardStoreTransportNote'),
         transportToggle: $('bookingWizardTransportToggle'), getLocation: $('bookingWizardGetLocation'), locationStatus: $('bookingWizardLocationStatus'),
         tinh: $('bookingWizardTinh'), huyen: $('bookingWizardHuyen'), xa: $('bookingWizardXa'), soNha: $('bookingWizardSoNha'),
         dateCards: $('bookingWizardDateCards'), timeSlots: $('bookingWizardTimeSlots'), description: $('bookingWizardDescription'),
@@ -139,26 +147,91 @@ document.addEventListener('DOMContentLoaded', () => {
     const ensureAuth = () => { try { const user = getCurrentUser(); if (user && ['customer', 'admin'].includes(user.role)) return true; } catch (error) {} window.location.href = '/login'; return false; };
     const distKm = (a, b, c, d) => { const r = 6371, dLat = ((c - a) * Math.PI) / 180, dLng = ((d - b) * Math.PI) / 180; const x = Math.sin(dLat / 2) ** 2 + Math.cos((a * Math.PI) / 180) * Math.cos((c * Math.PI) / 180) * Math.sin(dLng / 2) ** 2; return r * (2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))); };
     const findTravelFeeTier = (distanceKm) => (travelFeeConfig.tiers || []).find((tier) => distanceKm >= Number(tier.from_km || 0) && distanceKm <= Number(tier.to_km || 0)) || null;
+    const getTierTravelFee = (tier) => Number(tier?.travel_fee ?? tier?.fee ?? 0);
+    const getTierTransportFee = (tier) => Number(tier?.transport_fee ?? 0);
+    const normalizeTravelFeeTiers = (tiers) => (Array.isArray(tiers) ? tiers : []).map((tier) => ({
+        ...tier,
+        travel_fee: getTierTravelFee(tier),
+        fee: getTierTravelFee(tier),
+        transport_fee: getTierTransportFee(tier),
+    }));
+    const deriveStoreTransportFeeFromTiers = (tiers) => normalizeTravelFeeTiers(tiers)
+        .map((tier) => tier.transport_fee)
+        .find((fee) => Number.isFinite(fee) && fee > 0) ?? DEFAULT_STORE_TRANSPORT_FEE;
+    const getFreeDistanceKm = () => Math.max(0, Number(travelFeeConfig.free_distance_km ?? DEFAULT_FREE_DISTANCE_KM));
     const resolveTravelFee = (distanceKm) => {
-        const tier = findTravelFeeTier(distanceKm);
-
-        if (tier) {
-            return Number(tier.fee || 0);
+        if (distanceKm < getFreeDistanceKm()) {
+            return 0;
         }
 
         return Math.round(distanceKm * Number(travelFeeConfig.default_per_km || TRAVEL_FEE_PER_KM));
     };
-    const buildTravelFeeMessage = ({ roundedDistance, refLabel, isOutOfRange, maxDistance, manualSuffix = '' }) => {
+    const buildTravelFeeMessage = ({ distanceKm, roundedDistance, refLabel, isOutOfRange, maxDistance, manualSuffix = '' }) => {
         if (isOutOfRange) {
             return `Khoảng cách hiện tại vượt phạm vi phục vụ ${maxDistance} km của ${refLabel}.`;
         }
 
-        const tier = findTravelFeeTier(roundedDistance);
-        if (tier) {
-            return `Tạm tính ${roundedDistance} km từ ${refLabel}${manualSuffix}: áp dụng ${money(tier.fee)} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
+        const normalizedDistanceKm = Number.isFinite(distanceKm) ? distanceKm : roundedDistance;
+        const freeDistanceKm = getFreeDistanceKm();
+        if (freeDistanceKm > 0 && normalizedDistanceKm < freeDistanceKm) {
+            return `Táº¡m tÃ­nh ${roundedDistance} km tá»« ${refLabel}${manualSuffix}: miá»…n phÃ­ di chuyá»ƒn vÃ¬ dÆ°á»›i ${freeDistanceKm.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km.`;
         }
 
         return `Tạm tính ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km từ ${refLabel}${manualSuffix}.`;
+    };
+    const buildStoreTransportMessage = () => (state.transportRequested
+        ? `Bạn đã chọn thuê xe chở thiết bị hai chiều, phụ phí dự kiến ${money(storeTransportFee)}.`
+        : 'Bạn tự mang thiết bị đến cửa hàng nên không phát sinh phí đưa đón.');
+    const resolveTravelFeeLinear = (distanceKm) => {
+        if (distanceKm < getFreeDistanceKm()) {
+            return 0;
+        }
+
+        const tier = findTravelFeeTier(distanceKm);
+        if (tier) {
+            return getTierTravelFee(tier);
+        }
+
+        return Math.round(distanceKm * Number(travelFeeConfig.default_per_km || TRAVEL_FEE_PER_KM));
+    };
+    const buildTravelFeeMessageLinear = ({ distanceKm, roundedDistance, refLabel, isOutOfRange, maxDistance, manualSuffix = '' }) => {
+        if (isOutOfRange) {
+            return `Khoảng cách hiện tại vượt phạm vi phục vụ ${maxDistance} km của ${refLabel}.`;
+        }
+
+        const normalizedDistanceKm = Number.isFinite(distanceKm) ? distanceKm : roundedDistance;
+        const freeDistanceKm = getFreeDistanceKm();
+        if (freeDistanceKm > 0 && normalizedDistanceKm < freeDistanceKm) {
+            return `Tạm tính ${roundedDistance} km từ ${refLabel}${manualSuffix}: miễn phí di chuyển vì dưới ${freeDistanceKm.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km.`;
+        }
+
+        return `Tạm tính ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km từ ${refLabel}${manualSuffix}.`;
+    };
+    const buildTravelTierMessage = ({ distanceKm, roundedDistance, refLabel, isOutOfRange, maxDistance, manualSuffix = '' }) => {
+        if (isOutOfRange) {
+            return `Khoảng cách hiện tại vượt phạm vi phục vụ ${maxDistance} km của ${refLabel}.`;
+        }
+
+        const normalizedDistanceKm = Number.isFinite(distanceKm) ? distanceKm : roundedDistance;
+        const freeDistanceKm = getFreeDistanceKm();
+        if (freeDistanceKm > 0 && normalizedDistanceKm < freeDistanceKm) {
+            return `Tạm tính ${roundedDistance} km từ ${refLabel}${manualSuffix}: miễn phí di chuyển vì dưới ${freeDistanceKm.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km.`;
+        }
+
+        const tier = findTravelFeeTier(normalizedDistanceKm);
+        if (tier) {
+            return `Tạm tính ${roundedDistance} km từ ${refLabel}${manualSuffix}: áp dụng ${money(getTierTravelFee(tier))} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
+        }
+
+        return `Tạm tính ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km từ ${refLabel}${manualSuffix}.`;
+    };
+    const applyStoreConfigToView = () => {
+        if (refs.storeAddress) {
+            refs.storeAddress.textContent = storeAddress;
+        }
+        if (refs.storeTransportNote) {
+            refs.storeTransportNote.textContent = buildStoreTransportMessage();
+        }
     };
     const loadTravelFeeConfig = async () => {
         try {
@@ -169,13 +242,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const config = res.data?.data?.config;
             if (config && typeof config === 'object') {
+                const tiers = normalizeTravelFeeTiers(config.tiers);
+                const derivedStoreTransportFee = deriveStoreTransportFeeFromTiers(tiers);
+
+                storeAddress = String(config.store_address || DEFAULT_STORE_ADDRESS).trim() || DEFAULT_STORE_ADDRESS;
+                storeTransportFee = Number(config.store_transport_fee ?? derivedStoreTransportFee ?? DEFAULT_STORE_TRANSPORT_FEE);
                 travelFeeConfig = {
-                    default_per_km: Number(config.default_per_km || TRAVEL_FEE_PER_KM),
-                    tiers: Array.isArray(config.tiers) ? config.tiers : [],
+                    free_distance_km: Number(config.free_distance_km ?? DEFAULT_FREE_DISTANCE_KM),
+                    default_per_km: Number(config.default_per_km ?? TRAVEL_FEE_PER_KM),
+                    store_address: storeAddress,
+                    store_transport_fee: storeTransportFee,
+                    tiers,
                 };
+                applyStoreConfigToView();
                 if (state.repairMode === 'at_home' && state.lat && state.lng) {
                     updateTravelEstimate();
                 } else {
+                    syncHidden();
                     updateSummary();
                 }
             }
@@ -493,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.hiddenDate.value = state.date || '';
         refs.hiddenTimeSlot.value = state.timeSlot || '';
         refs.hiddenStoreTransport.value = state.transportRequested ? '1' : '0';
-        refs.hiddenDiaChi.value = state.repairMode === 'at_store' ? STORE_ADDRESS : (state.xa && state.huyen && state.tinh ? `${state.xa}, ${state.huyen}, ${state.tinh}` : '');
+        refs.hiddenDiaChi.value = state.repairMode === 'at_store' ? storeAddress : (state.xa && state.huyen && state.tinh ? `${state.xa}, ${state.huyen}, ${state.tinh}` : '');
     }
 
     function updateHeader() {
@@ -517,6 +600,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const showTransport = atStore && heavyService();
         refs.transportWrap.classList.toggle('d-none', !showTransport);
         if (!showTransport) state.transportRequested = false;
+        if (refs.transportToggle) refs.transportToggle.checked = state.transportRequested;
+        applyStoreConfigToView();
         queueViewportFit();
     }
 
@@ -574,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         refs.sumAddressCard.classList.toggle('d-none', !hasAddress);
         refs.sumAddressValue.textContent = state.repairMode === 'at_store'
-            ? STORE_ADDRESS
+            ? storeAddress
             : `${state.soNha}, ${state.xa}, ${state.huyen}, ${state.tinh}`;
         refs.sumAddressMeta.textContent = state.repairMode === 'at_store'
             ? 'Địa chỉ tiếp nhận thiết bị.'
@@ -586,10 +671,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateTravelEstimate() {
         if (state.repairMode !== 'at_home') {
-            state.travelFee = 0;
+            state.travelFee = state.transportRequested ? storeTransportFee : 0;
             state.distanceKm = 0;
             state.isOutOfRange = false;
-            state.travelMessage = 'Bạn chọn mang thiết bị đến cửa hàng nên không phát sinh phí đi lại.';
+            state.travelMessage = buildStoreTransportMessage();
+            applyStoreConfigToView();
+            syncHidden();
             updateSummary();
             return;
         }
@@ -608,10 +695,11 @@ document.addEventListener('DOMContentLoaded', () => {
             : STORE_REFERENCE;
         const distanceKm = distKm(refPoint.lat, refPoint.lng, lat, lng);
         const rounded = Number(distanceKm.toFixed(1));
-        state.travelFee = resolveTravelFee(distanceKm);
+        state.travelFee = resolveTravelFeeLinear(distanceKm);
         state.distanceKm = rounded;
         state.isOutOfRange = rounded > Number(refPoint.maxDistance || STORE_REFERENCE.maxDistance);
-        state.travelMessage = buildTravelFeeMessage({
+        state.travelMessage = buildTravelTierMessage({
+            distanceKm,
             roundedDistance: rounded,
             refLabel: refPoint.label,
             isOutOfRange: state.isOutOfRange,
@@ -1065,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.set('thue_xe_cho', state.transportRequested ? '1' : '0');
         if (state.repairMode === 'at_home') formData.set('dia_chi', `${state.soNha}, ${refs.hiddenDiaChi.value}`);
         else {
-            formData.set('dia_chi', STORE_ADDRESS);
+            formData.set('dia_chi', storeAddress);
             formData.set('vi_do', '');
             formData.set('kinh_do', '');
         }
@@ -1188,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     refs.close.addEventListener('click', closeModal);
     root.addEventListener('click', (event) => { if (event.target === root) closeModal(); });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && state.isOpen) closeModal(); });
-    refs.transportToggle.addEventListener('change', () => { state.transportRequested = refs.transportToggle.checked; syncHidden(); updateSummary(); });
+    refs.transportToggle.addEventListener('change', () => { state.transportRequested = refs.transportToggle.checked; updateTravelEstimate(); });
     refs.tinh.addEventListener('change', () => {
         state.tinh = refs.tinh.value;
         state.huyen = '';
@@ -1373,11 +1461,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateTravelEstimate() {
         if (state.repairMode !== 'at_home') {
-            state.travelFee = 0;
+            state.travelFee = state.transportRequested ? storeTransportFee : 0;
             state.distanceKm = 0;
             state.isOutOfRange = false;
             state.locationSource = '';
-            state.travelMessage = 'Ban chon mang thiet bi den cua hang nen khong phat sinh phi di lai.';
+            state.travelMessage = buildStoreTransportMessage();
+            applyStoreConfigToView();
             syncHidden();
             updateSummary();
             return;
@@ -1407,12 +1496,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const distanceKm = distKm(refPoint.lat, refPoint.lng, lat, lng);
         const rounded = Number(distanceKm.toFixed(1));
-        state.travelFee = resolveTravelFee(distanceKm);
+        state.travelFee = resolveTravelFeeLinear(distanceKm);
         state.distanceKm = rounded;
         state.isOutOfRange = rounded > Number(refPoint.maxDistance || 8);
         state.travelMessage = state.isOutOfRange
             ? `Dia chi dang vuot qua pham vi phuc vu ${refPoint.maxDistance} km tu ${refPoint.label}.`
-            : buildTravelFeeMessage({
+            : buildTravelTierMessage({
+                distanceKm,
                 roundedDistance: rounded,
                 refLabel: refPoint.label,
                 isOutOfRange: false,
@@ -1762,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.hiddenDate.value = state.date || '';
         refs.hiddenTimeSlot.value = state.timeSlot || '';
         refs.hiddenStoreTransport.value = state.transportRequested ? '1' : '0';
-        refs.hiddenDiaChi.value = state.repairMode === 'at_store' ? STORE_ADDRESS : composeAdminAddress();
+        refs.hiddenDiaChi.value = state.repairMode === 'at_store' ? storeAddress : composeAdminAddress();
     }
 
     function updateSummary() {
@@ -1808,7 +1898,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.sumTimeMeta.textContent = hasTime ? 'Khung gio ban da chon.' : '';
 
         refs.sumAddressCard.classList.toggle('d-none', !hasAddress);
-        refs.sumAddressValue.textContent = state.repairMode === 'at_store' ? STORE_ADDRESS : composeFullHomeAddress();
+        refs.sumAddressValue.textContent = state.repairMode === 'at_store' ? storeAddress : composeFullHomeAddress();
         refs.sumAddressMeta.textContent = state.repairMode === 'at_store'
             ? 'Dia chi tiep nhan thiet bi.'
             : (state.lat && state.lng ? 'Dia chi da gan GPS.' : 'Dia chi nhap thu cong.');

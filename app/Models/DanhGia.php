@@ -14,11 +14,17 @@ class DanhGia extends Model
         'nguoi_bi_danh_gia_id',
         'so_sao',
         'nhan_xet',
+        'hinh_anh_danh_gia',
+        'video_danh_gia',
         'so_lan_sua',
         'chuyen_mon',
         'thai_do',
         'dung_gio',
         'gia_ca'
+    ];
+
+    protected $casts = [
+        'hinh_anh_danh_gia' => 'array',
     ];
 
     public function donDatLich()
