@@ -23,7 +23,7 @@
           <img src="{{ asset('assets/images/logontu.png') }}" alt="Logo Thợ Tốt NTU" />
         </span>
         <span class="auth-brand__copy">
-          <small>HE THONG DICH VU</small>
+          <small>HỆ THỐNG DỊCH VỤ</small>
           <strong>Thợ Tốt NTU</strong>
         </span>
       </a>
@@ -36,7 +36,7 @@
       <div class="showcase-summary">
         <span class="showcase-summary__eyebrow" id="showcaseEyebrow">Dịch vụ tận nơi</span>
         <h1 id="showcaseTitle">Sửa chữa nhanh, linh kiện rõ nguồn gốc và theo dõi minh bạch.</h1>
-        <p id="showcaseDescription">Đăng nhập để quay lại đúng luồng đang cần, từ lịch hẹn mới cho đến các đơn đang xử lý và đánh giá sau sửa chữa.</p>
+        <p id="showcaseDescription">Đăng nhập để quay lại đúng luồng đang cần, từ lịch hẹn mới đến các đơn đang xử lý và đánh giá sau sửa chữa.</p>
         <div class="showcase-metrics" id="showcaseMetrics"></div>
       </div>
     </section>
@@ -130,6 +130,7 @@
       baseUrl: @json(url('/')),
       homeUrl: @json(route('home')),
       registerUrl: @json(route('register')),
+      forgotPasswordUrl: @json(route('password.request')),
       googleRedirectUrl: @json(url('/auth/google/redirect')),
       flashError: @json(session('auth_error')),
       initialRole: @json(request('role', 'customer')),

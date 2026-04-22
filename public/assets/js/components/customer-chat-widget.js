@@ -4,156 +4,301 @@ const path = window.location.pathname;
 const isCustomerScope = path === '/' || path.startsWith('/customer');
 
 if (isCustomerScope) {
-    const typingIndicatorHtml = `
-        <div class="chat-bubble chat-bubble-assistant">
-            <div class="chat-typing">
-                <img src="/assets/images/robotAI.png" alt="AI Robot" class="chat-typing-avatar">
-                <div class="chat-typing-dots" aria-label="AI \u0111ang so\u1ea1n tin">
-                    <span class="chat-typing-dot"></span>
-                    <span class="chat-typing-dot"></span>
-                    <span class="chat-typing-dot"></span>
-                </div>
-            </div>
-        </div>
+    const BOT_AVATAR = '/assets/images/robotAI.png';
+    const USER_AVATAR = '/assets/images/customer.png';
+    const SEND_ICON = `
+        <svg viewBox="0 0 17 14" fill="none" aria-hidden="true">
+            <path d="M0.87 13.39C0.55 13.55 0.18 13.25 0.28 12.91L1.8 7.5L0.28 2.09C0.18 1.75 0.55 1.45 0.87 1.61L15.32 6.47C15.7 6.6 15.7 7.14 15.32 7.27L0.87 12.13V13.39Z" fill="currentColor"/>
+        </svg>
     `;
 
     const widget = document.getElementById('customerChatWidget');
     const panel = document.getElementById('customerChatPanel');
     const toggleButton = document.getElementById('customerChatToggle');
     const closeButton = document.getElementById('customerChatClose');
+    const quickHotlineButton = document.getElementById('customerChatQuickHotline');
+    const focusInputButton = document.getElementById('customerChatFocusInput');
     const form = document.getElementById('customerChatForm');
     const input = document.getElementById('customerChatInput');
+    const sendButton = document.getElementById('customerChatSend');
     const messagesContainer = document.getElementById('customerChatMessages');
 
-    if (widget && panel && toggleButton && closeButton && form && input && messagesContainer) {
-        widget.style.display = 'block';
+    if (
+        widget
+        && panel
+        && toggleButton
+        && closeButton
+        && form
+        && input
+        && sendButton
+        && messagesContainer
+    ) {
+        widget.style.display = 'flex';
+        sendButton.innerHTML = SEND_ICON;
 
         let isLoaded = false;
+        let lastSender = null;
 
         const escapeHtml = (value) => (value ?? '')
             .toString()
             .replaceAll('&', '&amp;')
             .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;');
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+
+        const formatMessageText = (text) => {
+            const escaped = escapeHtml(text);
+
+            return escaped.replace(/(https?:\/\/[^\s<]+)/g, (url) => `
+                <a href="${url}" target="_blank" rel="noopener noreferrer" class="customer-chat-link">${url}</a>
+            `);
+        };
 
         const scrollBottom = () => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
 
+        const currentTimestampLabel = () => {
+            const now = new Date();
+            const time = now.toLocaleTimeString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+
+            return `${time}, Hôm nay`;
+        };
+
+        const appendTimestamp = () => {
+            if (messagesContainer.querySelector('.customer-chat-timestamp')) {
+                return;
+            }
+
+            const stamp = document.createElement('div');
+            stamp.className = 'customer-chat-timestamp';
+            stamp.textContent = currentTimestampLabel();
+            messagesContainer.appendChild(stamp);
+        };
+
+        const clearMessages = () => {
+            messagesContainer.innerHTML = '';
+            lastSender = null;
+            appendTimestamp();
+        };
+
+        const renderStatusBadge = (meta) => {
+            const badge = meta?.ai?.badge;
+            if (!badge || typeof badge !== 'object') {
+                return '';
+            }
+
+            const tone = badge.tone === 'warning' ? 'warning' : 'info';
+
+            return `
+                <div class="customer-chat-status-badge" data-tone="${tone}">
+                    <span>${escapeHtml(badge.label || 'Thông báo')}</span>
+                    ${badge.message ? `<span>${escapeHtml(badge.message)}</span>` : ''}
+                </div>
+            `;
+        };
+
         const renderCards = (meta) => {
-            if (!meta || typeof meta !== 'object') return '';
+            if (!meta || typeof meta !== 'object') {
+                return '';
+            }
 
             const cases = Array.isArray(meta.cases) ? meta.cases : [];
             const technicians = Array.isArray(meta.technicians) ? meta.technicians : [];
-            const youtubeLinks = Array.isArray(meta.youtube_links) ? meta.youtube_links : [];
+
+            if (!cases.length && !technicians.length) {
+                return '';
+            }
 
             const caseHtml = cases.map((item) => `
                 <div class="chat-card">
-                    <div class="fw-semibold mb-1">${escapeHtml(item.service_type || 'Ca s\u1eeda ch\u1eefa')}</div>
-                    <div class="small text-secondary mb-1"><strong>L\u1ed7i:</strong> ${escapeHtml(item.problem_description || '')}</div>
-                    <div class="small text-secondary mb-1"><strong>Nguy\u00ean nh\u00e2n:</strong> ${escapeHtml(item.cause || '\u0110ang c\u1eadp nh\u1eadt')}</div>
-                    <div class="small text-secondary"><strong>H\u01b0\u1edbng x\u1eed l\u00fd:</strong> ${escapeHtml(item.solution || 'C\u1ea7n th\u1ee3 ki\u1ec3m tra chi ti\u1ebft t\u1ea1i hi\u1ec7n tr\u01b0\u1eddng.')}</div>
-                    <div class="d-flex gap-2 mt-2">
-                        ${item.before_image ? `<img src="${escapeHtml(item.before_image)}" alt="before" style="width:70px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">` : ''}
-                        ${item.after_image ? `<img src="${escapeHtml(item.after_image)}" alt="after" style="width:70px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">` : ''}
-                    </div>
+                    <p class="chat-card-title">${escapeHtml(item.service_type || 'Ca sửa chữa')}</p>
+                    <p class="chat-card-line"><strong>Lỗi:</strong> ${escapeHtml(item.problem_description || '')}</p>
+                    <p class="chat-card-line"><strong>Nguyên nhân:</strong> ${escapeHtml(item.cause || 'Đang cập nhật')}</p>
+                    <p class="chat-card-line"><strong>Hướng xử lý:</strong> ${escapeHtml(item.solution || 'Cần thợ kiểm tra chi tiết tại hiện trường.')}</p>
+                    ${item.before_image || item.after_image ? `
+                        <div class="chat-card-images">
+                            ${item.before_image ? `<img src="${escapeHtml(item.before_image)}" alt="Ảnh trước sửa">` : ''}
+                            ${item.after_image ? `<img src="${escapeHtml(item.after_image)}" alt="Ảnh sau sửa">` : ''}
+                        </div>
+                    ` : ''}
                 </div>
             `).join('');
 
             const techHtml = technicians.map((item) => `
                 <div class="chat-card">
-                    <div class="fw-semibold">${escapeHtml(item.name || 'Th\u1ee3')}</div>
-                    <div class="small text-secondary">K\u1ef9 n\u0103ng: ${escapeHtml(item.skills || 'T\u1ed5ng h\u1ee3p')}</div>
-                    <div class="small text-secondary">\u0110\u00e1nh gi\u00e1: ${escapeHtml(item.rating ?? '--')} \u00b7 \u0110\u00e3 xong: ${escapeHtml(item.completed_jobs_count ?? 0)} vi\u1ec7c</div>
-                    ${item.reference_price ? `<div class="small text-secondary">Gi\u00e1 tham kh\u1ea3o: ${escapeHtml(item.reference_price)}</div>` : ''}
-                    <div class="d-flex gap-2 mt-2">
-                        ${item.profile_url ? `<a href="${escapeHtml(item.profile_url)}" class="btn btn-sm btn-outline-primary">Xem h\u1ed3 s\u01a1</a>` : ''}
-                        ${item.booking_url ? `<a href="${escapeHtml(item.booking_url)}" class="btn btn-sm btn-primary">\u0110\u1eb7t l\u1ecbch</a>` : ''}
+                    <p class="chat-card-title">${escapeHtml(item.name || 'Thợ phù hợp')}</p>
+                    <p class="chat-card-line"><strong>Kỹ năng:</strong> ${escapeHtml(item.skills || 'Tổng hợp')}</p>
+                    <p class="chat-card-line"><strong>Đánh giá:</strong> ${escapeHtml(item.rating ?? '--')} · Đã xong: ${escapeHtml(item.completed_jobs_count ?? 0)} việc</p>
+                    ${item.reference_price ? `<p class="chat-card-line"><strong>Giá tham khảo:</strong> ${escapeHtml(item.reference_price)}</p>` : ''}
+                    <div class="chat-card-actions">
+                        ${item.profile_url ? `<a href="${escapeHtml(item.profile_url)}" class="chat-card-button">Xem hồ sơ</a>` : ''}
+                        ${item.booking_url ? `<a href="${escapeHtml(item.booking_url)}" class="chat-card-button chat-card-button-primary">Đặt lịch</a>` : ''}
                     </div>
                 </div>
             `).join('');
 
-            const videoHtml = youtubeLinks.map((item) => `
-                <div class="chat-card py-2">
-                    <a href="${escapeHtml(item.url || '#')}" target="_blank" rel="noopener noreferrer" class="small fw-semibold text-decoration-none">
-                        ${escapeHtml(item.title || 'Xem video h\u01b0\u1edbng d\u1eabn')}
-                    </a>
-                </div>
-            `).join('');
-
-            return `${caseHtml}${techHtml}${videoHtml}`;
+            return `<div class="customer-chat-rich-content">${caseHtml}${techHtml}</div>`;
         };
 
         const appendMessage = (sender, text, meta = null) => {
+            appendTimestamp();
+
+            const isCompactUserMessage = sender === 'user' && lastSender === 'user';
             const wrapper = document.createElement('div');
-            wrapper.className = `d-flex mb-2 ${sender === 'user' ? 'justify-content-end' : 'justify-content-start'}`;
+            wrapper.className = `customer-chat-message customer-chat-message-${sender}${isCompactUserMessage ? ' is-compact' : ''}`;
+
+            const stack = document.createElement('div');
+            stack.className = `customer-chat-stack customer-chat-stack-${sender}`;
+
+            if (sender === 'user') {
+                const avatarSlot = document.createElement('div');
+                avatarSlot.className = 'customer-chat-avatar-slot';
+                avatarSlot.innerHTML = isCompactUserMessage
+                    ? '<span class="customer-chat-avatar-placeholder" aria-hidden="true"></span>'
+                    : `<img src="${USER_AVATAR}" alt="Khách hàng" class="customer-chat-user-avatar">`;
+                wrapper.appendChild(avatarSlot);
+            }
+
+            if (sender === 'assistant') {
+                const badgeHtml = renderStatusBadge(meta);
+                if (badgeHtml) {
+                    const badgeWrap = document.createElement('div');
+                    badgeWrap.innerHTML = badgeHtml;
+                    stack.appendChild(badgeWrap.firstElementChild);
+                }
+            }
 
             const bubble = document.createElement('div');
-            bubble.className = `chat-bubble ${sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}`;
-            bubble.innerHTML = `<div style="white-space:pre-line;">${escapeHtml(text)}</div>${sender === 'assistant' ? renderCards(meta) : ''}`;
+            bubble.className = `chat-bubble chat-bubble-${sender}`;
+            bubble.innerHTML = `<div class="chat-bubble-text">${formatMessageText(text)}</div>`;
+            stack.appendChild(bubble);
 
-            wrapper.appendChild(bubble);
+            if (sender === 'assistant') {
+                const cardsHtml = renderCards(meta);
+                if (cardsHtml) {
+                    const cardsWrap = document.createElement('div');
+                    cardsWrap.innerHTML = cardsHtml;
+                    stack.appendChild(cardsWrap.firstElementChild);
+                }
+            }
+
+            wrapper.appendChild(stack);
             messagesContainer.appendChild(wrapper);
+            lastSender = sender;
             scrollBottom();
+        };
+
+        const createTypingIndicator = (loadingId) => {
+            const wrapper = document.createElement('div');
+            wrapper.id = loadingId;
+            wrapper.className = 'customer-chat-message customer-chat-message-assistant';
+            wrapper.innerHTML = `
+                <div class="customer-chat-stack customer-chat-stack-assistant">
+                    <div class="chat-bubble chat-bubble-typing" aria-label="Bot đang soạn tin">
+                        <div class="chat-typing-dots">
+                            <span class="chat-typing-dot"></span>
+                            <span class="chat-typing-dot"></span>
+                            <span class="chat-typing-dot"></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return wrapper;
         };
 
         const renderHistory = async () => {
             try {
                 const response = await callApi('/chat/history', 'GET');
-                if (!response.ok) throw new Error(response.data?.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i l\u1ecbch s\u1eed chat');
+                if (!response.ok) {
+                    throw new Error(response.data?.message || 'Không thể tải lịch sử chat');
+                }
 
-                messagesContainer.innerHTML = '';
+                clearMessages();
+
                 const messages = Array.isArray(response.data?.messages) ? response.data.messages : [];
-
                 if (messages.length === 0) {
-                    appendMessage('assistant', 'M\u00f4 t\u1ea3 nhanh thi\u1ebft b\u1ecb \u0111ang g\u1eb7p s\u1ef1 c\u1ed1. Tr\u01b0\u1edbc khi quan s\u00e1t ho\u1eb7c ki\u1ec3m tra, b\u1ea1n h\u00e3y ng\u1eaft c\u1ea7u dao/aptomat c\u1ee7a thi\u1ebft b\u1ecb.');
+                    appendMessage('assistant', 'Chào bạn, Bot NTU đang sẵn sàng. Bạn mô tả nhanh thiết bị hoặc đơn hàng đang cần hỗ trợ nhé.');
                     return;
                 }
 
-                messages.forEach((message) => appendMessage(message.sender, message.text, message.meta || null));
+                messages.forEach((message) => {
+                    appendMessage(message.sender, message.text, message.meta || null);
+                });
             } catch (error) {
-                appendMessage('assistant', 'Ch\u01b0a t\u1ea3i \u0111\u01b0\u1ee3c l\u1ecbch s\u1eed chat l\u00fac n\u00e0y. B\u1ea1n c\u1ee9 m\u00f4 t\u1ea3 s\u1ef1 c\u1ed1 m\u1edbi, v\u00e0 nh\u1edb ng\u1eaft ngu\u1ed3n \u0111i\u1ec7n tr\u01b0\u1edbc khi ki\u1ec3m tra.');
+                clearMessages();
+                appendMessage('assistant', 'Chưa tải được lịch sử chat lúc này. Bạn cứ mô tả sự cố mới, mình sẽ hỗ trợ ngay khi nhận được thông tin.');
             }
         };
 
         const setSendingState = (isSending) => {
             input.disabled = isSending;
-            const sendBtn = document.getElementById('customerChatSend');
-            if (sendBtn) {
-                sendBtn.disabled = isSending;
-                sendBtn.textContent = isSending ? '...' : 'G\u1eedi';
+            sendButton.disabled = isSending;
+            sendButton.innerHTML = isSending ? '<span class="customer-chat-send-loader" aria-hidden="true"></span>' : SEND_ICON;
+        };
+
+        const setPanelOpen = (isOpen) => {
+            panel.style.display = isOpen ? 'flex' : 'none';
+            toggleButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+            if (isOpen) {
+                scrollBottom();
+                input.focus();
             }
         };
 
         toggleButton.addEventListener('click', async () => {
-            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
-            if (panel.style.display === 'block' && !isLoaded) {
+            const isOpening = panel.style.display !== 'flex';
+            setPanelOpen(isOpening);
+
+            if (isOpening && !isLoaded) {
                 await renderHistory();
                 isLoaded = true;
             }
-            scrollBottom();
         });
 
         closeButton.addEventListener('click', () => {
-            panel.style.display = 'none';
+            setPanelOpen(false);
+        });
+
+        focusInputButton?.addEventListener('click', () => {
+            input.focus();
+        });
+
+        quickHotlineButton?.addEventListener('click', async () => {
+            if (panel.style.display !== 'flex') {
+                setPanelOpen(true);
+                if (!isLoaded) {
+                    await renderHistory();
+                    isLoaded = true;
+                }
+            }
+
+            input.value = 'Hotline cửa hàng là gì?';
+            input.focus();
         });
 
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
             const text = input.value.trim();
-            if (!text) return;
+            if (!text) {
+                return;
+            }
 
             appendMessage('user', text);
             input.value = '';
             setSendingState(true);
 
             const loadingId = `typing-${Date.now()}`;
-            const typingWrap = document.createElement('div');
-            typingWrap.id = loadingId;
-            typingWrap.className = 'd-flex justify-content-start mb-2';
-            typingWrap.innerHTML = typingIndicatorHtml;
-            messagesContainer.appendChild(typingWrap);
+            const typingNode = createTypingIndicator(loadingId);
+            messagesContainer.appendChild(typingNode);
+            lastSender = 'assistant';
             scrollBottom();
 
             try {
@@ -161,19 +306,23 @@ if (isCustomerScope) {
                 document.getElementById(loadingId)?.remove();
 
                 if (!response.ok) {
-                    throw new Error(response.data?.message || 'G\u1eedi tin nh\u1eafn th\u1ea5t b\u1ea1i');
+                    throw new Error(response.data?.message || 'Gửi tin nhắn thất bại');
                 }
 
                 const payload = response.data?.data || {};
-                appendMessage('assistant', payload.assistant_text || 'T\u00f4i \u0111\u00e3 nh\u1eadn \u0111\u01b0\u1ee3c y\u00eau c\u1ea7u c\u1ee7a b\u1ea1n.', {
-                    cases: payload.cases || [],
-                    technicians: payload.technicians || [],
-                    youtube_links: payload.youtube_links || [],
-                });
+                appendMessage(
+                    'assistant',
+                    payload.assistant_text || 'Tôi đã nhận được yêu cầu của bạn.',
+                    {
+                        cases: payload.cases || [],
+                        technicians: payload.technicians || [],
+                        ai: payload.ai || null,
+                    },
+                );
             } catch (error) {
                 document.getElementById(loadingId)?.remove();
-                appendMessage('assistant', 'T\u00f4i ch\u01b0a x\u1eed l\u00fd \u0111\u01b0\u1ee3c y\u00eau c\u1ea7u ngay l\u00fac n\u00e0y. B\u1ea1n th\u1eed l\u1ea1i sau v\u00e0i gi\u00e2y.');
-                showToast(error.message || 'Kh\u00f4ng g\u1eedi \u0111\u01b0\u1ee3c tin nh\u1eafn', 'error');
+                appendMessage('assistant', 'Tôi chưa xử lý được yêu cầu ngay lúc này. Bạn thử lại sau vài giây.');
+                showToast(error.message || 'Không gửi được tin nhắn', 'error');
             } finally {
                 setSendingState(false);
                 input.focus();

@@ -5,9 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AiKnowledgeItem;
 use App\Models\CustomerFeedbackCase;
-use App\Models\CustomerFollowUp;
-use App\Models\CustomerNote;
-use App\Models\CustomerTag;
 use App\Models\DanhMucDichVu;
 use App\Models\DanhGia;
 use App\Models\DonDatLich;
@@ -15,17 +12,20 @@ use App\Models\HoSoTho;
 use App\Models\HuongXuLy;
 use App\Models\LinhKien;
 use App\Models\NguyenNhan;
+use App\Models\ThanhToan;
 use App\Models\TrieuChung;
 use App\Models\User;
 use App\Services\Chat\AssistantSoulConfigService;
 use App\Services\Chat\AiKnowledgeSyncService;
 use App\Services\Chat\TextNormalizer;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -907,31 +907,6 @@ class AdminController extends Controller
                         ])
                         ->latest('created_at');
                 },
-                'customerTags:id,label,slug,color',
-                'customerFollowUps' => function ($query) {
-                    $query
-                        ->select([
-                            'id',
-                            'customer_id',
-                            'booking_id',
-                            'created_by_admin_id',
-                            'assigned_admin_id',
-                            'title',
-                            'channel',
-                            'priority',
-                            'status',
-                            'scheduled_at',
-                            'completed_at',
-                            'note',
-                            'outcome_note',
-                            'created_at',
-                        ])
-                        ->with([
-                            'assignedAdmin:id,name',
-                            'createdByAdmin:id,name',
-                        ])
-                        ->latest('scheduled_at');
-                },
             ])
             ->latest('created_at')
             ->get()
@@ -955,7 +930,6 @@ class AdminController extends Controller
                     ->where('trang_thai', 'da_huy')
                     ->filter(fn ($booking) => filled($booking->ly_do_huy ?? null))
                     ->count();
-                $followUpSummary = $this->buildCustomerFollowUpSummary($customer->customerFollowUps, $now);
                 $daysSinceLastBooking = $lastBookingAt ? $lastBookingAt->diffInDays($now) : null;
                 $relationshipStatus = $this->resolveCustomerRelationshipStatus(
                     $customer,
@@ -973,7 +947,6 @@ class AdminController extends Controller
                     'total_spent' => $totalSpent,
                     'low_feedback_count' => $lowFeedbackCount,
                     'days_since_last_booking' => $daysSinceLastBooking,
-                    'overdue_follow_up_count' => $followUpSummary['overdue_count'] ?? 0,
                     'cancel_with_reason_count' => $cancelWithReasonCount,
                 ]);
 
@@ -1005,25 +978,19 @@ class AdminController extends Controller
                     'latest_address' => $latestBooking?->dia_chi ?: $customer->address,
                     'relationship_status' => $relationshipStatus,
                     'quick_note' => $this->buildCustomerQuickNote($relationshipStatus, $openBookings->count(), $lowFeedbackCount, $lastBookingAt, $now),
-                    'tags' => $customer->customerTags
-                        ->sortBy(fn (CustomerTag $item) => mb_strtolower((string) $item->label))
-                        ->values()
-                        ->map(fn (CustomerTag $item) => $this->serializeCustomerTag($item))
-                        ->all(),
+                    'tags' => [],
                     'segments' => $segments,
                     'primary_segment' => $segments[0] ?? null,
-                    'next_follow_up' => $followUpSummary['next_pending'],
+                    'next_follow_up' => null,
                     'follow_up_stats' => [
-                        'pending_count' => $followUpSummary['pending_count'] ?? 0,
-                        'completed_count' => $followUpSummary['completed_count'] ?? 0,
-                        'due_today_count' => $followUpSummary['due_today_count'] ?? 0,
-                        'overdue_count' => $followUpSummary['overdue_count'] ?? 0,
+                        'pending_count' => 0,
+                        'completed_count' => 0,
+                        'due_today_count' => 0,
+                        'overdue_count' => 0,
                     ],
                     '_created_at_sort' => optional($customer->created_at)->timestamp ?? 0,
                     '_last_booking_at_sort' => optional($lastBookingAt)->timestamp ?? 0,
-                    '_next_follow_up_sort' => !empty($followUpSummary['next_pending']['scheduled_at'])
-                        ? Carbon::parse($followUpSummary['next_pending']['scheduled_at'])->timestamp
-                        : PHP_INT_MAX,
+                    '_next_follow_up_sort' => PHP_INT_MAX,
                 ];
             })
             ->filter(function (array $customer) use (
@@ -1174,13 +1141,7 @@ class AdminController extends Controller
                     'booking_count_max' => $bookingCountMax,
                 ],
                 'filter_options' => [
-                    'tags' => CustomerTag::query()
-                        ->select(['id', 'label', 'slug', 'color'])
-                        ->orderBy('label')
-                        ->limit(50)
-                        ->get()
-                        ->map(fn (CustomerTag $item) => $this->serializeCustomerTag($item))
-                        ->values(),
+                    'tags' => [],
                     'segments' => collect([
                         'needs_care',
                         'vip',
@@ -1400,23 +1361,9 @@ class AdminController extends Controller
             ])
             ->values();
 
-        $tags = $customer->customerTags
-            ->sortBy(fn (CustomerTag $tag) => mb_strtolower((string) $tag->label))
-            ->values()
-            ->map(fn (CustomerTag $tag) => $this->serializeCustomerTag($tag));
-
-        $notes = $customer->customerNotes
-            ->sortByDesc(fn (CustomerNote $note) => optional($note->created_at)->timestamp ?? 0)
-            ->take(8)
-            ->values()
-            ->map(fn (CustomerNote $note) => $this->serializeCustomerNote($note));
-
-        $availableTags = CustomerTag::query()
-            ->select(['id', 'label', 'slug', 'color'])
-            ->orderBy('label')
-            ->limit(24)
-            ->get()
-            ->map(fn (CustomerTag $tag) => $this->serializeCustomerTag($tag));
+        $tags = [];
+        $notes = [];
+        $availableTags = [];
 
         $nextOpenBooking = $openBookings
             ->sortBy(fn (DonDatLich $booking) => $this->resolveCustomerBookingSortTimestamp($booking))
@@ -1426,7 +1373,6 @@ class AdminController extends Controller
         $cancelWithReasonCount = $canceledBookings
             ->filter(fn (DonDatLich $booking) => filled($booking->ly_do_huy))
             ->count();
-        $followUpSummary = $this->buildCustomerFollowUpSummary($customer->customerFollowUps, $now);
         $segments = $this->buildCustomerSegments([
             'created_days' => $customer->created_at ? $customer->created_at->diffInDays($now) : null,
             'order_count' => $bookings->count(),
@@ -1435,7 +1381,6 @@ class AdminController extends Controller
             'total_spent' => $totalSpent,
             'low_feedback_count' => $lowFeedbackCount,
             'days_since_last_booking' => $daysSinceLastBooking,
-            'overdue_follow_up_count' => $followUpSummary['overdue_count'] ?? 0,
             'cancel_with_reason_count' => $cancelWithReasonCount,
         ]);
 
@@ -1910,8 +1855,25 @@ class AdminController extends Controller
                 );
             });
 
+        $complaintCases = CustomerFeedbackCase::query()
+            ->with([
+                'customer:id,name,phone',
+                'worker:id,name,phone',
+                'booking:id,khach_hang_id,tho_id,loai_dat_lich,dia_chi,trang_thai,created_at,updated_at',
+                'booking.dichVus:id,ten_dich_vu',
+                'assignedAdmin:id,name',
+            ])
+            ->where('source_type', 'customer_complaint')
+            ->latest('created_at')
+            ->limit(200)
+            ->get()
+            ->map(function (CustomerFeedbackCase $caseState) {
+                return $this->mapCustomerComplaintFeedbackCase($caseState);
+            });
+
         $cases = $reviewCases
             ->concat($cancellationCases)
+            ->concat($complaintCases)
             ->filter(function (array $case) use ($search, $type, $priority, $status, $customerId, $assignedAdminId, $dueState) {
                 if ($type !== '' && $case['type'] !== $type) {
                     return false;
@@ -1961,6 +1923,7 @@ class AdminController extends Controller
             'total_cases' => $cases->count(),
             'review_cases' => $cases->where('type', 'low_rating')->count(),
             'cancellation_cases' => $cases->where('type', 'cancellation')->count(),
+            'complaint_cases' => $cases->where('type', 'customer_complaint')->count(),
             'high_priority_cases' => $cases->where('priority', 'high')->count(),
             'in_progress_cases' => $cases->where('status', 'in_progress')->count(),
             'resolved_cases' => $cases->where('status', 'resolved')->count(),
@@ -2074,45 +2037,6 @@ class AdminController extends Controller
         ]);
     }
 
-    public function storeCustomerNote(Request $request, string $id)
-    {
-        $validator = Validator::make($request->all(), [
-            'content' => 'required|string|max:2000',
-            'category' => 'nullable|in:cskh,van_hanh,ke_toan',
-            'is_pinned' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Du lieu ghi chu khong hop le.',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $customer = User::query()
-            ->where('role', 'customer')
-            ->whereKey($id)
-            ->firstOrFail();
-
-        $note = CustomerNote::create([
-            'customer_id' => $customer->id,
-            'admin_id' => $request->user()?->id,
-            'category' => $request->input('category', 'van_hanh'),
-            'content' => trim((string) $request->input('content')),
-            'is_pinned' => (bool) $request->boolean('is_pinned'),
-        ]);
-
-        $note->load('admin:id,name');
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Da them ghi chu noi bo.',
-            'data' => [
-                'note' => $this->serializeCustomerNote($note),
-            ],
-        ]);
-    }
 
     public function getUsers(Request $request)
     {
@@ -2215,7 +2139,7 @@ class AdminController extends Controller
 
     private function adminCustomerOpenStatuses(): array
     {
-        return ['cho_xac_nhan', 'da_xac_nhan', 'dang_lam', 'cho_thanh_toan', 'cho_hoan_thanh'];
+        return ['cho_xac_nhan', 'da_xac_nhan', DonDatLich::STATUS_CUSTOMER_UNREACHABLE, 'dang_lam', 'cho_thanh_toan', 'cho_hoan_thanh'];
     }
 
     private function adminCustomerCompletedStatuses(): array
@@ -2248,38 +2172,38 @@ class AdminController extends Controller
     private function formatCustomerBookingStatusLabel(?string $status): string
     {
         return match ($status) {
-            'cho_xac_nhan' => 'Cho xac nhan',
-            'da_xac_nhan' => 'Da xac nhan',
-            'dang_lam' => 'Dang lam',
-            'cho_hoan_thanh' => 'Cho nghiem thu',
-            'cho_thanh_toan' => 'Cho thanh toan',
-            'da_xong', 'hoan_thanh' => 'Hoan thanh',
-            'da_huy' => 'Da huy',
-            default => 'Chua cap nhat',
+            'cho_xac_nhan' => 'Chờ xác nhận',
+            'da_xac_nhan' => 'Đã xác nhận',
+            DonDatLich::STATUS_CUSTOMER_UNREACHABLE => 'Không liên lạc được với khách hàng',
+            'dang_lam' => 'Đang làm',
+            'cho_hoan_thanh' => 'Chờ nghiệm thu',
+            'cho_thanh_toan' => 'Chờ thanh toán',
+            'da_xong', 'hoan_thanh' => 'Hoàn thành',
+            'da_huy' => 'Đã hủy',
+            default => 'Chưa cập nhật',
         };
     }
-
     private function resolveCustomerBookingTone(?string $status): string
     {
         return match ($status) {
             'cho_xac_nhan', 'da_xac_nhan' => 'info',
+            DonDatLich::STATUS_CUSTOMER_UNREACHABLE => 'danger',
             'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan' => 'warning',
             'da_xong', 'hoan_thanh' => 'success',
             'da_huy' => 'danger',
             default => 'muted',
         };
     }
-
     private function formatCustomerPaymentMethodLabel(?string $method): string
     {
         return match ($method) {
-            'cash' => 'Tien mat',
-            'transfer' => 'Chuyen khoan',
+            'cash', 'cod' => 'Tiền mặt',
+            'transfer' => 'Chuyển khoản',
             'vnpay' => 'VNPay',
             'momo' => 'MoMo',
             'zalopay' => 'ZaloPay',
             'test' => 'Test',
-            default => 'Khac',
+            default => 'Khác',
         };
     }
 
@@ -2297,7 +2221,7 @@ class AdminController extends Controller
             return $booking->ngay_hen->format('d/m/Y');
         }
 
-        return optional($booking->created_at)->format('d/m/Y H:i') ?: 'Chua chot lich';
+        return optional($booking->created_at)->format('d/m/Y H:i') ?: 'Chưa chốt lịch';
     }
 
     private function resolveCustomerBookingSortTimestamp(DonDatLich $booking): int
@@ -2407,28 +2331,7 @@ class AdminController extends Controller
             }
         }
 
-        if ($customer->relationLoaded('customerFollowUps')) {
-            foreach ($customer->customerFollowUps as $followUp) {
-                if (!$followUp instanceof CustomerFollowUp) {
-                    continue;
-                }
 
-                $time = $followUp->scheduled_at ?? $followUp->created_at;
-                $tone = $followUp->status === 'completed'
-                    ? 'success'
-                    : ($followUp->scheduled_at && $followUp->scheduled_at->lt(now()) ? 'danger' : 'warning');
-
-                $events->push([
-                    'kind' => 'follow_up',
-                    'title' => 'Cham soc khach hang',
-                    'detail' => trim((string) $followUp->title),
-                    'time_label' => $time?->format('d/m/Y H:i') ?: 'Chua hen lich',
-                    'tone' => $tone,
-                    'sort_at' => $time?->timestamp ?? (optional($followUp->created_at)->timestamp ?? 0),
-                    'booking_url' => $followUp->booking_id ? '/customer/my-bookings/' . $followUp->booking_id : null,
-                ]);
-            }
-        }
 
         return $events
             ->sortByDesc('sort_at')
@@ -2537,196 +2440,7 @@ class AdminController extends Controller
         return collect($segments)->contains(fn (array $item) => ($item['code'] ?? null) === $segment);
     }
 
-    private function formatCustomerFollowUpChannelLabel(?string $channel): string
-    {
-        return match ($channel) {
-            'zalo' => 'Zalo',
-            'email' => 'Email',
-            'sms' => 'SMS',
-            default => 'Goi dien',
-        };
-    }
 
-    private function formatCustomerFollowUpPriorityLabel(string $priority): string
-    {
-        return match ($priority) {
-            'high' => 'Uu tien cao',
-            'low' => 'Thong thuong',
-            default => 'Can xu ly',
-        };
-    }
-
-    private function resolveCustomerFollowUpPriorityTone(string $priority): string
-    {
-        return match ($priority) {
-            'high' => 'danger',
-            'low' => 'muted',
-            default => 'warning',
-        };
-    }
-
-    private function formatCustomerFollowUpStatusLabel(string $status): string
-    {
-        return match ($status) {
-            'completed' => 'Da lien he',
-            'canceled' => 'Da huy',
-            default => 'Cho nhac',
-        };
-    }
-
-    private function formatCustomerFollowUpDueStateLabel(string $dueState): string
-    {
-        return match ($dueState) {
-            'overdue' => 'Qua han',
-            'due_today' => 'Den han hom nay',
-            'upcoming' => 'Sap toi',
-            'no_schedule' => 'Chua hen lich',
-            'completed' => 'Da xong',
-            'canceled' => 'Da huy',
-            default => 'Dang mo',
-        };
-    }
-
-    private function resolveCustomerFollowUpDueState(?Carbon $scheduledAt, string $status, Carbon $now): string
-    {
-        if ($status === 'completed') {
-            return 'completed';
-        }
-
-        if ($status === 'canceled') {
-            return 'canceled';
-        }
-
-        if (!$scheduledAt) {
-            return 'no_schedule';
-        }
-
-        if ($scheduledAt->lt($now)) {
-            return 'overdue';
-        }
-
-        if ($scheduledAt->isSameDay($now)) {
-            return 'due_today';
-        }
-
-        return 'upcoming';
-    }
-
-    private function resolveCustomerFollowUpStatusTone(string $status, string $dueState = 'pending'): string
-    {
-        if ($status === 'completed') {
-            return 'success';
-        }
-
-        if ($status === 'canceled') {
-            return 'muted';
-        }
-
-        return match ($dueState) {
-            'overdue' => 'danger',
-            'due_today' => 'warning',
-            default => 'info',
-        };
-    }
-
-    private function buildCustomerFollowUpSummary(Collection $followUps, Carbon $now): array
-    {
-        $serialized = $followUps
-            ->map(fn (CustomerFollowUp $followUp) => $this->serializeCustomerFollowUp($followUp, $now))
-            ->values();
-
-        $pendingItems = $serialized
-            ->filter(fn (array $item) => ($item['status'] ?? 'pending') === 'pending')
-            ->sortBy(fn (array $item) => $item['scheduled_sort'] ?? PHP_INT_MAX)
-            ->values();
-
-        return [
-            'items' => $serialized->map(function (array $item) {
-                unset($item['scheduled_sort']);
-
-                return $item;
-            })->values()->all(),
-            'pending_count' => $serialized->where('status', 'pending')->count(),
-            'completed_count' => $serialized->where('status', 'completed')->count(),
-            'due_today_count' => $serialized->where('due_state', 'due_today')->count(),
-            'overdue_count' => $serialized->where('due_state', 'overdue')->count(),
-            'next_pending' => $pendingItems->first(),
-        ];
-    }
-
-    private function serializeCustomerFollowUp(CustomerFollowUp $followUp, Carbon $now): array
-    {
-        $dueState = $this->resolveCustomerFollowUpDueState($followUp->scheduled_at, (string) $followUp->status, $now);
-
-        return [
-            'id' => $followUp->id,
-            'customer_id' => $followUp->customer_id,
-            'booking_id' => $followUp->booking_id,
-            'booking_code' => $followUp->booking_id ? $this->formatCustomerBookingCode($followUp->booking_id) : null,
-            'title' => trim((string) $followUp->title),
-            'channel' => $followUp->channel,
-            'channel_label' => $this->formatCustomerFollowUpChannelLabel($followUp->channel),
-            'priority' => $followUp->priority,
-            'priority_label' => $this->formatCustomerFollowUpPriorityLabel((string) $followUp->priority),
-            'priority_tone' => $this->resolveCustomerFollowUpPriorityTone((string) $followUp->priority),
-            'status' => $followUp->status,
-            'status_label' => $this->formatCustomerFollowUpStatusLabel((string) $followUp->status),
-            'status_tone' => $this->resolveCustomerFollowUpStatusTone((string) $followUp->status, $dueState),
-            'due_state' => $dueState,
-            'due_state_label' => $this->formatCustomerFollowUpDueStateLabel($dueState),
-            'scheduled_at' => $followUp->scheduled_at?->toIso8601String(),
-            'scheduled_label' => $followUp->scheduled_at?->format('d/m/Y H:i') ?: 'Chua hen lich',
-            'scheduled_sort' => $followUp->scheduled_at?->timestamp ?? PHP_INT_MAX,
-            'completed_at' => $followUp->completed_at?->toIso8601String(),
-            'completed_label' => $followUp->completed_at?->format('d/m/Y H:i'),
-            'note' => trim((string) ($followUp->note ?? '')),
-            'outcome_note' => trim((string) ($followUp->outcome_note ?? '')),
-            'assigned_admin_id' => $followUp->assigned_admin_id,
-            'assigned_admin_name' => $followUp->assignedAdmin?->name ?: 'Chua giao',
-            'created_by_admin_name' => $followUp->createdByAdmin?->name ?: 'Admin',
-            'is_overdue' => $dueState === 'overdue',
-        ];
-    }
-
-    private function serializeCustomerNote(CustomerNote $note): array
-    {
-        return [
-            'id' => $note->id,
-            'category' => $note->category,
-            'category_label' => $this->formatCustomerNoteCategoryLabel($note->category),
-            'content' => trim((string) $note->content),
-            'is_pinned' => (bool) $note->is_pinned,
-            'created_label' => optional($note->created_at)->format('d/m/Y H:i'),
-            'admin_name' => $note->admin?->name ?: 'Admin',
-        ];
-    }
-
-    private function serializeCustomerTag(CustomerTag $tag): array
-    {
-        return [
-            'id' => $tag->id,
-            'label' => $tag->label,
-            'slug' => $tag->slug,
-            'color' => $tag->color ?: $this->resolveCustomerTagColor($tag->label),
-        ];
-    }
-
-    private function formatCustomerNoteCategoryLabel(?string $category): string
-    {
-        return match ($category) {
-            'cskh' => 'Cham soc',
-            'ke_toan' => 'Ke toan',
-            default => 'Van hanh',
-        };
-    }
-
-    private function resolveCustomerTagColor(string $label): string
-    {
-        $palette = ['sky', 'emerald', 'amber', 'rose', 'violet', 'slate'];
-        $index = abs(crc32(Str::lower($label))) % count($palette);
-
-        return $palette[$index];
-    }
 
     private function resolveCustomerFeedbackPriority(string $type, array $context = []): string
     {
@@ -2905,6 +2619,63 @@ class AdminController extends Controller
         ];
     }
 
+    private function mapCustomerComplaintFeedbackCase(CustomerFeedbackCase $caseState): array
+    {
+        $booking = $caseState->booking;
+        $customer = $caseState->customer ?? $booking?->khachHang;
+        $worker = $caseState->worker ?? $booking?->tho;
+        $snapshot = is_array($caseState->last_snapshot) ? $caseState->last_snapshot : [];
+        $reasonCode = (string) ($snapshot['reason_code'] ?? '');
+        $reasonLabel = (string) ($snapshot['reason_label'] ?? match ($reasonCode) {
+            'loi_tai_phat' => 'Loi tai phat',
+            'linh_kien_kem_chat_luong' => 'Linh kien thay the kem chat luong',
+            default => 'Khieu nai khac',
+        });
+        $note = trim((string) ($snapshot['note'] ?? ''));
+        $content = trim($reasonLabel . ($note !== '' ? '. ' . $note : ''));
+        if ($content === '') {
+            $content = 'Khach hang gui khieu nai cho don nay.';
+        }
+
+        $locationLabel = $booking
+            ? ($booking->loai_dat_lich === 'at_home'
+                ? ($booking->dia_chi ?: 'Chua cap nhat dia chi xu ly')
+                : 'Khach mang thiet bi den cua hang')
+            : 'Chua co dia diem xu ly';
+        $priority = (string) ($caseState->priority ?: ($reasonCode === 'linh_kien_kem_chat_luong' ? 'high' : 'medium'));
+
+        $case = [
+            'id' => $this->formatCustomerFeedbackSourceKey('customer_complaint', (int) $caseState->source_id),
+            'source_type' => 'customer_complaint',
+            'source_id' => (int) $caseState->source_id,
+            'type' => 'customer_complaint',
+            'type_label' => 'Khieu nai',
+            'priority' => $priority,
+            'priority_label' => $this->formatCustomerFeedbackPriorityLabel($priority),
+            'priority_tone' => $this->resolveCustomerFeedbackPriorityTone($priority),
+            'customer_id' => $customer?->id,
+            'customer_name' => $customer?->name ?: 'Khach hang',
+            'customer_phone' => $customer?->phone ?: null,
+            'customer_url' => $customer ? '/admin/customers/' . $customer->id : null,
+            'booking_id' => $booking?->id ?: (int) $caseState->source_id,
+            'booking_code' => $booking
+                ? $this->formatCustomerBookingCode($booking->id)
+                : ('KN-' . str_pad((string) $caseState->source_id, 4, '0', STR_PAD_LEFT)),
+            'booking_url' => $booking ? '/customer/my-bookings/' . $booking->id : null,
+            'worker_id' => $worker?->id,
+            'worker_name' => $worker?->name ?: 'Chua gan tho',
+            'service_label' => $booking ? $this->buildCustomerServiceLabel($booking) : 'Chua ro dich vu',
+            'created_at' => optional($caseState->created_at)->toDateTimeString(),
+            'created_label' => optional($caseState->created_at)->format('d/m/Y H:i') ?: 'Khong ro thoi diem',
+            'summary' => $this->truncateDashboardText($content, 120),
+            'content' => $content,
+            'rating' => null,
+            'location_label' => $locationLabel,
+        ];
+
+        return $this->applyCustomerFeedbackCaseState($case, $caseState);
+    }
+
     private function applyCustomerFeedbackCaseState(array $case, ?CustomerFeedbackCase $caseState): array
     {
         $status = $caseState?->status ?: 'new';
@@ -2958,6 +2729,19 @@ class AdminController extends Controller
                         'nguoiBiDanhGia:id,name,phone',
                     ])
                     ->findOrFail($sourceId)
+            ),
+            'customer_complaint' => $this->mapCustomerComplaintFeedbackCase(
+                CustomerFeedbackCase::query()
+                    ->with([
+                        'customer:id,name,phone',
+                        'worker:id,name,phone',
+                        'booking:id,khach_hang_id,tho_id,loai_dat_lich,dia_chi,trang_thai,created_at,updated_at',
+                        'booking.dichVus:id,ten_dich_vu',
+                        'assignedAdmin:id,name',
+                    ])
+                    ->where('source_type', 'customer_complaint')
+                    ->where('source_id', $sourceId)
+                    ->firstOrFail()
             ),
             'cancellation' => $this->mapCancellationFeedbackCase(
                 DonDatLich::query()
@@ -3064,22 +2848,1426 @@ class AdminController extends Controller
 
     public function getAllBookings(Request $request)
     {
-        $status = $request->query('status');
+        $filters = $this->resolveAdminBookingFilters($request);
+        $now = Carbon::now();
+        $rows = $this->buildAdminBookingRows($filters, $now);
+        $rows = $this->applyAdminBookingComputedFilters($rows, $filters);
+        $rows = $this->sortAdminBookingRows($rows, $filters['sort_by'], $filters['sort_dir']);
+        $summary = $this->buildAdminBookingSummary($rows);
+        [$items, $pagination] = $this->paginateAdminBookingRows($rows, $filters['page'], $filters['per_page']);
 
-        $query = DonDatLich::with([
-            'khachHang:id,name,phone',
-            'tho:id,name,phone',
-            'dichVus:id,ten_dich_vu',
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'items' => $items,
+                'summary' => $summary,
+                'pagination' => $pagination,
+                'filters' => [
+                    'search' => $filters['search'],
+                    'status' => $filters['status'],
+                    'worker_id' => $filters['worker_id'],
+                    'service_id' => $filters['service_id'],
+                    'payment' => $filters['payment'],
+                    'mode' => $filters['mode'],
+                    'priority' => $filters['priority'],
+                    'sla' => $filters['sla'],
+                    'date_from' => $filters['date_from'],
+                    'date_to' => $filters['date_to'],
+                    'view' => $filters['view'],
+                    'sort_by' => $filters['sort_by'],
+                    'sort_dir' => $filters['sort_dir'],
+                    'status_options' => $this->adminBookingStatusOptions(),
+                    'service_options' => $this->adminBookingServiceOptions(),
+                    'worker_options' => $this->adminBookingWorkerOptions(),
+                    'payment_options' => [
+                        ['value' => '', 'label' => 'Tất cả thanh toán'],
+                        ['value' => 'paid', 'label' => 'Đã thanh toán'],
+                        ['value' => 'unpaid', 'label' => 'Chưa thanh toán'],
+                        ['value' => 'failed', 'label' => 'Thanh toán lỗi'],
+                    ],
+                    'mode_options' => [
+                        ['value' => '', 'label' => 'Tất cả hình thức'],
+                        ['value' => 'at_home', 'label' => 'Tại nhà'],
+                        ['value' => 'at_store', 'label' => 'Tại cửa hàng'],
+                    ],
+                    'priority_options' => [
+                        ['value' => '', 'label' => 'Tất cả ưu tiên'],
+                        ['value' => 'high', 'label' => 'Cao'],
+                        ['value' => 'medium', 'label' => 'Trung bình'],
+                        ['value' => 'low', 'label' => 'Thấp'],
+                    ],
+                    'sla_options' => [
+                        ['value' => '', 'label' => 'Tất cả SLA'],
+                        ['value' => 'overdue', 'label' => 'Quá hạn'],
+                        ['value' => 'due_soon', 'label' => 'Sắp quá hạn'],
+                        ['value' => 'on_track', 'label' => 'Đúng hạn'],
+                        ['value' => 'closed', 'label' => 'Đã đóng'],
+                    ],
+                    'sort_options' => [
+                        ['value' => 'created_at', 'label' => 'Tạo đơn'],
+                        ['value' => 'scheduled_at', 'label' => 'Lịch hẹn'],
+                        ['value' => 'priority', 'label' => 'Ưu tiên'],
+                        ['value' => 'sla', 'label' => 'SLA'],
+                        ['value' => 'updated_at', 'label' => 'Cập nhật gần nhất'],
+                        ['value' => 'total_amount', 'label' => 'Tổng tiền'],
+                    ],
+                    'quick_views' => [
+                        ['value' => 'all', 'label' => 'Tất cả'],
+                        ['value' => 'overdue', 'label' => 'Đơn quá hạn'],
+                        ['value' => 'unpaid', 'label' => 'Chờ thanh toán'],
+                        ['value' => 'complaint', 'label' => 'Có khiếu nại'],
+                        ['value' => 'contact_issue', 'label' => 'Không liên lạc được'],
+                        ['value' => 'unassigned', 'label' => 'Chưa gán thợ'],
+                    ],
+                    'status_flow' => $this->adminBookingStatusFlow(),
+                    'cancel_reason_options' => $this->adminBookingCancelReasonOptions(),
+                    'time_slots' => $this->adminBookingTimeSlots(),
+                ],
+            ],
         ]);
+    }
 
-        if ($status) {
-            $query->where('trang_thai', $status);
+    public function getBookingDetail(string $id)
+    {
+        $booking = DonDatLich::query()
+            ->with([
+                'khachHang:id,name,phone,email,address',
+                'tho:id,name,phone,email',
+                'dichVus:id,ten_dich_vu',
+                'thanhToans',
+                'danhGias:id,don_dat_lich_id,so_sao,nhan_xet,nguoi_danh_gia_id,created_at,updated_at',
+                'danhGias.nguoiDanhGia:id,name',
+                'customerComplaintCase:id,source_type,source_id,customer_id,booking_id,worker_id,priority,status,assigned_admin_id,assigned_at,resolved_at,resolution_note,last_snapshot,created_at,updated_at',
+                'customerComplaintCase.assignedAdmin:id,name',
+                'workerContactIssueReporter:id,name',
+            ])
+            ->find($id);
+
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay don hang',
+            ], 404);
         }
 
         return response()->json([
             'status' => 'success',
-            'data' => $query->orderByDesc('created_at')->get(),
+            'data' => $this->serializeAdminBookingDetail($booking),
         ]);
+    }
+
+    public function assignBookingWorker(Request $request, string $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'worker_id' => 'required|integer|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $booking = DonDatLich::query()
+            ->with('dichVus:id,ten_dich_vu')
+            ->find($id);
+
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay don hang',
+            ], 404);
+        }
+
+        if (in_array((string) $booking->trang_thai, ['da_huy', 'da_xong', 'hoan_thanh'], true)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Don da dong, khong the doi tho',
+            ], 422);
+        }
+
+        $worker = User::query()
+            ->with([
+                'hoSoTho:user_id,trang_thai_duyet,dang_hoat_dong',
+                'dichVus:id,ten_dich_vu',
+            ])
+            ->find($request->integer('worker_id'));
+
+        if (!$worker || $worker->role !== 'worker') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Nhan su duoc chon khong phai tai khoan tho',
+            ], 422);
+        }
+
+        if (
+            !$worker->is_active
+            || !$worker->hoSoTho
+            || $worker->hoSoTho->trang_thai_duyet !== 'da_duyet'
+            || !(bool) $worker->hoSoTho->dang_hoat_dong
+        ) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tho hien khong san sang nhan viec',
+            ], 422);
+        }
+
+        if (!$worker->supportsServiceIds($booking->resolveServiceIds())) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tho khong thuoc nhom dich vu cua don nay',
+            ], 422);
+        }
+
+        $bookingDate = $booking->ngay_hen?->toDateString()
+            ?? $booking->thoi_gian_hen?->toDateString();
+        $timeSlot = DonDatLich::normalizeTimeSlot((string) $booking->khung_gio_hen);
+
+        if ($bookingDate && $timeSlot !== '') {
+            $hasConflict = DonDatLich::query()
+                ->conflictsWithWorkerSchedule((int) $worker->id, $bookingDate, $timeSlot)
+                ->where('id', '!=', $booking->id)
+                ->exists();
+
+            if ($hasConflict) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tho dang trung lich voi khung gio nay',
+                ], 409);
+            }
+        }
+
+        DB::transaction(function () use ($booking, $worker): void {
+            $booking->tho_id = $worker->id;
+
+            if ($booking->trang_thai === 'cho_xac_nhan') {
+                $booking->trang_thai = 'da_xac_nhan';
+            }
+
+            $booking->save();
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da cap nhat tho phu trach',
+            'data' => [
+                'booking_id' => (int) $booking->id,
+                'worker_id' => (int) $worker->id,
+                'worker_name' => (string) $worker->name,
+            ],
+        ]);
+    }
+
+    public function updateBookingFinancials(Request $request, string $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'tien_cong' => 'nullable|numeric|min:0',
+            'phi_linh_kien' => 'nullable|numeric|min:0',
+            'phi_di_lai' => 'nullable|numeric|min:0',
+            'tien_thue_xe' => 'nullable|numeric|min:0',
+            'ghi_chu_linh_kien' => 'nullable|string|max:1000',
+            'chi_tiet_tien_cong' => 'nullable|array',
+            'chi_tiet_tien_cong.*.noi_dung' => 'required_with:chi_tiet_tien_cong|string|max:255',
+            'chi_tiet_tien_cong.*.so_tien' => 'required_with:chi_tiet_tien_cong|numeric|min:0',
+            'chi_tiet_linh_kien' => 'nullable|array',
+            'chi_tiet_linh_kien.*.noi_dung' => 'required_with:chi_tiet_linh_kien|string|max:255',
+            'chi_tiet_linh_kien.*.so_tien' => 'required_with:chi_tiet_linh_kien|numeric|min:0',
+            'chi_tiet_linh_kien.*.don_gia' => 'nullable|numeric|min:0',
+            'chi_tiet_linh_kien.*.so_luong' => 'nullable|integer|min:1|max:999',
+            'chi_tiet_linh_kien.*.bao_hanh_thang' => 'nullable|integer|min:0|max:60',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $booking = DonDatLich::query()->find($id);
+
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay don hang',
+            ], 404);
+        }
+
+        if ((string) $booking->trang_thai === 'da_huy') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Don da huy, khong the cap nhat chi phi',
+            ], 422);
+        }
+
+        $labor = max(0, (float) $request->input('tien_cong', $booking->tien_cong ?? 0));
+        $parts = max(0, (float) $request->input('phi_linh_kien', $booking->phi_linh_kien ?? 0));
+        $travel = max(0, (float) $request->input('phi_di_lai', $booking->phi_di_lai ?? 0));
+        $transport = max(0, (float) $request->input('tien_thue_xe', $booking->tien_thue_xe ?? 0));
+
+        $laborItemsInput = $request->input('chi_tiet_tien_cong');
+        $laborItems = is_array($laborItemsInput)
+            ? collect($laborItemsInput)->map(static function ($item): ?array {
+                if (!is_array($item)) {
+                    return null;
+                }
+
+                $description = trim((string) ($item['noi_dung'] ?? ''));
+                $amount = max(0, (float) ($item['so_tien'] ?? 0));
+
+                if ($description === '' && $amount <= 0) {
+                    return null;
+                }
+
+                return [
+                    'noi_dung' => $description !== '' ? $description : 'Tien cong sua chua',
+                    'so_tien' => $amount,
+                ];
+            })->filter()->values()->all()
+            : (is_array($booking->chi_tiet_tien_cong) ? array_values($booking->chi_tiet_tien_cong) : []);
+
+        if ($labor > 0 && $laborItems === []) {
+            $laborItems = [[
+                'noi_dung' => 'Tien cong sua chua',
+                'so_tien' => $labor,
+            ]];
+        }
+
+        $partItemsInput = $request->input('chi_tiet_linh_kien');
+        $partItems = is_array($partItemsInput)
+            ? collect($partItemsInput)->map(static function ($item): ?array {
+                if (!is_array($item)) {
+                    return null;
+                }
+
+                $description = trim((string) ($item['noi_dung'] ?? ''));
+                $quantity = max(1, (int) ($item['so_luong'] ?? 1));
+                $lineTotal = max(0, (float) ($item['so_tien'] ?? 0));
+                $unitPrice = array_key_exists('don_gia', $item) && $item['don_gia'] !== null
+                    ? max(0, (float) $item['don_gia'])
+                    : ($quantity > 0 ? $lineTotal / $quantity : $lineTotal);
+                $warrantyMonths = array_key_exists('bao_hanh_thang', $item) && $item['bao_hanh_thang'] !== null && $item['bao_hanh_thang'] !== ''
+                    ? max(0, (int) $item['bao_hanh_thang'])
+                    : null;
+
+                if ($description === '' && $lineTotal <= 0 && $unitPrice <= 0) {
+                    return null;
+                }
+
+                return [
+                    'noi_dung' => $description !== '' ? $description : 'Linh kien thay the',
+                    'don_gia' => $unitPrice,
+                    'so_luong' => $quantity,
+                    'so_tien' => $lineTotal > 0 ? $lineTotal : ($unitPrice * $quantity),
+                    'bao_hanh_thang' => $warrantyMonths,
+                ];
+            })->filter()->values()->all()
+            : (is_array($booking->chi_tiet_linh_kien) ? array_values($booking->chi_tiet_linh_kien) : []);
+
+        if ($parts > 0 && $partItems === []) {
+            $partItems = [[
+                'noi_dung' => 'Linh kien thay the',
+                'don_gia' => $parts,
+                'so_luong' => 1,
+                'so_tien' => $parts,
+                'bao_hanh_thang' => null,
+            ]];
+        }
+
+        $booking->tien_cong = $labor;
+        $booking->chi_tiet_tien_cong = $laborItems;
+        $booking->phi_linh_kien = $parts;
+        $booking->chi_tiet_linh_kien = $partItems;
+        $booking->phi_di_lai = $travel;
+        $booking->tien_thue_xe = $transport;
+        $booking->ghi_chu_linh_kien = trim((string) $request->input('ghi_chu_linh_kien', $booking->ghi_chu_linh_kien ?? '')) ?: null;
+        $booking->tong_tien = $labor + $parts + $travel + $transport;
+        $booking->gia_da_cap_nhat = true;
+        $booking->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da cap nhat chi phi don hang',
+            'data' => [
+                'booking_id' => (int) $booking->id,
+                'tien_cong' => (float) ($booking->tien_cong ?? 0),
+                'phi_linh_kien' => (float) ($booking->phi_linh_kien ?? 0),
+                'phi_di_lai' => (float) ($booking->phi_di_lai ?? 0),
+                'tien_thue_xe' => (float) ($booking->tien_thue_xe ?? 0),
+                'tong_tien' => (float) ($booking->tong_tien ?? 0),
+            ],
+        ]);
+    }
+
+    public function exportBookings(Request $request)
+    {
+        $filters = $this->resolveAdminBookingFilters($request);
+        $now = Carbon::now();
+        $rows = $this->buildAdminBookingRows($filters, $now);
+        $rows = $this->applyAdminBookingComputedFilters($rows, $filters);
+        $rows = $this->sortAdminBookingRows($rows, $filters['sort_by'], $filters['sort_dir']);
+
+        $ids = collect(explode(',', (string) $request->query('ids', '')))
+            ->map(static fn ($id) => (int) trim((string) $id))
+            ->filter()
+            ->unique()
+            ->values();
+        if ($ids->isNotEmpty()) {
+            $rows = $rows->filter(fn (array $row) => $ids->contains((int) ($row['id'] ?? 0)))->values();
+        }
+
+        $filename = 'admin-bookings-' . now()->format('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function () use ($rows): void {
+            $output = fopen('php://output', 'w');
+
+            if ($output === false) {
+                return;
+            }
+
+            fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($output, [
+                'Ma don',
+                'Trang thai',
+                'Uu tien',
+                'SLA',
+                'Khách hàng',
+                'So dien thoai',
+                'Dia chi',
+                'Loai dat lich',
+                'Dịch vụ',
+                'Lịch hẹn',
+                'Tho phu trach',
+                'Tien cong',
+                'Linh kien',
+                'Phi di lai',
+                'Tổng tiền',
+                'Thanh toan',
+                'Phuong thuc thanh toan',
+                'Co khieu nai',
+                'Qua han',
+                'Tao don',
+                'Cập nhật',
+            ]);
+
+            foreach ($rows as $row) {
+                fputcsv($output, [
+                    $row['code'] ?? '',
+                    $row['status_label'] ?? '',
+                    $row['priority_label'] ?? '',
+                    $row['sla_label'] ?? '',
+                    $row['customer']['name'] ?? '',
+                    $row['customer']['phone'] ?? '',
+                    $row['customer']['address'] ?? '',
+                    $row['mode_label'] ?? '',
+                    $row['service_label'] ?? '',
+                    $row['schedule']['label'] ?? '',
+                    $row['worker']['name'] ?? '',
+                    (float) ($row['costs']['labor'] ?? 0),
+                    (float) ($row['costs']['parts'] ?? 0),
+                    (float) ($row['costs']['travel'] ?? 0),
+                    (float) ($row['costs']['total'] ?? 0),
+                    $row['payment']['status_label'] ?? '',
+                    $row['payment']['method_label'] ?? '',
+                    (($row['flags']['has_complaint'] ?? false) ? 'co' : 'khong'),
+                    (($row['flags']['is_overdue'] ?? false) ? 'co' : 'khong'),
+                    $row['milestones']['created_label'] ?? '',
+                    $row['milestones']['updated_label'] ?? '',
+                ]);
+            }
+
+            fclose($output);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    private function resolveAdminBookingFilters(Request $request): array
+    {
+        $sortBy = trim((string) $request->query('sort_by', 'created_at'));
+        $allowedSortBy = ['created_at', 'scheduled_at', 'priority', 'sla', 'updated_at', 'total_amount'];
+        if (!in_array($sortBy, $allowedSortBy, true)) {
+            $sortBy = 'created_at';
+        }
+
+        $sortDir = strtolower(trim((string) $request->query('sort_dir', 'desc')));
+        $sortDir = in_array($sortDir, ['asc', 'desc'], true) ? $sortDir : 'desc';
+
+        return [
+            'search' => trim((string) $request->query('search', '')),
+            'status' => trim((string) $request->query('status', '')),
+            'worker_id' => trim((string) $request->query('worker_id', '')),
+            'service_id' => trim((string) $request->query('service_id', '')),
+            'payment' => trim((string) $request->query('payment', '')),
+            'mode' => trim((string) $request->query('mode', '')),
+            'priority' => trim((string) $request->query('priority', '')),
+            'sla' => trim((string) $request->query('sla', '')),
+            'date_from' => trim((string) $request->query('date_from', '')),
+            'date_to' => trim((string) $request->query('date_to', '')),
+            'view' => trim((string) $request->query('view', 'all')) ?: 'all',
+            'sort_by' => $sortBy,
+            'sort_dir' => $sortDir,
+            'page' => max(1, (int) $request->query('page', 1)),
+            'per_page' => min(100, max(10, (int) $request->query('per_page', 20))),
+        ];
+    }
+
+    private function fetchAdminBookingCollection(array $filters): Collection
+    {
+        $query = DonDatLich::query()
+            ->with([
+                'khachHang:id,name,phone,address',
+                'tho:id,name,phone',
+                'dichVus:id,ten_dich_vu',
+                'thanhToans',
+                'customerComplaintCase:id,source_type,source_id,booking_id,priority,status,last_snapshot,assigned_admin_id,assigned_at,resolved_at,resolution_note,created_at,updated_at',
+                'customerComplaintCase.assignedAdmin:id,name',
+                'workerContactIssueReporter:id,name',
+            ]);
+
+        if ($filters['status'] !== '') {
+            $query->where('trang_thai', $filters['status']);
+        }
+
+        if ($filters['worker_id'] !== '' && ctype_digit($filters['worker_id'])) {
+            $query->where('tho_id', (int) $filters['worker_id']);
+        }
+
+        if ($filters['service_id'] !== '' && ctype_digit($filters['service_id'])) {
+            $serviceId = (int) $filters['service_id'];
+            $query->where(function (Builder $builder) use ($serviceId): void {
+                $builder
+                    ->whereHas('dichVus', fn (Builder $serviceQuery) => $serviceQuery->whereKey($serviceId))
+                    ->orWhere('dich_vu_id', $serviceId);
+            });
+        }
+
+        if ($filters['mode'] !== '') {
+            $query->where('loai_dat_lich', $filters['mode']);
+        }
+
+        if ($filters['payment'] === 'paid') {
+            $query->where('trang_thai_thanh_toan', true);
+        } elseif ($filters['payment'] === 'unpaid') {
+            $query->where('trang_thai_thanh_toan', false);
+        }
+
+        if ($filters['search'] !== '') {
+            $search = $filters['search'];
+            $query->where(function (Builder $builder) use ($search): void {
+                if (ctype_digit($search)) {
+                    $builder->orWhere('id', (int) $search);
+                }
+
+                $builder
+                    ->orWhere('dia_chi', 'like', '%' . $search . '%')
+                    ->orWhere('mo_ta_van_de', 'like', '%' . $search . '%')
+                    ->orWhereHas('khachHang', function (Builder $customerQuery) use ($search): void {
+                        $customerQuery
+                            ->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('phone', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        return $query->latest('created_at')->get();
+    }
+
+    private function buildAdminBookingRows(array $filters, Carbon $now): Collection
+    {
+        return $this->fetchAdminBookingCollection($filters)
+            ->map(fn (DonDatLich $booking) => $this->serializeAdminBookingListRow($booking, $now))
+            ->values();
+    }
+
+    private function applyAdminBookingComputedFilters(Collection $rows, array $filters): Collection
+    {
+        $filtered = $rows;
+
+        if ($filters['date_from'] !== '') {
+            $filtered = $filtered->filter(function (array $row) use ($filters): bool {
+                $date = $row['schedule']['date']
+                    ?: substr((string) ($row['milestones']['created_at'] ?? ''), 0, 10);
+                if ($date === '') {
+                    return false;
+                }
+
+                return $date >= $filters['date_from'];
+            })->values();
+        }
+
+        if ($filters['date_to'] !== '') {
+            $filtered = $filtered->filter(function (array $row) use ($filters): bool {
+                $date = $row['schedule']['date']
+                    ?: substr((string) ($row['milestones']['created_at'] ?? ''), 0, 10);
+                if ($date === '') {
+                    return false;
+                }
+
+                return $date <= $filters['date_to'];
+            })->values();
+        }
+
+        if ($filters['priority'] !== '') {
+            $filtered = $filtered->where('priority_key', $filters['priority'])->values();
+        }
+
+        if ($filters['sla'] !== '') {
+            $filtered = $filtered->where('sla_state', $filters['sla'])->values();
+        }
+
+        if ($filters['payment'] === 'failed') {
+            $filtered = $filtered->filter(fn (array $row): bool => (bool) ($row['flags']['payment_issue'] ?? false))->values();
+        }
+
+        $view = $filters['view'];
+        if ($view === 'overdue') {
+            $filtered = $filtered->where('sla_state', 'overdue')->values();
+        } elseif ($view === 'unpaid') {
+            $filtered = $filtered->filter(fn (array $row): bool => !(bool) ($row['payment']['is_paid'] ?? false))->values();
+        } elseif ($view === 'complaint') {
+            $filtered = $filtered->filter(fn (array $row): bool => (bool) ($row['flags']['has_complaint'] ?? false))->values();
+        } elseif ($view === 'contact_issue') {
+            $filtered = $filtered->filter(fn (array $row): bool => (bool) ($row['flags']['has_worker_contact_issue'] ?? false))->values();
+        } elseif ($view === 'unassigned') {
+            $filtered = $filtered->filter(fn (array $row): bool => (bool) ($row['flags']['is_unassigned'] ?? false))->values();
+        }
+
+        return $filtered->values();
+    }
+
+    private function sortAdminBookingRows(Collection $rows, string $sortBy, string $sortDir): Collection
+    {
+        $direction = $sortDir === 'asc' ? 1 : -1;
+        $compareTimestamp = static fn (?string $left, ?string $right): int => (strtotime((string) $left) ?: 0) <=> (strtotime((string) $right) ?: 0);
+
+        return $rows->sort(function (array $left, array $right) use ($sortBy, $direction, $compareTimestamp): int {
+            $result = 0;
+
+            if ($sortBy === 'scheduled_at') {
+                $result = $compareTimestamp(
+                    $left['schedule']['scheduled_at'] ?? $left['milestones']['created_at'] ?? null,
+                    $right['schedule']['scheduled_at'] ?? $right['milestones']['created_at'] ?? null
+                );
+            } elseif ($sortBy === 'priority') {
+                $result = ((int) ($left['priority_rank'] ?? 0)) <=> ((int) ($right['priority_rank'] ?? 0));
+            } elseif ($sortBy === 'sla') {
+                $result = ((int) ($left['sla_rank'] ?? 0)) <=> ((int) ($right['sla_rank'] ?? 0));
+            } elseif ($sortBy === 'updated_at') {
+                $result = $compareTimestamp($left['milestones']['updated_at'] ?? null, $right['milestones']['updated_at'] ?? null);
+            } elseif ($sortBy === 'total_amount') {
+                $result = ((float) ($left['costs']['total'] ?? 0)) <=> ((float) ($right['costs']['total'] ?? 0));
+            } else {
+                $result = $compareTimestamp($left['milestones']['created_at'] ?? null, $right['milestones']['created_at'] ?? null);
+            }
+
+            if ($result === 0) {
+                $result = $compareTimestamp($left['milestones']['created_at'] ?? null, $right['milestones']['created_at'] ?? null);
+            }
+
+            return $result * $direction;
+        })->values();
+    }
+
+    private function buildAdminBookingSummary(Collection $rows): array
+    {
+        $total = $rows->count();
+
+        return [
+            'total_orders' => $total,
+            'overdue_count' => $rows->where('sla_state', 'overdue')->count(),
+            'due_soon_count' => $rows->where('sla_state', 'due_soon')->count(),
+            'on_track_count' => $rows->where('sla_state', 'on_track')->count(),
+            'unpaid_count' => $rows->filter(fn (array $row): bool => !(bool) ($row['payment']['is_paid'] ?? false))->count(),
+            'payment_issue_count' => $rows->filter(fn (array $row): bool => (bool) ($row['flags']['payment_issue'] ?? false))->count(),
+            'complaint_count' => $rows->filter(fn (array $row): bool => (bool) ($row['flags']['has_complaint'] ?? false))->count(),
+            'contact_issue_count' => $rows->filter(fn (array $row): bool => (bool) ($row['flags']['has_worker_contact_issue'] ?? false))->count(),
+            'unassigned_count' => $rows->filter(fn (array $row): bool => (bool) ($row['flags']['is_unassigned'] ?? false))->count(),
+            'filtered_count' => $total,
+        ];
+    }
+
+    private function paginateAdminBookingRows(Collection $rows, int $page, int $perPage): array
+    {
+        $total = $rows->count();
+        $lastPage = max(1, (int) ceil($total / max(1, $perPage)));
+        $safePage = min(max(1, $page), $lastPage);
+        $offset = ($safePage - 1) * $perPage;
+        $items = $rows->slice($offset, $perPage)->values()->all();
+
+        return [
+            $items,
+            [
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $safePage,
+                'last_page' => $lastPage,
+                'from' => $total > 0 ? $offset + 1 : 0,
+                'to' => min($offset + $perPage, $total),
+            ],
+        ];
+    }
+
+    private function resolveAdminBookingScheduleAt(DonDatLich $booking): ?Carbon
+    {
+        if ($booking->thoi_gian_hen) {
+            return $booking->thoi_gian_hen->copy();
+        }
+
+        if ($booking->ngay_hen && $booking->khung_gio_hen) {
+            $slotStart = trim(explode('-', (string) $booking->khung_gio_hen)[0] ?? '');
+            if ($slotStart !== '') {
+                try {
+                    return Carbon::createFromFormat(
+                        'Y-m-d H:i',
+                        $booking->ngay_hen->toDateString() . ' ' . $slotStart,
+                        config('app.timezone') ?: 'Asia/Ho_Chi_Minh'
+                    );
+                } catch (\Throwable) {
+                    return $booking->ngay_hen->copy()->startOfDay();
+                }
+            }
+
+            return $booking->ngay_hen->copy()->startOfDay();
+        }
+
+        if ($booking->ngay_hen) {
+            return $booking->ngay_hen->copy()->startOfDay();
+        }
+
+        return $booking->created_at?->copy();
+    }
+
+    private function resolveAdminBookingSlaState(DonDatLich $booking, ?Carbon $scheduleAt, Carbon $now): string
+    {
+        if (in_array((string) $booking->trang_thai, ['da_huy', 'da_xong', 'hoan_thanh'], true)) {
+            return 'closed';
+        }
+
+        if ($scheduleAt === null) {
+            return 'on_track';
+        }
+
+        if ($scheduleAt->lt($now)) {
+            return 'overdue';
+        }
+
+        if ($scheduleAt->diffInMinutes($now) <= 120) {
+            return 'due_soon';
+        }
+
+        return 'on_track';
+    }
+
+    private function resolveAdminBookingSlaLabel(string $slaState): string
+    {
+        return match ($slaState) {
+            'overdue' => 'Quá hạn',
+            'due_soon' => 'Sắp quá hạn',
+            'closed' => 'Đã đóng',
+            default => 'Đúng hạn',
+        };
+    }
+
+    private function resolveAdminBookingSlaTone(string $slaState): string
+    {
+        return match ($slaState) {
+            'overdue' => 'danger',
+            'due_soon' => 'warning',
+            'closed' => 'muted',
+            default => 'success',
+        };
+    }
+
+    private function resolveAdminBookingSlaRank(string $slaState): int
+    {
+        return match ($slaState) {
+            'overdue' => 4,
+            'due_soon' => 3,
+            'on_track' => 2,
+            default => 1,
+        };
+    }
+
+    private function resolveAdminBookingPriorityKey(
+        string $slaState,
+        bool $hasComplaint,
+        bool $hasWorkerContactIssue,
+        bool $paymentIssue,
+        bool $isUnassigned,
+        bool $isPaid
+    ): string {
+        if ($hasComplaint || $hasWorkerContactIssue || $slaState === 'overdue') {
+            return 'high';
+        }
+
+        if ($paymentIssue || $slaState === 'due_soon' || $isUnassigned || !$isPaid) {
+            return 'medium';
+        }
+
+        return 'low';
+    }
+
+    private function resolveAdminBookingPriorityMeta(string $priorityKey): array
+    {
+        return match ($priorityKey) {
+            'high' => ['Cao', 'danger', 3],
+            'medium' => ['Trung bình', 'warning', 2],
+            default => ['Thấp', 'success', 1],
+        };
+    }
+
+    private function resolveAdminBookingPaymentIssue(string $latestTransactionStatus, bool $isPaid, string $bookingStatus): bool
+    {
+        if ($isPaid) {
+            return false;
+        }
+
+        if (in_array($latestTransactionStatus, ['failed', 'error', 'cancelled', 'canceled', 'that_bai', 'huy'], true)) {
+            return true;
+        }
+
+        return in_array($bookingStatus, ['cho_thanh_toan'], true);
+    }
+
+    private function resolveAdminBookingPaymentStatusTone(string $status): string
+    {
+        $status = Str::lower(trim($status));
+
+        if (in_array($status, ['success', 'paid', 'thanh_cong'], true)) {
+            return 'success';
+        }
+
+        if (in_array($status, ['failed', 'error', 'cancelled', 'canceled', 'that_bai', 'huy'], true)) {
+            return 'danger';
+        }
+
+        return 'info';
+    }
+
+    private function normalizeMediaList(mixed $value): array
+    {
+        $items = [];
+
+        if (is_array($value)) {
+            $items = $value;
+        } elseif (is_string($value) && trim($value) !== '') {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                $items = $decoded;
+            } else {
+                $items = [$value];
+            }
+        }
+
+        return collect($items)
+            ->map(function ($item) {
+                $path = trim((string) $item);
+                if ($path === '') {
+                    return null;
+                }
+
+                if (Str::startsWith($path, ['http://', 'https://', 'data:'])) {
+                    return $path;
+                }
+
+                if (Str::startsWith($path, '/storage/')) {
+                    return $path;
+                }
+
+                if (Str::startsWith($path, 'storage/')) {
+                    return '/' . $path;
+                }
+
+                return '/storage/' . ltrim($path, '/');
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function resolveAdminComplaintReasonLabel(?string $reasonCode): string
+    {
+        return match ((string) $reasonCode) {
+            'loi_tai_phat' => 'Lỗi tái phát',
+            'linh_kien_kem_chat_luong' => 'Linh kiện thay thế kém chất lượng',
+            default => 'Khiếu nại khác',
+        };
+    }
+
+    private function adminBookingStatusOptions(): array
+    {
+        $items = [['value' => '', 'label' => 'Tất cả trạng thái']];
+
+        foreach (DonDatLich::statusLabels() as $value => $unusedLabel) {
+            $items[] = [
+                'value' => (string) $value,
+                'label' => $this->formatCustomerBookingStatusLabel((string) $value),
+            ];
+        }
+
+        return $items;
+    }
+
+    private function adminBookingServiceOptions(): array
+    {
+        return DanhMucDichVu::query()
+            ->orderBy('ten_dich_vu')
+            ->get(['id', 'ten_dich_vu'])
+            ->map(fn (DanhMucDichVu $service) => [
+                'id' => (int) $service->id,
+                'name' => (string) ($service->ten_dich_vu ?? 'Dịch vụ'),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function adminBookingWorkerOptions(?DonDatLich $booking = null): array
+    {
+        $requiredServiceIds = $booking ? $booking->resolveServiceIds() : [];
+
+        return User::query()
+            ->with(['hoSoTho:user_id,trang_thai_duyet,dang_hoat_dong', 'dichVus:id,ten_dich_vu'])
+            ->where('role', 'worker')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(function (User $worker) use ($requiredServiceIds): bool {
+                if ($worker->hoSoTho?->trang_thai_duyet !== 'da_duyet' || !(bool) ($worker->hoSoTho?->dang_hoat_dong ?? false)) {
+                    return false;
+                }
+
+                if ($requiredServiceIds === []) {
+                    return true;
+                }
+
+                return $worker->supportsServiceIds($requiredServiceIds);
+            })
+            ->map(fn (User $worker) => [
+                'id' => (int) $worker->id,
+                'name' => (string) $worker->name,
+                'phone' => (string) ($worker->phone ?? ''),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function adminBookingStatusFlow(): array
+    {
+        return [
+            ['value' => 'da_xac_nhan', 'label' => 'Đã xác nhận'],
+            ['value' => DonDatLich::STATUS_CUSTOMER_UNREACHABLE, 'label' => 'Không liên lạc được với khách hàng'],
+            ['value' => 'dang_lam', 'label' => 'Đang làm'],
+            ['value' => 'cho_hoan_thanh', 'label' => 'Chờ hoàn thành COD'],
+            ['value' => 'cho_thanh_toan', 'label' => 'Chờ thanh toán'],
+            ['value' => 'da_xong', 'label' => 'Đã hoàn tất'],
+            ['value' => 'da_huy', 'label' => 'Đã hủy'],
+        ];
+    }
+    private function adminBookingCancelReasonOptions(): array
+    {
+        return collect(DonDatLich::cancelReasonLabels())
+            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+            ->values()
+            ->all();
+    }
+
+    private function adminBookingTimeSlots(): array
+    {
+        return [
+            '08:00-10:00',
+            '10:00-12:00',
+            '12:00-14:00',
+            '14:00-17:00',
+        ];
+    }
+
+    private function serializeAdminBookingContactIssue(DonDatLich $booking): ?array
+    {
+        if (!$booking->hasWorkerContactIssue()) {
+            return null;
+        }
+
+        $reporter = $booking->workerContactIssueReporter;
+        $isOpen = $booking->hasOpenWorkerContactIssue();
+
+        return [
+            'is_reported' => true,
+            'is_open' => $isOpen,
+            'status_key' => $isOpen ? DonDatLich::STATUS_CUSTOMER_UNREACHABLE : 'resolved',
+            'status_label' => $isOpen ? 'Dang cho admin ho tro' : 'Da dong',
+            'reported_at' => optional($booking->worker_contact_issue_reported_at)->toIso8601String(),
+            'reported_label' => optional($booking->worker_contact_issue_reported_at)->format('d/m/Y H:i'),
+            'resolved_at' => optional($booking->worker_contact_issue_resolved_at)->toIso8601String(),
+            'resolved_label' => optional($booking->worker_contact_issue_resolved_at)->format('d/m/Y H:i'),
+            'reporter_name' => (string) ($booking->worker_contact_issue_reporter_name ?: $reporter?->name ?: $booking->tho?->name ?: ''),
+            'called_phone' => (string) ($booking->worker_contact_issue_called_phone ?? ''),
+            'note' => (string) ($booking->worker_contact_issue_note ?? ''),
+            'reported_by' => [
+                'id' => $booking->worker_contact_issue_reported_by
+                    ? (int) $booking->worker_contact_issue_reported_by
+                    : null,
+                'name' => (string) ($reporter?->name ?: $booking->tho?->name ?: ''),
+            ],
+        ];
+    }
+    private function serializeAdminBookingListRow(DonDatLich $booking, Carbon $now): array
+    {
+        $serviceNames = $booking->dichVus->pluck('ten_dich_vu')->filter()->values();
+        if ($serviceNames->isEmpty() && !empty($booking->dich_vu_id)) {
+            $service = DanhMucDichVu::query()->find((int) $booking->dich_vu_id);
+            if ($service?->ten_dich_vu) {
+                $serviceNames->push($service->ten_dich_vu);
+            }
+        }
+
+        $serviceLabel = $serviceNames->implode(', ') ?: 'Chưa xác định dịch vụ';
+        $scheduleAt = $this->resolveAdminBookingScheduleAt($booking);
+        $scheduleDate = $scheduleAt?->toDateString();
+        $scheduleLabel = $this->formatCustomerScheduleLabel($booking);
+        $slaState = $this->resolveAdminBookingSlaState($booking, $scheduleAt, $now);
+        $slaLabel = $this->resolveAdminBookingSlaLabel($slaState);
+        $slaTone = $this->resolveAdminBookingSlaTone($slaState);
+        $paymentMethod = (string) ($booking->phuong_thuc_thanh_toan ?: 'cod');
+        $paymentMethodLabel = $this->formatCustomerPaymentMethodLabel($paymentMethod);
+        $isPaid = (bool) ($booking->trang_thai_thanh_toan ?? false);
+        $latestPayment = $booking->thanhToans->sortByDesc(fn ($payment) => optional($payment->created_at)->timestamp ?? 0)->first();
+        $latestPaymentStatus = Str::lower((string) ($latestPayment?->trang_thai ?? ''));
+        $paymentIssue = $this->resolveAdminBookingPaymentIssue($latestPaymentStatus, $isPaid, (string) $booking->trang_thai);
+        $complaintCase = $booking->customerComplaintCase;
+        $contactIssue = $this->serializeAdminBookingContactIssue($booking);
+        $hasComplaint = $complaintCase !== null;
+        $hasWorkerContactIssue = (bool) ($contactIssue['is_open'] ?? false);
+        $priorityKey = $this->resolveAdminBookingPriorityKey(
+            $slaState,
+            $hasComplaint,
+            $hasWorkerContactIssue,
+            $paymentIssue,
+            $booking->tho_id === null,
+            $isPaid
+        );
+        [$priorityLabel, $priorityTone, $priorityRank] = $this->resolveAdminBookingPriorityMeta($priorityKey);
+        $statusTone = $this->resolveCustomerBookingTone($booking->trang_thai);
+        $statusLabel = $this->formatCustomerBookingStatusLabel($booking->trang_thai);
+        $costLabor = (float) ($booking->tien_cong ?? 0);
+        $costParts = (float) ($booking->phi_linh_kien ?? 0);
+        $costTravel = (float) ($booking->phi_di_lai ?? 0);
+        $costTransport = (float) ($booking->tien_thue_xe ?? 0);
+        $totalAmount = (float) ($booking->tong_tien ?? 0);
+        if ($totalAmount <= 0) {
+            $totalAmount = $costLabor + $costParts + $costTravel + $costTransport;
+        }
+
+        $beforeImages = $this->normalizeMediaList($booking->hinh_anh_mo_ta);
+        $beforeVideos = $this->normalizeMediaList($booking->video_mo_ta);
+        $afterImages = $this->normalizeMediaList($booking->hinh_anh_ket_qua);
+        $afterVideos = $this->normalizeMediaList($booking->video_ket_qua);
+        $mediaCountTotal = count($beforeImages) + count($beforeVideos) + count($afterImages) + count($afterVideos);
+
+        $complaintSnapshot = is_array($complaintCase?->last_snapshot) ? $complaintCase->last_snapshot : [];
+        $complaintReasonCode = (string) ($complaintSnapshot['reason_code'] ?? '');
+        $complaintReasonLabel = (string) ($complaintSnapshot['reason_label'] ?? $this->resolveAdminComplaintReasonLabel($complaintReasonCode));
+
+        $isOverdue = $slaState === 'overdue';
+        $mode = (string) ($booking->loai_dat_lich ?: 'at_home');
+        $modeLabel = $mode === 'at_store' ? 'Tại cửa hàng' : 'Tại nhà';
+        $address = $mode === 'at_home'
+            ? ((string) ($booking->dia_chi ?: ($booking->khachHang?->address ?: 'Chưa cập nhật địa chỉ')))
+            : 'Khách mang thiết bị đến cửa hàng';
+
+        return [
+            'id' => (int) $booking->id,
+            'code' => $this->formatCustomerBookingCode($booking->id),
+            'status_key' => (string) ($booking->trang_thai ?: ''),
+            'status_label' => $statusLabel,
+            'status_tone' => $statusTone,
+            'priority_key' => $priorityKey,
+            'priority_label' => $priorityLabel,
+            'priority_tone' => $priorityTone,
+            'priority_rank' => $priorityRank,
+            'sla_state' => $slaState,
+            'sla_label' => $slaLabel,
+            'sla_tone' => $slaTone,
+            'sla_rank' => $this->resolveAdminBookingSlaRank($slaState),
+            'mode' => $mode,
+            'mode_label' => $modeLabel,
+            'customer' => [
+                'id' => (int) ($booking->khachHang?->id ?? 0),
+                'name' => (string) ($booking->khachHang?->name ?: 'Khách hàng'),
+                'phone' => (string) ($booking->khachHang?->phone ?: ''),
+                'address' => $address,
+            ],
+            'service_label' => $serviceLabel,
+            'service_names' => $serviceNames->values()->all(),
+            'service_count' => $serviceNames->count(),
+            'problem_excerpt' => $this->truncateDashboardText((string) ($booking->mo_ta_van_de ?: 'Khách chưa để mô tả vấn đề.'), 108),
+            'worker' => [
+                'id' => $booking->tho?->id ? (int) $booking->tho->id : null,
+                'name' => $booking->tho?->name ? (string) $booking->tho->name : 'Chưa phân công',
+                'phone' => (string) ($booking->tho?->phone ?: ''),
+            ],
+            'schedule' => [
+                'date' => $scheduleDate,
+                'time_slot' => (string) ($booking->khung_gio_hen ?: ''),
+                'scheduled_at' => $scheduleAt?->toIso8601String(),
+                'label' => $scheduleLabel,
+            ],
+            'costs' => [
+                'labor' => $costLabor,
+                'parts' => $costParts,
+                'travel' => $costTravel,
+                'transport' => $costTransport,
+                'total' => $totalAmount,
+            ],
+            'payment' => [
+                'is_paid' => $isPaid,
+                'status_label' => $isPaid ? 'Đã thanh toán' : 'Chưa thanh toán',
+                'status_tone' => $isPaid ? 'success' : 'warning',
+                'method' => $paymentMethod,
+                'method_label' => $paymentMethodLabel,
+                'latest_transaction_status' => $latestPaymentStatus,
+                'latest_transaction_label' => $latestPayment?->created_at
+                    ? optional($latestPayment->created_at)->format('d/m/Y H:i')
+                    : null,
+            ],
+            'media' => [
+                'before_images' => $beforeImages,
+                'before_videos' => $beforeVideos,
+                'after_images' => $afterImages,
+                'after_videos' => $afterVideos,
+                'total' => $mediaCountTotal,
+            ],
+            'flags' => [
+                'is_overdue' => $isOverdue,
+                'payment_issue' => $paymentIssue,
+                'has_complaint' => $hasComplaint,
+                'has_worker_contact_issue' => $hasWorkerContactIssue,
+                'is_unassigned' => $booking->tho_id === null,
+            ],
+            'contact_issue' => $contactIssue,
+            'complaint' => [
+                'has_complaint' => $hasComplaint,
+                'status' => (string) ($complaintCase?->status ?: ''),
+                'priority' => (string) ($complaintCase?->priority ?: ''),
+                'reason_code' => $complaintReasonCode,
+                'reason_label' => $complaintReasonLabel,
+                'created_at' => optional($complaintCase?->created_at)->toIso8601String(),
+                'created_label' => optional($complaintCase?->created_at)->format('d/m/Y H:i'),
+            ],
+            'milestones' => [
+                'created_at' => optional($booking->created_at)->toIso8601String(),
+                'created_label' => optional($booking->created_at)->format('d/m/Y H:i'),
+                'updated_at' => optional($booking->updated_at)->toIso8601String(),
+                'updated_label' => optional($booking->updated_at)->format('d/m/Y H:i'),
+                'completed_at' => optional($booking->thoi_gian_hoan_thanh)->toIso8601String(),
+                'completed_label' => optional($booking->thoi_gian_hoan_thanh)->format('d/m/Y H:i'),
+                'cancelled_at' => $booking->trang_thai === 'da_huy'
+                    ? optional($booking->updated_at)->toIso8601String()
+                    : null,
+                'cancelled_label' => $booking->trang_thai === 'da_huy'
+                    ? optional($booking->updated_at)->format('d/m/Y H:i')
+                    : null,
+            ],
+        ];
+    }
+
+    private function serializeAdminBookingDetail(DonDatLich $booking): array
+    {
+        $base = $this->serializeAdminBookingListRow($booking, Carbon::now());
+        $complaintCase = $booking->customerComplaintCase;
+        $complaintSnapshot = is_array($complaintCase?->last_snapshot) ? $complaintCase->last_snapshot : [];
+        $paymentHistory = $booking->thanhToans
+            ->sortByDesc(fn (ThanhToan $payment) => optional($payment->created_at)->timestamp ?? 0)
+            ->map(function (ThanhToan $payment): array {
+                return [
+                    'id' => (int) $payment->id,
+                    'amount' => (float) ($payment->so_tien ?? 0),
+                    'method' => (string) ($payment->phuong_thuc ?? ''),
+                    'method_label' => $this->formatCustomerPaymentMethodLabel((string) ($payment->phuong_thuc ?? '')),
+                    'status' => (string) ($payment->trang_thai ?? ''),
+                    'transaction_code' => (string) ($payment->ma_giao_dich ?? ''),
+                    'created_at' => optional($payment->created_at)->toIso8601String(),
+                    'created_label' => optional($payment->created_at)->format('d/m/Y H:i'),
+                ];
+            })
+            ->values();
+        $reviewHistory = $booking->danhGias
+            ->sortByDesc(fn ($review) => optional($review->created_at)->timestamp ?? 0)
+            ->map(function ($review): array {
+                return [
+                    'id' => (int) $review->id,
+                    'rating' => (float) ($review->so_sao ?? 0),
+                    'comment' => (string) ($review->nhan_xet ?? ''),
+                    'author' => (string) ($review->nguoiDanhGia?->name ?? 'Khách hàng'),
+                    'created_at' => optional($review->created_at)->toIso8601String(),
+                    'created_label' => optional($review->created_at)->format('d/m/Y H:i'),
+                ];
+            })
+            ->values();
+        $timeline = $this->buildAdminBookingTimeline($booking, $base);
+        $actionHistory = $this->buildAdminBookingActionHistory($booking, $base, $paymentHistory, $complaintCase, $reviewHistory);
+
+        return array_merge($base, [
+            'problem_description' => (string) ($booking->mo_ta_van_de ?? ''),
+            'technical_note' => (string) ($booking->giai_phap ?? ''),
+            'cancel_reason_code' => (string) ($booking->ma_ly_do_huy ?? ''),
+            'cancel_reason_label' => DonDatLich::cancelReasonLabel($booking->ma_ly_do_huy),
+            'cancel_note' => (string) ($booking->ly_do_huy ?? ''),
+            'cost_details' => [
+                'labor_items' => is_array($booking->chi_tiet_tien_cong) ? $booking->chi_tiet_tien_cong : [],
+                'part_items' => is_array($booking->chi_tiet_linh_kien) ? $booking->chi_tiet_linh_kien : [],
+                'part_note' => (string) ($booking->ghi_chu_linh_kien ?? ''),
+            ],
+            'media_gallery' => [
+                'before_images' => $this->normalizeMediaList($booking->hinh_anh_mo_ta),
+                'before_videos' => $this->normalizeMediaList($booking->video_mo_ta),
+                'after_images' => $this->normalizeMediaList($booking->hinh_anh_ket_qua),
+                'after_videos' => $this->normalizeMediaList($booking->video_ket_qua),
+            ],
+            'contact_issue' => $base['contact_issue'] ?? null,
+            'timeline' => $timeline,
+            'action_history' => $actionHistory,
+            'complaint_detail' => $complaintCase ? [
+                'id' => (int) $complaintCase->id,
+                'status' => (string) ($complaintCase->status ?? 'new'),
+                'priority' => (string) ($complaintCase->priority ?? 'medium'),
+                'reason_code' => (string) ($complaintSnapshot['reason_code'] ?? ''),
+                'reason_label' => (string) ($complaintSnapshot['reason_label'] ?? $this->resolveAdminComplaintReasonLabel((string) ($complaintSnapshot['reason_code'] ?? ''))),
+                'note' => (string) ($complaintSnapshot['note'] ?? ''),
+                'images' => array_values(array_filter((array) ($complaintSnapshot['images'] ?? []))),
+                'video' => (string) ($complaintSnapshot['video'] ?? ''),
+                'assigned_admin' => (string) ($complaintCase->assignedAdmin?->name ?? ''),
+                'assigned_at' => optional($complaintCase->assigned_at)->toIso8601String(),
+                'assigned_label' => optional($complaintCase->assigned_at)->format('d/m/Y H:i'),
+                'resolved_at' => optional($complaintCase->resolved_at)->toIso8601String(),
+                'resolved_label' => optional($complaintCase->resolved_at)->format('d/m/Y H:i'),
+                'resolution_note' => (string) ($complaintCase->resolution_note ?? ''),
+                'created_at' => optional($complaintCase->created_at)->toIso8601String(),
+                'created_label' => optional($complaintCase->created_at)->format('d/m/Y H:i'),
+            ] : null,
+            'payment_history' => $paymentHistory,
+            'review_history' => $reviewHistory,
+            'action_options' => [
+                'status_flow' => $this->adminBookingStatusFlow(),
+                'cancel_reason_options' => $this->adminBookingCancelReasonOptions(),
+                'time_slots' => $this->adminBookingTimeSlots(),
+                'worker_options' => $this->adminBookingWorkerOptions($booking),
+                'complaint_url' => '/admin/customer-feedback?search=' . urlencode($this->formatCustomerBookingCode($booking->id)),
+            ],
+        ]);
+    }
+
+    private function buildAdminBookingTimeline(DonDatLich $booking, array $base): array
+    {
+        $status = (string) ($booking->trang_thai ?? '');
+        $createdAt = $base['milestones']['created_at'] ?? null;
+        $updatedAt = $base['milestones']['updated_at'] ?? null;
+        $completedAt = $base['milestones']['completed_at'] ?? null;
+        $cancelledAt = $base['milestones']['cancelled_at'] ?? null;
+        $isAccepted = in_array($status, ['da_xac_nhan', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong', 'hoan_thanh'], true);
+        $isStarted = in_array($status, ['dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong', 'hoan_thanh'], true);
+        $contactIssue = $base['contact_issue'] ?? null;
+
+        $timeline = [
+            [
+                'key' => 'created',
+                'title' => 'Tạo đơn',
+                'time' => $createdAt,
+                'time_label' => $base['milestones']['created_label'] ?? '',
+                'state' => 'done',
+                'note' => 'Khách hàng đã tạo đơn trên hệ thống',
+            ],
+            [
+                'key' => 'accepted',
+                'title' => 'Xác nhận đơn',
+                'time' => $isAccepted ? $updatedAt : null,
+                'time_label' => $isAccepted ? ($base['milestones']['updated_label'] ?? '') : '',
+                'state' => $isAccepted ? 'done' : 'pending',
+                'note' => $isAccepted
+                    ? (($base['worker']['name'] ?? 'Thợ') . ' đã được gán cho đơn này')
+                    : 'Chưa có thợ nhận hoặc chưa xác nhận',
+                'estimated' => $isAccepted && !$booking->thoi_gian_hoan_thanh && $status !== 'da_huy',
+            ],
+            [
+                'key' => 'in_progress',
+                'title' => 'Đang xử lý',
+                'time' => $isStarted ? $updatedAt : null,
+                'time_label' => $isStarted ? ($base['milestones']['updated_label'] ?? '') : '',
+                'state' => $isStarted ? 'done' : 'pending',
+                'note' => $isStarted ? 'Đơn đã vào luồng xử lý kỹ thuật' : 'Chưa bắt đầu xử lý',
+                'estimated' => $isStarted && !$booking->thoi_gian_hoan_thanh && $status !== 'da_huy',
+            ],
+            [
+                'key' => 'completed',
+                'title' => 'Hoàn tất',
+                'time' => $completedAt,
+                'time_label' => $base['milestones']['completed_label'] ?? '',
+                'state' => $completedAt ? 'done' : 'pending',
+                'note' => $completedAt ? 'Đơn đã hoàn tất' : 'Chưa hoàn tất',
+            ],
+            [
+                'key' => 'cancelled',
+                'title' => 'Hủy đơn',
+                'time' => $cancelledAt,
+                'time_label' => $base['milestones']['cancelled_label'] ?? '',
+                'state' => $cancelledAt ? 'done' : 'hidden',
+                'note' => $cancelledAt ? ((string) ($booking->ly_do_huy ?: 'Đơn đã bị hủy')) : '',
+            ],
+        ];
+
+        if (is_array($contactIssue) && ($contactIssue['is_reported'] ?? false)) {
+            array_splice($timeline, 2, 0, [[
+                'key' => 'worker_contact_issue',
+                'title' => 'Không liên lạc được',
+                'time' => $contactIssue['reported_at'] ?? null,
+                'time_label' => $contactIssue['reported_label'] ?? '',
+                'state' => 'done',
+                'note' => ($contactIssue['is_open'] ?? false)
+                    ? 'admin sẽ liên hệ hỗ trợ sau.'
+                    : 'Báo cáo liên hệ đã được đóng.',
+            ]]);
+        }
+
+        return $timeline;
+    }
+
+    private function buildAdminBookingActionHistory(
+        DonDatLich $booking,
+        array $base,
+        Collection $paymentHistory,
+        ?CustomerFeedbackCase $complaintCase,
+        Collection $reviewHistory
+    ): array {
+        $events = collect();
+
+        if (!empty($base['milestones']['created_at'])) {
+            $events->push([
+                'time' => $base['milestones']['created_at'],
+                'time_label' => $base['milestones']['created_label'] ?? '',
+                'title' => 'Tạo đơn',
+                'detail' => 'Hệ thống ghi nhận đơn ' . ($base['code'] ?? ''),
+                'tone' => 'info',
+                'actor' => 'Khách hàng',
+            ]);
+        }
+
+        $contactIssue = $base['contact_issue'] ?? null;
+        if (is_array($contactIssue) && ($contactIssue['is_reported'] ?? false)) {
+            $events->push([
+                'time' => $contactIssue['reported_at'] ?? null,
+                'time_label' => $contactIssue['reported_label'] ?? '',
+                'title' => 'Thợ báo không liên lạc được',
+                'detail' => (string) ($contactIssue['note'] ?: 'Thợ báo không liên lạc được với khách hàng.'),
+                'tone' => ($contactIssue['is_open'] ?? false) ? 'danger' : 'info',
+                'actor' => (string) ($contactIssue['reported_by']['name'] ?? 'Thợ'),
+            ]);
+
+            if (!empty($contactIssue['resolved_at'])) {
+                $events->push([
+                    'time' => $contactIssue['resolved_at'] ?? null,
+                    'time_label' => $contactIssue['resolved_label'] ?? '',
+                    'title' => 'Dong bao cao lien he',
+                    'detail' => 'Booking da roi khoi trang thai cho lien he.',
+                    'tone' => 'success',
+                    'actor' => 'He thong',
+                ]);
+            }
+        }
+
+        if ($booking->trang_thai === 'da_huy' && !empty($base['milestones']['cancelled_at'])) {
+            $events->push([
+                'time' => $base['milestones']['cancelled_at'],
+                'time_label' => $base['milestones']['cancelled_label'] ?? '',
+                'title' => 'Đơn bị hủy',
+                'detail' => (string) ($booking->ly_do_huy ?: 'Đơn đã bị hủy trên hệ thống'),
+                'tone' => 'danger',
+                'actor' => 'Hệ thống',
+            ]);
+        }
+
+        if (!empty($base['milestones']['completed_at'])) {
+            $events->push([
+                'time' => $base['milestones']['completed_at'],
+                'time_label' => $base['milestones']['completed_label'] ?? '',
+                'title' => 'Hoàn tất đơn',
+                'detail' => 'Đơn đã được cập nhật trạng thái hoàn tất',
+                'tone' => 'success',
+                'actor' => 'Hệ thống',
+            ]);
+        }
+
+        foreach ($paymentHistory as $payment) {
+            $events->push([
+                'time' => $payment['created_at'] ?? null,
+                'time_label' => $payment['created_label'] ?? '',
+                'title' => 'Thanh toán',
+                'detail' => ($payment['method_label'] ?? 'Khác')
+                    . ' - '
+                    . ((string) ($payment['status'] ?? ''))
+                    . ' - '
+                    . number_format((float) ($payment['amount'] ?? 0), 0, ',', '.')
+                    . ' đ',
+                'tone' => $this->resolveAdminBookingPaymentStatusTone((string) ($payment['status'] ?? '')),
+                'actor' => 'Giao dịch',
+            ]);
+        }
+
+        if ($complaintCase) {
+            $snapshot = is_array($complaintCase->last_snapshot) ? $complaintCase->last_snapshot : [];
+            $reasonLabel = (string) ($snapshot['reason_label'] ?? $this->resolveAdminComplaintReasonLabel((string) ($snapshot['reason_code'] ?? '')));
+
+            $events->push([
+                'time' => optional($complaintCase->created_at)->toIso8601String(),
+                'time_label' => optional($complaintCase->created_at)->format('d/m/Y H:i'),
+                'title' => 'Khiếu nại',
+                'detail' => 'Khách tạo khiếu nại: ' . $reasonLabel,
+                'tone' => 'warning',
+                'actor' => 'Khách hàng',
+            ]);
+
+                if ($complaintCase->assigned_at) {
+                $events->push([
+                    'time' => optional($complaintCase->assigned_at)->toIso8601String(),
+                    'time_label' => optional($complaintCase->assigned_at)->format('d/m/Y H:i'),
+                    'title' => 'Nhận xử lý khiếu nại',
+                    'detail' => 'Case được tiếp nhận bởi ' . ($complaintCase->assignedAdmin?->name ?: 'Admin'),
+                    'tone' => 'info',
+                    'actor' => $complaintCase->assignedAdmin?->name ?: 'Admin',
+                ]);
+            }
+
+            if ($complaintCase->resolved_at) {
+                $events->push([
+                    'time' => optional($complaintCase->resolved_at)->toIso8601String(),
+                    'time_label' => optional($complaintCase->resolved_at)->format('d/m/Y H:i'),
+                    'title' => 'Đóng khiếu nại',
+                    'detail' => (string) ($complaintCase->resolution_note ?: 'Đã đánh dấu xử lý'),
+                    'tone' => 'success',
+                    'actor' => $complaintCase->assignedAdmin?->name ?: 'Admin',
+                ]);
+            }
+        }
+
+        foreach ($reviewHistory as $review) {
+            $events->push([
+                'time' => $review['created_at'] ?? null,
+                'time_label' => $review['created_label'] ?? '',
+                'title' => 'Đánh giá đơn',
+                'detail' => 'Số sao: ' . ((float) ($review['rating'] ?? 0)) . '/5'
+                    . ((string) ($review['comment'] ?? '') !== '' ? (' - ' . (string) ($review['comment'] ?? '')) : ''),
+                'tone' => ((float) ($review['rating'] ?? 0)) <= 2 ? 'warning' : 'success',
+                'actor' => (string) ($review['author'] ?? 'Khách hàng'),
+            ]);
+        }
+
+        return $events
+            ->filter(fn (array $event): bool => !empty($event['time']))
+            ->sortByDesc(fn (array $event): int => strtotime((string) ($event['time'] ?? '')) ?: 0)
+            ->values()
+            ->all();
     }
 
     public function getServices(Request $request)
@@ -3195,14 +4383,47 @@ class AdminController extends Controller
             ], 404);
         }
 
-        $service->update([
-            'trang_thai' => 0,
-        ]);
+        $hasBookings = Schema::hasTable('don_dat_lich_dich_vu')
+            ? DB::table('don_dat_lich_dich_vu')
+                ->where('dich_vu_id', $service->id)
+                ->exists()
+            : false;
+        $hasPosts = Schema::hasTable('bai_dang')
+            ? DB::table('bai_dang')
+                ->where('dich_vu_id', $service->id)
+                ->exists()
+            : false;
+
+        if ($hasBookings || $hasPosts) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dich vu dang duoc su dung trong he thong. Hay an dich vu thay vi xoa.',
+            ], 409);
+        }
+
+        $serviceImagePath = $service->getRawOriginal('hinh_anh');
+        $partImagePaths = LinhKien::query()
+            ->where('dich_vu_id', $service->id)
+            ->pluck('hinh_anh')
+            ->filter(static fn ($path) => trim((string) $path) !== '')
+            ->unique()
+            ->values();
+
+        try {
+            $service->delete();
+        } catch (QueryException) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong the xoa dich vu vi du lieu nay dang duoc lien ket.',
+            ], 409);
+        }
+
+        $this->deleteStoredServiceImage($serviceImagePath);
+        $partImagePaths->each(fn ($path) => $this->deleteStoredPartImage($path));
 
         return response()->json([
             'status' => 'success',
             'message' => 'Da xoa dich vu',
-            'data' => $service->fresh(),
         ]);
     }
 
@@ -3440,7 +4661,9 @@ class AdminController extends Controller
             'ten_trieu_chung' => trim((string) $request->input('ten_trieu_chung')),
         ]);
 
-        $this->syncSymptomCausesFromText($symptom, (string) $request->input('nguyen_nhans_text', ''));
+        if ($request->exists('nguyen_nhans_text')) {
+            $this->syncSymptomCausesFromText($symptom, (string) $request->input('nguyen_nhans_text', ''));
+        }
 
         return response()->json([
             'status' => 'success',
@@ -3494,7 +4717,9 @@ class AdminController extends Controller
             'ten_trieu_chung' => trim((string) $request->input('ten_trieu_chung')),
         ]);
 
-        $this->syncSymptomCausesFromText($symptom, (string) $request->input('nguyen_nhans_text', ''));
+        if ($request->exists('nguyen_nhans_text')) {
+            $this->syncSymptomCausesFromText($symptom, (string) $request->input('nguyen_nhans_text', ''));
+        }
 
         return response()->json([
             'status' => 'success',
@@ -3523,6 +4748,377 @@ class AdminController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Da xoa trieu chung',
+        ]);
+    }
+
+    public function getRepairKnowledgeTree(Request $request)
+    {
+        $services = DanhMucDichVu::query()
+            ->select(['id', 'ten_dich_vu', 'trang_thai'])
+            ->with([
+                'trieuChungs' => function ($symptomQuery) {
+                    $symptomQuery
+                        ->select(['trieu_chung.id', 'trieu_chung.dich_vu_id', 'trieu_chung.ten_trieu_chung', 'trieu_chung.updated_at'])
+                        ->with([
+                            'nguyenNhans' => function ($causeQuery) {
+                                $causeQuery
+                                    ->select(['nguyen_nhan.id', 'nguyen_nhan.ten_nguyen_nhan', 'nguyen_nhan.updated_at'])
+                                    ->with([
+                                        'trieuChungs:id,dich_vu_id,ten_trieu_chung',
+                                        'trieuChungs.dichVu:id,ten_dich_vu,trang_thai',
+                                        'huongXuLys:id,nguyen_nhan_id,ten_huong_xu_ly,gia_tham_khao,mo_ta_cong_viec,updated_at',
+                                    ])
+                                    ->orderBy('ten_nguyen_nhan');
+                            },
+                        ])
+                        ->orderBy('ten_trieu_chung');
+                },
+            ])
+            ->orderBy('ten_dich_vu')
+            ->get();
+
+        $symptoms = $services
+            ->flatMap(fn (DanhMucDichVu $service) => $service->trieuChungs ?? collect())
+            ->values();
+        $causes = $symptoms
+            ->flatMap(fn (TrieuChung $symptom) => $symptom->nguyenNhans ?? collect())
+            ->unique('id')
+            ->values();
+        $resolutions = $causes
+            ->flatMap(fn (NguyenNhan $cause) => $cause->huongXuLys ?? collect())
+            ->unique('id')
+            ->values();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'items' => $services
+                    ->map(fn (DanhMucDichVu $service) => $this->serializeRepairKnowledgeService($service))
+                    ->values(),
+                'summary' => [
+                    'services' => $services->count(),
+                    'symptoms' => $symptoms->count(),
+                    'causes' => $causes->count(),
+                    'resolutions' => $resolutions->count(),
+                ],
+                'service_options' => $this->getAdminCatalogServiceOptions(),
+                'symptom_options' => $this->getAdminSymptomOptions(),
+                'cause_options' => $this->getAdminCauseOptions(),
+            ],
+        ]);
+    }
+
+
+    public function storeWorker(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'required|string|max:15|unique:users,phone',
+            'password' => 'required|string|min:6',
+            'cccd' => 'required|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'kinh_nghiem' => 'nullable|string',
+            'dich_vu_ids' => 'nullable|array',
+            'dich_vu_ids.*' => 'integer|exists:danh_muc_dich_vu,id',
+            'avatar' => 'nullable|image|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($request) {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'password' => bcrypt($request->password),
+                'address' => $request->address,
+                'role' => 'worker',
+                'is_active' => true,
+                'phone_verified_at' => now(),
+            ]);
+
+            if ($request->hasFile('avatar')) {
+                $file = $request->file('avatar');
+                if ($file instanceof UploadedFile) {
+                    $fileName = 'worker_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                    $path = $file->storeAs('avatars', $fileName, 'public');
+                    $user->update(['avatar' => '/storage/' . $path]);
+                }
+            }
+
+            $user->hoSoTho()->create([
+                'cccd' => $request->cccd,
+                'kinh_nghiem' => $request->kinh_nghiem,
+                'trang_thai_duyet' => 'da_duyet',
+                'dang_hoat_dong' => true,
+                'trang_thai_hoat_dong' => 'dang_hoat_dong',
+            ]);
+
+            if ($request->has('dich_vu_ids')) {
+                $user->dichVus()->sync($request->dich_vu_ids);
+                app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncSourceRecord('worker_profile', $user->id);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã tạo tài khoản thợ thành công',
+                'data' => $user->load('hoSoTho', 'dichVus'),
+            ], 201);
+        });
+    }
+
+    public function getWorkerDetail(string $userId)
+    {
+        $worker = User::query()
+            ->with(['hoSoTho', 'dichVus:id,ten_dich_vu'])
+            ->where('role', 'worker')
+            ->findOrFail($userId);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $worker,
+        ]);
+    }
+
+    public function updateWorker(Request $request, string $userId)
+    {
+        $worker = User::query()
+            ->where('role', 'worker')
+            ->findOrFail($userId);
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $worker->id,
+            'phone' => 'required|string|max:15|unique:users,phone,' . $worker->id,
+            'password' => 'nullable|string|min:6',
+            'cccd' => 'required|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'kinh_nghiem' => 'nullable|string',
+            'dich_vu_ids' => 'nullable|array',
+            'dich_vu_ids.*' => 'integer|exists:danh_muc_dich_vu,id',
+            'is_active' => 'boolean',
+            'avatar' => 'nullable|image|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($request, $worker) {
+            $userData = [
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'is_active' => $request->boolean('is_active', true),
+            ];
+
+            if ($request->filled('password')) {
+                $userData['password'] = bcrypt($request->password);
+            }
+
+            $worker->update($userData);
+
+            $worker->hoSoTho->update([
+                'cccd' => $request->cccd,
+                'kinh_nghiem' => $request->kinh_nghiem,
+            ]);
+
+            if ($request->has('dich_vu_ids')) {
+                $worker->dichVus()->sync($request->dich_vu_ids);
+                app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncSourceRecord('worker_profile', $worker->id);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã cập nhật thông tin thợ thành công',
+                'data' => $worker->load('hoSoTho', 'dichVus'),
+            ]);
+        });
+    }
+
+    public function destroyWorker(string $userId)
+    {
+        $worker = User::query()
+            ->where('role', 'worker')
+            ->find($userId);
+
+        if (!$worker) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không tìm thấy tài khoản thợ',
+            ], 404);
+        }
+
+        if ($worker->donDatLichAsTho()->exists()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Không thể xóa thợ này vì đã có đơn đặt lịch.',
+            ], 400);
+        }
+
+        return DB::transaction(function () use ($worker) {
+            if ($worker->hoSoTho) {
+                $worker->hoSoTho()->delete();
+            }
+            $worker->dichVus()->detach();
+            $worker->delete();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Đã xóa tài khoản thợ thành công',
+            ]);
+        });
+    }
+
+    public function storeCause(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'ten_nguyen_nhan' => 'required|string|max:255',
+            'symptom_ids' => 'required|array|min:1',
+            'symptom_ids.*' => 'integer|exists:trieu_chung,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu nguyen nhan khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $symptomIds = collect($request->input('symptom_ids', []))
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        $causeName = trim((string) $request->input('ten_nguyen_nhan'));
+        $lookup = TextNormalizer::normalize($causeName);
+
+        $cause = DB::transaction(function () use ($causeName, $lookup, $symptomIds) {
+            $existingCause = NguyenNhan::query()
+                ->get()
+                ->first(fn (NguyenNhan $cause) => TextNormalizer::normalize((string) $cause->ten_nguyen_nhan) === $lookup);
+
+            $cause = $existingCause ?: NguyenNhan::query()->create([
+                'ten_nguyen_nhan' => $causeName,
+            ]);
+
+            $cause->trieuChungs()->syncWithoutDetaching($symptomIds);
+
+            return $cause;
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da luu nguyen nhan',
+            'data' => $this->serializeAdminCause($cause->fresh([
+                'trieuChungs:id,dich_vu_id,ten_trieu_chung',
+                'trieuChungs.dichVu:id,ten_dich_vu,trang_thai',
+                'huongXuLys:id,nguyen_nhan_id,ten_huong_xu_ly,gia_tham_khao,mo_ta_cong_viec,updated_at',
+            ])),
+        ], 201);
+    }
+
+    public function updateCause(Request $request, string $id)
+    {
+        $cause = NguyenNhan::query()->with([
+            'trieuChungs:id,dich_vu_id,ten_trieu_chung',
+            'trieuChungs.dichVu:id,ten_dich_vu,trang_thai',
+            'huongXuLys:id,nguyen_nhan_id,ten_huong_xu_ly,gia_tham_khao,mo_ta_cong_viec,updated_at',
+        ])->find($id);
+
+        if (!$cause) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay nguyen nhan',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'ten_nguyen_nhan' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('nguyen_nhan', 'ten_nguyen_nhan')->ignore($cause->id),
+            ],
+            'symptom_ids' => 'required|array|min:1',
+            'symptom_ids.*' => 'integer|exists:trieu_chung,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu nguyen nhan khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $symptomIds = collect($request->input('symptom_ids', []))
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $existingSymptomIds = $cause->trieuChungs()->pluck('trieu_chung.id')->map(fn ($id) => (int) $id)->all();
+
+        DB::transaction(function () use ($request, $cause, $symptomIds) {
+            $cause->update([
+                'ten_nguyen_nhan' => trim((string) $request->input('ten_nguyen_nhan')),
+            ]);
+
+            $cause->trieuChungs()->sync($symptomIds);
+        });
+
+        app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncRepairCatalogByIds(array_values(array_unique(array_merge(
+            $existingSymptomIds,
+            $symptomIds
+        ))));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da cap nhat nguyen nhan',
+            'data' => $this->serializeAdminCause($cause->fresh([
+                'trieuChungs:id,dich_vu_id,ten_trieu_chung',
+                'trieuChungs.dichVu:id,ten_dich_vu,trang_thai',
+                'huongXuLys:id,nguyen_nhan_id,ten_huong_xu_ly,gia_tham_khao,mo_ta_cong_viec,updated_at',
+            ])),
+        ]);
+    }
+
+    public function destroyCause(string $id)
+    {
+        $cause = NguyenNhan::query()->withCount(['trieuChungs', 'huongXuLys'])->find($id);
+
+        if (!$cause) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay nguyen nhan',
+            ], 404);
+        }
+
+        $cause->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da xoa nguyen nhan va cac huong xu ly lien quan',
+            'data' => [
+                'linked_symptoms' => (int) $cause->trieu_chungs_count,
+                'linked_resolutions' => (int) $cause->huong_xu_lys_count,
+            ],
         ]);
     }
 
@@ -4172,6 +5768,78 @@ class AdminController extends Controller
             ->values();
     }
 
+    private function getAdminSymptomOptions(): Collection
+    {
+        return TrieuChung::query()
+            ->with([
+                'dichVu:id,ten_dich_vu,trang_thai',
+            ])
+            ->orderBy('ten_trieu_chung')
+            ->get()
+            ->map(fn (TrieuChung $symptom) => [
+                'id' => $symptom->id,
+                'dich_vu_id' => $symptom->dich_vu_id,
+                'service_name' => $symptom->dichVu?->ten_dich_vu,
+                'ten_trieu_chung' => $symptom->ten_trieu_chung,
+                'label' => trim(($symptom->dichVu?->ten_dich_vu ? $symptom->dichVu->ten_dich_vu . ' · ' : '') . $symptom->ten_trieu_chung),
+            ])
+            ->values();
+    }
+
+    private function serializeRepairKnowledgeService(DanhMucDichVu $service): array
+    {
+        $symptoms = ($service->trieuChungs ?? collect())
+            ->sortBy(fn (TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
+            ->values();
+        $causes = $symptoms
+            ->flatMap(fn (TrieuChung $symptom) => $symptom->nguyenNhans ?? collect())
+            ->unique('id')
+            ->values();
+        $resolutions = $causes
+            ->flatMap(fn (NguyenNhan $cause) => $cause->huongXuLys ?? collect())
+            ->unique('id')
+            ->values();
+
+        return [
+            'id' => $service->id,
+            'ten_dich_vu' => $service->ten_dich_vu,
+            'trang_thai' => (int) $service->trang_thai,
+            'symptom_count' => $symptoms->count(),
+            'cause_count' => $causes->count(),
+            'resolution_count' => $resolutions->count(),
+            'symptoms' => $symptoms
+                ->map(function (TrieuChung $symptom) {
+                    $causes = ($symptom->nguyenNhans ?? collect())
+                        ->sortBy(fn (NguyenNhan $cause) => trim((string) $cause->ten_nguyen_nhan))
+                        ->values();
+                    $resolutionCount = $causes
+                        ->flatMap(fn (NguyenNhan $cause) => $cause->huongXuLys ?? collect())
+                        ->unique('id')
+                        ->count();
+
+                    return array_merge($this->serializeAdminSymptom($symptom), [
+                        'resolution_count' => $resolutionCount,
+                        'causes' => $causes
+                            ->map(function (NguyenNhan $cause) {
+                                $resolutions = ($cause->huongXuLys ?? collect())
+                                    ->sortBy(fn (HuongXuLy $resolution) => trim((string) $resolution->ten_huong_xu_ly))
+                                    ->values()
+                                    ->map(fn (HuongXuLy $resolution) => $this->serializeAdminResolution($resolution))
+                                    ->values();
+
+                                return array_merge($this->serializeAdminCause($cause), [
+                                    'resolutions' => $resolutions->all(),
+                                ]);
+                            })
+                            ->values()
+                            ->all(),
+                    ]);
+                })
+                ->values()
+                ->all(),
+        ];
+    }
+
     private function serializeAdminPart(LinhKien $part): array
     {
         return [
@@ -4209,6 +5877,54 @@ class AdminController extends Controller
             'nguyen_nhans_text' => $causeNames->implode(PHP_EOL),
             'updated_at' => optional($symptom->updated_at)->toIso8601String(),
             'updated_label' => optional($symptom->updated_at)->format('d/m/Y H:i'),
+        ];
+    }
+
+    private function serializeAdminCause(NguyenNhan $cause): array
+    {
+        $symptoms = $cause->relationLoaded('trieuChungs')
+            ? $cause->trieuChungs
+            : $cause->trieuChungs()->with([
+                'dichVu:id,ten_dich_vu,trang_thai',
+            ])->get(['trieu_chung.id', 'trieu_chung.dich_vu_id', 'trieu_chung.ten_trieu_chung']);
+        $resolutions = $cause->relationLoaded('huongXuLys')
+            ? $cause->huongXuLys
+            : $cause->huongXuLys()->get(['id', 'nguyen_nhan_id', 'ten_huong_xu_ly', 'gia_tham_khao', 'mo_ta_cong_viec', 'updated_at']);
+
+        $serviceIds = $symptoms
+            ->pluck('dich_vu_id')
+            ->filter()
+            ->unique()
+            ->values();
+        $serviceNames = $symptoms
+            ->map(fn (TrieuChung $symptom) => $symptom->dichVu?->ten_dich_vu)
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+        $symptomIds = $symptoms
+            ->pluck('id')
+            ->filter()
+            ->unique()
+            ->values();
+        $symptomNames = $symptoms
+            ->map(fn (TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        return [
+            'id' => $cause->id,
+            'ten_nguyen_nhan' => $cause->ten_nguyen_nhan,
+            'service_ids' => $serviceIds->all(),
+            'service_names' => $serviceNames->all(),
+            'symptom_ids' => $symptomIds->all(),
+            'symptom_names' => $symptomNames->all(),
+            'linked_symptom_count' => $symptomIds->count(),
+            'resolution_count' => $resolutions->count(),
+            'updated_at' => optional($cause->updated_at)->toIso8601String(),
+            'updated_label' => optional($cause->updated_at)->format('d/m/Y H:i'),
         ];
     }
 
@@ -4270,34 +5986,7 @@ class AdminController extends Controller
             ])
             ->orderBy('ten_nguyen_nhan')
             ->get()
-            ->map(function (NguyenNhan $cause) {
-                $symptoms = $cause->trieuChungs ?? collect();
-                $serviceIds = $symptoms
-                    ->pluck('dich_vu_id')
-                    ->filter()
-                    ->unique()
-                    ->values();
-                $serviceNames = $symptoms
-                    ->map(fn (TrieuChung $symptom) => $symptom->dichVu?->ten_dich_vu)
-                    ->filter()
-                    ->unique()
-                    ->sort()
-                    ->values();
-                $symptomNames = $symptoms
-                    ->map(fn (TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
-                    ->filter()
-                    ->unique()
-                    ->sort()
-                    ->values();
-
-                return [
-                    'id' => $cause->id,
-                    'ten_nguyen_nhan' => $cause->ten_nguyen_nhan,
-                    'service_ids' => $serviceIds->all(),
-                    'service_names' => $serviceNames->all(),
-                    'symptom_names' => $symptomNames->all(),
-                ];
-            })
+            ->map(fn (NguyenNhan $cause) => $this->serializeAdminCause($cause))
             ->values();
     }
 
@@ -4307,6 +5996,7 @@ class AdminController extends Controller
 
         if ($causeNames === []) {
             $symptom->nguyenNhans()->sync([]);
+            app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncSourceRecord('repair_catalog', $symptom->id);
 
             return;
         }
@@ -4333,6 +6023,7 @@ class AdminController extends Controller
         }
 
         $symptom->nguyenNhans()->sync(array_values(array_unique($causeIds)));
+        app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncSourceRecord('repair_catalog', $symptom->id);
     }
 
     /**

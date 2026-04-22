@@ -2,8 +2,29 @@
 
 namespace App\Providers;
 
+use App\Models\CustomerFeedbackCase;
+use App\Models\DanhGia;
+use App\Models\DanhMucDichVu;
+use App\Models\DonDatLich;
+use App\Models\HoSoTho;
+use App\Models\HuongXuLy;
+use App\Models\NguyenNhan;
+use App\Models\TrieuChung;
+use App\Models\User;
+use App\Observers\CustomerFeedbackCaseObserver;
+use App\Observers\DanhGiaObserver;
+use App\Observers\DanhMucDichVuObserver;
+use App\Observers\DonDatLichObserver;
+use App\Observers\HoSoThoObserver;
+use App\Observers\HuongXuLyObserver;
+use App\Observers\NguyenNhanObserver;
+use App\Observers\TrieuChungObserver;
+use App\Observers\UserObserver;
+use App\Support\CertificatePathResolver;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,7 +41,56 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        DanhMucDichVu::observe(DanhMucDichVuObserver::class);
+        DonDatLich::observe(DonDatLichObserver::class);
+        HoSoTho::observe(HoSoThoObserver::class);
+        CustomerFeedbackCase::observe(CustomerFeedbackCaseObserver::class);
+        TrieuChung::observe(TrieuChungObserver::class);
+        NguyenNhan::observe(NguyenNhanObserver::class);
+        HuongXuLy::observe(HuongXuLyObserver::class);
+        User::observe(UserObserver::class);
+        DanhGia::observe(DanhGiaObserver::class);
+
+        $this->configureChatRateLimiters();
         $this->configureCaBundleFallback();
+    }
+
+    private function configureChatRateLimiters(): void
+    {
+        RateLimiter::for('chat-history', function (Request $request): Limit {
+            return Limit::perMinute(max(1, (int) config('services.chat.history_rate_limit', 60)))
+                ->by('chat-history:' . $this->chatThrottleKey($request));
+        });
+
+        RateLimiter::for('chat-send', function (Request $request): Limit {
+            return Limit::perMinute(max(1, (int) config('services.chat.send_rate_limit', 18)))
+                ->by('chat-send:' . $this->chatThrottleKey($request));
+        });
+
+        RateLimiter::for('chat-sync', function (Request $request): Limit {
+            return Limit::perMinute(max(1, (int) config('services.chat.sync_rate_limit', 8)))
+                ->by('chat-sync:' . $this->chatThrottleKey($request));
+        });
+
+        RateLimiter::for('chat-admin-preview', function (Request $request): Limit {
+            return Limit::perMinute(max(1, (int) config('services.chat.admin_preview_rate_limit', 20)))
+                ->by('chat-admin-preview:' . $this->chatThrottleKey($request));
+        });
+    }
+
+    private function chatThrottleKey(Request $request): string
+    {
+        $userId = $request->user()?->id;
+        if ($userId !== null) {
+            return 'user:' . $userId;
+        }
+
+        $guestToken = trim((string) $request->attributes->get('chat_guest_token', $request->header('X-Guest-Token', $request->cookie('guest_token', ''))));
+        if ($guestToken !== '') {
+            return 'guest:' . $guestToken;
+        }
+
+        return 'ip:' . (string) $request->ip();
     }
 
     private function configureCaBundleFallback(): void
@@ -28,24 +98,22 @@ class AppServiceProvider extends ServiceProvider
         $configuredCurlCa = (string) ini_get('curl.cainfo');
         $configuredOpenSslCa = (string) ini_get('openssl.cafile');
 
-        if ($this->isReadableCertificateFile($configuredCurlCa) || $this->isReadableCertificateFile($configuredOpenSslCa)) {
-            $resolvedPath = $this->isReadableCertificateFile($configuredCurlCa) ? $configuredCurlCa : $configuredOpenSslCa;
+        if (CertificatePathResolver::isReadableCertificateFile($configuredCurlCa) || CertificatePathResolver::isReadableCertificateFile($configuredOpenSslCa)) {
+            $resolvedPath = CertificatePathResolver::isReadableCertificateFile($configuredCurlCa) ? $configuredCurlCa : $configuredOpenSslCa;
             $this->applyCaBundlePath($resolvedPath);
             return;
         }
 
-        $fallbackPath = collect([
+        $fallbackPath = CertificatePathResolver::resolveFromCandidates([
             env('CURL_CA_BUNDLE'),
             env('SSL_CERT_FILE'),
             base_path('cacert.pem'),
             base_path('certs/cacert.pem'),
             base_path('storage/certs/cacert.pem'),
-            $this->resolveLaragonCaBundlePath(),
+            CertificatePathResolver::resolveLaragonCaBundlePath(),
             'D:\\laragon\\etc\\ssl\\cacert.pem',
             'C:\\laragon\\etc\\ssl\\cacert.pem',
-        ])->filter(fn ($path) => is_string($path) && $path !== '')
-            ->map(fn (string $path) => $this->normalizePath($path))
-            ->first(fn (string $path) => $this->isReadableCertificateFile($path));
+        ]);
 
         if ($fallbackPath) {
             $this->applyCaBundlePath($fallbackPath);
@@ -64,47 +132,5 @@ class AppServiceProvider extends ServiceProvider
 
         @ini_set('curl.cainfo', $path);
         @ini_set('openssl.cafile', $path);
-    }
-
-    private function resolveLaragonCaBundlePath(): ?string
-    {
-        $phpBinaryDir = dirname(PHP_BINARY);
-        $candidates = [
-            $phpBinaryDir . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'etc' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cacert.pem',
-            $phpBinaryDir . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'etc' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cacert.pem',
-        ];
-
-        foreach ($candidates as $candidate) {
-            $normalized = $this->normalizePath($candidate);
-            if ($this->isReadableCertificateFile($normalized)) {
-                return $normalized;
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizePath(string $path): string
-    {
-        $trimmed = trim($path);
-
-        if ($trimmed === '') {
-            return '';
-        }
-
-        $resolved = realpath($trimmed);
-
-        return $resolved !== false ? $resolved : $trimmed;
-    }
-
-    private function isReadableCertificateFile(?string $path): bool
-    {
-        if (! is_string($path) || trim($path) === '') {
-            return false;
-        }
-
-        $normalized = $this->normalizePath($path);
-
-        return is_file($normalized) && is_readable($normalized) && Str::endsWith(Str::lower($normalized), '.pem');
     }
 }

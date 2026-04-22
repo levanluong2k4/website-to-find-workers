@@ -1,0 +1,260 @@
+        $payload['so_lan_doi_lich'] = (int) ($booking->so_lan_doi_lich ?? 0);
+        $payload['reschedule_policy'] = $this->buildReschedulePolicy($booking);
+        $windowDays = $complaintWindowDays ?? app(TravelFeeConfigService::class)->resolveComplaintWindowDays();
+        $complaintCase = $booking->relationLoaded('customerComplaintCase')
+            ? $booking->customerComplaintCase
+            : $booking->customerComplaintCase()->first();
+        $payload['complaint_policy'] = $this->buildComplaintPolicy($booking, $windowDays, $complaintCase);
+        $payload['complaint_case'] = $this->serializeComplaintCase($complaintCase);
+        $payload['worker_contact_issue'] = $this->serializeWorkerContactIssue($booking);
+
+        return $payload;
+    }
+
+    private function serializeWorkerContactIssue(DonDatLich $booking): ?array
+    {
+        if (!$booking->hasWorkerContactIssue()) {
+            return null;
+        }
+
+        $reporter = $booking->relationLoaded('workerContactIssueReporter')
+            ? $booking->workerContactIssueReporter
+            : null;
+
+        return [
+            'is_reported' => true,
+            'is_open' => $booking->hasOpenWorkerContactIssue(),
+            'reported_at' => optional($booking->worker_contact_issue_reported_at)->toIso8601String(),
+            'reported_label' => optional($booking->worker_contact_issue_reported_at)->format('d/m/Y H:i'),
+            'resolved_at' => optional($booking->worker_contact_issue_resolved_at)->toIso8601String(),
+            'resolved_label' => optional($booking->worker_contact_issue_resolved_at)->format('d/m/Y H:i'),
+            'note' => (string) ($booking->worker_contact_issue_note ?? ''),
+            'reported_by' => [
+                'id' => $booking->worker_contact_issue_reported_by
+                    ? (int) $booking->worker_contact_issue_reported_by
+                    : null,
+                'name' => (string) ($reporter?->name ?: $booking->tho?->name ?: ''),
+            ],
+        ];
+    }
+
+    private function resolveWorkerContactIssueAfterStatusChange(DonDatLich $booking, ?string $nextStatus): void
+    {
+        if (!$booking->hasOpenWorkerContactIssue()) {
+            return;
+        }
+
+        if ((string) $nextStatus !== 'da_xac_nhan') {
+            $booking->worker_contact_issue_resolved_at = now();
+        }
+    }
+
+    private function buildReschedulePolicy(DonDatLich $booking): array
+    {
+        $rescheduleCount = (int) ($booking->so_lan_doi_lich ?? 0);
+        $remainingChanges = max(0, self::MAX_CUSTOMER_RESCHEDULES - $rescheduleCount);
+        $statusAllowsReschedule = $booking->trang_thai === 'da_xac_nhan';
+        $minimumSchedule = $this->resolveMinimumRescheduleSlotStart();
+        $maximumScheduleDate = $this->resolveMaximumRescheduleDate();
+        $hasFutureSlotInWindow = $minimumSchedule !== null
+            && $maximumScheduleDate !== null
+            && $minimumSchedule->lte($maximumScheduleDate->copy()->endOfDay());
+        $currentSchedule = $booking->ngay_hen && $booking->khung_gio_hen
+            ? $this->resolveScheduledAt($booking->ngay_hen->toDateString(), (string) $booking->khung_gio_hen)
+            : null;
+
+        $reason = null;
+        if (!$statusAllowsReschedule) {
+            $reason = 'status_not_allowed';
+        } elseif ($remainingChanges <= 0) {
+            $reason = 'limit_reached';
+        } elseif ($minimumSchedule === null || !$hasFutureSlotInWindow) {
+            $reason = 'no_future_slot';
+        }
+
+        return [
+            'can_reschedule' => $statusAllowsReschedule && $remainingChanges > 0 && $hasFutureSlotInWindow,
+            'status_allows_reschedule' => $statusAllowsReschedule,
+            'max_changes' => self::MAX_CUSTOMER_RESCHEDULES,
+            'reschedule_count' => $rescheduleCount,
+            'remaining_changes' => $remainingChanges,
+            'window_days' => self::CUSTOMER_RESCHEDULE_WINDOW_DAYS,
+            'time_slots' => self::FIXED_TIME_SLOTS,
+            'minimum_allowed_at' => $minimumSchedule?->toIso8601String(),
+            'minimum_allowed_date' => $minimumSchedule?->toDateString(),
+            'minimum_allowed_slot' => $minimumSchedule ? $this->resolveSlotValueFromStart($minimumSchedule) : null,
+            'minimum_allowed_label' => $minimumSchedule ? $this->formatScheduleForDisplay($minimumSchedule) : null,
+            'maximum_allowed_date' => $maximumScheduleDate?->toDateString(),
+            'maximum_allowed_label' => $maximumScheduleDate?->format('d/m/Y'),
+            'current_schedule_label' => $currentSchedule ? $this->formatScheduleForDisplay($currentSchedule) : null,
+            'reason' => $reason,
+        ];
+    }
+
+    private function resolveMinimumRescheduleSlotStart(?Carbon $now = null): ?Carbon
+    {
+        $current = ($now ?? now())->copy()->seconds(0);
+
+        return $this->buildFutureSlotStarts($current)
+            ->values()
+            ->get(self::MIN_FUTURE_RESCHEDULE_SLOTS - 1);
+    }
+
+    private function buildFutureSlotStarts(Carbon $from): Collection
+    {
+        $candidates = collect();
+        $baseDate = $from->copy()->startOfDay();
+
+        for ($dayOffset = 0; $dayOffset < 30; $dayOffset += 1) {
+            $dateValue = $baseDate->copy()->addDays($dayOffset)->toDateString();
+
+            foreach (self::FIXED_TIME_SLOTS as $slot) {
+                $scheduledAt = $this->resolveScheduledAt($dateValue, $slot);
+
+                if ($scheduledAt !== null && $scheduledAt->gt($from)) {
+                    $candidates->push($scheduledAt);
+                }
+            }
+        }
+
+        return $candidates;
+    }
+
+    private function resolveMaximumRescheduleDate(?Carbon $now = null): Carbon
+    {
+        return ($now ?? now())
+            ->copy()
+            ->startOfDay()
+            ->addDays(self::CUSTOMER_RESCHEDULE_WINDOW_DAYS - 1);
+    }
+
+    private function resolveScheduledAt(string $date, string $slot): ?Carbon
+    {
+        $startTime = trim(explode('-', $slot, 2)[0] ?? '');
+        if ($startTime === '') {
+            return null;
+        }
+
+        $timezone = config('app.timezone') ?: 'Asia/Ho_Chi_Minh';
+
+        try {
+            return Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}", $timezone);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function resolveSlotValueFromStart(Carbon $scheduledAt): ?string
+    {
+        $startTime = $scheduledAt->format('H:i');
+
+        foreach (self::FIXED_TIME_SLOTS as $slot) {
+            $slotStart = trim(explode('-', $slot, 2)[0] ?? '');
+
+            if ($slotStart === $startTime) {
+                return $slot;
+            }
+        }
+
+        return null;
+    }
+
+    private function formatSlotForDisplay(string $slot): string
+    {
+        return str_replace('-', ' - ', $slot);
+    }
+
+    private function formatScheduleForDisplay(Carbon $scheduledAt): string
+    {
+        $slot = $this->resolveSlotValueFromStart($scheduledAt);
+
+        return trim(
+            ($slot ? $this->formatSlotForDisplay($slot) : $scheduledAt->format('H:i'))
+            . ' ngÃ y '
+            . $scheduledAt->format('d/m/Y')
+        );
+    }
+
+    private function notifyCustomerAboutBookingUpdate(
+        DonDatLich $booking,
+        string $title,
+        string $message,
+        string $type = 'booking_status_updated',
+        ?string $actionLabel = null
+    ): void {
+        try {
+            $booking->khachHang?->notify(new BookingStatusNotification(
+                $booking,
+                $title,
+                $message,
+                $type,
+                $actionLabel
+            ));
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('Customer booking notification failed', [
+                'booking_id' => $booking->id,
+                'customer_id' => $booking->khach_hang_id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function buildCustomerStatusNotificationContent(DonDatLich $booking, User $actor, string $previousStatus): ?array
+    {
+        $actorName = $booking->tho?->name ?? $actor->name ?? 'há»‡ thá»‘ng';
+        $status = $booking->trang_thai;
+
+        if ($previousStatus === $status) {
+            return null;
+        }
+
+        return match ($status) {
+            'da_xac_nhan' => [
+                'title' => 'ÄÆ¡n Ä‘áº·t lá»‹ch Ä‘Ã£ Ä‘Æ°á»£c xÃ¡c nháº­n',
+                'message' => 'Thá»£ ' . $actorName . ' Ä‘Ã£ xÃ¡c nháº­n lá»‹ch háº¹n cho Ä‘Æ¡n #' . $booking->id . '.',
+                'type' => 'booking_claimed',
+            ],
+            'dang_lam' => [
+                'title' => 'Thá»£ Ä‘ang xá»­ lÃ½ Ä‘Æ¡n Ä‘áº·t lá»‹ch',
+                'message' => 'Thá»£ ' . $actorName . ' Ä‘ang báº¯t Ä‘áº§u xá»­ lÃ½ Ä‘Æ¡n #' . $booking->id . ' cá»§a báº¡n.',
+                'type' => 'booking_in_progress',
+            ],
+            'cho_hoan_thanh' => [
+                'title' => 'ÄÆ¡n Ä‘áº·t lá»‹ch Ä‘ang chá» hoÃ n táº¥t',
+                'message' => 'Thá»£ ' . $actorName . ' Ä‘Ã£ cáº­p nháº­t Ä‘Æ¡n #' . $booking->id . ' sang tráº¡ng thÃ¡i chá» xÃ¡c nháº­n tiá»n máº·t.',
+                'type' => 'booking_waiting_completion',
+            ],
+            'cho_thanh_toan' => [
+                'title' => 'ÄÆ¡n Ä‘áº·t lá»‹ch Ä‘ang chá» thanh toÃ¡n trá»±c tuyáº¿n',
+                'message' => 'Thá»£ ' . $actorName . ' Ä‘Ã£ hoÃ n thÃ nh Ä‘Æ¡n #' . $booking->id . '. Vui lÃ²ng chá»n cá»•ng thanh toÃ¡n Ä‘á»ƒ hoÃ n táº¥t.',
+                'type' => 'booking_waiting_completion',
+            ],
+            'cho_thanh_toan' => [
+                'title' => 'Ã„ÂÃ†Â¡n Ã„â€˜Ã¡ÂºÂ·t lÃ¡Â»â€¹ch Ã„â€˜ang chÃ¡Â»Â thanh toÃƒÂ¡n trÃ¡Â»Â±c tuyÃ¡ÂºÂ¿n',
+                'message' => 'ThÃ¡Â»Â£ ' . $actorName . ' Ã„â€˜ÃƒÂ£ hoÃƒÂ n thÃƒÂ nh Ã„â€˜Ã†Â¡n #' . $booking->id . '. Vui lÃƒÂ²ng chÃ¡Â»Ân cÃƒÂ´ng thanh toÃƒÂ¡n Ã„â€˜Ã¡Â»Æ’ hoÃƒÂ n tÃ¡ÂºÂ¥t.',
+                'type' => 'booking_waiting_completion',
+            ],
+            'da_huy' => [
+                'title' => 'ÄÆ¡n Ä‘áº·t lá»‹ch Ä‘Ã£ bá»‹ há»§y',
+                'message' => 'ÄÆ¡n #' . $booking->id . ' Ä‘Ã£ bá»‹ há»§y.'
+                    . ($booking->ly_do_huy ? ' LÃ½ do: ' . $booking->ly_do_huy . '.' : ''),
+                'type' => 'booking_cancelled',
+            ],
+            'da_xong' => [
+                'title' => 'ÄÆ¡n Ä‘áº·t lá»‹ch Ä‘Ã£ hoÃ n táº¥t',
+                'message' => 'ÄÆ¡n #' . $booking->id . ' Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t thÃ nh hoÃ n táº¥t.',
+                'type' => 'booking_completed',
+            ],
+            default => [
+                'title' => 'ÄÆ¡n Ä‘áº·t lá»‹ch vá»«a Ä‘Æ°á»£c cáº­p nháº­t',
+                'message' => 'ÄÆ¡n #' . $booking->id . ' Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t sang tráº¡ng thÃ¡i "' . DonDatLich::statusLabel($status) . '".',
+                'type' => 'booking_status_updated',
+            ],
+        };
+    }
+
+    private function isAdmin(User $user): bool
+    {
+        return $user->role === 'admin';
+    }
+

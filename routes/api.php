@@ -20,6 +20,8 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Public browse APIs
 Route::get('/danh-muc-dich-vu', [DanhMucDichVuController::class, 'index']);
@@ -44,10 +46,10 @@ Route::get('/payment/zalopay-return', [PaymentController::class, 'zalopayReturn'
 Route::prefix('chat')
     ->middleware([ResolveChatIdentity::class, EnsureGuestToken::class])
     ->group(function () {
-        Route::get('/history', [ChatbotController::class, 'history']);
-        Route::post('/send', [ChatbotController::class, 'send']);
-        Route::post('/sync-guest', [ChatbotController::class, 'syncGuest']);
-        Route::post('/ai-response', [ChatbotController::class, 'aiResponse']);
+        Route::get('/history', [ChatbotController::class, 'history'])->middleware('throttle:chat-history');
+        Route::post('/send', [ChatbotController::class, 'send'])->middleware('throttle:chat-send');
+        Route::post('/sync-guest', [ChatbotController::class, 'syncGuest'])->middleware('throttle:chat-sync');
+        Route::post('/ai-response', [ChatbotController::class, 'aiResponse'])->middleware('throttle:chat-admin-preview');
     });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -94,8 +96,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/don-dat-lich/{id}', [\App\Http\Controllers\Api\DonDatLichController::class, 'show']);
         Route::put('/don-dat-lich/{id}/reschedule', [\App\Http\Controllers\Api\DonDatLichController::class, 'reschedule']);
         Route::post('/don-dat-lich/{id}/claim', [\App\Http\Controllers\Api\DonDatLichController::class, 'claimJob']);
+        Route::post('/don-dat-lich/{id}/report-customer-unreachable', [\App\Http\Controllers\Api\DonDatLichController::class, 'reportCustomerUnreachable']);
         Route::put('/don-dat-lich/{id}/status', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateStatus']);
         Route::put('/don-dat-lich/{id}/update-costs', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateCosts']);
+        Route::post('/don-dat-lich/{id}/complaint', [\App\Http\Controllers\Api\DonDatLichController::class, 'submitComplaint']);
         Route::post('/don-dat-lich/{id}/parts/{partIndex}/confirm-warranty', [\App\Http\Controllers\Api\DonDatLichController::class, 'confirmPartWarranty']);
         Route::put('/bookings/{id}/payment-method', [\App\Http\Controllers\Api\DonDatLichController::class, 'updatePaymentMethod']);
         Route::post('/bookings/{id}/request-payment', [\App\Http\Controllers\Api\DonDatLichController::class, 'requestPayment']);
@@ -114,15 +118,23 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/dispatch', [\App\Http\Controllers\Api\AdminDispatchController::class, 'index']);
             Route::get('/dispatch/{bookingId}', [\App\Http\Controllers\Api\AdminDispatchController::class, 'show']);
             Route::post('/dispatch/{bookingId}/assign', [\App\Http\Controllers\Api\AdminDispatchController::class, 'assign']);
-            Route::post('/customers/{id}/notes', [\App\Http\Controllers\Api\AdminController::class, 'storeCustomerNote']);
+
             Route::get('/customer-feedback', [\App\Http\Controllers\Api\AdminController::class, 'getCustomerFeedback']);
             Route::post('/customer-feedback/{caseKey}/claim', [\App\Http\Controllers\Api\AdminController::class, 'claimCustomerFeedbackCase']);
             Route::post('/customer-feedback/{caseKey}/resolve', [\App\Http\Controllers\Api\AdminController::class, 'resolveCustomerFeedbackCase']);
             Route::get('/users', [\App\Http\Controllers\Api\AdminController::class, 'getUsers']);
             Route::patch('/users/{id}/toggle-status', [\App\Http\Controllers\Api\AdminController::class, 'toggleUserStatus']);
             Route::get('/worker-profiles', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerProfiles']);
+            Route::post('/workers', [\App\Http\Controllers\Api\AdminController::class, 'storeWorker']);
+            Route::get('/workers/{userId}', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerDetail']);
+            Route::put('/workers/{userId}', [\App\Http\Controllers\Api\AdminController::class, 'updateWorker']);
+            Route::delete('/workers/{userId}', [\App\Http\Controllers\Api\AdminController::class, 'destroyWorker']);
             Route::patch('/worker-profiles/{userId}/approval', [\App\Http\Controllers\Api\AdminController::class, 'updateWorkerApproval']);
             Route::get('/bookings', [\App\Http\Controllers\Api\AdminController::class, 'getAllBookings']);
+            Route::get('/bookings/export', [\App\Http\Controllers\Api\AdminController::class, 'exportBookings']);
+            Route::get('/bookings/{id}', [\App\Http\Controllers\Api\AdminController::class, 'getBookingDetail'])->whereNumber('id');
+            Route::post('/bookings/{id}/assign-worker', [\App\Http\Controllers\Api\AdminController::class, 'assignBookingWorker'])->whereNumber('id');
+            Route::put('/bookings/{id}/financials', [\App\Http\Controllers\Api\AdminController::class, 'updateBookingFinancials'])->whereNumber('id');
             Route::get('/services', [\App\Http\Controllers\Api\AdminController::class, 'getServices']);
             Route::post('/services', [\App\Http\Controllers\Api\AdminController::class, 'storeService']);
             Route::put('/services/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateService']);
@@ -135,6 +147,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/trieu-chung', [\App\Http\Controllers\Api\AdminController::class, 'storeSymptom']);
             Route::put('/trieu-chung/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateSymptom']);
             Route::delete('/trieu-chung/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroySymptom']);
+            Route::get('/tri-thuc-sua-chua', [\App\Http\Controllers\Api\AdminController::class, 'getRepairKnowledgeTree']);
+            Route::post('/nguyen-nhan', [\App\Http\Controllers\Api\AdminController::class, 'storeCause']);
+            Route::put('/nguyen-nhan/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateCause']);
+            Route::delete('/nguyen-nhan/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroyCause']);
             Route::get('/huong-xu-ly', [\App\Http\Controllers\Api\AdminController::class, 'getResolutions']);
             Route::post('/huong-xu-ly', [\App\Http\Controllers\Api\AdminController::class, 'storeResolution']);
             Route::put('/huong-xu-ly/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateResolution']);

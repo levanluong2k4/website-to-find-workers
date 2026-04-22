@@ -56,7 +56,7 @@ class AdminDispatchController extends Controller
 
         $filteredQueue = $queue
             ->filter(function (DonDatLich $booking) use ($search, $serviceId, $date) {
-                $serviceIds = $this->resolveDispatchServiceIds($booking);
+                $serviceIds = $booking->resolveServiceIds();
                 $bookingDate = $booking->ngay_hen?->toDateString()
                     ?? $booking->thoi_gian_hen?->toDateString();
 
@@ -136,7 +136,7 @@ class AdminDispatchController extends Controller
                         'customer_phone' => $booking->khachHang?->phone,
                         'customer_avatar' => $booking->khachHang?->avatar,
                         'service_label' => $this->buildServiceLabel($booking),
-                        'service_ids' => $this->resolveDispatchServiceIds($booking),
+                        'service_ids' => $booking->resolveServiceIds(),
                         'schedule_label' => $this->formatScheduleLabel($booking),
                         'booking_date' => $booking->ngay_hen?->toDateString()
                             ?? $booking->thoi_gian_hen?->toDateString(),
@@ -180,7 +180,7 @@ class AdminDispatchController extends Controller
                     'status_label' => $this->formatStatusLabel($booking->trang_thai),
                     'status_tone' => $this->resolveStatusTone($booking->trang_thai),
                     'service_label' => $this->buildServiceLabel($booking),
-                    'service_ids' => $this->resolveDispatchServiceIds($booking),
+                    'service_ids' => $booking->resolveServiceIds(),
                     'service_labels' => $booking->dichVus->pluck('ten_dich_vu')->filter()->values(),
                     'schedule_label' => $this->formatScheduleLabel($booking),
                     'booking_date' => $booking->ngay_hen?->toDateString()
@@ -201,7 +201,7 @@ class AdminDispatchController extends Controller
                     ],
                 ],
                 'eligibility' => [
-                    'required_service_count' => count($this->resolveDispatchServiceIds($booking)),
+                    'required_service_count' => count($booking->resolveServiceIds()),
                     'matching_workers' => $candidateBundle['matching_workers'],
                     'available_workers' => $candidateBundle['available_workers'],
                     'unavailable_workers' => $candidateBundle['unavailable_workers'],
@@ -254,7 +254,7 @@ class AdminDispatchController extends Controller
             return $this->errorResponse('Thợ này hiện không sẵn sàng nhận việc.', 422);
         }
 
-        if (!$this->workerSupportsBookingServices($worker, $booking)) {
+        if (!$worker->supportsServiceIds($booking->resolveServiceIds())) {
             return $this->errorResponse('Thợ này không thuộc nhóm dịch vụ của đơn.', 422);
         }
 
@@ -282,7 +282,7 @@ class AdminDispatchController extends Controller
 
             User::query()->whereKey($worker->id)->lockForUpdate()->first();
 
-            if ($this->workerHasScheduleConflict($worker->id, $bookingDate, $timeSlot)) {
+            if (DonDatLich::query()->conflictsWithWorkerSchedule($worker->id, $bookingDate, $timeSlot)->exists()) {
                 return $this->errorResponse('Thợ này vừa phát sinh lịch trùng khung giờ. Vui lòng chọn người khác.', 409, [
                     'worker_id' => ['Lịch thợ đã thay đổi.'],
                 ]);
@@ -338,7 +338,7 @@ class AdminDispatchController extends Controller
 
     private function buildCandidateBundle(DonDatLich $booking): array
     {
-        $serviceIds = $this->resolveDispatchServiceIds($booking);
+        $serviceIds = $booking->resolveServiceIds();
         $bookingDate = $booking->ngay_hen?->toDateString()
             ?? $booking->thoi_gian_hen?->toDateString();
         $timeSlot = DonDatLich::normalizeTimeSlot((string) $booking->khung_gio_hen);
@@ -523,52 +523,6 @@ class AdminDispatchController extends Controller
             'candidates' => $availableCandidates,
             'unavailable_candidates' => $unavailableCandidates,
         ];
-    }
-
-    private function resolveDispatchServiceIds(DonDatLich $booking): array
-    {
-        $serviceIds = $booking->relationLoaded('dichVus')
-            ? $booking->dichVus->pluck('id')
-            : $booking->dichVus()->pluck('danh_muc_dich_vu.id');
-
-        if ($serviceIds->isEmpty() && !empty($booking->dich_vu_id)) {
-            $serviceIds = collect([(int) $booking->dich_vu_id]);
-        }
-
-        return $serviceIds
-            ->map(static fn ($id) => (int) $id)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    private function workerSupportsBookingServices(User $worker, DonDatLich $booking): bool
-    {
-        $bookingServiceIds = collect($this->resolveDispatchServiceIds($booking));
-
-        if ($bookingServiceIds->isEmpty()) {
-            return false;
-        }
-
-        $workerServiceIds = $worker->relationLoaded('dichVus')
-            ? $worker->dichVus->pluck('id')
-            : $worker->dichVus()->pluck('danh_muc_dich_vu.id');
-
-        return $bookingServiceIds->diff(
-            $workerServiceIds
-                ->map(static fn ($id) => (int) $id)
-                ->filter()
-                ->unique()
-                ->values()
-        )->isEmpty();
-    }
-
-    private function workerHasScheduleConflict(int $workerId, string $date, string $timeSlot): bool
-    {
-        return DonDatLich::query()
-            ->conflictsWithWorkerSchedule($workerId, $date, $timeSlot)
-            ->exists();
     }
 
     private function notifyWorkerAboutAssignment(User $worker, DonDatLich $booking): void

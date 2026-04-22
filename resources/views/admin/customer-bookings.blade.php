@@ -374,6 +374,8 @@
 @endpush
 
 @section('content')
+<app-navbar></app-navbar>
+
 <section class="customer-history-page py-4">
     <div class="container-xxl">
         <div class="customer-history-shell" id="customerHistoryApp" data-customer-id="{{ $id }}">

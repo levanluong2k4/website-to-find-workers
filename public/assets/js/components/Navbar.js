@@ -112,6 +112,7 @@ class AppNavbar extends HTMLElement {
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/customers') ? ' active' : ''}" href="/admin/customers"><i class="fas fa-user-friends me-2 text-muted"></i>Khách hàng</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/customer-feedback') ? ' active' : ''}" href="/admin/customer-feedback"><i class="fas fa-headset me-2 text-muted"></i>Feedback KH</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/users') ? ' active' : ''}" href="/admin/users"><i class="fas fa-users-cog me-2 text-muted"></i>Thành viên</a></li>
+                    <li><a class="dropdown-item py-2${isCurrentPath('/admin/worker-schedules') ? ' active' : ''}" href="/admin/worker-schedules"><i class="fas fa-calendar-days me-2 text-muted"></i>Lịch thợ</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/services') ? ' active' : ''}" href="/admin/services"><i class="fas fa-list me-2 text-muted"></i>Dịch vụ</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/linh-kien') ? ' active' : ''}" href="/admin/linh-kien"><i class="fas fa-microchip me-2 text-muted"></i>Linh kiện</a></li>
                     <li><a class="dropdown-item py-2${isCurrentPath('/admin/trieu-chung') ? ' active' : ''}" href="/admin/trieu-chung"><i class="fas fa-stethoscope me-2 text-muted"></i>Triệu chứng</a></li>
@@ -208,7 +209,7 @@ class AppNavbar extends HTMLElement {
                     <a class="${navLinkClass(isCurrentPath('/admin/bookings'))}" href="/admin/bookings" style="${navLinkStyle()}">Lịch sử đơn</a>
                 </li>
                 <li class="nav-item">
-                    <a class="${navLinkClass(isCurrentPath('/admin/dispatch'))}" href="/admin/dispatch" style="${navLinkStyle()}">Điều phối thợ</a>
+                    <a class="${navLinkClass(isCurrentPath('/admin/dispatch', '/admin/worker-schedules'))}" href="/admin/dispatch" style="${navLinkStyle()}">Điều phối thợ</a>
                 </li>
                 <li class="nav-item">
                     <a class="${navLinkClass(isCurrentPath('/admin/services'))}" href="/admin/services" style="${navLinkStyle()}">Dịch vụ</a>
@@ -982,6 +983,7 @@ class AppNavbar extends HTMLElement {
                 <li><a class="dropdown-item py-2${isCurrentPath('/admin/dispatch') ? ' active' : ''}" href="/admin/dispatch"><i class="fas fa-diagram-project me-2 text-muted"></i>Điều phối</a></li>
                 <li><a class="dropdown-item py-2${isCurrentPath('/admin/customers') ? ' active' : ''}" href="/admin/customers"><i class="fas fa-user-friends me-2 text-muted"></i>Khách hàng</a></li>
                 <li><a class="dropdown-item py-2${isCurrentPath('/admin/users') ? ' active' : ''}" href="/admin/users"><i class="fas fa-users-cog me-2 text-muted"></i>Thành viên</a></li>
+                <li><a class="dropdown-item py-2${isCurrentPath('/admin/worker-schedules') ? ' active' : ''}" href="/admin/worker-schedules"><i class="fas fa-calendar-days me-2 text-muted"></i>Lịch thợ</a></li>
                 <li><a class="dropdown-item py-2${isCurrentPath('/admin/services') ? ' active' : ''}" href="/admin/services"><i class="fas fa-layer-group me-2 text-muted"></i>Dịch vụ</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item py-2 text-danger fw-bold cursor-pointer" data-navbar-logout="1">Đăng xuất</a></li>
@@ -1568,6 +1570,7 @@ class AppNavbar extends HTMLElement {
                     .app-admin-topbar {
                         gap: 0.75rem;
                     }
+
                 }
             </style>
 
@@ -1654,9 +1657,11 @@ class AppNavbar extends HTMLElement {
         const links = [
             { href: '/admin/dashboard', label: 'Bảng điều khiển', icon: 'fas fa-table-columns', active: isCurrentPath('/admin/dashboard') },
             { href: '/admin/dispatch', label: 'Điều phối', icon: 'fas fa-route', active: isCurrentPath('/admin/dispatch') },
+            { href: '/admin/worker-schedules', label: 'Lịch thợ', icon: 'fas fa-calendar-days', active: isCurrentPath('/admin/worker-schedules') },
             { href: '/admin/customers', label: 'Khách hàng', icon: 'fas fa-user-group', active: isCurrentPath('/admin/customers') },
             { href: '/admin/users', label: 'Thành viên', icon: 'fas fa-user-gear', active: isCurrentPath('/admin/users') },
-            { href: '/admin/services', label: 'Dịch vụ', icon: 'fas fa-screwdriver-wrench', active: isCurrentPath('/admin/services', '/admin/linh-kien', '/admin/trieu-chung', '/admin/huong-xu-ly') },
+            { href: '/admin/services', label: 'Dịch vụ', icon: 'fas fa-screwdriver-wrench', active: isCurrentPath('/admin/services', '/admin/linh-kien') },
+            { href: '/admin/tri-thuc-sua-chua', label: 'Tri thức sửa chữa', icon: 'fas fa-diagram-project', active: isCurrentPath('/admin/tri-thuc-sua-chua', '/admin/trieu-chung', '/admin/nguyen-nhan', '/admin/huong-xu-ly', '/admin/gia') },
             { href: '/admin/customer-feedback', label: 'Báo cáo', icon: 'fas fa-chart-simple', active: isCurrentPath('/admin/customer-feedback', '/admin/bookings') },
             { href: '/admin/travel-fee-config', label: 'Cài đặt', icon: 'fas fa-gear', active: isCurrentPath('/admin/travel-fee-config', '/admin/assistant-soul') },
         ];
@@ -1670,7 +1675,7 @@ class AppNavbar extends HTMLElement {
     }
 
     resolveAdminSection(currentPath, isCurrentPath) {
-        if (isCurrentPath('/admin/dispatch')) {
+        if (isCurrentPath('/admin/dispatch', '/admin/worker-schedules')) {
             return { href: '/admin/dispatch', label: 'Điều phối' };
         }
 
@@ -1682,8 +1687,12 @@ class AppNavbar extends HTMLElement {
             return { href: '/admin/users', label: 'Thành viên' };
         }
 
-        if (isCurrentPath('/admin/services', '/admin/linh-kien', '/admin/trieu-chung', '/admin/huong-xu-ly')) {
+        if (isCurrentPath('/admin/services', '/admin/linh-kien')) {
             return { href: '/admin/services', label: 'Danh mục' };
+        }
+
+        if (isCurrentPath('/admin/tri-thuc-sua-chua', '/admin/trieu-chung', '/admin/nguyen-nhan', '/admin/huong-xu-ly', '/admin/gia')) {
+            return { href: '/admin/tri-thuc-sua-chua', label: 'Tri thức sửa chữa' };
         }
 
         if (isCurrentPath('/admin/travel-fee-config', '/admin/assistant-soul')) {

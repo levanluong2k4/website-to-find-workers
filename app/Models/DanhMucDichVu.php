@@ -35,6 +35,27 @@ class DanhMucDichVu extends Model
         return $this->hasMany(TrieuChung::class, 'dich_vu_id');
     }
 
+    public static function normalizeIds(mixed $value): array
+    {
+        if (is_string($value)) {
+            $value = str_contains($value, ',')
+                ? explode(',', $value)
+                : [$value];
+        }
+
+        if (!is_array($value)) {
+            $value = $value === null ? [] : [$value];
+        }
+
+        return collect($value)
+            ->filter(static fn ($id) => $id !== null && $id !== '')
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     protected function hinhAnh(): Attribute
     {
         return Attribute::make(

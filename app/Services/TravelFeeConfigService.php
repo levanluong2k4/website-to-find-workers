@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\AppSetting;
 use App\Models\User;
-use Illuminate\Support\Facades\Schema;
 
 class TravelFeeConfigService
 {
@@ -14,9 +13,15 @@ class TravelFeeConfigService
 
     private const DEFAULT_FREE_DISTANCE_KM = 1;
 
-    private const DEFAULT_STORE_ADDRESS = '2 Duong Nguyen Dinh Chieu, Vinh Tho, Nha Trang, Khanh Hoa';
+    private const DEFAULT_STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
 
     private const DEFAULT_STORE_TRANSPORT_FEE = 0;
+
+    private const DEFAULT_STORE_HOTLINE = '0905 123 456';
+
+    private const DEFAULT_STORE_OPENING_HOURS = 'Thứ 2 - CN: 07:00 - 20:00';
+
+    private const DEFAULT_COMPLAINT_WINDOW_DAYS = 3;
 
     /**
      * @var array<string, mixed>|null
@@ -93,12 +98,21 @@ class TravelFeeConfigService
             'store_transport_fee' => array_key_exists('store_transport_fee', $config)
                 ? $config['store_transport_fee']
                 : ($currentConfig['store_transport_fee'] ?? self::DEFAULT_STORE_TRANSPORT_FEE),
+            'store_hotline' => array_key_exists('store_hotline', $config)
+                ? $config['store_hotline']
+                : ($currentConfig['store_hotline'] ?? self::DEFAULT_STORE_HOTLINE),
+            'store_opening_hours' => array_key_exists('store_opening_hours', $config)
+                ? $config['store_opening_hours']
+                : ($currentConfig['store_opening_hours'] ?? self::DEFAULT_STORE_OPENING_HOURS),
+            'complaint_window_days' => array_key_exists('complaint_window_days', $config)
+                ? $config['complaint_window_days']
+                : ($currentConfig['complaint_window_days'] ?? self::DEFAULT_COMPLAINT_WINDOW_DAYS),
             'tiers' => array_key_exists('tiers', $config)
                 ? $config['tiers']
                 : ($currentConfig['tiers'] ?? []),
         ]);
 
-        if ($this->settingsTableExists()) {
+        if (AppSetting::tableExists()) {
             AppSetting::query()->updateOrCreate(
                 ['key' => self::SETTING_KEY],
                 [
@@ -154,6 +168,32 @@ class TravelFeeConfigService
         return $this->deriveStoreTransportFee($config['tiers'] ?? []) ?? self::DEFAULT_STORE_TRANSPORT_FEE;
     }
 
+    public function resolveStoreHotline(): string
+    {
+        return (string) ($this->getConfig()['store_hotline'] ?? self::DEFAULT_STORE_HOTLINE);
+    }
+
+    public function resolveStoreOpeningHours(): string
+    {
+        return (string) ($this->getConfig()['store_opening_hours'] ?? self::DEFAULT_STORE_OPENING_HOURS);
+    }
+
+    public function resolveStoreMapUrl(): string
+    {
+        $address = trim($this->resolveStoreAddress());
+
+        if ($address === '') {
+            return '';
+        }
+
+        return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($address);
+    }
+
+    public function resolveComplaintWindowDays(): int
+    {
+        return (int) ($this->getConfig()['complaint_window_days'] ?? self::DEFAULT_COMPLAINT_WINDOW_DAYS);
+    }
+
     /**
      * @return array<string, mixed>|null
      */
@@ -176,7 +216,7 @@ class TravelFeeConfigService
             return $this->setting;
         }
 
-        if (!$this->settingsTableExists()) {
+        if (!AppSetting::tableExists()) {
             $this->settingLoaded = true;
             $this->setting = null;
 
@@ -192,15 +232,6 @@ class TravelFeeConfigService
         return $this->setting;
     }
 
-    private function settingsTableExists(): bool
-    {
-        try {
-            return Schema::hasTable('app_settings');
-        } catch (\Throwable) {
-            return false;
-        }
-    }
-
     /**
      * @param  array<string, mixed>  $config
      * @return array<string, mixed>
@@ -210,6 +241,8 @@ class TravelFeeConfigService
         $defaultPerKm = round(max(0, (float) ($config['default_per_km'] ?? self::DEFAULT_PER_KM)));
         $storeAddress = trim((string) ($config['store_address'] ?? self::DEFAULT_STORE_ADDRESS));
         $rawStoreTransportFee = round(max(0, (float) ($config['store_transport_fee'] ?? self::DEFAULT_STORE_TRANSPORT_FEE)));
+        $storeHotline = trim((string) ($config['store_hotline'] ?? self::DEFAULT_STORE_HOTLINE));
+        $storeOpeningHours = trim((string) ($config['store_opening_hours'] ?? self::DEFAULT_STORE_OPENING_HOURS));
         $tiers = collect($config['tiers'] ?? [])
             ->filter(static fn ($tier) => is_array($tier))
             ->map(function (array $tier) use ($rawStoreTransportFee): array {
@@ -244,12 +277,17 @@ class TravelFeeConfigService
             ?? $this->deriveStoreTransportFee($tiers)
             ?? self::DEFAULT_STORE_TRANSPORT_FEE
         )));
+        $complaintWindowDays = (int) ($config['complaint_window_days'] ?? self::DEFAULT_COMPLAINT_WINDOW_DAYS);
+        $complaintWindowDays = max(1, min($complaintWindowDays, 30));
 
         return [
             'free_distance_km' => $freeDistanceKm,
             'default_per_km' => $defaultPerKm,
             'store_address' => $storeAddress !== '' ? $storeAddress : self::DEFAULT_STORE_ADDRESS,
             'store_transport_fee' => $storeTransportFee,
+            'store_hotline' => $storeHotline !== '' ? $storeHotline : self::DEFAULT_STORE_HOTLINE,
+            'store_opening_hours' => $storeOpeningHours !== '' ? $storeOpeningHours : self::DEFAULT_STORE_OPENING_HOURS,
+            'complaint_window_days' => $complaintWindowDays,
             'tiers' => $tiers,
         ];
     }
@@ -266,9 +304,13 @@ class TravelFeeConfigService
             'store' => [
                 'address' => $config['store_address'],
                 'transport_fee' => $config['store_transport_fee'],
+                'hotline' => $config['store_hotline'],
+                'opening_hours' => $config['store_opening_hours'],
+                'map_url' => $this->resolveStoreMapUrl(),
             ],
             'free_distance_km' => $config['free_distance_km'],
             'default_per_km' => $config['default_per_km'],
+            'complaint_window_days' => $config['complaint_window_days'],
             'tiers' => array_map(function (array $tier): array {
                 $travelFee = $this->resolveTierTravelFee($tier);
 

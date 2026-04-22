@@ -30,6 +30,12 @@ Route::get('/drop-obsolete', function () {
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
+Route::get('/forgot-password', function () {
+    return view('auth.forgot-password');
+})->name('password.request');
+Route::get('/reset-password/{token}', function (string $token) {
+    return view('auth.reset-password', ['token' => $token]);
+})->name('password.reset');
 Route::get('/register', function () {
     return view('auth.register');
 })->name('register');
@@ -103,6 +109,7 @@ Route::prefix('worker')->group(function () {
         $statusMap = [
             'cho_xac_nhan' => 'pending',
             'da_xac_nhan' => 'upcoming',
+            'khong_lien_lac_duoc_voi_khach_hang' => 'upcoming',
             'dang_lam' => 'inprogress',
             'cho_hoan_thanh' => 'payment',
             'cho_thanh_toan' => 'payment',
@@ -165,6 +172,10 @@ Route::prefix('admin')->group(function () {
         return view('admin.users');
     })->name('admin.users');
 
+    Route::get('/workers', function () {
+        return view('admin.workers');
+    })->name('admin.workers');
+
     Route::get('/services', function () {
         return view('admin.services');
     })->name('admin.services');
@@ -173,13 +184,37 @@ Route::prefix('admin')->group(function () {
         return view('admin.parts');
     })->name('admin.parts');
 
+    Route::get('/tri-thuc-sua-chua', function () {
+        return view('admin.repair-knowledge');
+    })->name('admin.repair-knowledge');
+
     Route::get('/trieu-chung', function () {
-        return view('admin.symptoms');
+        return redirect()->route('admin.repair-knowledge', array_merge(
+            request()->query(),
+            ['focus' => request()->query('focus', 'symptom')]
+        ));
     })->name('admin.symptoms');
 
+    Route::get('/nguyen-nhan', function () {
+        return redirect()->route('admin.repair-knowledge', array_merge(
+            request()->query(),
+            ['focus' => request()->query('focus', 'cause')]
+        ));
+    })->name('admin.causes');
+
     Route::get('/huong-xu-ly', function () {
-        return view('admin.resolutions');
+        return redirect()->route('admin.repair-knowledge', array_merge(
+            request()->query(),
+            ['focus' => request()->query('focus', 'resolution')]
+        ));
     })->name('admin.resolutions');
+
+    Route::get('/gia', function () {
+        return redirect()->route('admin.repair-knowledge', array_merge(
+            request()->query(),
+            ['focus' => request()->query('focus', 'price')]
+        ));
+    })->name('admin.repair-prices');
 
     Route::get('/assistant-soul', function () {
         return view('admin.assistant-soul');
@@ -192,6 +227,10 @@ Route::prefix('admin')->group(function () {
     Route::get('/bookings', function () {
         return view('admin.bookings');
     })->name('admin.bookings');
+
+    Route::get('/worker-schedules', function () {
+        return view('admin.worker-schedules');
+    })->name('admin.worker-schedules');
 
     Route::get('/dispatch', function () {
         return view('admin.dispatch');

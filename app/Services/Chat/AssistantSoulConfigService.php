@@ -4,7 +4,6 @@ namespace App\Services\Chat;
 
 use App\Models\AppSetting;
 use App\Models\User;
-use Illuminate\Support\Facades\Schema;
 
 class AssistantSoulConfigService
 {
@@ -66,7 +65,7 @@ class AssistantSoulConfigService
      */
     public function updateConfig(array $config, ?User $user = null): void
     {
-        if (!$this->settingsTableExists()) {
+        if (!AppSetting::tableExists()) {
             return;
         }
 
@@ -85,7 +84,7 @@ class AssistantSoulConfigService
 
     public function resetConfig(): void
     {
-        if (!$this->settingsTableExists()) {
+        if (!AppSetting::tableExists()) {
             return;
         }
 
@@ -114,7 +113,7 @@ class AssistantSoulConfigService
             return $this->overrideSetting;
         }
 
-        if (!$this->settingsTableExists()) {
+        if (!AppSetting::tableExists()) {
             return null;
         }
 
@@ -125,23 +124,6 @@ class AssistantSoulConfigService
         $this->overrideSettingLoaded = true;
 
         return $this->overrideSetting;
-    }
-
-    private function settingsTableExists(): bool
-    {
-        static $exists;
-
-        if ($exists !== null) {
-            return $exists;
-        }
-
-        try {
-            $exists = Schema::hasTable('app_settings');
-        } catch (\Throwable) {
-            $exists = false;
-        }
-
-        return $exists;
     }
 
     /**

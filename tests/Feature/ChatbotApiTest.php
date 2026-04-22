@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ChatMemory;
 use App\Models\ChatMagic;
 use App\Models\User;
 use Illuminate\Http\Client\Request as HttpRequest;
@@ -24,9 +25,17 @@ class ChatbotApiTest extends TestCase
         config([
             'services.gemini.api_key' => 'test-key',
             'services.gemini.model' => 'gemini-2.5-flash',
+            'services.gemini.fallback_models' => ['gemini-2.5-flash-lite'],
             'services.gemini.base_url' => 'https://generativelanguage.googleapis.com/v1beta/models',
             'services.gemini.timeout' => 5,
+            'services.gemini.retry_attempts' => 1,
+            'services.gemini.retry_base_sleep_ms' => 1,
+            'services.gemini.retry_max_sleep_ms' => 2,
             'services.gemini.force_json_response' => true,
+            'services.chat.history_rate_limit' => 60,
+            'services.chat.send_rate_limit' => 18,
+            'services.chat.sync_rate_limit' => 8,
+            'services.chat.admin_preview_rate_limit' => 20,
         ]);
     }
 
@@ -43,6 +52,10 @@ class ChatbotApiTest extends TestCase
 
     public function test_send_message_saves_user_and_assistant_records(): void
     {
+        DB::table('danh_muc_dich_vu')->insert([
+            'ten_dich_vu' => 'Sua may lanh',
+        ]);
+
         Http::fake([
             'https://generativelanguage.googleapis.com/*' => Http::response([
                 'candidates' => [
@@ -54,7 +67,7 @@ class ChatbotApiTest extends TestCase
                                         'assistant_text' => 'Ban nen kiem tra ong thoat nuoc va ve sinh dan lanh.',
                                         'cases' => [],
                                         'technicians' => [],
-                                        'youtube_links' => [],
+                'youtube_links' => [],
                                     ], JSON_UNESCAPED_UNICODE),
                                 ],
                             ],
@@ -83,6 +96,7 @@ class ChatbotApiTest extends TestCase
         $this->assertSame(2, ChatMagic::query()->count());
         $this->assertSame('user', ChatMagic::query()->orderBy('id')->first()->sender);
         $this->assertSame('assistant', ChatMagic::query()->orderByDesc('id')->first()->sender);
+        $this->assertGreaterThanOrEqual(1, ChatMemory::query()->count());
 
         Http::assertSent(function (HttpRequest $request): bool {
             $systemInstruction = (string) data_get($request->data(), 'systemInstruction.parts.0.text', '');
@@ -91,6 +105,225 @@ class ChatbotApiTest extends TestCase
                 && str_contains($systemInstruction, 'ngat cau dao')
                 && str_contains($systemInstruction, 'Can tho chuyen nghiep');
         });
+    }
+
+    public function test_send_message_includes_recalled_memory_in_ai_context(): void
+    {
+        DB::table('danh_muc_dich_vu')->insert([
+            'ten_dich_vu' => 'Sua may lanh',
+        ]);
+
+        Http::fake([
+            'https://generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                [
+                                    'text' => json_encode([
+                                        'assistant_text' => 'Toi da ghi nho nhu cau cua ban.',
+                                        'cases' => [],
+                                        'technicians' => [],
+                                        'youtube_links' => [],
+                                    ], JSON_UNESCAPED_UNICODE),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $guestToken = 'memory-guest-token';
+
+        $this->withHeader('X-Guest-Token', $guestToken)->postJson('/api/chat/send', [
+            'text' => 'toi can sua may lanh vao buoi toi o quan 7',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('chat_memories', [
+            'actor_key' => 'guest:' . $guestToken,
+            'memory_type' => 'service_interest',
+            'value' => 'Sua may lanh',
+        ]);
+
+        $this->assertDatabaseHas('chat_memories', [
+            'actor_key' => 'guest:' . $guestToken,
+            'memory_type' => 'preferred_time',
+            'value' => 'buoi toi',
+        ]);
+
+        Http::assertSent(function (HttpRequest $request): bool {
+            $systemInstruction = (string) data_get($request->data(), 'systemInstruction.parts.0.text', '');
+
+            return str_contains($systemInstruction, 'customer_memories')
+                && str_contains($systemInstruction, 'Sua may lanh')
+                && str_contains($systemInstruction, 'buoi toi');
+        });
+    }
+
+    public function test_chat_send_uses_fallback_model_when_primary_model_returns_503(): void
+    {
+        Http::fake([
+            'https://generativelanguage.googleapis.com/*gemini-2.5-flash:generateContent' => Http::response([
+                'error' => [
+                    'code' => 503,
+                    'message' => 'Primary overloaded',
+                    'status' => 'UNAVAILABLE',
+                ],
+            ], 503),
+            'https://generativelanguage.googleapis.com/*gemini-2.5-flash-lite:generateContent' => Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                [
+                                    'text' => json_encode([
+                                        'assistant_text' => 'Fallback model da tra loi.',
+                                        'cases' => [],
+                                        'technicians' => [],
+                                        'youtube_links' => [],
+                                    ], JSON_UNESCAPED_UNICODE),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'may lanh khong lanh',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.assistant_text', 'Fallback model da tra loi.');
+        $response->assertJsonPath('data.model', 'gemini-2.5-flash-lite');
+        $response->assertJsonPath('data.ai.status', 'fallback_model');
+        $response->assertJsonPath('data.ai.badge', null);
+
+        Http::assertSent(function (HttpRequest $request): bool {
+            return str_contains($request->url(), '/gemini-2.5-flash:generateContent');
+        });
+
+        Http::assertSent(function (HttpRequest $request): bool {
+            return str_contains($request->url(), '/gemini-2.5-flash-lite:generateContent');
+        });
+    }
+
+    public function test_chat_send_returns_overload_badge_when_all_ai_models_fail(): void
+    {
+        Http::fake([
+            'https://generativelanguage.googleapis.com/*' => Http::response([
+                'error' => [
+                    'code' => 503,
+                    'message' => 'All models overloaded',
+                    'status' => 'UNAVAILABLE',
+                ],
+            ], 503),
+        ]);
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'may lanh khong lanh',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'system_fallback_overloaded');
+        $response->assertJsonPath('data.ai.used_system_data', true);
+        $response->assertJsonPath('data.ai.badge.label', 'AI qua tai');
+        $response->assertJsonPath('data.ai.badge.message', 'AI qua tai, dang dung du lieu he thong');
+        $response->assertJsonPath('data.ai.degraded', true);
+    }
+
+    public function test_store_address_question_is_answered_from_system_data_without_ai_call(): void
+    {
+        Http::fake();
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'dia chi cua hang o dau',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'store_address_rule');
+
+        $assistantText = (string) $response->json('data.assistant_text');
+        $this->assertStringContainsString('Địa chỉ cửa hàng là:', $assistantText);
+        $this->assertStringContainsString('2 Đường Nguyễn Đình Chiểu', $assistantText);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_store_hotline_question_is_answered_from_system_data_without_ai_call(): void
+    {
+        Http::fake();
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'hotline cua hang la gi',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'store_hotline_rule');
+        $response->assertJsonPath('data.assistant_text', 'Hotline cửa hàng hiện tại là: 0905 123 456. Nếu cần tư vấn nhanh hoặc xác nhận lịch, bạn có thể gọi trực tiếp số này.');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_store_opening_hours_question_is_answered_from_system_data_without_ai_call(): void
+    {
+        Http::fake();
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'gio mo cua cua hang',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'store_hours_rule');
+
+        $assistantText = (string) $response->json('data.assistant_text');
+        $this->assertStringContainsString('Giờ mở cửa hiện tại của cửa hàng là:', $assistantText);
+        $this->assertStringContainsString('Thứ 2 - CN: 07:00 - 20:00', $assistantText);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_store_transport_fee_question_is_answered_from_system_data_without_ai_call(): void
+    {
+        Http::fake();
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'phi mang den cua hang la bao nhieu',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'store_transport_fee_rule');
+
+        $assistantText = (string) $response->json('data.assistant_text');
+        $this->assertStringContainsString('Hiện phí mang đến cửa hàng là 0 đồng', $assistantText);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_store_map_question_is_answered_from_system_data_without_ai_call(): void
+    {
+        Http::fake();
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'ban do cua hang o dau',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'store_map_rule');
+
+        $assistantText = (string) $response->json('data.assistant_text');
+        $this->assertStringContainsString('Cửa hàng ở:', $assistantText);
+        $this->assertStringContainsString('https://www.google.com/maps/search/?api=1&query=', $assistantText);
+
+        Http::assertNothingSent();
     }
 
     public function test_sync_guest_moves_messages_to_logged_in_user(): void
@@ -107,6 +340,18 @@ class ChatbotApiTest extends TestCase
             'sender' => 'assistant',
             'text' => 'Ban kiem tra gioang cua va dan lanh.',
             'created_at' => now(),
+        ]);
+        ChatMemory::query()->create([
+            'guest_token' => $guestToken,
+            'actor_type' => 'guest',
+            'actor_key' => 'guest:' . $guestToken,
+            'memory_type' => 'preferred_time',
+            'memory_key' => 'time:evening',
+            'label' => 'Khung gio uu tien',
+            'value' => 'buoi toi',
+            'summary' => 'Khach thuong muon dat lich vao buoi toi',
+            'confidence' => 0.84,
+            'is_active' => true,
         ]);
 
         $user = User::query()->create([
@@ -131,6 +376,15 @@ class ChatbotApiTest extends TestCase
         ]);
 
         $this->assertSame(2, ChatMagic::query()->where('user_id', $user->id)->count());
+        $this->assertDatabaseHas('chat_memories', [
+            'user_id' => $user->id,
+            'actor_key' => 'user:' . $user->id,
+            'memory_type' => 'preferred_time',
+            'value' => 'buoi toi',
+        ]);
+        $this->assertDatabaseMissing('chat_memories', [
+            'actor_key' => 'guest:' . $guestToken,
+        ]);
     }
 
     public function test_history_returns_max_10_messages(): void
@@ -276,9 +530,52 @@ class ChatbotApiTest extends TestCase
         $response->assertJsonPath('data.technicians.0.name', 'Tho May Lanh');
 
         $assistantText = (string) $response->json('data.assistant_text');
-        $this->assertStringContainsString('tho sua may lanh', strtolower($assistantText));
+        $this->assertStringContainsString('thợ', mb_strtolower($assistantText, 'UTF-8'));
+        $this->assertStringContainsString('sua may lanh', strtolower($assistantText));
 
         Http::assertNothingSent();
+    }
+
+    public function test_send_route_is_rate_limited_per_guest_identity(): void
+    {
+        config([
+            'services.chat.send_rate_limit' => 2,
+        ]);
+
+        Http::fake([
+            'https://generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                [
+                                    'text' => json_encode([
+                                        'assistant_text' => 'OK',
+                                        'cases' => [],
+                                        'technicians' => [],
+                                        'youtube_links' => [],
+                                    ], JSON_UNESCAPED_UNICODE),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $guestToken = 'rate-limit-guest';
+
+        $this->withHeader('X-Guest-Token', $guestToken)->postJson('/api/chat/send', [
+            'text' => 'may lanh khong lanh',
+        ])->assertOk();
+
+        $this->withHeader('X-Guest-Token', $guestToken)->postJson('/api/chat/send', [
+            'text' => 'may lanh chay nuoc',
+        ])->assertOk();
+
+        $this->withHeader('X-Guest-Token', $guestToken)->postJson('/api/chat/send', [
+            'text' => 'may lanh keu to',
+        ])->assertStatus(429);
     }
 
     private function prepareSchema(): void
@@ -323,6 +620,29 @@ class ChatbotApiTest extends TestCase
                 $table->longText('text');
                 $table->json('meta')->nullable();
                 $table->timestamp('created_at')->nullable();
+            });
+        }
+
+        if (!Schema::hasTable('chat_memories')) {
+            Schema::create('chat_memories', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('user_id')->nullable();
+                $table->string('guest_token', 100)->nullable();
+                $table->string('actor_type', 20);
+                $table->string('actor_key', 160);
+                $table->string('memory_type', 50);
+                $table->string('memory_key', 191);
+                $table->string('label', 255);
+                $table->text('value');
+                $table->text('summary')->nullable();
+                $table->decimal('confidence', 4, 3)->default(0.5);
+                $table->unsignedBigInteger('source_message_id')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->timestamp('last_used_at')->nullable();
+                $table->json('meta')->nullable();
+                $table->timestamps();
+
+                $table->unique(['actor_key', 'memory_type', 'memory_key'], 'chat_memories_actor_type_key_unique');
             });
         }
 
@@ -411,6 +731,7 @@ class ChatbotApiTest extends TestCase
     {
         foreach ([
             'chat_magic',
+            'chat_memories',
             'ai_knowledge_items',
             'danh_gia',
             'don_dat_lich',

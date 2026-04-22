@@ -24,12 +24,15 @@ class AiKnowledgeItem extends Model
         'metadata',
         'is_active',
         'published_at',
+        'qdrant_document_hash',
+        'qdrant_synced_at',
     ];
 
     protected $casts = [
         'metadata' => 'array',
         'is_active' => 'boolean',
         'published_at' => 'datetime',
+        'qdrant_synced_at' => 'datetime',
         'rating_avg' => 'decimal:2',
         'quality_score' => 'decimal:4',
     ];

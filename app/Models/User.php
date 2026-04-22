@@ -27,6 +27,7 @@ class User extends Authenticatable
         'google_id',
         'role',
         'is_active',
+        'locked_until',
         'email_verified_at',
         'phone_verified_at',
         'phone_verification_mode',
@@ -54,6 +55,7 @@ class User extends Authenticatable
             'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'locked_until' => 'datetime',
         ];
     }
 
@@ -92,25 +94,34 @@ class User extends Authenticatable
         return $this->hasMany(DanhGia::class, 'nguoi_danh_gia_id');
     }
 
-    public function customerNotes()
+    public function resolveServiceIds(): array
     {
-        return $this->hasMany(CustomerNote::class, 'customer_id')->latest();
+        $serviceIds = $this->relationLoaded('dichVus')
+            ? $this->dichVus->pluck('id')
+            : $this->dichVus()->pluck('danh_muc_dich_vu.id');
+
+        return $serviceIds
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
-    public function customerTags()
+    public function supportsServiceIds(array $serviceIds): bool
     {
-        return $this->belongsToMany(CustomerTag::class, 'customer_tag_assignments', 'customer_id', 'tag_id')
-            ->withPivot('admin_id')
-            ->withTimestamps();
+        $requiredServiceIds = collect($serviceIds)
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($requiredServiceIds->isEmpty()) {
+            return false;
+        }
+
+        return $requiredServiceIds->diff($this->resolveServiceIds())->isEmpty();
     }
 
-    public function customerFollowUps()
-    {
-        return $this->hasMany(CustomerFollowUp::class, 'customer_id')->latest('scheduled_at');
-    }
 
-    public function assignedCustomerFollowUps()
-    {
-        return $this->hasMany(CustomerFollowUp::class, 'assigned_admin_id')->latest('scheduled_at');
-    }
 }

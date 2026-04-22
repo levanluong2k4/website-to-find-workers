@@ -2,10 +2,10 @@
 
 namespace App\Services\Media;
 
+use App\Support\CertificatePathResolver;
 use Cloudinary\Api\ApiResponse;
 use Cloudinary\Cloudinary;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -76,66 +76,19 @@ class CloudinaryUploadService
             base_path('cacert.pem'),
             base_path('certs/cacert.pem'),
             base_path('storage/certs/cacert.pem'),
-            $this->resolveLaragonCaBundlePath(),
+            CertificatePathResolver::resolveLaragonCaBundlePath(),
             'D:\\laragon\\etc\\ssl\\cacert.pem',
             'C:\\laragon\\etc\\ssl\\cacert.pem',
         ];
 
-        foreach ($candidates as $candidate) {
-            if (!is_string($candidate) || trim($candidate) === '') {
-                continue;
-            }
+        $resolvedPath = CertificatePathResolver::resolveFromCandidates($candidates);
 
-            $normalized = $this->normalizePath($candidate);
-            if ($this->isReadableCertificateFile($normalized)) {
-                $this->resolvedCaBundlePath = $normalized;
+        if ($resolvedPath !== null) {
+            $this->resolvedCaBundlePath = $resolvedPath;
 
-                return $this->resolvedCaBundlePath;
-            }
+            return $this->resolvedCaBundlePath;
         }
 
         throw new RuntimeException('Khong tim thay file chung chi SSL hop le de tai len media.');
-    }
-
-    private function resolveLaragonCaBundlePath(): ?string
-    {
-        $phpBinaryDir = dirname(PHP_BINARY);
-        $candidates = [
-            $phpBinaryDir . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'etc' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cacert.pem',
-            $phpBinaryDir . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'etc' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'cacert.pem',
-        ];
-
-        foreach ($candidates as $candidate) {
-            $normalized = $this->normalizePath($candidate);
-            if ($this->isReadableCertificateFile($normalized)) {
-                return $normalized;
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizePath(string $path): string
-    {
-        $trimmed = trim($path);
-
-        if ($trimmed === '') {
-            return '';
-        }
-
-        $resolved = realpath($trimmed);
-
-        return $resolved !== false ? $resolved : $trimmed;
-    }
-
-    private function isReadableCertificateFile(?string $path): bool
-    {
-        if (!is_string($path) || trim($path) === '') {
-            return false;
-        }
-
-        $normalized = $this->normalizePath($path);
-
-        return is_file($normalized) && is_readable($normalized) && Str::endsWith(Str::lower($normalized), '.pem');
     }
 }

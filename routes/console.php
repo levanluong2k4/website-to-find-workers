@@ -1,7 +1,6 @@
 <?php
 
-use App\Models\CustomerFollowUp;
-use App\Models\CustomerTag;
+
 use App\Models\DanhGia;
 use App\Models\DanhMucDichVu;
 use App\Models\DonDatLich;
@@ -50,21 +49,7 @@ Artisan::command('playwright:seed-admin-crm {--json}', function () {
                 ->orWhereIn('assigned_admin_id', $existingUserIds)
                 ->delete();
 
-            DB::table('customer_follow_ups')
-                ->whereIn('customer_id', $existingUserIds)
-                ->orWhereIn('created_by_admin_id', $existingUserIds)
-                ->orWhereIn('assigned_admin_id', $existingUserIds)
-                ->delete();
 
-            DB::table('customer_notes')
-                ->whereIn('customer_id', $existingUserIds)
-                ->orWhereIn('admin_id', $existingUserIds)
-                ->delete();
-
-            DB::table('customer_tag_assignments')
-                ->whereIn('customer_id', $existingUserIds)
-                ->orWhereIn('admin_id', $existingUserIds)
-                ->delete();
         }
 
         if ($bookingIds->isNotEmpty()) {
@@ -81,7 +66,7 @@ Artisan::command('playwright:seed-admin-crm {--json}', function () {
                 ->delete();
         }
 
-        CustomerTag::query()->where('slug', $tagSlug)->delete();
+
         DanhMucDichVu::query()->where('ten_dich_vu', $serviceName)->delete();
 
         if (Schema::hasTable('otp_codes')) {
@@ -195,32 +180,7 @@ Artisan::command('playwright:seed-admin-crm {--json}', function () {
             'updated_at' => now()->subDay(),
         ]);
 
-        $tag = CustomerTag::query()->create([
-            'label' => 'Playwright Care',
-            'slug' => $tagSlug,
-            'color' => 'amber',
-        ]);
 
-        $customer->customerTags()->attach($tag->id, [
-            'admin_id' => $ownerAdmin->id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $overdueFollowUp = CustomerFollowUp::query()->create([
-            'customer_id' => $customer->id,
-            'booking_id' => $booking->id,
-            'created_by_admin_id' => $ownerAdmin->id,
-            'assigned_admin_id' => $ownerAdmin->id,
-            'title' => 'Playwright overdue callback',
-            'channel' => 'call',
-            'priority' => 'high',
-            'status' => 'pending',
-            'scheduled_at' => now()->subHours(3),
-            'note' => 'Playwright fixture: confirm refund expectation and next support step.',
-            'created_at' => now()->subHours(4),
-            'updated_at' => now()->subHours(3),
-        ]);
 
         return [
             'admin' => [
@@ -250,10 +210,7 @@ Artisan::command('playwright:seed-admin-crm {--json}', function () {
             'feedback' => [
                 'case_key' => 'low_rating-' . $review->id,
             ],
-            'follow_up' => [
-                'id' => $overdueFollowUp->id,
-                'title' => $overdueFollowUp->title,
-            ],
+
         ];
     });
 
@@ -270,3 +227,11 @@ Artisan::command('playwright:seed-admin-crm {--json}', function () {
 
 Schedule::command('app:cancel-expired-bookings')->everyMinute();
 Schedule::command('app:send-worker-booking-reminders')->everyMinute()->withoutOverlapping();
+Schedule::command('app:index-ai-knowledge')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->when(fn (): bool => trim((string) config('services.qdrant.url', '')) !== '' && trim((string) config('services.gemini.api_key', '')) !== '');
+Schedule::command('app:cleanup-stale-qdrant-points')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->when(fn (): bool => trim((string) config('services.qdrant.url', '')) !== '');

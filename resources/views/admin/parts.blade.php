@@ -134,8 +134,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
                 <div class="catalog-switch">
                     <a href="/admin/linh-kien" class="is-active">Linh kien</a>
-                    <a href="/admin/trieu-chung">Trieu chung</a>
-                    <a href="/admin/huong-xu-ly">Huong xu ly</a>
+                    <a href="/admin/tri-thuc-sua-chua">Tri thức sửa chữa</a>
                 </div>
                 <input type="search" class="form-control shadow-sm" id="partSearchInput" placeholder="Tim ten linh kien..." style="min-width: 240px;">
                 <select class="form-select shadow-sm" id="partServiceFilter" style="min-width: 220px;">

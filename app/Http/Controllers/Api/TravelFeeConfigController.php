@@ -32,6 +32,9 @@ class TravelFeeConfigController extends Controller
             'default_per_km' => 'nullable|numeric|min:0|max:1000000',
             'store_address' => 'required|string|max:500',
             'store_transport_fee' => 'nullable|numeric|min:0|max:100000000',
+            'store_hotline' => 'nullable|string|max:50',
+            'store_opening_hours' => 'nullable|string|max:100',
+            'complaint_window_days' => 'nullable|integer|min:1|max:30',
             'tiers' => 'required|array|min:1|max:20',
             'tiers.*.from_km' => 'required|numeric|min:0|max:1000',
             'tiers.*.to_km' => 'required|numeric|min:0|max:1000',
@@ -102,6 +105,18 @@ class TravelFeeConfigController extends Controller
 
         if ($request->exists('store_transport_fee')) {
             $payload['store_transport_fee'] = (float) $request->input('store_transport_fee');
+        }
+
+        if ($request->exists('store_hotline')) {
+            $payload['store_hotline'] = (string) $request->input('store_hotline');
+        }
+
+        if ($request->exists('store_opening_hours')) {
+            $payload['store_opening_hours'] = (string) $request->input('store_opening_hours');
+        }
+
+        if ($request->exists('complaint_window_days')) {
+            $payload['complaint_window_days'] = (int) $request->input('complaint_window_days');
         }
 
         $state = $travelFeeConfigService->updateConfig($payload, $request->user());

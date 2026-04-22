@@ -39,7 +39,7 @@ class BookingStatusNotification extends Notification
             ->line($this->message)
             ->line('Mã đơn: #' . $this->booking->id)
             ->line('Dịch vụ: ' . $this->resolveServiceNames())
-            ->line('Trạng thái hiện tại: ' . $this->resolveStatusLabel($this->booking->trang_thai))
+            ->line('Trạng thái hiện tại: ' . DonDatLich::statusLabel($this->booking->trang_thai))
             ->action($this->actionLabel ?: 'Xem chi tiết đơn đặt lịch', url('/customer/my-bookings/' . $this->booking->id))
             ->line('Cảm ơn bạn đã sử dụng dịch vụ Thợ Tốt NTU.');
     }
@@ -50,7 +50,7 @@ class BookingStatusNotification extends Notification
             'booking_id' => $this->booking->id,
             'booking_code' => '#' . $this->booking->id,
             'booking_status' => $this->booking->trang_thai,
-            'status_label' => $this->resolveStatusLabel($this->booking->trang_thai),
+            'status_label' => DonDatLich::statusLabel($this->booking->trang_thai),
             'service_name' => $this->resolveServiceNames(),
             'worker_name' => $this->booking->tho?->name,
             'title' => $this->title,
@@ -69,19 +69,5 @@ class BookingStatusNotification extends Notification
             : $this->booking->dichVus()->pluck('ten_dich_vu')->filter()->values()->all();
 
         return implode(', ', $serviceNames) ?: 'Dịch vụ sửa chữa';
-    }
-
-    private function resolveStatusLabel(?string $status): string
-    {
-        return match ($status) {
-            'cho_xac_nhan' => 'Đang tìm thợ',
-            'da_xac_nhan' => 'Đã có thợ nhận',
-            'dang_lam' => 'Đang xử lý',
-            'cho_hoan_thanh' => 'Chờ xác nhận COD',
-            'cho_thanh_toan' => 'Chờ thanh toán trực tuyến',
-            'da_xong' => 'Đã hoàn tất',
-            'da_huy' => 'Đã hủy',
-            default => 'Đang cập nhật',
-        };
     }
 }

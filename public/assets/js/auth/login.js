@@ -3,6 +3,7 @@ import { callApi, redirectAuthenticatedUser, showToast } from '/assets/js/api.js
 const config = window.authLoginConfig || {};
 const baseUrl = config.baseUrl || window.location.origin;
 const registerUrl = config.registerUrl || `${baseUrl}/register`;
+const forgotPasswordUrl = config.forgotPasswordUrl || `${baseUrl}/forgot-password`;
 const googleRedirectUrl = config.googleRedirectUrl || `${baseUrl}/auth/google/redirect`;
 const flashError = config.flashError || '';
 const initialRole = ['customer', 'worker'].includes(config.initialRole) ? config.initialRole : 'customer';
@@ -243,7 +244,18 @@ togglePasswordButton.addEventListener('click', () => {
 });
 
 forgotPasswordTrigger.addEventListener('click', () => {
-  showToast('Tính năng quên mật khẩu đang được cập nhật. Vui lòng liên hệ quản trị viên nếu cần hỗ trợ gấp.', 'info');
+  const nextUrl = new URL(forgotPasswordUrl, window.location.origin);
+  const email = emailInput.value.trim();
+
+  if (selectedRole) {
+    nextUrl.searchParams.set('role', selectedRole);
+  }
+
+  if (email) {
+    nextUrl.searchParams.set('email', email);
+  }
+
+  window.location.href = nextUrl.toString();
 });
 
 if (!googleAuthEnabled) {

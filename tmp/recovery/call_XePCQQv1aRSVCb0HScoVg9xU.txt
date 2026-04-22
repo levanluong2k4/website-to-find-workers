@@ -1,0 +1,280 @@
+        if (!$isOwner && !$isAssignedWorker && !$isAvailableJobForWorker && !$this->isAdmin($user)) {
+            return response()->json(['message' => 'Ban khong co quyen xem don nay'], 403);
+        }
+
+        return response()->json(
+            $this->serializeBookingDetail($booking, $travelFeeConfigService->resolveComplaintWindowDays())
+        );
+    }
+
+    public function reportCustomerUnreachable(Request $request, string $id)
+    {
+        $user = $request->user();
+        if (!$this->canActAsWorker($user)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $booking = DonDatLich::find($id);
+        if (!$booking) {
+            return response()->json(['success' => false, 'message' => 'Khong tim thay don.'], 404);
+        }
+
+        if (!$this->isAdmin($user) && (int) $booking->tho_id !== (int) $user->id) {
+            return response()->json(['success' => false, 'message' => 'Ban khong phai tho cua don nay.'], 403);
+        }
+
+        if ((string) $booking->trang_thai !== 'da_xac_nhan') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chi don sap toi moi co the bao khong lien lac duoc voi khach hang.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        $note = trim((string) ($validated['note'] ?? ''));
+
+        $booking->worker_contact_issue_reported_at = now();
+        $booking->worker_contact_issue_resolved_at = null;
+        $booking->worker_contact_issue_reported_by = (int) $user->id;
+        $booking->worker_contact_issue_note = $note !== ''
+            ? $note
+            : 'Tho da goi khach nhung chua lien lac duoc.';
+        $booking->save();
+
+        $this->loadBookingResponseRelations($booking);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Da bao ve he thong admin de ho tro lien he khach hang.',
+            'data' => $booking,
+        ]);
+    }
+
+    public function reschedule(RescheduleBookingRequest $request, string $id)
+    {
+        $user = $request->user();
+        $booking = DonDatLich::find($id);
+
+        if (!$booking) {
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
+        }
+
+        if (!$this->isAdmin($user) && $booking->khach_hang_id !== $user->id) {
+            return response()->json(['message' => 'Ban khong co quyen doi lich cho don nay'], 403);
+        }
+
+        if ($booking->trang_thai !== 'da_xac_nhan') {
+            return response()->json([
+                'message' => 'Chi don da duoc tho xac nhan moi duoc doi lich hen.',
+            ], 422);
+        }
+
+        if ((int) ($booking->so_lan_doi_lich ?? 0) >= self::MAX_CUSTOMER_RESCHEDULES) {
+            return response()->json([
+                'message' => 'Moi don dat lich chi duoc doi lich toi da 1 lan.',
+            ], 422);
+        }
+
+        $validated = $request->validated();
+        $requestedSchedule = $this->resolveScheduledAt($validated['ngay_hen'], $validated['khung_gio_hen']);
+        $minimumSchedule = $this->resolveMinimumRescheduleSlotStart();
+        $maximumScheduleDate = $this->resolveMaximumRescheduleDate();
+
+        if ($requestedSchedule === null || $minimumSchedule === null || $maximumScheduleDate === null) {
+            return response()->json([
+                'message' => 'Khong xac dinh duoc lich hen hop le de cap nhat.',
+            ], 422);
+        }
+
+        if (
+            $booking->ngay_hen?->toDateString() === $validated['ngay_hen']
+            && (string) $booking->khung_gio_hen === (string) $validated['khung_gio_hen']
+        ) {
+            return response()->json([
+                'message' => 'Lich moi phai khac lich hen hien tai.',
+            ], 422);
+        }
+
+        if ($requestedSchedule->lt($minimumSchedule)) {
+            return response()->json([
+                'message' => 'Lich moi phai tu ' . $this->formatScheduleForDisplay($minimumSchedule) . ' tro di.',
+                'minimum_allowed_at' => $minimumSchedule->toIso8601String(),
+                'minimum_allowed_date' => $minimumSchedule->toDateString(),
+                'minimum_allowed_slot' => $this->resolveSlotValueFromStart($minimumSchedule),
+            ], 422);
+        }
+
+        if ($requestedSchedule->gt($maximumScheduleDate->copy()->endOfDay())) {
+            return response()->json([
+                'message' => 'Lich moi chi duoc doi trong ' . self::CUSTOMER_RESCHEDULE_WINDOW_DAYS . ' ngay toi, den het ngay ' . $maximumScheduleDate->format('d/m/Y') . '.',
+                'maximum_allowed_date' => $maximumScheduleDate->toDateString(),
+            ], 422);
+        }
+
+        $booking->ngay_hen = $validated['ngay_hen'];
+        $booking->khung_gio_hen = $validated['khung_gio_hen'];
+        $booking->thoi_gian_hen = $requestedSchedule;
+        $booking->so_lan_doi_lich = (int) ($booking->so_lan_doi_lich ?? 0) + 1;
+
+        static $hasWorkerReminderSentAtColumn = null;
+        if ($hasWorkerReminderSentAtColumn === null) {
+            $hasWorkerReminderSentAtColumn = Schema::hasColumn($booking->getTable(), 'worker_reminder_sent_at');
+        }
+
+        if ($hasWorkerReminderSentAtColumn) {
+            $booking->worker_reminder_sent_at = null;
+        }
+
+        $booking->save();
+
+        return response()->json([
+            'message' => 'Da cap nhat lich hen thanh cong.',
+            'data' => [
+                'id' => $booking->id,
+                'ngay_hen' => $booking->ngay_hen?->toDateString(),
+                'khung_gio_hen' => $booking->khung_gio_hen,
+                'thoi_gian_hen' => $booking->thoi_gian_hen?->toIso8601String(),
+                'so_lan_doi_lich' => (int) ($booking->so_lan_doi_lich ?? 0),
+                'reschedule_policy' => $this->buildReschedulePolicy($booking),
+            ],
+        ]);
+    }
+
+    public function updateStatus(UpdateTrangThaiRequest $request, string $id)
+    {
+        $user = $request->user();
+        $booking = DonDatLich::find($id);
+
+        if (!$booking) {
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
+        }
+
+        $validated = $request->validated();
+        $newStatus = $validated['trang_thai'];
+        $previousStatus = $booking->trang_thai;
+
+        if ($this->isAdmin($user)) {
+            $booking->trang_thai = $newStatus;
+            if ($newStatus === 'da_huy') {
+                $this->applyCancellationReason($booking, $validated['ma_ly_do_huy'] ?? null, $validated['ly_do_huy'] ?? null);
+            }
+            if ($newStatus === 'da_xong') {
+                $booking->trang_thai_thanh_toan = true;
+            }
+        } elseif ($this->canActAsCustomer($user)) {
+            if ($newStatus === 'da_huy' && in_array($booking->trang_thai, ['cho_xac_nhan', 'da_xac_nhan'], true)) {
+                $booking->trang_thai = $newStatus;
+                $this->applyCancellationReason($booking, $validated['ma_ly_do_huy'] ?? null, $validated['ly_do_huy'] ?? null);
+            } elseif ($newStatus === 'da_xong') {
+                return response()->json([
+                    'message' => 'Khach hang khong the tu xac nhan hoan tat. Hay thanh toan chuyen khoan tren he thong hoac doi tho xac nhan tien mat.',
+                ], 400);
+            } else {
+                return response()->json(['message' => 'Khach hang khong the doi sang trang thai nay luc nay'], 400);
+            }
+        } elseif ($this->canActAsWorker($user)) {
+            if (!$this->isAdmin($user) && $booking->tho_id !== $user->id) {
+                return response()->json(['message' => 'Ban khong phai tho cua don nay'], 403);
+            }
+
+            if ($newStatus === 'da_xac_nhan' && $booking->trang_thai === 'cho_xac_nhan') {
+                $booking->trang_thai = $newStatus;
+            } elseif ($newStatus === 'dang_lam' && $booking->trang_thai === 'da_xac_nhan') {
+                $booking->trang_thai = $newStatus;
+            } elseif ($newStatus === 'cho_hoan_thanh' && $booking->trang_thai === 'dang_lam') {
+                $booking->trang_thai = $newStatus;
+            } elseif ($newStatus === 'da_huy' && in_array($booking->trang_thai, ['cho_xac_nhan', 'da_xac_nhan'], true)) {
+                $booking->trang_thai = $newStatus;
+                $this->applyCancellationReason($booking, $validated['ma_ly_do_huy'] ?? null, $validated['ly_do_huy'] ?? null);
+            } else {
+                return response()->json(['message' => 'Tho khong the nhay coc trang thai nhu vay'], 400);
+            }
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $booking->thoi_gian_hoan_thanh = $booking->trang_thai === 'da_xong'
+            ? ($booking->thoi_gian_hoan_thanh ?? now())
+            : null;
+        $this->resolveWorkerContactIssueAfterStatusChange($booking, $booking->trang_thai);
+
+        $booking->save();
+
+        if ($booking->trang_thai === 'da_xong') {
+            app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncBookingCases((int) $booking->id);
+        }
+
+        if ($previousStatus !== $booking->trang_thai && $user->role !== 'customer') {
+            $this->loadBookingResponseRelations($booking);
+            $notificationContent = $this->buildCustomerStatusNotificationContent($booking, $user, $previousStatus);
+
+            if ($notificationContent !== null) {
+                $this->notifyCustomerAboutBookingUpdate(
+                    $booking,
+                    $notificationContent['title'],
+                    $notificationContent['message'],
+                    $notificationContent['type'] ?? 'booking_status_updated',
+                    $notificationContent['action_label'] ?? null
+                );
+            }
+        }
+
+        return response()->json([
+            'message' => 'Cap nhat trang thai thanh cong',
+            'data' => $booking,
+        ]);
+    }
+
+    public function updateCosts(UpdateBookingCostsRequest $request, string $id)
+    {
+        $user = $request->user();
+        if (!$this->canActAsWorker($user)) {
+            return response()->json(['message' => 'Chi tho moi duoc quyen them phi linh kien'], 403);
+        }
+
+        $booking = DonDatLich::find($id);
+
+        if (!$booking) {
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
+        }
+
+        if (!$this->isAdmin($user) && $booking->tho_id !== $user->id) {
+            return response()->json(['message' => 'Ban khong phai tho cua don nay'], 403);
+        }
+
+        if ($booking->trang_thai !== 'dang_lam') {
+            return response()->json(['success' => false, 'message' => 'Trang thai don khong hop le.'], 400);
+        }
+
+        $validated = $request->validated();
+        $laborItems = $this->normalizeLaborCostItems($validated['chi_tiet_tien_cong'] ?? [], $booking);
+        $partItems = $this->normalizePartCostItems($validated['chi_tiet_linh_kien'] ?? [], $booking);
+
+        $booking->tien_cong = $this->sumCostItems($laborItems);
+        $booking->chi_tiet_tien_cong = $laborItems;
+        $booking->phi_linh_kien = $this->sumCostItems($partItems);
+        $booking->chi_tiet_linh_kien = $partItems;
+        $booking->tien_thue_xe = (float) ($validated['tien_thue_xe'] ?? $booking->tien_thue_xe ?? 0);
+        $booking->ghi_chu_linh_kien = $validated['ghi_chu_linh_kien'] ?? null;
+        $booking->tong_tien = (float) $booking->phi_di_lai
+            + (float) $booking->phi_linh_kien
+            + (float) $booking->tien_cong
+            + (float) $booking->tien_thue_xe;
+        $booking->gia_da_cap_nhat = true;
+        $booking->save();
+
+        return response()->json([
+            'message' => 'Cap nhat chi phi sua chua thanh cong',
+            'data' => $booking,
+        ]);
+    }
+
+    public function requestPayment(Request $request, $id, CloudinaryUploadService $cloudinaryUploadService)
+    {
+        $user = $request->user();
+        if (!$this->canActAsWorker($user)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }

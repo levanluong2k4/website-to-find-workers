@@ -432,6 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const getStatusMeta = (status) => ({
         cho_xac_nhan: { label: 'Đang chờ tiếp nhận', summary: 'Hệ thống đang tìm kỹ thuật viên phù hợp cho yêu cầu của bạn.' },
         da_xac_nhan: { label: 'Đã nhận đơn', summary: 'Kỹ thuật viên đã xác nhận đơn và sẽ đến theo lịch hẹn.' },
+        khong_lien_lac_duoc_voi_khach_hang: { label: 'Không liên lạc được', summary: 'Thợ chưa liên lạc được với bạn. Admin đang hỗ trợ đổi khung giờ hoặc hủy đơn nếu cần.' },
         dang_lam: { label: 'Đang xử lý', summary: 'Thiết bị đang được kiểm tra và xử lý tại thời điểm hiện tại.' },
         cho_hoan_thanh: { label: 'Chờ thợ xác nhận COD', summary: 'Bạn thanh toán tiền mặt trực tiếp cho thợ. Đơn sẽ hoàn tất sau khi thợ xác nhận đã thu tiền.' },
         cho_thanh_toan: { label: 'Chờ thanh toán online', summary: 'Đơn đang chờ bạn chọn ví điện tử hoặc cổng thanh toán để hoàn tất.' },
@@ -487,6 +488,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return { label: 'THANH TOÁN SAU', style: 'background: rgba(241, 245, 249, 0.95); color: #475569;' };
     };
+    const buildCustomerUnreachableNotice = (booking) => {
+        const contactIssue = booking?.worker_contact_issue || {};
+        const reporterName = contactIssue.reporter_name || booking?.tho?.name || 'Thợ phụ trách';
+        const calledPhone = contactIssue.called_phone || '';
+        const details = [`${reporterName} vừa báo chưa liên lạc được với bạn.`];
+        if (calledPhone) {
+            details.push(`Số vừa gọi: ${calledPhone}.`);
+        }
+        details.push('Admin đang hỗ trợ đổi khung giờ hoặc hủy đơn nếu cần.');
+        return `<div class="detail-summary-note"><strong>Không liên lạc được</strong>${escapeHtml(details.join(' '))}</div>`;
+    };
     const buildSummaryPrimaryActionV2 = (booking) => {
         const review = getLatestReview(booking);
         if (['cho_xac_nhan', 'da_xac_nhan'].includes(booking?.trang_thai)) {
@@ -496,6 +508,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             actions.push('<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div>');
             return `<div class="detail-summary-action-stack">${actions.join('')}</div>${buildRescheduleNote(booking)}`;
+        }
+        if (booking?.trang_thai === 'khong_lien_lac_duoc_voi_khach_hang') {
+            return `<div class="detail-summary-action-stack"><div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div></div>${buildCustomerUnreachableNotice(booking)}`;
         }
         if (['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)) {
             return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="pay">Chọn cách thanh toán</button></div>';
@@ -507,6 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildSummaryPrimaryAction = (booking) => {
         const review = getLatestReview(booking);
         if (['cho_xac_nhan', 'da_xac_nhan'].includes(booking?.trang_thai)) return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div>';
+        if (booking?.trang_thai === 'khong_lien_lac_duoc_voi_khach_hang') return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div>';
         if (['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)) {
             return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="pay">Chọn cách thanh toán</button></div>';
         }
@@ -550,9 +566,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const review = getLatestReview(booking);
         const latestPayment = getLatestPayment(booking);
         const worker = booking?.tho;
+        const contactIssue = booking?.worker_contact_issue || null;
         const status = booking?.trang_thai;
-        const accepted = Boolean(worker?.name) || ['da_xac_nhan', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong'].includes(status);
+        const accepted = Boolean(worker?.name) || ['da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong'].includes(status);
         const isPaid = booking?.trang_thai_thanh_toan || latestPayment?.trang_thai === 'success';
+        const processingTime = status === 'khong_lien_lac_duoc_voi_khach_hang'
+            ? formatTimelineDateTime(contactIssue?.reported_at || booking?.updated_at)
+            : (status === 'dang_lam' ? formatTimelineDateTime(booking?.updated_at) : '');
+        const processingDescription = status === 'khong_lien_lac_duoc_voi_khach_hang'
+            ? `Thợ ${contactIssue?.reporter_name || worker?.name || 'phụ trách'} đã gọi${contactIssue?.called_phone ? ` số ${contactIssue.called_phone}` : ''} nhưng chưa liên lạc được. Admin đang xử lý lịch hẹn cho bạn.`
+            : (status === 'dang_lam'
+                ? 'Thợ đang kiểm tra thiết bị tại chỗ'
+                : (['cho_hoan_thanh', 'cho_thanh_toan', 'da_xong'].includes(status)
+                    ? 'Bước xử lý kỹ thuật đã hoàn thành.'
+                    : 'Thiết bị sẽ được kiểm tra ngay khi kỹ thuật viên bắt đầu.'));
+        const processingStateClass = status === 'khong_lien_lac_duoc_voi_khach_hang'
+            ? 'is-active'
+            : (status === 'dang_lam'
+                ? 'is-active'
+                : (['cho_hoan_thanh', 'cho_thanh_toan', 'da_xong'].includes(status) ? 'is-complete' : 'is-disabled'));
         const paymentStepTime = ['cho_hoan_thanh', 'cho_thanh_toan'].includes(status) || isPaid
             ? formatTimelineDateTime(latestPayment?.created_at || booking?.updated_at)
             : '';
@@ -565,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const steps = [
             { icon: 'check', title: 'Đã tạo yêu cầu', time: getBookingCreatedTimeText(booking), description: '', stateClass: 'is-complete' },
             { icon: accepted ? 'check' : 'manage_accounts', title: accepted ? 'Đã nhận đơn' : 'Đang tìm kỹ thuật viên', time: accepted ? formatTimelineDateTime(booking?.updated_at) : '', description: accepted ? `${worker?.name || 'Kỹ thuật viên'} đã tiếp nhận đơn hàng của bạn.` : 'Hệ thống đang tìm kỹ thuật viên phù hợp.', stateClass: accepted ? 'is-complete' : (status === 'cho_xac_nhan' ? 'is-active' : 'is-disabled') },
-            { icon: 'build', title: 'Đang xử lý', time: status === 'dang_lam' ? formatTimelineDateTime(booking?.updated_at) : '', description: status === 'dang_lam' ? 'Thợ đang kiểm tra thiết bị tại chỗ' : (['cho_hoan_thanh', 'cho_thanh_toan', 'da_xong'].includes(status) ? 'Bước xử lý kỹ thuật đã hoàn thành.' : 'Thiết bị sẽ được kiểm tra ngay khi kỹ thuật viên bắt đầu.'), stateClass: status === 'dang_lam' ? 'is-active' : (['cho_hoan_thanh', 'cho_thanh_toan', 'da_xong'].includes(status) ? 'is-complete' : 'is-disabled') },
+            { icon: status === 'khong_lien_lac_duoc_voi_khach_hang' ? 'phone_disabled' : 'build', title: status === 'khong_lien_lac_duoc_voi_khach_hang' ? 'Không liên lạc được' : 'Đang xử lý', time: processingTime, description: processingDescription, stateClass: processingStateClass },
             { icon: 'payments', title: 'Chờ thanh toán', time: paymentStepTime, description: isPaid ? 'Đơn hàng đã được xác nhận thanh toán.' : (['cho_hoan_thanh', 'cho_thanh_toan'].includes(status) ? payableDescription : 'Thông tin thanh toán sẽ mở sau khi hoàn tất xử lý.'), stateClass: isPaid ? 'is-complete' : (['cho_hoan_thanh', 'cho_thanh_toan'].includes(status) ? 'is-active' : 'is-disabled') },
             { icon: status === 'da_huy' ? 'cancel' : 'verified', title: status === 'da_huy' ? 'Đã hủy đơn' : 'Hoàn tất & Đánh giá', time: completionStepTime, description: status === 'da_huy' ? (booking?.ly_do_huy || 'Đơn hàng đã được hủy.') : (status === 'da_xong' ? (review ? 'Bạn đã hoàn tất và gửi đánh giá cho đơn hàng này.' : 'Bước cuối sẽ mở ngay sau khi đơn hàng được hoàn tất.') : 'Bước cuối sẽ mở sau khi đơn hàng được hoàn tất.'), stateClass: status === 'da_xong' ? (review ? 'is-complete' : 'is-active') : (status === 'da_huy' ? 'is-complete' : 'is-disabled') },
         ];
@@ -1030,7 +1062,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('so_sao', selectedRating.value);
                 formData.append('nhan_xet', reviewComment?.value || '');
                 reviewMediaController.appendToFormData(formData);
-                ensureOk(await callApi('/danh-gia', 'POST', formData), 'Khong gui duoc danh gia');
+                ensureOk(await callApi('/danh-gia', 'POST', formData), 'Kh?ng g?i ???c ??nh gi?');
                 showToast('Cảm ơn bạn đã gửi đánh giá');
                 reviewModalInstance?.hide();
                 await loadBooking();
@@ -1045,3 +1077,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadBooking();
 });
+
+
+

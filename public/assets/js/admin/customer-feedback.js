@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ['Tong case', formatNumber(summary?.total_cases || 0), 'Tat ca phan hoi dang hien thi'],
             ['Danh gia thap', formatNumber(summary?.review_cases || 0), 'Review can admin xem lai'],
             ['Huy don', formatNumber(summary?.cancellation_cases || 0), 'Don huy co ly do tu khach'],
+            ['Khieu nai', formatNumber(summary?.complaint_cases || 0), 'Khieu nai sau khi don hoan tat'],
             ['Dang xu ly', formatNumber(summary?.in_progress_cases || 0), 'Case admin dang theo doi'],
             ['Da xu ly', formatNumber(summary?.resolved_cases || 0), 'Case da dong'],
         ];

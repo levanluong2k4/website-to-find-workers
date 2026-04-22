@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\DanhMucDichVu;
 use App\Models\HuongXuLy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -11,7 +12,7 @@ class HuongXuLyController extends Controller
 {
     public function index(Request $request)
     {
-        $serviceIds = $this->normalizeServiceIds(
+        $serviceIds = DanhMucDichVu::normalizeIds(
             $request->input('dich_vu_ids', $request->input('dich_vu_id'))
         );
         $keyword = trim((string) $request->input('keyword', ''));
@@ -151,27 +152,6 @@ class HuongXuLyController extends Controller
                 ['dich_vu_name', 'asc'],
                 ['ten_trieu_chung', 'asc'],
             ])
-            ->values()
-            ->all();
-    }
-
-    private function normalizeServiceIds(mixed $value): array
-    {
-        if (is_string($value)) {
-            $value = str_contains($value, ',')
-                ? explode(',', $value)
-                : [$value];
-        }
-
-        if (!is_array($value)) {
-            $value = $value === null ? [] : [$value];
-        }
-
-        return collect($value)
-            ->filter(static fn ($id) => $id !== null && $id !== '')
-            ->map(static fn ($id) => (int) $id)
-            ->filter()
-            ->unique()
             ->values()
             ->all();
     }

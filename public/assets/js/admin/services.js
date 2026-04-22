@@ -4,13 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     requireRole('admin');
 
     const PLACEHOLDER_IMAGE = '/assets/images/logontu.png';
-    const tbody = document.getElementById('servicesTableBody');
-    const form = document.getElementById('serviceForm');
-    const modalElement = document.getElementById('serviceModal');
-    const modal = new bootstrap.Modal(modalElement);
-    const statusFilter = document.getElementById('serviceStatusFilter');
-    const btnRefresh = document.getElementById('btnRefreshServices');
-    const btnAdd = document.getElementById('btnAddService');
+    const refs = {
+        tbody: document.getElementById('servicesTableBody'),
+        form: document.getElementById('serviceForm'),
+        modalElement: document.getElementById('serviceModal'),
+        statusFilter: document.getElementById('serviceStatusFilter'),
+        refresh: document.getElementById('btnRefreshServices'),
+        add: document.getElementById('btnAddService'),
+    };
 
     const fields = {
         id: document.getElementById('serviceId'),
@@ -24,9 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
         save: document.getElementById('btnSaveService'),
     };
 
-    let currentImageUrl = '';
-    let removeCurrentImage = false;
-    let localPreviewUrl = null;
+    const modal = new bootstrap.Modal(refs.modalElement);
+    const state = {
+        items: [],
+        currentImageUrl: '',
+        removeCurrentImage: false,
+        localPreviewUrl: null,
+    };
 
     const escapeHtml = (value) => (value ?? '')
         .toString()
@@ -35,40 +40,64 @@ document.addEventListener('DOMContentLoaded', () => {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;');
 
-    const revokeLocalPreview = () => {
-        if (!localPreviewUrl) {
+    const revokePreview = () => {
+        if (!state.localPreviewUrl) {
             return;
         }
 
-        URL.revokeObjectURL(localPreviewUrl);
-        localPreviewUrl = null;
+        URL.revokeObjectURL(state.localPreviewUrl);
+        state.localPreviewUrl = null;
     };
 
     const updatePreview = (src = '') => {
-        fields.preview.src = src || (!removeCurrentImage && currentImageUrl ? currentImageUrl : PLACEHOLDER_IMAGE);
+        fields.preview.src = src || (!state.removeCurrentImage && state.currentImageUrl ? state.currentImageUrl : PLACEHOLDER_IMAGE);
     };
 
     const setLoading = (isLoading) => {
         fields.save.disabled = isLoading;
         fields.save.innerHTML = isLoading
             ? '<i class="fas fa-spinner fa-spin me-2"></i>\u0110ang l\u01b0u...'
-            : '<i class="fas fa-save me-2"></i>L\u01b0u d\u1ecbch v\u1ee5';
+            : '<i class="fas fa-check-circle me-2"></i>L\u01b0u thay \u0111\u1ed3i d\u1ecbch v\u1ee5';
     };
 
-    const resetForm = () => {
-        form.reset();
+    const buildQuery = () => {
+        const status = refs.statusFilter.value;
+        return status !== '' ? `?status=${status}` : '';
+    };
+
+    const openCreateModal = () => {
+        refs.form.reset();
         fields.id.value = '';
         fields.active.checked = true;
-        fields.label.textContent = 'Th\u00eam d\u1ecbch v\u1ee5';
-        currentImageUrl = '';
-        removeCurrentImage = false;
-        revokeLocalPreview();
+        fields.label.textContent = 'Th\u00eam d\u1ecbch v\u1ee5 m\u1edbi';
+        state.currentImageUrl = '';
+        state.removeCurrentImage = false;
+        revokePreview();
         updatePreview();
     };
 
-    const renderTable = (services) => {
-        if (!services.length) {
-            tbody.innerHTML = `
+    const openEditModal = (service) => {
+        if (!service) {
+            return;
+        }
+
+        refs.form.reset();
+        fields.id.value = service.id || '';
+        fields.name.value = service.ten_dich_vu || '';
+        fields.desc.value = service.mo_ta || '';
+        fields.image.value = '';
+        fields.active.checked = Number(service.trang_thai) === 1;
+        fields.label.textContent = 'S\u1eeda d\u1ecbch v\u1ee5 m\u1edbi';
+        state.currentImageUrl = service.hinh_anh || '';
+        state.removeCurrentImage = false;
+        revokePreview();
+        updatePreview();
+        modal.show();
+    };
+
+    const renderTable = () => {
+        if (!state.items.length) {
+            refs.tbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center py-5 text-muted">
                         Kh\u00f4ng c\u00f3 d\u1ecbch v\u1ee5 n\u00e0o.
@@ -78,82 +107,46 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        tbody.innerHTML = services.map((service) => {
+        refs.tbody.innerHTML = state.items.map((service) => {
             const image = service.hinh_anh || PLACEHOLDER_IMAGE;
             const statusBadge = Number(service.trang_thai) === 1
-                ? '<span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">\u0110ang ho\u1ea1t \u0111\u1ed9ng</span>'
-                : '<span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill">\u0110\u00e3 \u1ea9n</span>';
+                ? '<span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill font-small">\u0110ang ho\u1ea1t \u0111\u1ed9ng</span>'
+                : '<span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill font-small">\u0110\u00e3 \u1ea9n</span>';
 
             return `
                 <tr>
-                    <td class="ps-4 fw-semibold text-muted">#${service.id}</td>
-                    <td><img src="${escapeHtml(image)}" alt="${escapeHtml(service.ten_dich_vu)}" class="service-thumb" onerror="this.src='${PLACEHOLDER_IMAGE}'"></td>
-                    <td class="fw-semibold">${escapeHtml(service.ten_dich_vu)}</td>
-                    <td class="text-muted">${escapeHtml(service.mo_ta || '--')}</td>
+                    <td class="ps-4">
+                        <span class="text-muted fw-bold small">#${service.id}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <img src="${escapeHtml(image)}" alt="${escapeHtml(service.ten_dich_vu || 'Dich vu')}" class="service-thumb" onerror="this.src='${PLACEHOLDER_IMAGE}'">
+                            <span class="fw-bold text-dark">${escapeHtml(service.ten_dich_vu || '--')}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="text-muted small text-truncate" style="max-width: 300px;">
+                            ${escapeHtml(service.mo_ta || '--')}
+                        </div>
+                    </td>
                     <td>${statusBadge}</td>
                     <td class="text-end pe-4">
-                        <button
-                            class="btn btn-sm btn-outline-primary me-1 btn-edit-service"
-                            data-id="${service.id}"
-                            data-name="${escapeHtml(service.ten_dich_vu)}"
-                            data-desc="${escapeHtml(service.mo_ta || '')}"
-                            data-image="${escapeHtml(service.hinh_anh || '')}"
-                            data-active="${Number(service.trang_thai) === 1 ? '1' : '0'}"
-                            title="S\u1eeda d\u1ecbch v\u1ee5"
-                        <button class="btn btn-sm btn-outline-danger btn-delete-service" data-id="${service.id}" data-name="${escapeHtml(service.ten_dich_vu)}" title="X\u00f3a d\u1ecbch v\u1ee5">
-                            <i class="fas fa-trash me-1"></i>X\u00f3a
-                        </button>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-sm btn-lumina btn-lumina-secondary px-3" data-action="edit" data-id="${service.id}">
+                                <i class="fas fa-edit me-1"></i>S\u1eeda
+                            </button>
+                            <button type="button" class="btn btn-sm btn-link text-danger text-decoration-none p-0 px-2" data-action="delete" data-id="${service.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
         }).join('');
-
-        document.querySelectorAll('.btn-edit-service').forEach((button) => {
-            button.addEventListener('click', () => {
-                fields.label.textContent = 'S\u1eeda d\u1ecbch v\u1ee5';
-                fields.id.value = button.dataset.id || '';
-                fields.name.value = button.dataset.name || '';
-                fields.desc.value = button.dataset.desc || '';
-                fields.image.value = '';
-                fields.active.checked = button.dataset.active === '1';
-                currentImageUrl = button.dataset.image || '';
-                removeCurrentImage = false;
-                revokeLocalPreview();
-                updatePreview();
-                modal.show();
-            });
-        });
-
-        document.querySelectorAll('.btn-delete-service').forEach((button) => {
-            button.addEventListener('click', async () => {
-                const confirmed = await Swal.fire({
-                    title: 'X\u00f3a d\u1ecbch v\u1ee5?',
-                    text: `D\u1ecbch v\u1ee5 "${button.dataset.name}" s\u1ebd b\u1ecb \u1ea9n kh\u1ecfi h\u1ec7 th\u1ed1ng.`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'X\u00f3a',
-                    cancelButtonText: 'H\u1ee7y',
-                    confirmButtonColor: '#dc2626',
-                });
-
-                if (!confirmed.isConfirmed) {
-                    return;
-                }
-
-                const res = await callApi(`/admin/services/${button.dataset.id}`, 'DELETE');
-                if (!res.ok) {
-                    showToast(res.data?.message || 'Kh\u00f4ng x\u00f3a \u0111\u01b0\u1ee3c d\u1ecbch v\u1ee5', 'error');
-                    return;
-                }
-
-                showToast(res.data?.message || '\u0110\u00e3 x\u00f3a d\u1ecbch v\u1ee5');
-                await fetchServices();
-            });
-        });
     };
 
     const fetchServices = async () => {
-        tbody.innerHTML = `
+        refs.tbody.innerHTML = `
             <tr>
                 <td colspan="6" class="text-center py-5">
                     <div class="spinner-border text-primary" role="status"></div>
@@ -162,31 +155,88 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>
         `;
 
-        const query = statusFilter.value !== '' ? `?status=${statusFilter.value}` : '';
-        const res = await callApi(`/admin/services${query}`);
+        try {
+            const response = await callApi(`/admin/services${buildQuery()}`);
 
-        if (!res.ok) {
-            tbody.innerHTML = `
+            if (!response?.ok) {
+                throw new Error(response?.data?.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i danh s\u00e1ch d\u1ecbch v\u1ee5');
+            }
+
+            state.items = Array.isArray(response.data?.data) ? response.data.data : [];
+            renderTable();
+        } catch (error) {
+            console.error('Load services failed:', error);
+            refs.tbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center py-5 text-danger">
                         Kh\u00f4ng t\u1ea3i \u0111\u01b0\u1ee3c danh s\u00e1ch d\u1ecbch v\u1ee5.
                     </td>
                 </tr>
             `;
+            showToast(error.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i danh s\u00e1ch d\u1ecbch v\u1ee5', 'error');
+        }
+    };
+
+    const deleteService = async (service) => {
+        if (!service) {
             return;
         }
 
-        renderTable(Array.isArray(res.data?.data) ? res.data.data : []);
+        const confirmation = await Swal.fire({
+            title: 'X\u00f3a d\u1ecbch v\u1ee5?',
+            text: `D\u1ecbch v\u1ee5 "${service.ten_dich_vu}" s\u1ebd b\u1ecb x\u00f3a kh\u1ecfi danh m\u1ee5c.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'X\u00f3a',
+            cancelButtonText: 'H\u1ee7y',
+            confirmButtonColor: '#dc2626',
+        });
+
+        if (!confirmation.isConfirmed) {
+            return;
+        }
+
+        const response = await callApi(`/admin/services/${service.id}`, 'DELETE');
+
+        if (!response?.ok) {
+            showToast(response?.data?.message || 'Kh\u00f4ng x\u00f3a \u0111\u01b0\u1ee3c d\u1ecbch v\u1ee5', 'error');
+            return;
+        }
+
+        showToast(response.data?.message || '\u0110\u00e3 x\u00f3a d\u1ecbch v\u1ee5');
+        await fetchServices();
     };
 
-    btnAdd.addEventListener('click', resetForm);
-    statusFilter.addEventListener('change', fetchServices);
-    btnRefresh.addEventListener('click', fetchServices);
+    refs.add.addEventListener('click', openCreateModal);
+    refs.statusFilter.addEventListener('change', fetchServices);
+    refs.refresh.addEventListener('click', fetchServices);
+
+    refs.tbody.addEventListener('click', async (event) => {
+        const button = event.target instanceof Element
+            ? event.target.closest('button[data-action]')
+            : null;
+        if (!button) {
+            return;
+        }
+
+        const service = state.items.find((item) => String(item.id) === String(button.dataset.id));
+
+        if (button.dataset.action === 'edit') {
+            openEditModal(service);
+            return;
+        }
+
+        if (button.dataset.action === 'delete') {
+            await deleteService(service);
+        }
+    });
+
     fields.preview.addEventListener('error', () => {
         fields.preview.src = PLACEHOLDER_IMAGE;
     });
+
     fields.image.addEventListener('change', () => {
-        revokeLocalPreview();
+        revokePreview();
 
         const [file] = fields.image.files || [];
         if (!file) {
@@ -194,28 +244,31 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        removeCurrentImage = false;
-        localPreviewUrl = URL.createObjectURL(file);
-        updatePreview(localPreviewUrl);
+        state.removeCurrentImage = false;
+        state.localPreviewUrl = URL.createObjectURL(file);
+        updatePreview(state.localPreviewUrl);
     });
+
     fields.removeImage.addEventListener('click', () => {
         fields.image.value = '';
-        revokeLocalPreview();
-        removeCurrentImage = true;
-        updatePreview();
-    });
-    modalElement.addEventListener('hidden.bs.modal', () => {
-        revokeLocalPreview();
+        revokePreview();
+        state.removeCurrentImage = true;
         updatePreview();
     });
 
-    form.addEventListener('submit', async (event) => {
+    refs.modalElement.addEventListener('hidden.bs.modal', () => {
+        revokePreview();
+        updatePreview();
+    });
+
+    refs.form.addEventListener('submit', async (event) => {
         event.preventDefault();
         setLoading(true);
 
         const serviceId = fields.id.value.trim();
         const endpoint = serviceId ? `/admin/services/${serviceId}` : '/admin/services';
         const formData = new FormData();
+
         formData.append('ten_dich_vu', fields.name.value.trim());
         formData.append('mo_ta', fields.desc.value.trim());
         formData.append('trang_thai', fields.active.checked ? '1' : '0');
@@ -228,26 +281,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (serviceId) {
             formData.append('_method', 'PUT');
 
-            if (removeCurrentImage && !imageFile) {
+            if (state.removeCurrentImage && !imageFile) {
                 formData.append('remove_image', '1');
             }
         }
 
         try {
-            const res = await callApi(endpoint, 'POST', formData);
-            if (!res.ok) {
-                showToast(res.data?.message || 'Kh\u00f4ng l\u01b0u \u0111\u01b0\u1ee3c d\u1ecbch v\u1ee5', 'error');
+            const response = await callApi(endpoint, 'POST', formData);
+
+            if (!response?.ok) {
+                showToast(response?.data?.message || 'Kh\u00f4ng l\u01b0u \u0111\u01b0\u1ee3c d\u1ecbch v\u1ee5', 'error');
                 return;
             }
 
-            showToast(res.data?.message || '\u0110\u00e3 l\u01b0u d\u1ecbch v\u1ee5');
+            showToast(response.data?.message || '\u0110\u00e3 l\u01b0u d\u1ecbch v\u1ee5');
             modal.hide();
-            resetForm();
+            openCreateModal();
             await fetchServices();
         } finally {
             setLoading(false);
         }
     });
 
+    openCreateModal();
     fetchServices();
 });

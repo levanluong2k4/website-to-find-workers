@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\DanhMucDichVu;
 use App\Models\LinhKien;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ class LinhKienController extends Controller
 {
     public function index(Request $request)
     {
-        $serviceIds = $this->normalizeServiceIds(
+        $serviceIds = DanhMucDichVu::normalizeIds(
             $request->input('dich_vu_ids', $request->input('dich_vu_id'))
         );
         $keyword = trim((string) $request->input('keyword', ''));
@@ -55,26 +56,5 @@ class LinhKienController extends Controller
                 ->where('dich_vu_id', $part->dich_vu_id)
                 ->count(),
         ]);
-    }
-
-    private function normalizeServiceIds(mixed $value): array
-    {
-        if (is_string($value)) {
-            $value = str_contains($value, ',')
-                ? explode(',', $value)
-                : [$value];
-        }
-
-        if (!is_array($value)) {
-            $value = $value === null ? [] : [$value];
-        }
-
-        return collect($value)
-            ->filter(static fn ($id) => $id !== null && $id !== '')
-            ->map(static fn ($id) => (int) $id)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
     }
 }

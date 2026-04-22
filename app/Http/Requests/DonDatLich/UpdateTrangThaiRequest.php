@@ -24,7 +24,7 @@ class UpdateTrangThaiRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'trang_thai' => 'required|string|in:da_xac_nhan,dang_lam,cho_hoan_thanh,da_xong,da_huy',
+            'trang_thai' => 'required|string|in:da_xac_nhan,khong_lien_lac_duoc_voi_khach_hang,dang_lam,cho_hoan_thanh,cho_thanh_toan,da_xong,da_huy',
             'ma_ly_do_huy' => [
                 Rule::requiredIf(fn () => $this->input('trang_thai') === 'da_huy'),
                 'nullable',

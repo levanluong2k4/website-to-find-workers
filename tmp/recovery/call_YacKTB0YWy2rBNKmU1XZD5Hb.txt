@@ -1,0 +1,196 @@
+        if (!$this->isAdmin($user) && !$isAssignedWorker) {
+            return response()->json([
+                'message' => 'Chi admin hoac tho dang phu trach don moi duoc xac nhan bao hanh.',
+            ], 403);
+        }
+
+        $partItems = is_array($booking->chi_tiet_linh_kien) ? array_values($booking->chi_tiet_linh_kien) : [];
+        if (!array_key_exists($partIndex, $partItems)) {
+            return response()->json(['message' => 'Khong tim thay linh kien can xac nhan bao hanh.'], 404);
+        }
+
+        $partItem = $partItems[$partIndex];
+        $warrantyMonths = isset($partItem['bao_hanh_thang']) ? (int) $partItem['bao_hanh_thang'] : 0;
+        if ($warrantyMonths <= 0) {
+            return response()->json(['message' => 'Linh kien nay khong co thong tin bao hanh hop le.'], 422);
+        }
+
+        if (!$booking->thoi_gian_hoan_thanh) {
+            return response()->json(['message' => 'Don chua hoan thanh nen chua the xac nhan bao hanh.'], 422);
+        }
+
+        $alreadyUsed = filter_var($partItem['bao_hanh_da_su_dung'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($alreadyUsed) {
+            return response()->json(['message' => 'Linh kien nay da duoc xac nhan su dung bao hanh truoc do.'], 422);
+        }
+
+        $completedAt = $booking->thoi_gian_hoan_thanh instanceof \Illuminate\Support\Carbon
+            ? $booking->thoi_gian_hoan_thanh->copy()
+            : \Illuminate\Support\Carbon::parse($booking->thoi_gian_hoan_thanh);
+        $warrantyEndsAt = $completedAt->copy()->addMonthsNoOverflow($warrantyMonths);
+
+        if (now()->greaterThan($warrantyEndsAt)) {
+            return response()->json(['message' => 'Linh kien nay da het han bao hanh, khong the xac nhan su dung.'], 422);
+        }
+
+        $partItems[$partIndex]['bao_hanh_da_su_dung'] = true;
+        $partItems[$partIndex]['bao_hanh_xac_nhan_at'] = now()->toDateTimeString();
+        $partItems[$partIndex]['bao_hanh_xac_nhan_boi_id'] = $user->id;
+        $partItems[$partIndex]['bao_hanh_xac_nhan_boi_ten'] = $user->name;
+
+        $booking->chi_tiet_linh_kien = $partItems;
+        $booking->save();
+
+        return response()->json([
+            'message' => 'Da xac nhan linh kien da su dung bao hanh.',
+            'data' => $booking->fresh([
+                'khachHang:id,name,avatar,phone,address',
+                'tho:id,name,avatar,phone',
+                'tho.hoSoTho:user_id,danh_gia_trung_binh,tong_so_danh_gia',
+                'dichVus:id,ten_dich_vu,hinh_anh',
+                'danhGias',
+                'thanhToans',
+            ]),
+        ]);
+    }
+
+    private function normalizeLaborCostItems(array $items, ?DonDatLich $booking = null): array
+    {
+        $normalizedItems = array_values(array_filter($items, function ($item): bool {
+            return is_array($item)
+                && (
+                    trim((string) ($item['noi_dung'] ?? '')) !== ''
+                    || (float) ($item['so_tien'] ?? 0) > 0
+                    || !empty($item['huong_xu_ly_id'])
+                );
+        }));
+
+        $catalogResolutionIds = collect($normalizedItems)
+            ->pluck('huong_xu_ly_id')
+            ->filter(static fn ($id) => $id !== null && $id !== '')
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $catalogResolutions = $catalogResolutionIds->isEmpty()
+            ? collect()
+            : HuongXuLy::query()
+                ->with('nguyenNhan.trieuChungs:id,dich_vu_id')
+                ->whereIn('id', $catalogResolutionIds->all())
+                ->get()
+                ->keyBy('id');
+
+        $allowedServiceIds = $booking === null
+            ? []
+            : $this->resolveBookingServiceIds($booking);
+
+        $invalidResolutionIds = [];
+
+        $laborItems = array_map(function (array $item) use ($catalogResolutions, $allowedServiceIds, &$invalidResolutionIds): ?array {
+            $catalogResolutionId = isset($item['huong_xu_ly_id']) && $item['huong_xu_ly_id'] !== ''
+                ? (int) $item['huong_xu_ly_id']
+                : null;
+
+            /** @var \App\Models\HuongXuLy|null $catalogResolution */
+            $catalogResolution = $catalogResolutionId !== null
+                ? $catalogResolutions->get($catalogResolutionId)
+                : null;
+
+            $resolutionServiceIds = $catalogResolution === null
+                ? collect()
+                : collect($catalogResolution->nguyenNhan?->trieuChungs ?? [])
+                    ->pluck('dich_vu_id')
+                    ->map(static fn ($id) => (int) $id)
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+            if (
+                $catalogResolutionId !== null
+                && (
+                    $catalogResolution === null
+                    || ($allowedServiceIds !== [] && $resolutionServiceIds->intersect($allowedServiceIds)->isEmpty())
+                )
+            ) {
+                $invalidResolutionIds[] = $catalogResolutionId;
+
+                return null;
+            }
+
+            $matchedServiceId = $catalogResolutionId !== null
+                ? (int) (
+                    ($allowedServiceIds !== []
+                        ? $resolutionServiceIds->intersect($allowedServiceIds)->first()
+                        : $resolutionServiceIds->first())
+                    ?? 0
+                )
+                : (isset($item['dich_vu_id']) ? (int) $item['dich_vu_id'] : 0);
+
+            $resolvedAmount = $catalogResolutionId !== null
+                ? (float) ($catalogResolution?->gia_tham_khao ?? $item['so_tien'] ?? 0)
+                : (float) ($item['so_tien'] ?? 0);
+            $resolvedDescription = $catalogResolutionId !== null
+                ? trim((string) ($catalogResolution?->ten_huong_xu_ly ?? $item['noi_dung'] ?? ''))
+                : trim((string) ($item['noi_dung'] ?? ''));
+
+            return [
+                'huong_xu_ly_id' => $catalogResolutionId,
+                'nguyen_nhan_id' => $catalogResolutionId !== null
+                    ? (int) ($catalogResolution?->nguyen_nhan_id ?? 0)
+                    : (isset($item['nguyen_nhan_id']) ? (int) $item['nguyen_nhan_id'] : null),
+                'dich_vu_id' => $matchedServiceId > 0 ? $matchedServiceId : null,
+                'mo_ta_cong_viec' => $catalogResolutionId !== null
+                    ? ($catalogResolution?->mo_ta_cong_viec ?: null)
+                    : (!empty($item['mo_ta_cong_viec']) ? trim((string) $item['mo_ta_cong_viec']) : null),
+                'noi_dung' => $resolvedDescription,
+                'so_tien' => $resolvedAmount,
+            ];
+        }, $normalizedItems);
+
+        if ($invalidResolutionIds !== []) {
+            throw ValidationException::withMessages([
+                'chi_tiet_tien_cong' => ['Co huong xu ly khong thuoc nhom dich vu cua don hoac khong ton tai.'],
+            ]);
+        }
+
+        return array_values(array_filter($laborItems));
+    }
+
+    private function normalizePartCostItems(array $items, ?DonDatLich $booking = null): array
+    {
+        $normalizedItems = array_values(array_filter($items, function ($item): bool {
+            return is_array($item)
+                && (
+                    trim((string) ($item['noi_dung'] ?? '')) !== ''
+                    || (float) ($item['so_tien'] ?? 0) > 0
+                    || (float) ($item['don_gia'] ?? 0) > 0
+                    || ($item['bao_hanh_thang'] ?? null) !== null
+                    || ($item['bao_hanh_thang'] ?? null) === '0'
+                    || filter_var($item['bao_hanh_da_su_dung'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                    || !empty($item['linh_kien_id'])
+                );
+        }));
+
+        $catalogPartIds = collect($normalizedItems)
+            ->pluck('linh_kien_id')
+            ->filter(static fn ($id) => $id !== null && $id !== '')
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $catalogParts = $catalogPartIds->isEmpty()
+            ? collect()
+            : LinhKien::query()
+                ->whereIn('id', $catalogPartIds->all())
+                ->get()
+                ->keyBy('id');
+
+        $allowedServiceIds = $booking === null
+            ? []
+            : $this->resolveBookingServiceIds($booking);
+
+        $invalidPartIds = [];
+
+        $partItems = array_map(function (array $item) use ($catalogParts, $allowedServiceIds, &$invalidPartIds): ?array {

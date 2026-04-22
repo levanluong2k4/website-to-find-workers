@@ -3,276 +3,336 @@
 @section('title', 'Phí đi lại - Admin')
 
 @push('styles')
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ asset('assets/css/admin/travel-fee-config.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+tailwind.config = {
+  prefix: 'tw-',
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "surface-dim": "#d8dadc",
+        "tertiary": "#924700",
+        "on-tertiary-fixed": "#311400",
+        "inverse-on-surface": "#eff1f3",
+        "secondary-fixed": "#d8e2ff",
+        "tertiary-fixed-dim": "#ffb786",
+        "surface-container-highest": "#e0e3e5",
+        "on-background": "#191c1e",
+        "on-tertiary-fixed-variant": "#723600",
+        "on-error-container": "#93000a",
+        "tertiary-container": "#b75b00",
+        "surface-container-high": "#e6e8ea",
+        "on-secondary": "#ffffff",
+        "surface-container-low": "#f2f4f6",
+        "tertiary-fixed": "#ffdcc6",
+        "secondary-fixed-dim": "#b1c6f9",
+        "surface-variant": "#e0e3e5",
+        "on-surface": "#191c1e",
+        "on-secondary-fixed": "#001a42",
+        "surface-bright": "#f7f9fb",
+        "secondary-container": "#b6ccff",
+        "surface": "#f7f9fb",
+        "on-secondary-fixed-variant": "#304671",
+        "on-error": "#ffffff",
+        "surface-tint": "#005ac2",
+        "secondary": "#495e8a",
+        "on-tertiary": "#ffffff",
+        "background": "#f7f9fb",
+        "error": "#ba1a1a",
+        "on-primary-fixed": "#001a42",
+        "primary-fixed-dim": "#adc6ff",
+        "outline-variant": "#c2c6d6",
+        "on-tertiary-container": "#fffbff",
+        "on-surface-variant": "#424754",
+        "inverse-surface": "#2d3133",
+        "surface-container": "#eceef0",
+        "primary-container": "#2170e4",
+        "on-primary-fixed-variant": "#004395",
+        "on-primary": "#ffffff",
+        "inverse-primary": "#adc6ff",
+        "on-secondary-container": "#405682",
+        "error-container": "#ffdad6",
+        "outline": "#727785",
+        "primary-fixed": "#d8e2ff",
+        "surface-container-lowest": "#ffffff",
+        "on-primary-container": "#fefcff",
+        "primary": "#0058be"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      "fontFamily": {
+        "headline": ["Manrope"],
+        "body": ["Inter"],
+        "label": ["Inter"]
+      }
+    },
+  },
+}
+</script>
+<style>
+  .tfc-page-wrap { font-family: 'Inter', sans-serif; }
+  .tfc-page-wrap h1, .tfc-page-wrap h2, .tfc-page-wrap h3, .tfc-page-wrap .font-headline { font-family: 'Manrope', sans-serif; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px;
+    background: #0058be; border-radius: 50%; cursor: pointer;
+  }
+  /* status chip tones */
+  .tfc-status-chip[data-tone="success"] { background:#dcfce7;color:#166534; }
+  .tfc-status-chip[data-tone="danger"]  { background:#fee2e2;color:#991b1b; }
+  .tfc-status-chip[data-tone="info"]    { background:#dbeafe;color:#1e40af; }
+  /* tier table */
+  .tfc-tier-row-invalid input { border: 1.5px solid #ba1a1a !important; }
+  .tfc-field-error { color:#ba1a1a; font-size:0.75rem; margin-top:2px; min-height:1rem; }
+  /* active tier row highlight */
+  [data-tier-row].is-active { background: #eff6ff; }
+</style>
 @endpush
 
 @section('content')
 <app-navbar></app-navbar>
-<div class="tfc-shell tfc-shell--no-sidebar">
-    <div class="tfc-main-shell">
-        <header class="tfc-top">
-            <div class="tfc-top-left">
-                <nav aria-label="breadcrumb" class="tfc-breadcrumb">
-                    <a href="{{ route('admin.dashboard') }}">Dashboard</a>
-                    <i class="fa-solid fa-chevron-right"></i>
-                    <a href="#">Settings</a>
-                    <i class="fa-solid fa-chevron-right"></i>
-                    <span>Shipping</span>
-                </nav>
-                <h3>Cấu hình phí vận chuyển</h3>
-            </div>
-            <div class="tfc-top-right">
-                <div class="tfc-status-chips">
-                    <span class="tfc-chip tfc-chip--info" id="travelFeeStatusChip">Đang tải cấu hình...</span>
-                    <span class="tfc-chip tfc-chip--neutral d-none" id="travelFeeUpdatedChip"></span>
-                </div>
-                <div class="tfc-user-pill">
-                    <div class="tfc-avatar">AD</div>
-                    <div>
-                        <strong>Admin User</strong>
-                        <span>System Manager</span>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <main class="tfc-content">
-            <section class="tfc-page-head">
-                <div class="tfc-page-head__text">
-                    <div class="tfc-eyebrow">
-                        <i class="fa-solid fa-truck-fast"></i>
-                        Distance-Based Pricing
-                    </div>
-                    <h1>Cấu hình phí vận chuyển theo khoảng cách</h1>
-                    <p>Quản lý từng khoảng km với hai mức phí riêng: phí thuê xe và phí đi lại. Preview sẽ đổi realtime để admin nhìn ngay rule đang áp dụng.</p>
-                </div>
-                <div class="tfc-page-head__actions">
-                    <button type="button" class="tfc-btn tfc-btn--secondary" id="btnResetTravelFeeForm">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        Đặt lại
-                    </button>
-                    <button type="button" class="tfc-btn tfc-btn--primary" id="btnSaveTravelFee" form="travelFeeForm">
-                        <i class="fa-solid fa-floppy-disk"></i>
-                        Lưu cấu hình
-                    </button>
-                </div>
-            </section>
-
-            <div class="tfc-info-banner">
-                <div class="tfc-info-banner__icon">
-                    <i class="fa-solid fa-circle-info"></i>
-                </div>
-                <div class="tfc-info-banner__body">
-                    <strong>Nguyên tắc áp phí</strong>
-                    <p>Mỗi khoảng cách có thể mang hai mức phí: phí thuê xe và phí đi lại. Booking tại nhà ưu tiên phí đi lại theo khoảng, còn các luồng đang dùng phí thuê xe sẽ tiếp tục lấy từ cấu hình hệ thống hiện có để giữ tương thích.</p>
-                </div>
-            </div>
-
-            <div class="tfc-workspace">
-                <section class="tfc-card tfc-card--config">
-                    <form id="travelFeeForm" novalidate>
-                        <div class="tfc-form-section">
-                            <div class="tfc-section-head">
-                                <div class="tfc-section-head__icon tfc-section-head__icon--blue">
-                                    <i class="fa-solid fa-store"></i>
-                                </div>
-                                <div>
-                                    <p class="tfc-section-head__eyebrow">Store Setup</p>
-                                    <h2 class="tfc-section-head__title">Địa chỉ cửa hàng</h2>
-                                    <p class="tfc-section-head__desc">Hiển thị cho khách khi cần mang thiết bị đến cửa hàng hoặc tham chiếu vị trí khi mô phỏng khoảng cách.</p>
-                                </div>
-                            </div>
-
-                            <div class="tfc-field">
-                                <label class="tfc-field__label" for="travelFeeStoreAddress">
-                                    Địa chỉ cửa hàng
-                                    <span class="tfc-required">*</span>
-                                </label>
-                                <div class="tfc-input-wrap tfc-input-wrap--textarea">
-                                    <span class="tfc-input-wrap__icon">
-                                        <i class="fa-solid fa-location-dot"></i>
-                                    </span>
-                                    <textarea
-                                        id="travelFeeStoreAddress"
-                                        rows="3"
-                                        placeholder="VD: 245 Nguyễn Trãi, Phường 2, Quận 5, TP.HCM"
-                                    ></textarea>
-                                </div>
-                                <p class="tfc-field__hint">Bắt buộc để booking và preview hiển thị đúng thông tin cửa hàng.</p>
-                                <div class="tfc-field__error" data-error-for="store_address"></div>
-                            </div>
-                        </div>
-
-                        <div class="tfc-form-section">
-                            <div class="tfc-section-head">
-                                <div class="tfc-section-head__icon tfc-section-head__icon--purple">
-                                    <i class="fa-solid fa-table-list"></i>
-                                </div>
-                                <div class="tfc-section-head__text">
-                                    <p class="tfc-section-head__eyebrow">Distance Table</p>
-                                    <h2 class="tfc-section-head__title">Bảng cấu hình khoảng cách</h2>
-                                    <p class="tfc-section-head__desc">Mỗi dòng gồm khoảng km, phí thuê xe và phí đi lại tương ứng. Chỉnh trực tiếp từng dòng và preview sẽ cập nhật ngay.</p>
-                                </div>
-                                <button type="button" class="tfc-btn tfc-btn--ghost" id="btnAddTravelTier">
-                                    <i class="fa-solid fa-plus"></i>
-                                    Thêm khoảng
+<div class="tfc-page-wrap tw-bg-surface tw-text-on-background tw-min-h-screen">
+<form id="travelFeeForm" novalidate>
+<main class="tw-flex-1 tw-overflow-y-auto tw-p-6 md:tw-p-10 tw-space-y-10 tw-max-w-[1600px] tw-mx-auto tw-w-full">
+<!-- Alert Banner -->
+<div class="tw-bg-primary-fixed tw-text-on-primary-fixed tw-p-5 tw-rounded-2xl tw-flex tw-items-start tw-gap-4">
+<span class="material-symbols-outlined tw-text-primary" style="font-variation-settings: 'FILL' 1;">info</span>
+<div>
+<p class="tw-font-bold tw-text-sm">Lưu ý về thứ tự ưu tiên:</p>
+<p class="tw-text-xs tw-opacity-80 tw-mt-1 tw-leading-relaxed">Hệ thống sẽ tự động áp dụng bậc phí thấp nhất khớp với khoảng cách thực tế. Hãy đảm bảo các khoảng cách không bị chồng lấn để kết quả tính toán chính xác nhất.</p>
+</div>
+</div>
+<div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-8 tw-items-start">
+<!-- Section 1 & 2: Main Settings -->
+<div class="lg:tw-col-span-8 tw-space-y-8">
+<!-- Section 1: Cấu hình cơ bản -->
+<div class="tw-bg-surface-container-lowest tw-p-8 tw-rounded-3xl tw-shadow-sm">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-6">
+<h3 class="tw-text-lg tw-font-bold tw-font-headline tw-flex tw-items-center tw-gap-2">
+<span class="material-symbols-outlined tw-text-primary">charging_station</span>
+                                Cấu hình cơ bản
+                            </h3>
+<div class="tw-flex tw-gap-3">
+<button id="btnResetTravelFeeForm" class="tw-px-5 tw-py-2 tw-rounded-full tw-border tw-border-outline-variant tw-text-sm tw-font-semibold hover:tw-bg-surface-container-low tw-transition-colors tw-flex tw-items-center tw-gap-2">
+<span class="material-symbols-outlined tw-text-sm">refresh</span>
+                                    Làm mới
                                 </button>
-                            </div>
-
-                            <div class="tfc-tier-table">
-                                <div class="tfc-tier-table__head">
-                                    <div>Từ km</div>
-                                    <div>Đến km</div>
-                                    <div>Phí thuê xe</div>
-                                    <div>Phí đi lại</div>
-                                    <div class="text-center">Xóa</div>
-                                </div>
-                                <div class="tfc-tier-table__body" id="travelTierList"></div>
-                            </div>
-
-                            <div class="tfc-rule-hint">
-                                <i class="fa-solid fa-circle-info"></i>
-                                Ví dụ: 0 → 1 km có thể đặt 0 đ cho cả hai loại phí; 1 → 5 km có thể đặt phí thuê xe 50.000 đ và phí đi lại 17.000 đ.
-                            </div>
-                        </div>
-
-                        <div class="tfc-form-actions">
-                            <button type="button" class="tfc-btn tfc-btn--secondary" id="btnResetTravelFeeFormBottom">
-                                <i class="fa-solid fa-rotate-left"></i>
-                                Đặt lại mặc định
+<button id="btnSaveTravelFee" form="travelFeeForm" type="submit" class="tw-px-6 tw-py-2 tw-rounded-full tw-bg-primary tw-text-white tw-text-sm tw-font-bold hover:tw-bg-primary-container tw-transition-all active:tw-scale-95 tw-shadow-lg tw-shadow-primary/20">
+                                    Lưu thay đổi
+                                </button>
+</div>
+</div>
+<div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-6">
+<div class="tw-space-y-2">
+<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Địa chỉ cửa hàng</label>
+<div class="tw-relative group">
+<span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">location_on</span>
+<input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="text" value="" id="travelFeeStoreAddress" placeholder="VD: 2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang"/>
+</div>
+<p class="tw-text-xs tw-text-slate-500">Hiá»‡n cho khÃ¡ch khi há»i Ä‘á»‹a chá»‰ cá»­a hÃ ng vÃ  link báº£n Ä‘á»“.</p>
+<div class="tfc-field-error" data-error-for="store_address"></div>
+</div>
+<div class="tw-space-y-2">
+<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Hotline cá»­a hÃ ng</label>
+<div class="tw-relative group">
+<span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">call</span>
+<input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="text" value="" id="travelFeeStoreHotline" placeholder="VD: 0905 123 456"/>
+</div>
+<p class="tw-text-xs tw-text-slate-500">Chatbot vÃ  trang khÃ¡ch sáº½ dÃ¹ng sá»‘ nÃ y khi há»i hotline.</p>
+<div class="tfc-field-error" data-error-for="store_hotline"></div>
+</div>
+<div class="tw-space-y-2">
+<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Khung giá» má»Ÿ cá»­a</label>
+<div class="tw-relative group">
+<span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">schedule</span>
+<input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="text" value="" id="travelFeeStoreOpeningHours" placeholder="VD: Thá»© 2 - CN: 07:00 - 20:00"/>
+</div>
+<p class="tw-text-xs tw-text-slate-500">DÃ¹ng cho chatbot vÃ  cÃ¡c thÃ´ng bÃ¡o giá» nháº­n Ä‘Æ¡n táº¡i cá»­a hÃ ng.</p>
+<div class="tfc-field-error" data-error-for="store_opening_hours"></div>
+</div>
+<div class="tw-space-y-2">
+<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Thời hạn khiếu nại (Ngày)</label>
+<div class="tw-relative group">
+<span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">history</span>
+<input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="number" id="travelFeeComplaintWindowDays" value="" placeholder="3" min="1" max="30" step="1"/>
+</div>
+<p class="tw-text-xs tw-text-slate-500">DÃ¹ng cho quy táº¯c há»— trá»£ sau sá»­a chá»¯a vÃ  khiáº¿u náº¡i.</p>
+<div class="tfc-field-error" data-error-for="complaint_window_days"></div>
+</div>
+</div>
+</div>
+<!-- Section 2: Bảng cấu hình khoảng cách -->
+<div class="tw-bg-surface-container-lowest tw-p-8 tw-rounded-3xl tw-shadow-sm">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-8">
+<h3 class="tw-text-lg tw-font-bold tw-font-headline tw-flex tw-items-center tw-gap-2">
+<span class="material-symbols-outlined tw-text-primary">distance</span>
+                                Bảng cấu hình khoảng cách
+                            </h3>
+<button id="btnAddTravelTier" type="button" class="tw-flex tw-items-center tw-gap-2 tw-text-primary tw-font-bold tw-text-sm hover:tw-underline">
+<span class="material-symbols-outlined tw-text-lg">add_circle</span>
+                                Thêm khoảng mới
                             </button>
-                            <button type="submit" class="tfc-btn tfc-btn--primary" id="btnSaveTravelFeeBottom">
-                                <i class="fa-solid fa-floppy-disk"></i>
-                                Lưu cấu hình
-                            </button>
-                        </div>
-                    </form>
-                </section>
-
-                <aside class="tfc-card tfc-card--preview">
-                    <div class="tfc-preview">
-                        <div class="tfc-preview__head">
-                            <div>
-                                <p class="tfc-section-head__eyebrow">Realtime Preview</p>
-                                <h2 class="tfc-preview__title">Mô phỏng khoảng phí đang active</h2>
-                            </div>
-                            <div class="tfc-mode-toggle-group" role="tablist" aria-label="Chế độ preview">
-                                <button type="button" class="tfc-mode-toggle" data-preview-mode="travel_fee">Phí đi lại</button>
-                                <button type="button" class="tfc-mode-toggle" data-preview-mode="tiered">Bậc khoảng cách</button>
-                            </div>
-                        </div>
-
-                        <div class="tfc-stat-grid">
-                            <div class="tfc-stat-card">
-                                <div class="tfc-stat-card__icon tfc-stat-card__icon--blue">
-                                    <i class="fa-solid fa-truck-fast"></i>
-                                </div>
-                                <div class="tfc-stat-card__label">Phí thuê xe</div>
-                                <div class="tfc-stat-card__value" id="travelFeeTransportPreview">0 đ</div>
-                                <div class="tfc-stat-card__subvalue">Theo khoảng đang chọn</div>
-                            </div>
-
-                            <div class="tfc-stat-card">
-                                <div class="tfc-stat-card__icon tfc-stat-card__icon--orange">
-                                    <i class="fa-solid fa-road"></i>
-                                </div>
-                                <div class="tfc-stat-card__label">Phí đi lại</div>
-                                <div class="tfc-stat-card__value" id="travelFeeTravelPreview">0 đ</div>
-                                <div class="tfc-stat-card__subvalue">Theo khoảng đang chọn</div>
-                            </div>
-
-                            <div class="tfc-stat-card">
-                                <div class="tfc-stat-card__icon tfc-stat-card__icon--teal">
-                                    <i class="fa-solid fa-ruler-horizontal"></i>
-                                </div>
-                                <div class="tfc-stat-card__label">Khoảng đang áp dụng</div>
-                                <div class="tfc-stat-card__value" id="travelFeeRangePreview">Chưa có</div>
-                                <div class="tfc-stat-card__subvalue">Highlight đổi theo simulator</div>
-                            </div>
-
-                            <div class="tfc-stat-card tfc-stat-card--wide">
-                                <div class="tfc-stat-card__icon tfc-stat-card__icon--blue">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                </div>
-                                <div class="tfc-stat-card__label">Địa chỉ cửa hàng</div>
-                                <div class="tfc-stat-card__value" id="travelFeeStoreAddressPreview">Chưa nhập địa chỉ</div>
-                            </div>
-                        </div>
-
-                        <div class="tfc-simulator">
-                            <div class="tfc-simulator__head">
-                                <div>
-                                    <p class="tfc-simulator__label">Khoảng cách kiểm tra</p>
-                                    <h3 class="tfc-simulator__title">Chọn mốc xem rule active</h3>
-                                </div>
-                                <div class="tfc-distance-badge" id="travelFeeDistanceBadge">3 km</div>
-                            </div>
-
-                            <div class="tfc-slider-wrap">
-                                <input type="range" id="travelFeeDistanceSlider" min="0" max="30" step="0.1" value="3">
-                                <div class="tfc-distance-input-wrap">
-                                    <input type="number" id="travelFeeDistanceNumber" min="0" step="0.1" value="3">
-                                    <span>km</span>
-                                </div>
-                            </div>
-
-                            <div class="tfc-active-price-card">
-                                <div class="tfc-active-price-card__eyebrow" id="travelFeeActiveRuleLabel">Phí đi lại đang áp dụng</div>
-                                <div class="tfc-active-price-card__value" id="travelFeeActivePrice">0 đ</div>
-                                <div class="tfc-active-price-card__sub" id="travelFeeActiveTransportMeta">Phí thuê xe: 0 đ</div>
-                                <p class="tfc-active-price-card__desc" id="travelFeeActiveRuleCopy">
-                                    Chỉnh dữ liệu ở cột trái để xem cách hệ thống áp dụng phí theo từng mốc khoảng cách.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="tfc-rule-group">
-                            <div class="tfc-rule-group__head">
-                                <div>
-                                    <h3>Các khoảng đang áp dụng</h3>
-                                    <p>Highlight tự động đổi theo mốc đang chọn trong simulator.</p>
-                                </div>
-                                <span class="tfc-chip tfc-chip--info" id="travelFeeModeChip">Phí đi lại</span>
-                            </div>
-                            <div class="tfc-rule-list" id="travelFeeRulePreview"></div>
-                        </div>
-
-                        <div class="tfc-rule-group">
-                            <div class="tfc-rule-group__head">
-                                <div>
-                                    <h3>Mốc xem nhanh</h3>
-                                    <p>Bấm vào từng thẻ để nhảy đến khoảng cách thường gặp.</p>
-                                </div>
-                            </div>
-                            <div class="tfc-sample-grid" id="travelFeeSampleGrid"></div>
-                        </div>
-
-                        <div class="tfc-tip-card">
-                            <div class="tfc-tip-card__head">
-                                <i class="fa-solid fa-lightbulb"></i>
-                                <strong>Gợi ý cấu hình</strong>
-                            </div>
-                            <p>Bạn có thể bắt đầu với các mốc gần như 0 → 1 km miễn phí, 1 → 5 km áp dụng mức phí cố định, sau đó mở rộng dần các khoảng xa hơn khi có thêm dữ liệu thực tế.</p>
-                        </div>
-                    </div>
-                </aside>
-            </div>
-        </main>
-    </div>
+</div>
+<div class="tw-overflow-hidden tw-rounded-2xl">
+<table class="tw-w-full tw-text-left">
+<thead>
+<tr class="tw-bg-surface-container-low">
+<th class="tw-px-6 tw-py-4 tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Từ km</th>
+<th class="tw-px-6 tw-py-4 tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Đến km</th>
+<th class="tw-px-6 tw-py-4 tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Phí thuê xe (VNĐ)</th>
+<th class="tw-px-6 tw-py-4 tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Phí đi lại (VNĐ)</th>
+<th class="tw-px-6 tw-py-4 tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500 tw-text-center">Thao tác</th>
+</tr>
+</thead>
+<tbody class="tw-divide-y tw-divide-surface-container" id="travelTierList"></tbody>
+</table>
+</div>
+</div>
+<!-- Configuration Tips -->
+<div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-6">
+<div class="tw-bg-surface-container-low tw-p-6 tw-rounded-3xl tw-border tw-border-white/50">
+<h4 class="tw-font-bold tw-text-sm tw-mb-3 tw-flex tw-items-center tw-gap-2">
+<span class="material-symbols-outlined tw-text-tertiary">lightbulb</span>
+                                Gợi ý tối ưu phí
+                            </h4>
+<p class="tw-text-xs tw-text-slate-500 tw-leading-relaxed">Dựa trên dữ liệu 30 ngày qua, các đơn hàng trong khoảng 5-10km đang chiếm tỷ trọng 60%. Bạn có thể cân nhắc giảm phí đi lại ở bậc này để thu hút thêm khách hàng.</p>
+</div>
+<div class="tw-bg-surface-container-low tw-p-6 tw-rounded-3xl tw-border tw-border-white/50">
+<h4 class="tw-font-bold tw-text-sm tw-mb-3 tw-flex tw-items-center tw-gap-2">
+<span class="material-symbols-outlined tw-text-primary">trending_up</span>
+                                Phân tích đối thủ
+                            </h4>
+<p class="tw-text-xs tw-text-slate-500 tw-leading-relaxed">Phí vận chuyển trung bình của khu vực cho bán kính 10km là 150.000 VNĐ. Cấu hình hiện tại của bạn đang cao hơn 10% so với thị trường.</p>
+</div>
+</div>
+</div>
+<!-- Section 3: Simulator (Sticky) -->
+<aside class="lg:tw-col-span-4 tw-sticky tw-top-6">
+<div class="tw-bg-primary tw-text-white tw-p-8 tw-rounded-[2rem] tw-shadow-2xl tw-shadow-primary/30 tw-relative tw-overflow-hidden">
+<div class="tw-absolute tw-top-0 tw-right-0 tw-w-32 tw-h-32 tw-bg-white/10 tw-rounded-full tw--mr-10 tw--mt-10 tw-blur-2xl"></div>
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-8 tw-relative tw-z-10">
+<h3 class="tw-font-headline tw-font-extrabold tw-text-xl">Mô phỏng</h3>
+<div class="tw-flex tw-items-center tw-gap-2 tw-bg-white/20 tw-px-3 tw-py-1.5 tw-rounded-full tw-backdrop-blur-md">
+<span class="tw-text-[10px] tw-font-bold tw-uppercase" id="travelFeeRangePreview">--</span>
+<span class="tw-w-2 tw-h-2 tw-bg-green-400 tw-rounded-full tw-animate-pulse"></span>
+</div>
+</div>
+<div class="tw-space-y-8 tw-relative tw-z-10">
+<!-- Slider Section -->
+<div class="tw-space-y-4">
+<div class="tw-flex tw-justify-between tw-items-end">
+<span class="tw-text-sm tw-font-medium tw-opacity-80">Khoảng cách di chuyển</span>
+<span class="tw-text-3xl tw-font-headline tw-font-black" id="travelFeeDistanceBadge">3 <span class="tw-text-sm tw-font-normal">km</span></span>
+</div>
+<input class="tw-w-full tw-h-2 tw-bg-white/30 tw-rounded-lg tw-appearance-none tw-cursor-pointer" id="travelFeeDistanceSlider" max="30" min="0" step="0.1" type="range" value="3"/>
+<input type="number" id="travelFeeDistanceNumber" min="0" step="0.1" value="3" style="display:none"/>
+<div class="tw-grid tw-grid-cols-4 tw-gap-2">
+<button data-preview-distance="1" class="tw-bg-white/10 hover:tw-bg-white/20 tw-py-2 tw-rounded-xl tw-text-[10px] tw-font-bold tw-transition-colors">1KM</button>
+<button data-preview-distance="5" class="tw-bg-white/10 hover:tw-bg-white/20 tw-py-2 tw-rounded-xl tw-text-[10px] tw-font-bold tw-transition-colors">5KM</button>
+<button data-preview-distance="10" class="tw-bg-white/10 hover:tw-bg-white/20 tw-py-2 tw-rounded-xl tw-text-[10px] tw-font-bold tw-transition-colors">10KM</button>
+<button data-preview-distance="20" class="tw-bg-white/40 tw-py-2 tw-rounded-xl tw-text-[10px] tw-font-bold tw-shadow-sm">20KM</button>
+</div>
+</div>
+<!-- Result Cards -->
+<div class="tw-space-y-3 tw-pt-6 tw-border-t tw-border-white/10">
+<div class="tw-flex tw-justify-between tw-items-center tw-p-4 tw-bg-white/10 tw-rounded-2xl tw-backdrop-blur-sm">
+<div class="tw-flex tw-items-center tw-gap-3">
+<span class="material-symbols-outlined tw-text-blue-200">commute</span>
+<span class="tw-text-xs tw-font-semibold">Phí thuê xe</span>
+</div>
+<span class="tw-font-bold" id="travelFeeTransportPreview">0 đ</span>
+</div>
+<div class="tw-flex tw-justify-between tw-items-center tw-p-4 tw-bg-white/10 tw-rounded-2xl tw-backdrop-blur-sm">
+<div class="tw-flex tw-items-center tw-gap-3">
+<span class="material-symbols-outlined tw-text-blue-200">route</span>
+<span class="tw-text-xs tw-font-semibold">Phí đi lại</span>
+</div>
+<span class="tw-font-bold" id="travelFeeTravelPreview">0 đ</span>
+</div>
+<div class="tw-flex tw-justify-between tw-items-center tw-p-5 tw-bg-white tw-rounded-[1.5rem] tw-mt-4">
+<div class="tw-flex tw-flex-col">
+<span class="tw-text-[10px] tw-font-black tw-uppercase tw-text-primary tw-tracking-widest" id="travelFeeActiveRuleLabel">Tổng phí dự kiến</span>
+<span class="tw-text-2xl tw-font-headline tw-font-black tw-text-on-background" id="travelFeeActivePrice">0 đ</span>
+</div>
+<span class="material-symbols-outlined tw-text-primary tw-text-3xl" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</div>
+</div>
+<!-- Toggle View -->
+<div class="tw-flex tw-items-center tw-justify-between tw-pt-4">
+<span class="tw-text-xs tw-font-medium tw-opacity-80">Chế độ xem kết quả</span>
+<div class="tw-flex tw-bg-white/10 tw-p-1 tw-rounded-full">
+<button data-preview-mode="travel_fee" class="tw-px-3 tw-py-1 tw-text-[10px] tw-font-bold tw-bg-white tw-text-primary tw-rounded-full">Phí</button>
+<button data-preview-mode="tiered" class="tw-px-3 tw-py-1 tw-text-[10px] tw-font-bold tw-text-white tw-opacity-60">Bậc</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Map/Visual Insight -->
+<div class="tw-mt-6 tw-rounded-[2rem] tw-h-64 tw-bg-surface-container tw-overflow-hidden tw-relative group tw-shadow-sm tw-border tw-border-white/50">
+<img alt="Map Visualization" class="tw-w-full tw-h-full tw-object-cover tw-opacity-60 group-hover:tw-scale-110 tw-transition-transform tw-duration-700" data-alt="Abstract aerial city map layout with blue glowing transit lines and minimalist design, soft focus, high tech dashboard style" data-location="Hanoi" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTOIzBBOFpRE7cN-ibbygV6k-0p57AcsDXVq0wIGlIcs2A7jo4enLogdiyCktXNn4lCqPQrkbYtnHyIYDnM9psATIJazWUz6oKdFaCGB7mqujTocysM4ccwI7tcA0nMqY5vLKywQGDJxSOOsbkchBxoBUf3Vz5U6Y4MCCIPmk_NRI6xcjIjXiCelDrB0RbVgU6uxFK6Crl99WVEiLT0w4Z5Sazd_NpslGsLkx5-qHrk64bLy1iyurFr69uHa2qoUnks355cOUXVzo"/>
+<div class="tw-absolute tw-inset-0 tw-bg-gradient-to-t tw-from-surface-container-highest/80 tw-to-transparent tw-flex tw-items-end tw-p-6">
+<div class="tw-flex tw-items-center tw-gap-3">
+<div class="tw-w-8 tw-h-8 tw-rounded-full tw-bg-primary tw-flex tw-items-center tw-justify-center tw-text-white">
+<span class="material-symbols-outlined tw-text-sm">my_location</span>
+</div>
+<span class="tw-text-xs tw-font-bold tw-text-on-surface">Vùng phủ sóng hiện tại: Đống Đa, Hà Nội</span>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</form>
 </div>
 @endsection
 
 @push('scripts')
 <script type="module" src="{{ asset('assets/js/admin/travel-fee-config.js') }}"></script>
 <script>
-    document.getElementById('btnResetTravelFeeFormBottom')?.addEventListener('click', () => {
-        document.getElementById('btnResetTravelFeeForm')?.click();
-    });
-    document.getElementById('btnSaveTravelFeeBottom')?.addEventListener('click', () => {
-        document.getElementById('travelFeeForm')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    });
+// Wire status chip id
+document.addEventListener('DOMContentLoaded', () => {
+  // Add hidden status chip for JS hooks
+  const chip = document.createElement('span');
+  chip.id = 'travelFeeStatusChip';
+  chip.className = 'tfc-status-chip tw-hidden';
+  chip.dataset.tone = 'info';
+  document.body.appendChild(chip);
+
+  const updatedChip = document.createElement('span');
+  updatedChip.id = 'travelFeeUpdatedChip';
+  updatedChip.className = 'd-none';
+  document.body.appendChild(updatedChip);
+
+  const modeChip = document.createElement('span');
+  modeChip.id = 'travelFeeModeChip';
+  modeChip.className = 'tw-hidden';
+  document.body.appendChild(modeChip);
+
+  // Wire storeAddress preview placeholder
+  const storeAddrPreview = document.getElementById('travelFeeStoreAddressPreview');
+  if (!storeAddrPreview) {
+    const el = document.createElement('span');
+    el.id = 'travelFeeStoreAddressPreview';
+    el.className = 'tw-hidden';
+    document.body.appendChild(el);
+  }
+
+  // activeRuleCopy, rulePreview, sampleGrid placeholders  
+  ['travelFeeActiveRuleCopy','travelFeeActiveTransportMeta','travelFeeRulePreview','travelFeeSampleGrid'].forEach(id => {
+    if (!document.getElementById(id)) {
+      const el = document.createElement('div');
+      el.id = id;
+      el.className = 'tw-hidden';
+      document.body.appendChild(el);
+    }
+  });
+});
 </script>
 @endpush

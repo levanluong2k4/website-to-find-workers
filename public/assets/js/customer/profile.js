@@ -4,7 +4,7 @@ requireRole('customer');
 
 const SETTINGS_KEY = 'customer_profile_preferences';
 const ADDRESS_API_BASE = 'https://provinces.open-api.vn/api/v1';
-const ACTIVE_BOOKING_STATUSES = ['cho_xac_nhan', 'da_xac_nhan', 'dang_lam', 'cho_thanh_toan', 'cho_hoan_thanh'];
+const ACTIVE_BOOKING_STATUSES = ['cho_xac_nhan', 'da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang', 'dang_lam', 'cho_thanh_toan', 'cho_hoan_thanh'];
 
 const state = {
     user: getCurrentUser(),

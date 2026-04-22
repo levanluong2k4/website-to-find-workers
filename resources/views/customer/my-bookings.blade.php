@@ -1412,6 +1412,44 @@
         font-weight: 700;
     }
 
+    .booking-complaint-state {
+        margin: 0;
+        padding: 0.58rem 0.78rem;
+        border-radius: 14px;
+        background: #fff4ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .complaint-reason-list {
+        display: grid;
+        gap: 0.65rem;
+    }
+
+    .complaint-reason-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
+        padding: 0.7rem 0.8rem;
+        border-radius: 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        text-align: left;
+    }
+
+    .complaint-reason-item input {
+        margin-top: 0.2rem;
+    }
+
+    .complaint-reason-item span {
+        color: #0f172a;
+        font-weight: 600;
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+
     @media (max-width: 1199.98px) {
         .metric-grid {
             margin-top: 1rem;
@@ -1623,6 +1661,67 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold" id="btnSubmitReview">Gửi đánh giá</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade review-modal-shell" id="modalComplaint" tabindex="-1" aria-labelledby="modalComplaintLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0">
+                <div>
+                    <h5 class="modal-title fw-bold" id="modalComplaintLabel">Gửi khiếu nại</h5>
+                    <p class="text-muted mb-0 small">Nếu phát sinh lỗi sau khi thợ hoàn tất, bạn có thể gửi khiếu nại để admin xử lý.</p>
+                </div>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" id="complaintBookingContext">Khiếu nại cho đơn hàng đã hoàn tất.</p>
+
+                <form id="formComplaint">
+                    <input type="hidden" id="complaintBookingId" name="don_dat_lich_id">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Lý do khiếu nại <span class="text-danger">*</span></label>
+                        <div class="complaint-reason-list">
+                            <label class="complaint-reason-item">
+                                <input type="radio" name="ly_do_khieu_nai" value="loi_tai_phat" required>
+                                <span>Lỗi tái phát</span>
+                            </label>
+                            <label class="complaint-reason-item">
+                                <input type="radio" name="ly_do_khieu_nai" value="linh_kien_kem_chat_luong" required>
+                                <span>Linh kiện thay thế kém chất lượng</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" for="complaintNote">Ghi chú lỗi</label>
+                        <textarea class="form-control bg-light border-0" id="complaintNote" name="ghi_chu" rows="4" placeholder="Mô tả lỗi gặp phải, thời điểm xảy ra, tình trạng hiện tại..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Hình ảnh / Video minh chứng (tùy chọn)</label>
+                        <div class="review-media-upload">
+                            <div class="review-media-upload__actions">
+                                <label class="review-media-upload__picker">
+                                    <input type="file" id="complaintImagesInput" accept="image/*" multiple>
+                                    <span class="material-symbols-outlined">imagesmode</span>
+                                    <span>Thêm ảnh</span>
+                                </label>
+                                <label class="review-media-upload__picker review-media-upload__picker--video">
+                                    <input type="file" id="complaintVideoInput" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv">
+                                    <span class="material-symbols-outlined">videocam</span>
+                                    <span>Thêm video</span>
+                                </label>
+                            </div>
+                        </div>
+                        <p class="text-muted mt-2 mb-0 small">Tối đa 5 ảnh, 1 video. Mỗi file ảnh &lt;= 5MB, video &lt;= 30MB.</p>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100 rounded-pill py-2 fw-bold" id="btnSubmitComplaint">Gửi khiếu nại</button>
                 </form>
             </div>
         </div>

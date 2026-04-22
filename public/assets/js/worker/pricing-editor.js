@@ -1,4 +1,17 @@
 import { callApi, getCurrentUser, showToast } from '../api.js';
+import {
+  buildWarrantyOptionsMarkup,
+  escapeHtml,
+  formatMoney,
+  getBookingLaborItems,
+  getBookingPartItems as getSharedBookingPartItems,
+  getBookingServiceIds,
+  getBookingServiceNames,
+  getCustomerName,
+  getNumeric,
+  getPartQuantity,
+  getPartUnitPrice,
+} from './pricing-core.js';
 
 const pageEl = document.getElementById('pricingPage');
 
@@ -79,126 +92,10 @@ const state = {
   },
 };
 
-const escapeHtml = (value = '') => String(value ?? '').replace(/[&<>"']/g, (char) => ({
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#039;',
-}[char]));
-
-const formatMoney = (value) => new Intl.NumberFormat('vi-VN', {
-  style: 'currency',
-  currency: 'VND',
-  maximumFractionDigits: 0,
-}).format(Number(value || 0));
-
-const getNumeric = (value) => Number(value || 0);
-
-const getBookingServices = (booking) => Array.isArray(booking?.dich_vus) ? booking.dich_vus : [];
-
-const getBookingServiceNames = (booking) => {
-  const services = getBookingServices(booking)
-    .map((service) => service?.ten_dich_vu)
-    .filter(Boolean);
-
-  return services.length ? services.join(', ') : 'Dịch vụ sửa chữa';
-};
-
-const getCustomerName = (booking) => booking?.khach_hang?.name || 'Khách hàng';
-
-const getBookingServiceIds = (booking) => {
-  const relationIds = getBookingServices(booking)
-    .map((service) => getNumeric(service?.id))
-    .filter((id) => id > 0);
-
-  if (relationIds.length) {
-    return Array.from(new Set(relationIds));
-  }
-
-  const legacyId = getNumeric(booking?.dich_vu_id);
-  return legacyId > 0 ? [legacyId] : [];
-};
-
-const getStoredCostItems = (booking, key) => Array.isArray(booking?.[key]) ? booking[key].filter(Boolean) : [];
-
-const getBookingLaborItems = (booking) => {
-  const items = getStoredCostItems(booking, 'chi_tiet_tien_cong');
-  if (items.length) {
-    return items;
-  }
-
-  if (getNumeric(booking?.tien_cong) > 0) {
-    return [{
-      noi_dung: getBookingServiceNames(booking),
-      so_tien: getNumeric(booking?.tien_cong),
-    }];
-  }
-
-  return [];
-};
-
-const getBookingPartItems = (booking) => {
-  const items = getStoredCostItems(booking, 'chi_tiet_linh_kien');
-  if (items.length) {
-    return items;
-  }
-
-  if (getNumeric(booking?.phi_linh_kien) > 0) {
-    return [{
-      noi_dung: 'Linh kiện thay thế',
-      don_gia: getNumeric(booking?.phi_linh_kien),
-      so_luong: 1,
-      so_tien: getNumeric(booking?.phi_linh_kien),
-      bao_hanh_thang: '',
-    }];
-  }
-
-  return [];
-};
-
-const getPartQuantity = (item) => {
-  const quantity = Math.trunc(getNumeric(item?.so_luong || 1));
-  return quantity > 0 ? quantity : 1;
-};
-
-const getPartUnitPrice = (item) => {
-  const explicitUnitPrice = getNumeric(item?.don_gia);
-  if (explicitUnitPrice > 0) {
-    return explicitUnitPrice;
-  }
-
-  const quantity = getPartQuantity(item);
-  const total = getNumeric(item?.so_tien);
-  return quantity > 0 ? total / quantity : total;
-};
-
-const buildWarrantyOptionsMarkup = (value = '') => {
-  const normalizedValue = value === '' ? '' : Math.max(0, Math.trunc(getNumeric(value)));
-  const presets = ['', 0, 1, 3, 6, 12, 24];
-
-  if (normalizedValue !== '' && !presets.includes(normalizedValue)) {
-    presets.push(normalizedValue);
-  }
-
-  return presets
-    .filter((option, index, array) => array.indexOf(option) === index)
-    .sort((a, b) => {
-      if (a === '') return -1;
-      if (b === '') return 1;
-      return Number(a) - Number(b);
-    })
-    .map((option) => {
-      const selected = option === normalizedValue ? 'selected' : '';
-      const label = option === ''
-        ? 'Bảo hành'
-        : option === 0
-          ? '0 Tháng'
-          : `${option} Tháng`;
-      return `<option value="${option}" ${selected}>${label}</option>`;
-    })
-    .join('');
-};
+const getBookingPartItems = (booking) => getSharedBookingPartItems(booking, {
+  includeLegacyNote: false,
+  emptyWarrantyValue: '',
+});
 
 const buildCostItemRowMarkup = (type, item = {}) => {
   const description = escapeHtml(item?.noi_dung || '');

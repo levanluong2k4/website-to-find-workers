@@ -449,7 +449,7 @@
   import { callApi, getCurrentUser } from "{{ asset('assets/js/api.js') }}";
 
   document.addEventListener('DOMContentLoaded', () => {
-    const ACTIVE_BOOKING_STATUSES = ['cho_xac_nhan', 'da_xac_nhan', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan'];
+    const ACTIVE_BOOKING_STATUSES = ['cho_xac_nhan', 'da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan'];
     const user = getCurrentUser();
     if (!user || !['worker', 'admin'].includes(user.role)) {
       window.location.href = '/login?role=worker';

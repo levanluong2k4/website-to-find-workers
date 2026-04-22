@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TravelFee Pro - Cấu hình phí di chuyển</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-dim": "#d8dadc",
+                    "tertiary": "#924700",
+                    "on-tertiary-fixed": "#311400",
+                    "inverse-on-surface": "#eff1f3",
+                    "secondary-fixed": "#d8e2ff",
+                    "tertiary-fixed-dim": "#ffb786",
+                    "surface-container-highest": "#e0e3e5",
+                    "on-background": "#191c1e",
+                    "on-tertiary-fixed-variant": "#723600",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#b75b00",
+                    "surface-container-high": "#e6e8ea",
+                    "on-secondary": "#ffffff",
+                    "surface-container-low": "#f2f4f6",
+                    "tertiary-fixed": "#ffdcc6",
+                    "secondary-fixed-dim": "#b1c6f9",
+                    "surface-variant": "#e0e3e5",
+                    "on-surface": "#191c1e",
+                    "on-secondary-fixed": "#001a42",
+                    "surface-bright": "#f7f9fb",
+                    "secondary-container": "#b6ccff",
+                    "surface": "#f7f9fb",
+                    "on-secondary-fixed-variant": "#304671",
+                    "on-error": "#ffffff",
+                    "surface-tint": "#005ac2",
+                    "secondary": "#495e8a",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f7f9fb",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed": "#001a42",
+                    "primary-fixed-dim": "#adc6ff",
+                    "outline-variant": "#c2c6d6",
+                    "on-tertiary-container": "#fffbff",
+                    "on-surface-variant": "#424754",
+                    "inverse-surface": "#2d3133",
+                    "surface-container": "#eceef0",
+                    "primary-container": "#2170e4",
+                    "on-primary-fixed-variant": "#004395",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#adc6ff",
+                    "on-secondary-container": "#405682",
+                    "error-container": "#ffdad6",
+                    "outline": "#727785",
+                    "primary-fixed": "#d8e2ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-container": "#fefcff",
+                    "primary": "#0058be"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #0058be;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-background flex h-screen overflow-hidden">
+<!-- SideNavBar Component -->
+<aside class="hidden md:flex flex-col h-screen p-4 gap-2 bg-slate-50 dark:bg-slate-950 docked left-0 w-64 border-r border-slate-100 dark:border-slate-800">
+<div class="flex flex-col gap-1 px-4 mb-6">
+<div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">engineering</span>
+</div>
+<h1 class="text-lg font-black text-blue-800 dark:text-blue-300">TravelFee Pro</h1>
+<p class="text-xs font-medium text-slate-500 uppercase tracking-widest">Fleet Management</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-semibold uppercase tracking-wider">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">engineering</span>
+<span class="text-sm font-semibold uppercase tracking-wider">Technicians</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">home_repair_service</span>
+<span class="text-sm font-semibold uppercase tracking-wider">Services</span>
+</a>
+<a class="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg px-4 py-2 font-semibold transition-all scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="text-sm font-semibold uppercase tracking-wider">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 space-y-1 border-t border-slate-200 dark:border-slate-800">
+<button class="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm mb-4 hover:bg-primary-container transition-colors">
+                New Configuration
+            </button>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">support_agent</span>
+<span class="text-sm font-semibold uppercase tracking-wider">Support</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="text-sm font-semibold uppercase tracking-wider">Log Out</span>
+</a>
+</div>
+</aside>
+<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- TopNavBar Component -->
+<header class="flex justify-between items-center px-6 py-3 w-full border-b border-slate-100 dark:border-slate-800 bg-surface dark:bg-slate-900 docked full-width top-0">
+<div class="flex items-center gap-4">
+<h2 class="text-xl font-bold text-blue-700 dark:text-blue-400 font-headline">Cấu hình phí di chuyển</h2>
+<div class="hidden md:flex gap-6 ml-8">
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors uppercase tracking-wider text-xs font-bold" href="#">Dashboard</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors uppercase tracking-wider text-xs font-bold" href="#">Technicians</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors uppercase tracking-wider text-xs font-bold" href="#">Services</a>
+<a class="text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 dark:border-blue-400 pb-1 uppercase tracking-wider text-xs font-bold" href="#">Settings</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex gap-2">
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-transform active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-transform active:scale-95">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<img alt="User avatar" class="w-10 h-10 rounded-full border-2 border-primary-fixed" data-alt="Close-up portrait of a professional male administrator in a clean office setting, soft professional lighting, modern aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAofmu9I3Dgh9_WT7lWO-vO6fKR4iDjqte57UnfTdXN_m0XPKKf4oZlp4trjJShuCEyrds0nhCq0-rhMP_hh0XahY4CL4zuk_KsZDJFEfc4NGMC8BSFdEUoCFouPNQ5nRlP45jF2v1XGgjsRCFOEdbaMlibWK36-3uk9Aixchhu1RPQiEYc_2I5tBRlfdMytIBi3k0k2FvUhAplKLGUJuWI4sEGHGwEzWh6yzuIuue7_4OFmXAhgQbuC_P1JmC0qNh7KhF6aNO3mPI"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 max-w-[1600px] mx-auto w-full">
+<!-- Alert Banner -->
+<div class="bg-primary-fixed text-on-primary-fixed p-5 rounded-2xl flex items-start gap-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">info</span>
+<div>
+<p class="font-bold text-sm">Lưu ý về thứ tự ưu tiên:</p>
+<p class="text-xs opacity-80 mt-1 leading-relaxed">Hệ thống sẽ tự động áp dụng bậc phí thấp nhất khớp với khoảng cách thực tế. Hãy đảm bảo các khoảng cách không bị chồng lấn để kết quả tính toán chính xác nhất.</p>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Section 1 & 2: Main Settings -->
+<div class="lg:col-span-8 space-y-8">
+<!-- Section 1: Cấu hình cơ bản -->
+<div class="bg-surface-container-lowest p-8 rounded-3xl shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-lg font-bold font-headline flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">charging_station</span>
+                                Cấu hình cơ bản
+                            </h3>
+<div class="flex gap-3">
+<button class="px-5 py-2 rounded-full border border-outline-variant text-sm font-semibold hover:bg-surface-container-low transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                                    Làm mới
+                                </button>
+<button class="px-6 py-2 rounded-full bg-primary text-white text-sm font-bold hover:bg-primary-container transition-all active:scale-95 shadow-lg shadow-primary/20">
+                                    Lưu thay đổi
+                                </button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Địa chỉ cửa hàng</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">location_on</span>
+<input class="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all text-sm font-medium" type="text" value="123 Đường Láng, Đống Đa, Hà Nội"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Thời hạn khiếu nại (Ngày)</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">history</span>
+<input class="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all text-sm font-medium" type="number" value="7"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Bảng cấu hình khoảng cách -->
+<div class="bg-surface-container-lowest p-8 rounded-3xl shadow-sm">
+<div class="flex justify-between items-center mb-8">
+<h3 class="text-lg font-bold font-headline flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">distance</span>
+                                Bảng cấu hình khoảng cách
+                            </h3>
+<button class="flex items-center gap-2 text-primary font-bold text-sm hover:underline">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+                                Thêm khoảng mới
+                            </button>
+</div>
+<div class="overflow-hidden rounded-2xl">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">Từ km</th>
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">Đến km</th>
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">Phí thuê xe (VNĐ)</th>
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">Phí đi lại (VNĐ)</th>
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">Thao tác</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-bright transition-colors group">
+<td class="px-6 py-5 font-semibold text-sm">0</td>
+<td class="px-6 py-5 font-semibold text-sm">5</td>
+<td class="px-6 py-5 font-semibold text-sm">50.000</td>
+<td class="px-6 py-5 font-semibold text-sm">20.000</td>
+<td class="px-6 py-5 text-center"><button class="text-error/70 hover:text-error hover:bg-error-container/20 p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button></td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors group">
+<td class="px-6 py-5 font-semibold text-sm">5</td>
+<td class="px-6 py-5 font-semibold text-sm">15</td>
+<td class="px-6 py-5 font-semibold text-sm">120.000</td>
+<td class="px-6 py-5 font-semibold text-sm">45.000</td>
+<td class="px-6 py-5 text-center"><button class="text-error/70 hover:text-error hover:bg-error-container/20 p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button></td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors group border-primary-container bg-primary-fixed/20 ring-1 ring-inset ring-primary/10">
+<td class="px-6 py-5 font-bold text-sm text-primary">15</td>
+<td class="px-6 py-5 font-bold text-sm text-primary">30</td>
+<td class="px-6 py-5 font-bold text-sm text-primary">250.000</td>
+<td class="px-6 py-5 font-bold text-sm text-primary">80.000</td>
+<td class="px-6 py-5 text-center"><button class="text-error/70 hover:text-error hover:bg-error-container/20 p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Configuration Tips -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-surface-container-low p-6 rounded-3xl border border-white/50">
+<h4 class="font-bold text-sm mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary">lightbulb</span>
+                                Gợi ý tối ưu phí
+                            </h4>
+<p class="text-xs text-slate-500 leading-relaxed">Dựa trên dữ liệu 30 ngày qua, các đơn hàng trong khoảng 5-10km đang chiếm tỷ trọng 60%. Bạn có thể cân nhắc giảm phí đi lại ở bậc này để thu hút thêm khách hàng.</p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-3xl border border-white/50">
+<h4 class="font-bold text-sm mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">trending_up</span>
+                                Phân tích đối thủ
+                            </h4>
+<p class="text-xs text-slate-500 leading-relaxed">Phí vận chuyển trung bình của khu vực cho bán kính 10km là 150.000 VNĐ. Cấu hình hiện tại của bạn đang cao hơn 10% so với thị trường.</p>
+</div>
+</div>
+</div>
+<!-- Section 3: Simulator (Sticky) -->
+<aside class="lg:col-span-4 sticky top-6">
+<div class="bg-primary text-white p-8 rounded-[2rem] shadow-2xl shadow-primary/30 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+<div class="flex justify-between items-center mb-8 relative z-10">
+<h3 class="font-headline font-extrabold text-xl">Mô phỏng</h3>
+<div class="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md">
+<span class="text-[10px] font-bold uppercase">Bậc 3</span>
+<span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+</div>
+</div>
+<div class="space-y-8 relative z-10">
+<!-- Slider Section -->
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<span class="text-sm font-medium opacity-80">Khoảng cách di chuyển</span>
+<span class="text-3xl font-headline font-black">18.5 <span class="text-sm font-normal">km</span></span>
+</div>
+<input class="w-full h-2 bg-white/30 rounded-lg appearance-none cursor-pointer" max="30" min="0" type="range" value="18.5"/>
+<div class="grid grid-cols-4 gap-2">
+<button class="bg-white/10 hover:bg-white/20 py-2 rounded-xl text-[10px] font-bold transition-colors">1KM</button>
+<button class="bg-white/10 hover:bg-white/20 py-2 rounded-xl text-[10px] font-bold transition-colors">5KM</button>
+<button class="bg-white/10 hover:bg-white/20 py-2 rounded-xl text-[10px] font-bold transition-colors">10KM</button>
+<button class="bg-white/40 py-2 rounded-xl text-[10px] font-bold shadow-sm">20KM</button>
+</div>
+</div>
+<!-- Result Cards -->
+<div class="space-y-3 pt-6 border-t border-white/10">
+<div class="flex justify-between items-center p-4 bg-white/10 rounded-2xl backdrop-blur-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-200">commute</span>
+<span class="text-xs font-semibold">Phí thuê xe</span>
+</div>
+<span class="font-bold">250.000đ</span>
+</div>
+<div class="flex justify-between items-center p-4 bg-white/10 rounded-2xl backdrop-blur-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-200">route</span>
+<span class="text-xs font-semibold">Phí đi lại</span>
+</div>
+<span class="font-bold">80.000đ</span>
+</div>
+<div class="flex justify-between items-center p-5 bg-white rounded-[1.5rem] mt-4">
+<div class="flex flex-col">
+<span class="text-[10px] font-black uppercase text-primary tracking-widest">Tổng phí dự kiến</span>
+<span class="text-2xl font-headline font-black text-on-background">330.000đ</span>
+</div>
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</div>
+</div>
+<!-- Toggle View -->
+<div class="flex items-center justify-between pt-4">
+<span class="text-xs font-medium opacity-80">Chế độ xem kết quả</span>
+<div class="flex bg-white/10 p-1 rounded-full">
+<button class="px-3 py-1 text-[10px] font-bold bg-white text-primary rounded-full">Phí</button>
+<button class="px-3 py-1 text-[10px] font-bold text-white opacity-60">Bậc</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Map/Visual Insight -->
+<div class="mt-6 rounded-[2rem] h-64 bg-surface-container overflow-hidden relative group shadow-sm border border-white/50">
+<img alt="Map Visualization" class="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" data-alt="Abstract aerial city map layout with blue glowing transit lines and minimalist design, soft focus, high tech dashboard style" data-location="Hanoi" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTOIzBBOFpRE7cN-ibbygV6k-0p57AcsDXVq0wIGlIcs2A7jo4enLogdiyCktXNn4lCqPQrkbYtnHyIYDnM9psATIJazWUz6oKdFaCGB7mqujTocysM4ccwI7tcA0nMqY5vLKywQGDJxSOOsbkchBxoBUf3Vz5U6Y4MCCIPmk_NRI6xcjIjXiCelDrB0RbVgU6uxFK6Crl99WVEiLT0w4Z5Sazd_NpslGsLkx5-qHrk64bLy1iyurFr69uHa2qoUnks355cOUXVzo"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-highest/80 to-transparent flex items-end p-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-sm">my_location</span>
+</div>
+<span class="text-xs font-bold text-on-surface">Vùng phủ sóng hiện tại: Đống Đa, Hà Nội</span>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</body></html>

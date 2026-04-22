@@ -840,6 +840,8 @@
 @endpush
 
 @section('content')
+<app-navbar></app-navbar>
+
 <section class="customer-360-page py-4">
     <div class="container-xxl">
         <div class="customer-360-shell" id="customer360App" data-customer-id="{{ $id }}">

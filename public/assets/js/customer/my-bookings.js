@@ -1,6 +1,14 @@
-import { callApi, getCurrentUser, showToast } from '../api.js';
+﻿import { callApi, getCurrentUser, showToast } from '../api.js';
 import { createReviewMediaController } from './review-media.js';
 import { setupReviewLightbox } from '../review-lightbox.js';
+import {
+    getBookingPaymentMethod,
+    getBookingServices,
+    isCashPaymentBooking,
+    openRebookBooking,
+    selectOnlineGateway as selectSharedOnlineGateway,
+    showCashPaymentInstructions as showSharedCashPaymentInstructions,
+} from './booking-actions-shared.js';
 
 const user = getCurrentUser();
 if (!user || !['customer', 'admin'].includes(user.role)) {
@@ -30,6 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const reviewVideoInput = document.getElementById('reviewVideoInput');
     const reviewMediaPreview = document.getElementById('reviewMediaPreview');
     const reviewMediaSummary = document.getElementById('reviewMediaSummary');
+    const modalComplaintEl = document.getElementById('modalComplaint');
+    const complaintModalInstance = modalComplaintEl ? new bootstrap.Modal(modalComplaintEl) : null;
+    const formComplaint = document.getElementById('formComplaint');
+    const complaintBookingId = document.getElementById('complaintBookingId');
+    const complaintBookingContext = document.getElementById('complaintBookingContext');
+    const complaintNote = document.getElementById('complaintNote');
+    const complaintImagesInput = document.getElementById('complaintImagesInput');
+    const complaintVideoInput = document.getElementById('complaintVideoInput');
+    const btnSubmitComplaint = document.getElementById('btnSubmitComplaint');
 
     const reviewMediaController = createReviewMediaController({
         imageInput: reviewImagesInput,
@@ -38,21 +55,22 @@ document.addEventListener('DOMContentLoaded', () => {
         summaryElement: reviewMediaSummary,
     });
 
-    const storeAddress = 'Mang thiết bị tới cửa hàng (2 Đ. Nguyễn Đình Chiểu)';
+    const storeAddress = 'Mang thiáº¿t bá»‹ tá»›i cá»­a hÃ ng (2 Ä. Nguyá»…n ÄÃ¬nh Chiá»ƒu)';
     const statusConfig = {
         cho_xac_nhan: { label: 'Đang tìm thợ', className: 'status-cho_xac_nhan' },
         da_xac_nhan: { label: 'Đã có thợ nhận', className: 'status-da_xac_nhan' },
+        khong_lien_lac_duoc_voi_khach_hang: { label: 'Không liên lạc được', className: 'status-da_huy' },
         dang_lam: { label: 'Đang xử lý', className: 'status-dang_lam' },
-        cho_hoan_thanh: { label: 'Chờ thợ xác nhận COD', className: 'status-cho_hoan_thanh' },
-        cho_thanh_toan: { label: 'Chờ thanh toán online', className: 'status-cho_thanh_toan' },
-        da_xong: { label: 'Đã hoàn tất', className: 'status-da_xong' },
-        da_huy: { label: 'Đã hủy', className: 'status-da_huy' },
+        cho_hoan_thanh: { label: 'Cho tho xac nhan COD', className: 'status-cho_hoan_thanh' },
+        cho_thanh_toan: { label: 'Cho thanh toan online', className: 'status-cho_thanh_toan' },
+        da_xong: { label: 'Da hoan tat', className: 'status-da_xong' },
+        da_huy: { label: 'Da huy', className: 'status-da_huy' },
     };
     const isLocalPaymentSandbox = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
     const cancelReasonOptions = {
-        doi_y_khong_muon_dat: 'Đổi ý không muốn đặt',
-        khong_co_tho_nao_nhan: 'Không có thợ nào nhận',
-        cho_qua_lau: 'Chờ quá lâu',
+        doi_y_khong_muon_dat: 'Äá»•i Ã½ khÃ´ng muá»‘n Ä‘áº·t',
+        khong_co_tho_nao_nhan: 'KhÃ´ng cÃ³ thá»£ nÃ o nháº­n',
+        cho_qua_lau: 'Chá» quÃ¡ lÃ¢u',
     };
 
     let allBookings = [];
@@ -75,42 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         maximumFractionDigits: 0,
     }).format(Number(value || 0));
 
-    const getBookingRebookPayload = (booking) => {
-        const services = getBookingServices(booking);
-        const serviceIds = services
-            .map((service) => Number(service?.id || 0))
-            .filter((serviceId) => Number.isInteger(serviceId) && serviceId > 0);
-        const firstServiceName = services[0]?.ten_dich_vu || '';
-        const workerId = Number(booking?.tho?.id || booking?.tho_id || 0);
-
-        return {
-            workerId: workerId > 0 ? workerId : null,
-            serviceIds,
-            serviceName: firstServiceName,
-        };
-    };
-
-    const openRebookBooking = (booking) => {
-        const payload = getBookingRebookPayload(booking);
-
-        if (window.BookingWizardModal?.open) {
-            window.BookingWizardModal.open(payload);
-            return;
-        }
-
-        const targetUrl = new URL('/customer/booking', window.location.origin);
-        if (payload.workerId) {
-            targetUrl.searchParams.set('worker_id', String(payload.workerId));
-        }
-        if (payload.serviceIds.length) {
-            targetUrl.searchParams.set('service_ids', payload.serviceIds.join(','));
-        } else if (payload.serviceName) {
-            targetUrl.searchParams.set('service_name', payload.serviceName);
-        }
-
-        window.location.href = targetUrl.toString();
-    };
-
     const renderReviewStars = (rating) => {
         const safeRating = Math.max(0, Math.min(5, Number(rating) || 0));
         let html = '';
@@ -130,24 +112,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const numericRating = Number(rating || 0);
         if (!numericRating) {
-            reviewRatingCaption.textContent = 'Chưa chọn số sao đánh giá';
+            reviewRatingCaption.textContent = 'ChÆ°a chá»n sá»‘ sao Ä‘Ã¡nh giÃ¡';
             return;
         }
 
         const labelMap = {
-            1: 'Rất tệ',
-            2: 'Tệ',
-            3: 'Ổn',
-            4: 'Tốt',
-            5: 'Rất hài lòng',
+            1: 'Ráº¥t tá»‡',
+            2: 'Tá»‡',
+            3: 'á»”n',
+            4: 'Tá»‘t',
+            5: 'Ráº¥t hÃ i lÃ²ng',
         };
 
         const emojiMap = {
-            1: '😡',
-            2: '😕',
-            3: '🙂',
-            4: '😊',
-            5: '😍',
+            1: 'ðŸ˜¡',
+            2: 'ðŸ˜•',
+            3: 'ðŸ™‚',
+            4: 'ðŸ˜Š',
+            5: 'ðŸ˜',
         };
 
         reviewRatingCaption.textContent = [emojiMap[numericRating], labelMap[numericRating] || `${numericRating} sao`]
@@ -161,10 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
             reviewRecordId.value = '';
         }
         if (reviewModalLabel) {
-            reviewModalLabel.textContent = 'Đánh giá dịch vụ';
+            reviewModalLabel.textContent = 'ÄÃ¡nh giÃ¡ dá»‹ch vá»¥';
         }
         if (btnSubmitReview) {
-            btnSubmitReview.textContent = 'Gửi đánh giá';
+            btnSubmitReview.textContent = 'Gá»­i Ä‘Ã¡nh giÃ¡';
         }
         reviewMediaController.reset();
         updateReviewRatingCaption();
@@ -175,17 +157,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resetReviewFormState();
         reviewBookingId.value = bookingId || '';
-        reviewWorkerName.innerHTML = `Hãy cho chúng tôi biết cảm nhận của bạn về <strong>${escapeHtml(workerName || 'thợ đã hỗ trợ đơn này')}</strong>.`;
+        reviewWorkerName.innerHTML = `HÃ£y cho chÃºng tÃ´i biáº¿t cáº£m nháº­n cá»§a báº¡n vá» <strong>${escapeHtml(workerName || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y')}</strong>.`;
 
         if (review) {
             if (reviewRecordId) {
                 reviewRecordId.value = review.id || '';
             }
             if (reviewModalLabel) {
-                reviewModalLabel.textContent = 'Đánh giá lại dịch vụ';
+                reviewModalLabel.textContent = 'ÄÃ¡nh giÃ¡ láº¡i dá»‹ch vá»¥';
             }
             if (btnSubmitReview) {
-                btnSubmitReview.textContent = 'Cập nhật đánh giá';
+                btnSubmitReview.textContent = 'Cáº­p nháº­t Ä‘Ã¡nh giÃ¡';
             }
             if (reviewComment) {
                 reviewComment.value = review.nhan_xet || '';
@@ -203,37 +185,114 @@ document.addEventListener('DOMContentLoaded', () => {
         reviewModalInstance?.show();
     };
 
-    const buildReviewActionHtml = (booking) => {
-        const review = getLatestReview(booking);
-        if (!review) {
+    const complaintReasonLabels = {
+        loi_tai_phat: 'Lá»—i tÃ¡i phÃ¡t',
+        linh_kien_kem_chat_luong: 'Linh kiá»‡n thay tháº¿ kÃ©m cháº¥t lÆ°á»£ng',
+    };
+
+    const resetComplaintFormState = () => {
+        formComplaint?.reset();
+        if (complaintBookingId) {
+            complaintBookingId.value = '';
+        }
+        if (complaintBookingContext) {
+            complaintBookingContext.textContent = 'Khiáº¿u náº¡i cho Ä‘Æ¡n hÃ ng Ä‘Ã£ hoÃ n táº¥t.';
+        }
+        if (complaintImagesInput) {
+            complaintImagesInput.value = '';
+        }
+        if (complaintVideoInput) {
+            complaintVideoInput.value = '';
+        }
+        if (btnSubmitComplaint) {
+            btnSubmitComplaint.textContent = 'Gá»­i khiáº¿u náº¡i';
+            btnSubmitComplaint.disabled = false;
+        }
+        if (complaintNote) {
+            complaintNote.value = '';
+        }
+    };
+
+    const openComplaintModal = (booking) => {
+        if (!booking || !formComplaint || !complaintBookingId) {
+            return;
+        }
+
+        resetComplaintFormState();
+        complaintBookingId.value = booking.id || '';
+        if (complaintBookingContext) {
+            const workerName = booking?.tho?.name || 'thá»£ xá»­ lÃ½ Ä‘Æ¡n';
+            complaintBookingContext.innerHTML = `Khiáº¿u náº¡i cho Ä‘Æ¡n #${escapeHtml(booking.id)} - ${escapeHtml(workerName)}.`;
+        }
+        complaintModalInstance?.show();
+    };
+
+    const getComplaintPolicy = (booking) => {
+        const policy = booking?.complaint_policy || {};
+        return {
+            canComplain: Boolean(policy.can_complain),
+            reason: String(policy.reason || ''),
+            complaintCase: booking?.complaint_case || null,
+        };
+    };
+
+    const buildComplaintActionHtml = (booking) => {
+        const policy = getComplaintPolicy(booking);
+        const caseInfo = policy.complaintCase;
+
+        if (caseInfo) {
+            const reasonLabel = complaintReasonLabels[caseInfo.reason_code] || caseInfo.reason_label || 'Khiáº¿u náº¡i';
+            return `<p class="booking-complaint-state">ÄÃ£ gá»­i khiáº¿u náº¡i: ${escapeHtml(reasonLabel)}</p>`;
+        }
+
+        if (policy.canComplain) {
             return `
-                <button class="booking-action-button booking-action-button--primary btn-review" type="button" data-id="${booking.id}" data-worker="${escapeHtml(booking.tho?.name || 'thợ đã hỗ trợ đơn này')}">
-                    <span class="material-symbols-outlined">star</span>Đánh giá
+                <button class="booking-action-button booking-action-button--danger btn-complaint" type="button" data-id="${booking.id}">
+                    <span class="material-symbols-outlined">report_problem</span>Khiáº¿u náº¡i
                 </button>
             `;
         }
 
+        if (policy.reason === 'expired') {
+            return '<p class="booking-complaint-state">ÄÃ£ háº¿t háº¡n gá»­i khiáº¿u náº¡i cho Ä‘Æ¡n nÃ y.</p>';
+        }
+
+        return '';
+    };
+
+    const buildReviewActionHtml = (booking) => {
+        const review = getLatestReview(booking);
+        const complaintActionHtml = buildComplaintActionHtml(booking);
+        if (!review) {
+            return `
+                <button class="booking-action-button booking-action-button--primary btn-review" type="button" data-id="${booking.id}" data-worker="${escapeHtml(booking.tho?.name || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y')}">
+                    <span class="material-symbols-outlined">star</span>ÄÃ¡nh giÃ¡
+                </button>
+                ${complaintActionHtml}
+            `;
+        }
+
         const canEditReview = Number(review.so_lan_sua || 0) < 1;
-        const mediaLabel = buildReviewMediaMeta(review);
 
         return `
             <div class="booking-review-summary">
                 <span class="booking-review-stars">${renderReviewStars(review.so_sao)}</span>
                 <span class="booking-review-score">${Number(review.so_sao || 0).toFixed(1)}/5</span>
-                <span class="booking-review-state">${canEditReview ? 'Có thể sửa 1 lần' : 'Đã khóa chỉnh sửa'}</span>
+                <span class="booking-review-state">${canEditReview ? 'CÃ³ thá»ƒ sá»­a 1 láº§n' : 'ÄÃ£ khÃ³a chá»‰nh sá»­a'}</span>
             </div>
             ${canEditReview ? `
                 <button
                     class="booking-action-button booking-action-button--secondary btn-review-edit"
                     type="button"
                     data-id="${booking.id}"
-                    data-worker="${escapeHtml(booking.tho?.name || 'thợ đã hỗ trợ đơn này')}"
+                    data-worker="${escapeHtml(booking.tho?.name || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y')}"
                     data-review-id="${review.id}"
                     data-review-rating="${Number(review.so_sao || 0)}"
                     data-review-comment="${escapeHtml(review.nhan_xet || '')}">
-                    <span class="material-symbols-outlined">edit_square</span>Chỉnh sửa đánh giá
+                    <span class="material-symbols-outlined">edit_square</span>Chá»‰nh sá»­a Ä‘Ã¡nh giÃ¡
                 </button>
             ` : ''}
+            ${complaintActionHtml}
         `;
     };
 
@@ -247,7 +306,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return Number.isNaN(date.getTime()) ? 'Chưa có ngày hẹn' : date.toLocaleDateString('vi-VN');
     };
 
-    const getBookingServices = (booking) => Array.isArray(booking.dich_vus) ? booking.dich_vus : [];
     const getLatestReview = (booking) => Array.isArray(booking?.danh_gias) ? booking.danh_gias[0] || null : null;
 
     const buildReviewMediaMeta = (review) => {
@@ -260,21 +318,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return [imageCount ? `${imageCount} anh` : '', hasVideo ? '1 video' : '']
             .filter(Boolean)
-            .join(' • ');
+            .join(' â€¢ ');
     };
 
     const normalizeServiceName = (value = '') => String(value).trim().toLowerCase();
-    const getBookingPaymentMethod = (booking) => booking?.phuong_thuc_thanh_toan === 'transfer' ? 'transfer' : 'cod';
-    const isCashPaymentBooking = (booking) => getBookingPaymentMethod(booking) === 'cod';
     const buildOnlineGatewayOptions = () => ({
-        momo: 'Ví MoMo',
-        zalopay: 'Ví ZaloPay',
+        momo: 'VÃ­ MoMo',
+        zalopay: 'VÃ­ ZaloPay',
         vnpay: 'VNPAY / Thẻ ngân hàng',
-        ...(isLocalPaymentSandbox ? { test: 'Thanh toán test nội bộ' } : {}),
+        ...(isLocalPaymentSandbox ? { test: 'Thanh toÃ¡n test ná»™i bá»™' } : {}),
     });
 
     const getStatusMeta = (status) => statusConfig[status] || {
-        label: 'Đang cập nhật',
+        label: 'Äang cáº­p nháº­t',
         className: 'status-da_xac_nhan',
     };
 
@@ -305,19 +361,19 @@ document.addEventListener('DOMContentLoaded', () => {
         let theme = booking.loai_dat_lich === 'at_store' ? 'theme-store' : 'theme-generic';
         let icon = 'build_circle';
 
-        if (serviceName.includes('máy lạnh') || serviceName.includes('điều hòa') || serviceName.includes('dieu hoa')) {
+        if (serviceName.includes('mÃ¡y láº¡nh') || serviceName.includes('Ä‘iá»u hÃ²a') || serviceName.includes('dieu hoa')) {
             theme = 'theme-cool';
             icon = 'ac_unit';
-        } else if (serviceName.includes('nước') || serviceName.includes('ống') || serviceName.includes('nuoc')) {
+        } else if (serviceName.includes('nÆ°á»›c') || serviceName.includes('á»‘ng') || serviceName.includes('nuoc')) {
             theme = 'theme-water';
             icon = 'water_drop';
-        } else if (serviceName.includes('giặt') || serviceName.includes('giat')) {
+        } else if (serviceName.includes('giáº·t') || serviceName.includes('giat')) {
             theme = 'theme-laundry';
             icon = 'local_laundry_service';
-        } else if (serviceName.includes('điện') || serviceName.includes('dien')) {
+        } else if (serviceName.includes('Ä‘iá»‡n') || serviceName.includes('dien')) {
             theme = 'theme-electric';
             icon = 'electrical_services';
-        } else if (serviceName.includes('tủ lạnh') || serviceName.includes('tu lanh')) {
+        } else if (serviceName.includes('tá»§ láº¡nh') || serviceName.includes('tu lanh')) {
             theme = 'theme-store';
             icon = 'kitchen';
         }
@@ -325,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (firstService.hinh_anh) {
             return {
                 theme,
-                html: `<img src="${escapeHtml(firstService.hinh_anh)}" alt="${escapeHtml(firstService.ten_dich_vu || 'Dịch vụ')}" class="booking-service-image">`,
+                html: `<img src="${escapeHtml(firstService.hinh_anh)}" alt="${escapeHtml(firstService.ten_dich_vu || 'Dá»‹ch vá»¥')}" class="booking-service-image">`,
             };
         }
 
@@ -342,8 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="booking-assignee-pending">
                     <span class="material-symbols-outlined">person_search</span>
                     <div>
-                        <strong>Đang tìm thợ</strong>
-                        <span>Chưa có thợ nhận đơn.</span>
+                        <strong>Äang tÃ¬m thá»£</strong>
+                        <span>ChÆ°a cÃ³ thá»£ nháº­n Ä‘Æ¡n.</span>
                     </div>
                 </div>
             `;
@@ -365,15 +421,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return buildReviewActionHtml(booking);
         }
 
-        if (booking.trang_thai === 'cho_xac_nhan' || booking.trang_thai === 'da_xac_nhan') {
-            return '<button class="booking-action-button booking-action-button--danger btn-cancel" type="button" data-id="' + booking.id + '">Hủy yêu cầu</button>';
+        if (['cho_xac_nhan', 'da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang'].includes(booking.trang_thai)) {
+            return '<button class="booking-action-button booking-action-button--danger btn-cancel" type="button" data-id="' + booking.id + '">Há»§y yÃªu cáº§u</button>';
         }
 
         if (booking.trang_thai === 'dang_lam') {
             return `
                 <div class="booking-review-summary">
                     <span class="material-symbols-outlined">autorenew</span>
-                    Thợ đang xử lý yêu cầu
+                    Thá»£ Ä‘ang xá»­ lÃ½ yÃªu cáº§u
                 </div>
             `;
         }
@@ -382,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isCash = isCashPaymentBooking(booking);
             return `
                 <button class="booking-action-button ${isCash ? 'booking-action-button--warning' : 'booking-action-button--primary'} btn-payment-choice" type="button" data-id="${booking.id}">
-                    <span class="material-symbols-outlined">${isCash ? 'payments' : 'account_balance_wallet'}</span>Chọn cách thanh toán
+                    <span class="material-symbols-outlined">${isCash ? 'payments' : 'account_balance_wallet'}</span>Chá»n cÃ¡ch thanh toÃ¡n
                 </button>
             `;
         }
@@ -391,8 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const review = Array.isArray(booking.danh_gias) ? booking.danh_gias[0] : null;
             if (!review) {
                 return `
-                    <button class="booking-action-button booking-action-button--primary btn-review" type="button" data-id="${booking.id}" data-worker="${escapeHtml(booking.tho?.name || 'thợ đã hỗ trợ đơn này')}">
-                        <span class="material-symbols-outlined">star</span>Đánh giá
+                    <button class="booking-action-button booking-action-button--primary btn-review" type="button" data-id="${booking.id}" data-worker="${escapeHtml(booking.tho?.name || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y')}">
+                        <span class="material-symbols-outlined">star</span>ÄÃ¡nh giÃ¡
                     </button>
                 `;
             }
@@ -400,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return `
                 <div class="booking-review-summary">
                     <span class="booking-review-stars">${'<i class="fas fa-star"></i>'.repeat(Number(review.so_sao || 0))}${'<i class="far fa-star"></i>'.repeat(5 - Number(review.so_sao || 0))}</span>
-                    <span>Đã đánh giá</span>
+                    <span>ÄÃ£ Ä‘Ã¡nh giÃ¡</span>
                 </div>
             `;
         }
@@ -408,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (booking.trang_thai === 'da_huy') {
             return `
                 <button class="booking-action-button booking-action-button--primary btn-rebook" type="button" data-id="${booking.id}">
-                    <span class="material-symbols-outlined">refresh</span>Đặt lại
+                    <span class="material-symbols-outlined">refresh</span>Äáº·t láº¡i
                 </button>
             `;
         }
@@ -449,12 +505,12 @@ document.addEventListener('DOMContentLoaded', () => {
         clearPagination();
         bookingsContainer.innerHTML = renderFeedbackCard({
             icon: 'progress_activity',
-            title: 'Đang tải danh sách',
-            text: 'Hệ thống đang lấy dữ liệu booking mới nhất của bạn.',
+            title: 'Äang táº£i danh sÃ¡ch',
+            text: 'Há»‡ thá»‘ng Ä‘ang láº¥y dá»¯ liá»‡u booking má»›i nháº¥t cá»§a báº¡n.',
             extraHtml: `
                 <div class="mt-3">
                     <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Đang tải...</span>
+                        <span class="visually-hidden">Äang táº£i...</span>
                     </div>
                 </div>
             `,
@@ -465,11 +521,11 @@ document.addEventListener('DOMContentLoaded', () => {
         clearPagination();
         bookingsContainer.innerHTML = renderFeedbackCard({
             icon: 'error',
-            title: 'Không tải được lịch sử đặt lịch',
-            text: 'Đã có lỗi xảy ra khi lấy danh sách booking. Vui lòng thử tải lại trong ít phút nữa.',
+            title: 'KhÃ´ng táº£i Ä‘Æ°á»£c lá»‹ch sá»­ Ä‘áº·t lá»‹ch',
+            text: 'ÄÃ£ cÃ³ lá»—i xáº£y ra khi láº¥y danh sÃ¡ch booking. Vui lÃ²ng thá»­ táº£i láº¡i trong Ã­t phÃºt ná»¯a.',
             actionHtml: `
                 <button class="history-cta border-0 mt-3" type="button" id="btnRetryBookings">
-                    <span class="material-symbols-outlined">refresh</span>Tải lại
+                    <span class="material-symbols-outlined">refresh</span>Táº£i láº¡i
                 </button>
             `,
         });
@@ -480,13 +536,13 @@ document.addEventListener('DOMContentLoaded', () => {
         clearPagination();
         bookingsContainer.innerHTML = renderFeedbackCard({
             icon: isFiltered ? 'filter_alt_off' : 'calendar_month',
-            title: isFiltered ? 'Không có đơn phù hợp' : 'Chưa có lịch đặt nào',
+            title: isFiltered ? 'KhÃ´ng cÃ³ Ä‘Æ¡n phÃ¹ há»£p' : 'ChÆ°a cÃ³ lá»‹ch Ä‘áº·t nÃ o',
             text: isFiltered
-                ? 'Không có đơn nào khớp với trạng thái hoặc dịch vụ bạn đang chọn. Hãy đổi bộ lọc để xem thêm.'
-                : 'Bạn chưa có lịch hẹn nào được lưu. Hãy đặt lịch mới để bắt đầu.',
+                ? 'KhÃ´ng cÃ³ Ä‘Æ¡n nÃ o khá»›p vá»›i tráº¡ng thÃ¡i hoáº·c dá»‹ch vá»¥ báº¡n Ä‘ang chá»n. HÃ£y Ä‘á»•i bá»™ lá»c Ä‘á»ƒ xem thÃªm.'
+                : 'Báº¡n chÆ°a cÃ³ lá»‹ch háº¹n nÃ o Ä‘Æ°á»£c lÆ°u. HÃ£y Ä‘áº·t lá»‹ch má»›i Ä‘á»ƒ báº¯t Ä‘áº§u.',
             actionHtml: `
                 <a href="/customer/home" class="history-cta">
-                    <span class="material-symbols-outlined">add_circle</span>Đặt lịch mới
+                    <span class="material-symbols-outlined">add_circle</span>Äáº·t lá»‹ch má»›i
                 </a>
             `,
         });
@@ -511,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
             node.innerHTML = `
                 <span class="booking-review-stars">${renderReviewStars(review.so_sao)}</span>
                 <span class="booking-review-score">${Number(review.so_sao || 0).toFixed(1)}/5</span>
-                <span class="booking-review-state">${canEditReview ? 'Có thể sửa 1 lần' : 'Đã khóa chỉnh sửa'}</span>
+                <span class="booking-review-state">${canEditReview ? 'CÃ³ thá»ƒ sá»­a 1 láº§n' : 'ÄÃ£ khÃ³a chá»‰nh sá»­a'}</span>
             `;
         });
     };
@@ -532,10 +588,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         bookingsContainer.innerHTML = paginatedBookings.map((booking) => {
             const services = getBookingServices(booking);
-            const firstServiceName = services[0]?.ten_dich_vu || 'Dịch vụ sửa chữa';
+            const firstServiceName = services[0]?.ten_dich_vu || 'Dá»‹ch vá»¥ sá»­a chá»¯a';
             const statusMeta = getStatusMeta(booking.trang_thai);
             const visual = getServiceVisual(booking, services);
-            const locationText = booking.loai_dat_lich === 'at_home' ? (booking.dia_chi || 'Chưa cập nhật địa chỉ') : (booking.dia_chi || storeAddress);
+            const locationText = booking.loai_dat_lich === 'at_home' ? (booking.dia_chi || 'ChÆ°a cáº­p nháº­t Ä‘á»‹a chá»‰') : (booking.dia_chi || storeAddress);
             const visibleTags = services.slice(0, 2).map((service) => `<span class="service-tag">${escapeHtml(service.ten_dich_vu)}</span>`);
             if (services.length > 2) {
                 visibleTags.push(`<span class="service-tag service-tag--muted">+${services.length - 2}</span>`);
@@ -559,10 +615,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="booking-card-body booking-card-body--compact">
                             <h3 class="booking-card-title">${escapeHtml(firstServiceName)}</h3>
                             <div class="booking-card-meta">
-                                <span class="material-symbols-outlined">tag</span>Mã đơn #${escapeHtml(booking.id)}
+                                <span class="material-symbols-outlined">tag</span>MÃ£ Ä‘Æ¡n #${escapeHtml(booking.id)}
                             </div>
                             <div class="booking-card-meta">
-                                <span class="material-symbols-outlined">schedule</span>${formatDate(booking.ngay_hen)} - ${escapeHtml(booking.khung_gio_hen || 'Chưa chọn giờ')}
+                                <span class="material-symbols-outlined">schedule</span>${formatDate(booking.ngay_hen)} - ${escapeHtml(booking.khung_gio_hen || 'ChÆ°a chá»n giá»')}
                             </div>
                             <div class="booking-compact-row">
                                 <span class="booking-status-chip ${statusMeta.className}">${statusMeta.label}</span>
@@ -576,14 +632,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${booking.thue_xe_cho ? `
                                     <div class="booking-transport-line">
                                         <span class="material-symbols-outlined">local_shipping</span>
-                                        <span>Có yêu cầu thuê xe chở thiết bị</span>
+                                        <span>CÃ³ yÃªu cáº§u thuÃª xe chá»Ÿ thiáº¿t bá»‹</span>
                                     </div>
                                 ` : ''}
                             </div>
                             <div class="booking-card-footer">
                                 <div class="booking-assignee booking-assignee--compact">${buildWorkerHtml(booking)}</div>
                                 <div class="booking-total-mini">
-                                    <span>Tổng</span>
+                                    <span>Tá»•ng</span>
                                     <strong>${formatMoney(totalAmount)}</strong>
                                 </div>
                             </div>
@@ -640,7 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const items = buildPaginationModel(totalPages, currentPage);
 
         paginationContainer.innerHTML = [
-            `<button class="booking-page-btn is-nav" type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>Trước</button>`,
+            `<button class="booking-page-btn is-nav" type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>TrÆ°á»›c</button>`,
             ...items.map((item) => {
                 if (typeof item !== 'number') {
                     return '<span class="booking-page-btn is-ellipsis">...</span>';
@@ -679,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        const optionsHtml = ['<option value="all">Tất cả dịch vụ</option>']
+        const optionsHtml = ['<option value="all">Táº¥t cáº£ dá»‹ch vá»¥</option>']
             .concat(
                 Array.from(serviceMap.entries())
                     .sort((a, b) => a[1].localeCompare(b[1], 'vi'))
@@ -696,7 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let filtered = [...allBookings];
 
         if (currentFilter === 'active') {
-            filtered = filtered.filter((booking) => ['cho_xac_nhan', 'da_xac_nhan', 'dang_lam'].includes(booking.trang_thai));
+            filtered = filtered.filter((booking) => ['cho_xac_nhan', 'da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang', 'dang_lam'].includes(booking.trang_thai));
         } else if (currentFilter === 'payment') {
             filtered = filtered.filter((booking) => ['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking.trang_thai));
         } else if (currentFilter === 'completed') {
@@ -720,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const collected = [];
 
         do {
-            const res = ensureOk(await callApi(`/don-dat-lich?page=${page}`), 'Không tải được danh sách booking');
+            const res = ensureOk(await callApi(`/don-dat-lich?page=${page}`), 'KhÃ´ng táº£i Ä‘Æ°á»£c danh sÃ¡ch booking');
             const payload = res.data || {};
             const items = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
 
@@ -750,20 +806,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const showCashPaymentInstructions = async (booking) => {
+    const showLegacyCashPaymentInstructions = async (booking) => {
         await Swal.fire({
-            title: 'Thanh toán tiền mặt',
+            title: 'Thanh toÃ¡n tiá»n máº·t',
             html: `
                 <div style="text-align:left; line-height:1.65;">
-                    <p style="margin-bottom:0.75rem;">Thợ đã chốt đơn này với phương thức <strong>tiền mặt</strong>.</p>
-                    <p style="margin-bottom:0.75rem;">Bạn thanh toán trực tiếp cho thợ sau khi kiểm tra kết quả sửa chữa.</p>
-                    <p style="margin:0;">Nếu đơn chưa hoàn tất ngay, vui lòng liên hệ thợ hoặc cửa hàng để được hỗ trợ đối soát.</p>
+                    <p style="margin-bottom:0.75rem;">Thá»£ Ä‘Ã£ chá»‘t Ä‘Æ¡n nÃ y vá»›i phÆ°Æ¡ng thá»©c <strong>tiá»n máº·t</strong>.</p>
+                    <p style="margin-bottom:0.75rem;">Báº¡n thanh toÃ¡n trá»±c tiáº¿p cho thá»£ sau khi kiá»ƒm tra káº¿t quáº£ sá»­a chá»¯a.</p>
+                    <p style="margin:0;">Náº¿u Ä‘Æ¡n chÆ°a hoÃ n táº¥t ngay, vui lÃ²ng liÃªn há»‡ thá»£ hoáº·c cá»­a hÃ ng Ä‘á»ƒ Ä‘Æ°á»£c há»— trá»£ Ä‘á»‘i soÃ¡t.</p>
                 </div>
             `,
             icon: 'info',
-            confirmButtonText: 'Đã hiểu',
+            confirmButtonText: 'ÄÃ£ hiá»ƒu',
         });
     };
+
+    const showCashPaymentInstructions = async () => showSharedCashPaymentInstructions({ swal: Swal });
 
     const syncBookingPaymentMethod = async (booking, paymentMethod) => {
         if (getBookingPaymentMethod(booking) === paymentMethod) {
@@ -774,60 +832,65 @@ document.addEventListener('DOMContentLoaded', () => {
             await callApi(`/bookings/${booking.id}/payment-method`, 'PUT', {
                 phuong_thuc_thanh_toan: paymentMethod,
             }),
-            'Không thể cập nhật phương thức thanh toán'
+            'KhÃ´ng thá»ƒ cáº­p nháº­t phÆ°Æ¡ng thá»©c thanh toÃ¡n'
         );
 
         Object.assign(booking, response.data?.booking || {});
-        showToast(response.data?.message || 'Đã cập nhật phương thức thanh toán.');
+        showToast(response.data?.message || 'ÄÃ£ cáº­p nháº­t phÆ°Æ¡ng thá»©c thanh toÃ¡n.');
 
         return booking;
     };
 
     const selectPendingPaymentMode = async (booking) => {
         const result = await Swal.fire({
-            title: 'Chọn cách thanh toán',
+            title: 'Chá»n cÃ¡ch thanh toÃ¡n',
             input: 'radio',
             inputOptions: {
-                cod: 'Tiền mặt trực tiếp cho thợ',
-                transfer: 'Chuyển khoản online / ví điện tử',
+                cod: 'Tiá»n máº·t trá»±c tiáº¿p cho thá»£',
+                transfer: 'Chuyá»ƒn khoáº£n online / vÃ­ Ä‘iá»‡n tá»­',
             },
             inputValue: getBookingPaymentMethod(booking),
-            inputValidator: (value) => (!value ? 'Vui lòng chọn cách thanh toán.' : undefined),
+            inputValidator: (value) => (!value ? 'Vui lÃ²ng chá»n cÃ¡ch thanh toÃ¡n.' : undefined),
             showCancelButton: true,
-            confirmButtonText: 'Tiếp tục',
-            cancelButtonText: 'Đóng',
+            confirmButtonText: 'Tiáº¿p tá»¥c',
+            cancelButtonText: 'ÄÃ³ng',
         });
 
         return result.isConfirmed ? result.value : null;
     };
 
-    const selectOnlineGateway = async () => {
+    const selectLegacyOnlineGateway = async () => {
         const gatewayOptions = buildOnlineGatewayOptions();
         const gatewayKeys = Object.keys(gatewayOptions);
         const result = await Swal.fire({
-            title: 'Chọn ví điện tử',
+            title: 'Chá»n vÃ­ Ä‘iá»‡n tá»­',
             input: 'radio',
             inputOptions: gatewayOptions,
             inputValue: gatewayKeys[0] || 'momo',
-            inputValidator: (value) => (!value ? 'Vui lòng chọn ví hoặc cổng thanh toán.' : undefined),
+            inputValidator: (value) => (!value ? 'Vui lÃ²ng chá»n vÃ­ hoáº·c cá»•ng thanh toÃ¡n.' : undefined),
             showCancelButton: true,
-            confirmButtonText: 'Mở thanh toán',
-            cancelButtonText: 'Quay lại',
+            confirmButtonText: 'Má»Ÿ thanh toÃ¡n',
+            cancelButtonText: 'Quay láº¡i',
         });
 
         return result.isConfirmed ? result.value : null;
     };
 
+    const selectOnlineGateway = async () => selectSharedOnlineGateway({
+        isLocalPaymentSandbox,
+        swal: Swal,
+    });
+
     const startOnlinePayment = async (booking, gateway) => {
         const result = await Swal.fire({
-            title: gateway === 'test' ? 'Thanh toán test nội bộ' : 'Chuyển sang cổng thanh toán',
+            title: gateway === 'test' ? 'Thanh toÃ¡n test ná»™i bá»™' : 'Chuyá»ƒn sang cá»•ng thanh toÃ¡n',
             text: gateway === 'test'
-                ? 'Đây là thanh toán giả lập để test luồng hệ thống, không tạo giao dịch thật. Bạn muốn tiếp tục?'
-                : 'Hệ thống sẽ chuyển bạn sang ví điện tử hoặc cổng thanh toán đã chọn để hoàn tất đơn hàng.',
+                ? 'ÄÃ¢y lÃ  thanh toÃ¡n giáº£ láº­p Ä‘á»ƒ test luá»“ng há»‡ thá»‘ng, khÃ´ng táº¡o giao dá»‹ch tháº­t. Báº¡n muá»‘n tiáº¿p tá»¥c?'
+                : 'Há»‡ thá»‘ng sáº½ chuyá»ƒn báº¡n sang vÃ­ Ä‘iá»‡n tá»­ hoáº·c cá»•ng thanh toÃ¡n Ä‘Ã£ chá»n Ä‘á»ƒ hoÃ n táº¥t Ä‘Æ¡n hÃ ng.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: gateway === 'test' ? 'Thanh toán test' : 'Tiếp tục',
-            cancelButtonText: 'Đóng',
+            confirmButtonText: gateway === 'test' ? 'Thanh toÃ¡n test' : 'Tiáº¿p tá»¥c',
+            cancelButtonText: 'ÄÃ³ng',
         });
 
         if (!result.isConfirmed) return;
@@ -835,14 +898,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const res = ensureOk(await callApi('/payment/create', 'POST', {
             don_dat_lich_id: booking.id,
             phuong_thuc: gateway,
-        }), gateway === 'test' ? 'Không tạo được giao dịch thanh toán test' : 'Không tạo được giao dịch thanh toán');
+        }), gateway === 'test' ? 'KhÃ´ng táº¡o Ä‘Æ°á»£c giao dá»‹ch thanh toÃ¡n test' : 'KhÃ´ng táº¡o Ä‘Æ°á»£c giao dá»‹ch thanh toÃ¡n');
 
         if (res.data?.url) {
             window.location.href = res.data.url;
             return;
         }
 
-        showToast(res.data?.message || 'Thanh toán thành công.');
+        showToast(res.data?.message || 'Thanh toÃ¡n thÃ nh cÃ´ng.');
         await loadBookings();
     };
 
@@ -897,17 +960,17 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', async (event) => {
                 const id = event.currentTarget.dataset.id;
                 const result = await Swal.fire({
-                    title: 'Hủy đơn đặt lịch?',
+                    title: 'Há»§y Ä‘Æ¡n Ä‘áº·t lá»‹ch?',
                     icon: 'warning',
                     input: 'radio',
                     inputOptions: cancelReasonOptions,
-                    inputLabel: 'Chọn lý do hủy',
-                    inputValidator: (value) => (!value ? 'Vui lòng chọn lý do hủy đơn.' : undefined),
+                    inputLabel: 'Chá»n lÃ½ do há»§y',
+                    inputValidator: (value) => (!value ? 'Vui lÃ²ng chá»n lÃ½ do há»§y Ä‘Æ¡n.' : undefined),
                     showCancelButton: true,
                     confirmButtonColor: '#dc3545',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Có, hủy đơn',
-                    cancelButtonText: 'Đóng',
+                    confirmButtonText: 'CÃ³, há»§y Ä‘Æ¡n',
+                    cancelButtonText: 'ÄÃ³ng',
                 });
 
                 if (!result.isConfirmed) return;
@@ -916,11 +979,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     ensureOk(await callApi(`/don-dat-lich/${id}/status`, 'PUT', {
                         trang_thai: 'da_huy',
                         ma_ly_do_huy: result.value,
-                    }), 'Lỗi khi hủy đơn');
-                    showToast('Hủy đơn thành công');
+                    }), 'Lá»—i khi há»§y Ä‘Æ¡n');
+                    showToast('Há»§y Ä‘Æ¡n thÃ nh cÃ´ng');
                     loadBookings();
                 } catch (error) {
-                    showToast(error.message || 'Lỗi khi hủy đơn', 'error');
+                    showToast(error.message || 'Lá»—i khi há»§y Ä‘Æ¡n', 'error');
                 }
             });
         });
@@ -928,30 +991,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-payment-choice').forEach((button) => {
             button.addEventListener('click', async (event) => {
                 const currentButton = event.currentTarget;
+                const id = currentButton.dataset.id;
+                /*
                 const booking = allBookings.find((item) => String(item.id) === String(currentButton.dataset.id || ''));
                 const review = getLatestReview(booking);
 
                 if (!review) {
-                    showToast('Khong tim thay danh gia de chinh sua.', 'error');
+                    showToast('Không tìm thấy đánh giá để chỉnh sửa.', 'error');
                     return;
                 }
 
                 openReviewModal({
                     bookingId: currentButton.dataset.id || '',
-                    workerName: currentButton.dataset.worker || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y',
+                    workerName: currentButton.dataset.worker || 'thợ đã hỗ trợ đơn này',
                     review,
                 });
                 return;
-                const id = currentButton.dataset.id;
+                */
                 try {
                     currentButton.disabled = true;
                     const booking = allBookings.find((item) => String(item.id) === String(id));
                     if (!booking) {
-                        throw new Error('Không tìm thấy đơn để xử lý thanh toán.');
+                        throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n Ä‘á»ƒ xá»­ lÃ½ thanh toÃ¡n.');
                     }
                     await openPaymentAction(booking);
                 } catch (error) {
-                    showToast(error.message || 'Không thể thanh toán đơn này', 'error');
+                    showToast(error.message || 'KhÃ´ng thá»ƒ thanh toÃ¡n Ä‘Æ¡n nÃ y', 'error');
                 } finally {
                     currentButton.disabled = false;
                 }
@@ -962,11 +1027,24 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', (event) => {
                 const booking = allBookings.find((item) => String(item.id) === String(event.currentTarget.dataset.id || ''));
                 if (!booking) {
-                    showToast('Không tìm thấy đơn để đặt lại.', 'error');
+                    showToast('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n Ä‘á»ƒ Ä‘áº·t láº¡i.', 'error');
                     return;
                 }
 
                 openRebookBooking(booking);
+            });
+        });
+
+        document.querySelectorAll('.btn-complaint').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                const bookingId = event.currentTarget.dataset.id || '';
+                const booking = allBookings.find((item) => String(item.id) === String(bookingId));
+                if (!booking) {
+                    showToast('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n Ä‘á»ƒ gá»­i khiáº¿u náº¡i.', 'error');
+                    return;
+                }
+
+                openComplaintModal(booking);
             });
         });
 
@@ -975,19 +1053,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentButton = event.currentTarget;
                 openReviewModal({
                     bookingId: currentButton.dataset.id || '',
-                    workerName: currentButton.dataset.worker || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y',
+                    workerName: currentButton.dataset.worker || 'thợ đã hỗ trợ đơn này',
                 });
                 return;
                 if (reviewRecordId) {
                     reviewRecordId.value = '';
                 }
                 if (reviewModalLabel) {
-                    reviewModalLabel.textContent = 'Đánh giá dịch vụ';
+                    reviewModalLabel.textContent = 'ÄÃ¡nh giÃ¡ dá»‹ch vá»¥';
                 }
                 if (btnSubmitReview) {
-                    btnSubmitReview.textContent = 'Gửi đánh giá';
+                    btnSubmitReview.textContent = 'Gá»­i Ä‘Ã¡nh giÃ¡';
                 }
-                reviewWorkerName.innerHTML = `Hãy cho chúng tôi biết cảm nhận của bạn về <strong>${escapeHtml(currentButton.dataset.worker || 'thợ đã hỗ trợ đơn này')}</strong>.`;
+                reviewWorkerName.innerHTML = `HÃ£y cho chÃºng tÃ´i biáº¿t cáº£m nháº­n cá»§a báº¡n vá» <strong>${escapeHtml(currentButton.dataset.worker || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y')}</strong>.`;
                 formReview.reset();
                 updateReviewRatingCaption();
                 reviewModalInstance?.show();
@@ -999,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentButton = event.currentTarget;
                 openReviewModal({
                     bookingId: currentButton.dataset.id || '',
-                    workerName: currentButton.dataset.worker || 'thợ đã hỗ trợ đơn này',
+                    workerName: currentButton.dataset.worker || 'thá»£ Ä‘Ã£ há»— trá»£ Ä‘Æ¡n nÃ y',
                     review: {
                         id: currentButton.dataset.reviewId || '',
                         so_sao: currentButton.dataset.reviewRating || 0,
@@ -1016,24 +1094,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (paymentStatus === 'success') {
             Swal.fire({
-                title: 'Thanh toán thành công',
-                text: 'Giao dịch trực tuyến đã hoàn tất và đơn của bạn đã được cập nhật.',
+                title: 'Thanh toÃ¡n thÃ nh cÃ´ng',
+                text: 'Giao dá»‹ch trá»±c tuyáº¿n Ä‘Ã£ hoÃ n táº¥t vÃ  Ä‘Æ¡n cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t.',
                 icon: 'success',
-                confirmButtonText: 'Đóng',
+                confirmButtonText: 'ÄÃ³ng',
             });
         } else if (paymentStatus === 'failed') {
             Swal.fire({
-                title: 'Thanh toán thất bại',
-                text: 'Giao dịch đã bị hủy hoặc có lỗi trong quá trình thanh toán.',
+                title: 'Thanh toÃ¡n tháº¥t báº¡i',
+                text: 'Giao dá»‹ch Ä‘Ã£ bá»‹ há»§y hoáº·c cÃ³ lá»—i trong quÃ¡ trÃ¬nh thanh toÃ¡n.',
                 icon: 'error',
-                confirmButtonText: 'Đóng',
+                confirmButtonText: 'ÄÃ³ng',
             });
         } else if (paymentStatus === 'invalid_signature') {
             Swal.fire({
-                title: 'Giao dịch không hợp lệ',
-                text: 'Mã xác thực thanh toán không khớp nên giao dịch đã bị từ chối.',
+                title: 'Giao dá»‹ch khÃ´ng há»£p lá»‡',
+                text: 'MÃ£ xÃ¡c thá»±c thanh toÃ¡n khÃ´ng khá»›p nÃªn giao dá»‹ch Ä‘Ã£ bá»‹ tá»« chá»‘i.',
                 icon: 'error',
-                confirmButtonText: 'Đóng',
+                confirmButtonText: 'ÄÃ³ng',
             });
         }
 
@@ -1057,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const review = getLatestReview(booking);
 
             if (!review) {
-                showToast('Khong tim thay danh gia de chinh sua.', 'error');
+                showToast('Không tìm thấy đánh giá để chỉnh sửa.', 'error');
                 return;
             }
 
@@ -1090,12 +1168,12 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             const selectedRating = document.querySelector('input[name="so_sao"]:checked');
             if (!selectedRating) {
-                showToast('Vui lòng chọn số sao đánh giá', 'error');
+                showToast('Vui lÃ²ng chá»n sá»‘ sao Ä‘Ã¡nh giÃ¡', 'error');
                 return;
             }
 
             btnSubmitReview.disabled = true;
-            btnSubmitReview.textContent = 'Đang gửi...';
+            btnSubmitReview.textContent = 'Äang gá»­i...';
 
             try {
                 const editingReviewId = reviewRecordId?.value || '';
@@ -1109,8 +1187,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     ensureOk(await callApi(`/danh-gia/${editingReviewId}`, 'POST', formData), 'Loi cap nhat danh gia');
                     /* legacy review payload removed
                     legacy review payload removed
-                    }), 'Lá»—i cáº­p nháº­t Ä‘Ã¡nh giÃ¡');
-                    showToast('Cập nhật đánh giá thành công!');
+                    }), 'Lỗi cập nhật đánh giá');
+                    showToast('Cáº­p nháº­t Ä‘Ã¡nh giÃ¡ thÃ nh cÃ´ng!');
                     */ showToast('Cap nhat danh gia thanh cong!'); reviewModalInstance?.hide();
                     loadBookings();
                     return;
@@ -1121,18 +1199,78 @@ document.addEventListener('DOMContentLoaded', () => {
                     don_dat_lich_id: reviewBookingId.value,
                     so_sao: selectedRating.value,
                     nhan_xet: document.getElementById('reviewComment').value,
-                }), 'Lỗi gửi đánh giá');
-                showToast('Cảm ơn bạn đã đánh giá!');
+                }), 'Lá»—i gá»­i Ä‘Ã¡nh giÃ¡');
+                showToast('Cáº£m Æ¡n báº¡n Ä‘Ã£ Ä‘Ã¡nh giÃ¡!');
                 */ showToast('Cam on ban da danh gia!'); reviewModalInstance?.hide();
                 loadBookings();
             } catch (error) {
-                showToast(error.message || 'Lỗi gửi đánh giá', 'error');
+                showToast(error.message || 'Lá»—i gá»­i Ä‘Ã¡nh giÃ¡', 'error');
             } finally {
                 btnSubmitReview.disabled = false;
                 setTimeout(() => {
                     btnSubmitReview.textContent = reviewRecordId?.value ? 'Cap nhat danh gia' : 'Gui danh gia';
                 }, 0);
-                btnSubmitReview.textContent = 'Gửi đánh giá';
+                btnSubmitReview.textContent = 'Gá»­i Ä‘Ã¡nh giÃ¡';
+            }
+        });
+    }
+
+    modalComplaintEl?.addEventListener('hidden.bs.modal', () => {
+        resetComplaintFormState();
+    });
+
+    if (formComplaint) {
+        formComplaint.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const bookingId = complaintBookingId?.value || '';
+            const selectedReason = formComplaint.querySelector('input[name="ly_do_khieu_nai"]:checked');
+            if (!bookingId) {
+                showToast('KhÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c Ä‘Æ¡n cáº§n khiáº¿u náº¡i.', 'error');
+                return;
+            }
+
+            if (!selectedReason) {
+                showToast('Vui lÃ²ng chá»n lÃ½ do khiáº¿u náº¡i.', 'error');
+                return;
+            }
+
+            const imageFiles = Array.from(complaintImagesInput?.files || []);
+            if (imageFiles.length > 5) {
+                showToast('Báº¡n chá»‰ Ä‘Æ°á»£c táº£i tá»‘i Ä‘a 5 áº£nh.', 'error');
+                return;
+            }
+
+            if (btnSubmitComplaint) {
+                btnSubmitComplaint.disabled = true;
+                btnSubmitComplaint.textContent = 'Äang gá»­i...';
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('ly_do_khieu_nai', selectedReason.value);
+                formData.append('ghi_chu', complaintNote?.value || '');
+
+                imageFiles.forEach((file) => {
+                    formData.append('hinh_anh_khieu_nai[]', file);
+                });
+
+                const videoFile = complaintVideoInput?.files?.[0] || null;
+                if (videoFile) {
+                    formData.append('video_khieu_nai', videoFile);
+                }
+
+                ensureOk(await callApi(`/don-dat-lich/${bookingId}/complaint`, 'POST', formData), 'Lá»—i gá»­i khiáº¿u náº¡i');
+                showToast('ÄÃ£ gá»­i khiáº¿u náº¡i thÃ nh cÃ´ng.');
+                complaintModalInstance?.hide();
+                await loadBookings();
+            } catch (error) {
+                showToast(error.message || 'KhÃ´ng thá»ƒ gá»­i khiáº¿u náº¡i', 'error');
+            } finally {
+                if (btnSubmitComplaint) {
+                    btnSubmitComplaint.disabled = false;
+                    btnSubmitComplaint.textContent = 'Gá»­i khiáº¿u náº¡i';
+                }
             }
         });
     }
@@ -1157,3 +1295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     handlePaymentStatusNotice();
     loadBookings();
 });
+
+
+
+

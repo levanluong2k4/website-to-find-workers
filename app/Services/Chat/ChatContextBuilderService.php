@@ -13,6 +13,8 @@ class ChatContextBuilderService
      * @param  array<int, array<string, mixed>>  $historyMessages
      * @param  array<int, array<string, mixed>>  $cases
      * @param  array<int, array<string, mixed>>  $technicians
+     * @param  array<int, array<string, mixed>>  $memories
+     * @param  array<string, mixed>  $storeInfo
      * @param  array<int, array<string, mixed>>  $youtubeLinks
      * @return array{messages: array<int, array<string, string>>, knowledge: array<string, mixed>}
      */
@@ -20,6 +22,8 @@ class ChatContextBuilderService
         array $historyMessages,
         array $cases,
         array $technicians,
+        array $memories,
+        array $storeInfo,
         array $youtubeLinks
     ): array {
         $assistantConfig = $this->assistantSoulConfigService->getConfig();
@@ -27,6 +31,8 @@ class ChatContextBuilderService
         $knowledge = [
             'cases' => array_slice($cases, 0, 3),
             'technicians' => array_slice($technicians, 0, 3),
+            'customer_memories' => array_slice($memories, 0, 5),
+            'store_info' => $storeInfo,
             'youtube_links' => array_slice($youtubeLinks, 0, 3),
             'service_process' => $this->arrayConfig($assistantConfig, 'service_process'),
             'emergency_keywords' => $this->arrayConfig($assistantConfig, 'emergency_keywords'),
@@ -43,6 +49,13 @@ class ChatContextBuilderService
                 'content' => 'Du lieu thuc te tu database: ' . json_encode($knowledge, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ],
         ];
+
+        if ($memories !== []) {
+            $messages[] = [
+                'role' => 'system',
+                'content' => 'Bo nho nguoi dung lien quan: ' . json_encode(array_slice($memories, 0, 5), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ];
+        }
 
         foreach (array_slice($historyMessages, -10) as $historyMessage) {
             $sender = (string) ($historyMessage['sender'] ?? 'user');
@@ -84,6 +97,8 @@ class ChatContextBuilderService
         if ($requiredRules !== []) {
             $sections[] = "Quy tac bat buoc:\n" . $this->formatBulletList($requiredRules);
         }
+
+        $sections[] = 'Luôn trả lời bằng tiếng Việt có dấu đầy đủ, không dùng kiểu viết không dấu.';
 
         $responseGoals = $this->arrayConfig($assistantConfig, 'response_goals');
         if ($responseGoals !== []) {

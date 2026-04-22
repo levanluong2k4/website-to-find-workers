@@ -360,6 +360,8 @@
 @endpush
 
 @section('content')
+<app-navbar></app-navbar>
+
 <section class="feedback-admin-page py-4">
     <div class="container-xxl">
         <div class="feedback-admin-shell" id="customerFeedbackApp">
@@ -386,6 +388,7 @@
                         <option value="">Tat ca loai</option>
                         <option value="low_rating">Danh gia thap</option>
                         <option value="cancellation">Huy don</option>
+                        <option value="customer_complaint">Khieu nai</option>
                     </select>
                     <select class="feedback-admin-select" id="customerFeedbackStatus">
                         <option value="">Tat ca trang thai</option>

@@ -1,0 +1,260 @@
+
+    public function updateCosts(UpdateBookingCostsRequest $request, string $id)
+    {
+        $user = $request->user();
+        if (!$this->canActAsWorker($user)) {
+            return response()->json(['message' => 'Chi tho moi duoc quyen them phi linh kien'], 403);
+        }
+
+        $booking = DonDatLich::find($id);
+
+        if (!$booking) {
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
+        }
+
+        if (!$this->isAdmin($user) && $booking->tho_id !== $user->id) {
+            return response()->json(['message' => 'Ban khong phai tho cua don nay'], 403);
+        }
+
+        if ($booking->trang_thai !== 'dang_lam') {
+            return response()->json(['success' => false, 'message' => 'Trang thai don khong hop le.'], 400);
+        }
+
+        $validated = $request->validated();
+        $laborItems = $this->normalizeLaborCostItems($validated['chi_tiet_tien_cong'] ?? [], $booking);
+        $partItems = $this->normalizePartCostItems($validated['chi_tiet_linh_kien'] ?? [], $booking);
+
+        $booking->tien_cong = $this->sumCostItems($laborItems);
+        $booking->chi_tiet_tien_cong = $laborItems;
+        $booking->phi_linh_kien = $this->sumCostItems($partItems);
+        $booking->chi_tiet_linh_kien = $partItems;
+        $booking->tien_thue_xe = (float) ($validated['tien_thue_xe'] ?? $booking->tien_thue_xe ?? 0);
+        $booking->ghi_chu_linh_kien = $validated['ghi_chu_linh_kien'] ?? null;
+        $booking->tong_tien = (float) $booking->phi_di_lai
+            + (float) $booking->phi_linh_kien
+            + (float) $booking->tien_cong
+            + (float) $booking->tien_thue_xe;
+        $booking->gia_da_cap_nhat = true;
+        $booking->save();
+
+        return response()->json([
+            'message' => 'Cap nhat chi phi sua chua thanh cong',
+            'data' => $booking,
+        ]);
+    }
+
+    public function requestPayment(Request $request, $id, CloudinaryUploadService $cloudinaryUploadService)
+    {
+        $user = $request->user();
+        if (!$this->canActAsWorker($user)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $booking = DonDatLich::find($id);
+        if (!$booking || (!$this->isAdmin($user) && $booking->tho_id !== $user->id)) {
+            return response()->json(['success' => false, 'message' => 'Khong tim thay don.'], 404);
+        }
+
+        if ($booking->trang_thai !== 'dang_lam') {
+            return response()->json(['success' => false, 'message' => 'Trang thai don khong hop le.'], 400);
+        }
+
+        if (!$booking->gia_da_cap_nhat) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lÃ²ng cáº­p nháº­t giÃ¡ trÆ°á»›c khi bÃ¡o hoÃ n thÃ nh.',
+            ], 422);
+        }
+
+        $request->validate([
+            'tien_cong' => 'nullable|numeric|min:0',
+            'tien_thue_xe' => 'nullable|numeric|min:0',
+            'hinh_anh_ket_qua.*' => 'nullable|image|max:5120',
+            'video_ket_qua' => 'nullable|mimes:mp4,mov,avi,wmv|max:20480',
+        ]);
+
+        $paymentMethod = ($booking->phuong_thuc_thanh_toan ?? 'cod') === 'transfer' ? 'transfer' : 'cod';
+        $booking->phuong_thuc_thanh_toan = $paymentMethod;
+        $booking->trang_thai = $this->resolvePendingPaymentStatus($paymentMethod);
+        if ($request->has('tien_cong')) {
+            $booking->tien_cong = $request->tien_cong;
+        }
+        if ($request->has('tien_thue_xe')) {
+            $booking->tien_thue_xe = $request->tien_thue_xe;
+        }
+        if ($request->hasFile('hinh_anh_ket_qua')) {
+            $images = [];
+            foreach ($request->file('hinh_anh_ket_qua') as $file) {
+                $uploadResult = $cloudinaryUploadService->uploadUploadedFile($file, [
+                    'folder' => 'bookings/results/images',
+                ]);
+                $images[] = $uploadResult['secure_url'];
+            }
+            $booking->hinh_anh_ket_qua = $images;
+        }
+
+        if ($request->hasFile('video_ket_qua')) {
+            $uploadResult = $cloudinaryUploadService->uploadUploadedFile($request->file('video_ket_qua'), [
+                'folder' => 'bookings/results/videos',
+                'resource_type' => 'video',
+            ]);
+            $booking->video_ket_qua = $uploadResult['secure_url'];
+        }
+
+        $booking->save();
+
+        $actorName = $user->name ?? 'Há»‡ thá»‘ng';
+        $notificationMessage = $booking->phuong_thuc_thanh_toan === 'transfer'
+            ? "Thá»£ {$actorName} Ä‘Ã£ hoÃ n thÃ nh sá»­a chá»¯a Ä‘Æ¡n #{$booking->id}. Vui lÃ²ng chá»n vÃ­ Ä‘iá»‡n tá»­ hoáº·c cá»•ng thanh toÃ¡n Ä‘á»ƒ thanh toÃ¡n online."
+            : "Thá»£ {$actorName} Ä‘Ã£ hoÃ n thÃ nh sá»­a chá»¯a Ä‘Æ¡n #{$booking->id}. Vui lÃ²ng thanh toÃ¡n tiá»n máº·t trá»±c tiáº¿p cho thá»£ Ä‘á»ƒ hoÃ n táº¥t Ä‘Æ¡n.";
+        $this->loadBookingResponseRelations($booking);
+        $this->notifyCustomerAboutBookingUpdate(
+            $booking,
+            'Thá»£ Ä‘Ã£ cáº­p nháº­t káº¿t quáº£ sá»­a chá»¯a',
+            $notificationMessage,
+            'booking_payment_requested',
+            $booking->phuong_thuc_thanh_toan === 'transfer' ? 'Xem vÃ  thanh toÃ¡n online' : 'Xem hÆ°á»›ng dáº«n thanh toÃ¡n'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $booking->phuong_thuc_thanh_toan === 'transfer'
+                ? 'Da gui yeu cau thanh toan truc tuyen cho khach hang.'
+                : 'Da cap nhat ket qua sua chua. Cho khach thanh toan tien mat.',
+            'booking' => $booking,
+        ]);
+    }
+
+    public function updatePaymentMethod(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$this->canActAsCustomer($user)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $booking = DonDatLich::find($id);
+        if (!$booking) {
+            return response()->json(['success' => false, 'message' => 'Khong tim thay don.'], 404);
+        }
+
+        if (!$this->isAdmin($user) && (int) $booking->khach_hang_id !== (int) $user->id) {
+            return response()->json(['success' => false, 'message' => 'Ban khong co quyen cap nhat thanh toan cho don nay.'], 403);
+        }
+
+        if (in_array($booking->trang_thai, ['da_xong', 'da_huy'], true) || (bool) ($booking->trang_thai_thanh_toan ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Don nay da ket thuc nen khong the doi phuong thuc thanh toan.',
+            ], 422);
+        }
+
+        if (!$booking->gia_da_cap_nhat) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tho chua cap nhat gia, nen chua the doi phuong thuc thanh toan.',
+            ], 422);
+        }
+
+        if (!in_array($booking->trang_thai, ['dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Don nay chua san sang de doi phuong thuc thanh toan.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'phuong_thuc_thanh_toan' => 'required|in:cod,transfer',
+        ]);
+
+        $booking->phuong_thuc_thanh_toan = $validated['phuong_thuc_thanh_toan'];
+
+        if (in_array($booking->trang_thai, ['cho_hoan_thanh', 'cho_thanh_toan'], true)) {
+            $booking->trang_thai = $this->resolvePendingPaymentStatus($validated['phuong_thuc_thanh_toan']);
+        }
+
+        $booking->save();
+        $this->loadBookingResponseRelations($booking);
+
+        return response()->json([
+            'success' => true,
+            'message' => $validated['phuong_thuc_thanh_toan'] === 'transfer'
+                ? 'Da chuyen don sang thanh toan truc tuyen.'
+                : 'Da chuyen don ve thanh toan tien mat.',
+            'booking' => $booking,
+        ]);
+    }
+
+    public function confirmCashPayment(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$this->canActAsWorker($user)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $booking = DonDatLich::find($id);
+        if (!$booking || (!$this->isAdmin($user) && $booking->tho_id !== $user->id)) {
+            return response()->json(['success' => false, 'message' => 'Khong tim thay don.'], 404);
+        }
+
+        if ($booking->trang_thai !== 'cho_thanh_toan' && $booking->trang_thai !== 'cho_hoan_thanh') {
+            return response()->json(['success' => false, 'message' => 'Khach chua duoc yeu cau thanh toan.'], 400);
+        }
+
+        if (($booking->phuong_thuc_thanh_toan ?? 'cod') !== 'cod') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Don nay dang cho thanh toan chuyen khoan. Tho khong the xac nhan tien mat.',
+            ], 400);
+        }
+
+        $booking->trang_thai = 'da_xong';
+        $booking->thoi_gian_hoan_thanh = $booking->thoi_gian_hoan_thanh ?? now();
+        $booking->trang_thai_thanh_toan = true;
+        $booking->save();
+
+        app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncBookingCases((int) $booking->id);
+
+        \App\Models\ThanhToan::create([
+            'don_dat_lich_id' => $booking->id,
+            'so_tien' => $this->resolveBookingTotal($booking),
+            'phuong_thuc' => 'cash',
+            'trang_thai' => 'success',
+            'ma_giao_dich' => 'CASH_' . time(),
+        ]);
+
+        $this->loadBookingResponseRelations($booking);
+        $this->notifyCustomerAboutBookingUpdate(
+            $booking,
+            'ÄÆ¡n Ä‘áº·t lá»‹ch Ä‘Ã£ hoÃ n táº¥t',
+            'Thá»£ ' . ($user->name ?? 'há»‡ thá»‘ng') . ' Ä‘Ã£ xÃ¡c nháº­n thanh toÃ¡n tiá»n máº·t cho Ä‘Æ¡n #' . $booking->id . '. Cáº£m Æ¡n báº¡n Ä‘Ã£ sá»­ dá»¥ng dá»‹ch vá»¥!',
+            'booking_completed'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Da thu tien mat va hoan tat don.',
+            'booking' => $booking,
+        ]);
+    }
+
+    public function confirmPartWarranty(Request $request, string $id, int $partIndex)
+    {
+        $user = $request->user();
+        $booking = DonDatLich::find($id);
+
+        if (!$booking) {
+            return response()->json(['message' => 'Khong tim thay don dat lich'], 404);
+        }
+
+        $isAssignedWorker = $this->canActAsWorker($user) && !$this->isAdmin($user) && $booking->tho_id === $user->id;
+        if (!$this->isAdmin($user) && !$isAssignedWorker) {
+            return response()->json([
+                'message' => 'Chi admin hoac tho dang phu trach don moi duoc xac nhan bao hanh.',
+            ], 403);
+        }
+
+        $partItems = is_array($booking->chi_tiet_linh_kien) ? array_values($booking->chi_tiet_linh_kien) : [];
+        if (!array_key_exists($partIndex, $partItems)) {
+            return response()->json(['message' => 'Khong tim thay linh kien can xac nhan bao hanh.'], 404);
+        }
+

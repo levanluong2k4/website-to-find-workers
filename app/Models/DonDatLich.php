@@ -11,9 +11,11 @@ class DonDatLich extends Model
     public const CANCEL_REASON_THAY_DOI_THOI_GIAN_DAT = 'thay_doi_thoi_gian_dat';
     public const CANCEL_REASON_KHONG_CO_THO_NAO_NHAN = 'khong_co_tho_nao_nhan';
     public const CANCEL_REASON_CHO_QUA_LAU = 'cho_qua_lau';
+    public const STATUS_CUSTOMER_UNREACHABLE = 'khong_lien_lac_duoc_voi_khach_hang';
     public const SCHEDULE_BLOCKING_STATUSES = [
         'cho_xac_nhan',
         'da_xac_nhan',
+        self::STATUS_CUSTOMER_UNREACHABLE,
         'dang_lam',
         'cho_hoan_thanh',
         'cho_thanh_toan',
@@ -28,6 +30,12 @@ class DonDatLich extends Model
         'loai_dat_lich',
         'thoi_gian_hen',
         'worker_reminder_sent_at',
+        'worker_contact_issue_reported_at',
+        'worker_contact_issue_resolved_at',
+        'worker_contact_issue_reported_by',
+        'worker_contact_issue_reporter_name',
+        'worker_contact_issue_called_phone',
+        'worker_contact_issue_note',
         'thoi_gian_hoan_thanh',
         'ngay_hen',
         'khung_gio_hen',
@@ -60,6 +68,8 @@ class DonDatLich extends Model
     protected $casts = [
         'thoi_gian_hen' => 'datetime',
         'worker_reminder_sent_at' => 'datetime',
+        'worker_contact_issue_reported_at' => 'datetime',
+        'worker_contact_issue_resolved_at' => 'datetime',
         'thoi_gian_hoan_thanh' => 'datetime',
         'ngay_hen' => 'date',
         'so_lan_doi_lich' => 'integer',
@@ -98,6 +108,17 @@ class DonDatLich extends Model
         return $this->hasMany(ThanhToan::class, 'don_dat_lich_id')->latest();
     }
 
+    public function customerComplaintCase()
+    {
+        return $this->hasOne(CustomerFeedbackCase::class, 'booking_id')
+            ->where('source_type', 'customer_complaint');
+    }
+
+    public function workerContactIssueReporter()
+    {
+        return $this->belongsTo(User::class, 'worker_contact_issue_reported_by');
+    }
+
     public static function scheduleBlockingStatuses(): array
     {
         return self::SCHEDULE_BLOCKING_STATUSES;
@@ -115,6 +136,58 @@ class DonDatLich extends Model
             ->whereDate('ngay_hen', $date)
             ->whereRaw("REPLACE(khung_gio_hen, ' ', '') = ?", [self::normalizeTimeSlot($timeSlot)])
             ->whereIn('trang_thai', self::SCHEDULE_BLOCKING_STATUSES);
+    }
+
+    public function resolveServiceIds(): array
+    {
+        $serviceIds = $this->relationLoaded('dichVus')
+            ? collect($this->dichVus)->pluck('id')
+            : $this->dichVus()->pluck('danh_muc_dich_vu.id');
+
+        if ($serviceIds->isEmpty() && !empty($this->dich_vu_id)) {
+            $serviceIds = collect([(int) $this->dich_vu_id]);
+        }
+
+        return $serviceIds
+            ->map(static fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function hasWorkerContactIssue(): bool
+    {
+        return $this->worker_contact_issue_reported_at !== null;
+    }
+
+    public function hasOpenWorkerContactIssue(): bool
+    {
+        return $this->worker_contact_issue_reported_at !== null
+            && $this->worker_contact_issue_resolved_at === null;
+    }
+
+    public static function statusLabels(): array
+    {
+        return [
+            'cho_xac_nhan' => 'Đang tìm thợ',
+            'da_xac_nhan' => 'Đã có thợ nhận',
+            self::STATUS_CUSTOMER_UNREACHABLE => 'Không liên lạc được với khách hàng',
+            'dang_lam' => 'Đang xử lý',
+            'cho_hoan_thanh' => 'Chờ xác nhận COD',
+            'cho_thanh_toan' => 'Chờ thanh toán trực tuyến',
+            'da_xong' => 'Đã hoàn tất',
+            'da_huy' => 'Đã hủy',
+        ];
+    }
+
+    public static function statusLabel(?string $status): string
+    {
+        if ($status === null || $status === '') {
+            return 'Đang cập nhật';
+        }
+
+        return self::statusLabels()[$status] ?? 'Đang cập nhật';
     }
 
     public static function cancelReasonLabels(): array
@@ -141,3 +214,4 @@ class DonDatLich extends Model
         return self::cancelReasonLabels()[$code] ?? null;
     }
 }
+

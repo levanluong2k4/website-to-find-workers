@@ -201,6 +201,7 @@ class HoSoThoController extends Controller
 
         if (isset($validated['dich_vu_ids'])) {
             $user->dichVus()->sync($validated['dich_vu_ids']);
+            app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncSourceRecord('worker_profile', $user->id);
         }
 
         $hoSo->load('user.dichVus');

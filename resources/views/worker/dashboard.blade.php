@@ -1201,7 +1201,7 @@
   const getBookingCode = (booking) => booking?.ma_don ? `#${String(booking.ma_don).slice(0, 8).toUpperCase()}` : `#${String(booking?.id ?? '').padStart(4, '0')}`;
   const buildDashboardPriorityState = (bookings, availableJobs) => {
     const todayKey = localDateKey();
-    const scheduleStatuses = ['da_xac_nhan', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong', 'cho_xac_nhan'];
+    const scheduleStatuses = ['da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong', 'cho_xac_nhan'];
     const todaySchedule = [...bookings]
       .filter((booking) => bookingDateKey(booking?.ngay_hen) === todayKey && scheduleStatuses.includes(booking?.trang_thai) && booking?.trang_thai !== 'da_huy')
       .sort((left, right) => startTimeFromSlot(left?.khung_gio_hen).localeCompare(startTimeFromSlot(right?.khung_gio_hen)));
