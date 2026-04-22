@@ -1,6 +1,7 @@
 import { callApi, requireRole } from '../api.js';
 
 const DEFAULT_MAP_CENTER = [12.2388, 109.1967];
+const WORKER_MAP_INFO_CARD_HIDDEN_KEY = 'adminDashboard.workerMapInfoCardHidden';
 const state = {
     period: 'month',
     refreshMs: 30000,
@@ -12,6 +13,7 @@ const state = {
         markersLayer: null,
         hasViewport: false,
         selectedWorkerId: null,
+        isInfoCardHidden: false,
     },
 };
 const elements = {};
@@ -44,6 +46,9 @@ function cacheElements() {
     elements.workerMapStatus = document.getElementById('workerMapStatus');
     elements.workerMapCanvas = document.getElementById('workerTrackingMap');
     elements.workerMapEmptyState = document.getElementById('workerMapEmptyState');
+    elements.workerMapInfoCard = document.getElementById('workerMapInfoCard');
+    elements.workerMapInfoHideButton = document.getElementById('workerMapInfoHideButton');
+    elements.workerMapInfoShowButton = document.getElementById('workerMapInfoShowButton');
     elements.workerMapInfoName = document.getElementById('workerMapInfoName');
     elements.workerMapInfoStatus = document.getElementById('workerMapInfoStatus');
     elements.workerMapInfoDetail = document.getElementById('workerMapInfoDetail');
@@ -51,6 +56,9 @@ function cacheElements() {
     elements.workerMapInfoServices = document.getElementById('workerMapInfoServices');
     elements.workerMapInfoSchedule = document.getElementById('workerMapInfoSchedule');
     elements.workerMapInfoArea = document.getElementById('workerMapInfoArea');
+
+    state.workerMap.isInfoCardHidden = readWorkerMapInfoCardHiddenPreference();
+    syncWorkerMapInfoCardVisibility();
 
     elements.summaryRevenueToday = document.getElementById('summaryRevenueToday');
     elements.summaryRevenueNote = document.getElementById('summaryRevenueNote');
@@ -112,6 +120,18 @@ function bindEvents() {
     if (elements.refreshButton) {
         elements.refreshButton.addEventListener('click', () => {
             fetchDashboard();
+        });
+    }
+
+    if (elements.workerMapInfoHideButton) {
+        elements.workerMapInfoHideButton.addEventListener('click', () => {
+            setWorkerMapInfoCardHidden(true);
+        });
+    }
+
+    if (elements.workerMapInfoShowButton) {
+        elements.workerMapInfoShowButton.addEventListener('click', () => {
+            setWorkerMapInfoCardHidden(false);
         });
     }
 
@@ -204,6 +224,35 @@ function setLoading(isLoading) {
     elements.refreshButton.innerHTML = isLoading
         ? '<i class="fa-solid fa-spinner fa-spin"></i>Dang tai'
         : '<i class="fa-solid fa-rotate"></i>Dong bo';
+}
+
+function setWorkerMapInfoCardHidden(isHidden) {
+    state.workerMap.isInfoCardHidden = Boolean(isHidden);
+    syncWorkerMapInfoCardVisibility();
+
+    try {
+        window.localStorage.setItem(WORKER_MAP_INFO_CARD_HIDDEN_KEY, state.workerMap.isInfoCardHidden ? '1' : '0');
+    } catch (error) {
+        console.warn('Khong the luu tuy chon an bang theo doi tho:', error);
+    }
+}
+
+function syncWorkerMapInfoCardVisibility() {
+    if (elements.workerMapInfoCard) {
+        elements.workerMapInfoCard.classList.toggle('is-hidden', state.workerMap.isInfoCardHidden);
+    }
+
+    if (elements.workerMapInfoShowButton) {
+        elements.workerMapInfoShowButton.classList.toggle('is-hidden', !state.workerMap.isInfoCardHidden);
+    }
+}
+
+function readWorkerMapInfoCardHiddenPreference() {
+    try {
+        return window.localStorage.getItem(WORKER_MAP_INFO_CARD_HIDDEN_KEY) === '1';
+    } catch (error) {
+        return false;
+    }
 }
 
 function renderDashboard(data) {
@@ -388,22 +437,29 @@ function ensureWorkerMap(center) {
 
 function buildWorkerMarkerIcon(worker) {
     const tone = sanitizeWorkerMapTone(worker?.map_tone);
-    const avatar = escapeHtml(worker?.avatar || '/assets/images/user-default.png');
     const name = escapeHtml(worker?.name || 'Tho ky thuat');
+    const initials = escapeHtml(getWorkerMapInitials(worker?.name));
+    const avatarUrl = resolveWorkerMapAvatarUrl(worker?.avatar);
+    const hasAvatar = avatarUrl !== '';
 
     return window.L.divIcon({
-        className: '',
+        className: 'adm-leaflet-marker',
         html: `
-            <div class="adm-worker-marker adm-worker-marker--${tone}" aria-label="${name}">
+            <div class="adm-worker-marker adm-worker-marker--${tone} ${hasAvatar ? 'has-avatar' : 'is-name'}" aria-label="${name}">
                 <div class="adm-worker-marker__avatar">
-                    <img src="${avatar}" alt="${name}">
+                    ${hasAvatar
+                        ? `<img src="${escapeHtml(avatarUrl)}" alt="${name}" loading="lazy" onerror="this.onerror=null; this.style.display='none'; const fallback = this.parentElement.querySelector('.adm-worker-marker__fallback'); if (fallback) { fallback.style.display='flex'; } const marker = this.closest('.adm-worker-marker'); if (marker) { marker.classList.add('is-name'); }">`
+                        : ''
+                    }
+                    <span class="adm-worker-marker__fallback"${hasAvatar ? ' style="display:none;"' : ''}>${initials}</span>
                     <span class="adm-worker-marker__dot"></span>
                 </div>
+                <span class="adm-worker-marker__name">${name}</span>
             </div>
         `,
-        iconSize: [54, 68],
-        iconAnchor: [27, 62],
-        tooltipAnchor: [0, -42],
+        iconSize: [110, 88],
+        iconAnchor: [55, 74],
+        tooltipAnchor: [0, -56],
     });
 }
 
@@ -806,6 +862,41 @@ function escapeHtml(value) {
 
 function escapeClass(value) {
     return ['warning', 'info', 'danger'].includes(value) ? value : 'info';
+}
+
+function resolveWorkerMapAvatarUrl(avatar) {
+    const normalizedAvatar = String(avatar ?? '').trim();
+
+    if (!normalizedAvatar || normalizedAvatar === '/assets/images/user-default.png') {
+        return '';
+    }
+
+    if (/^https?:\/\//i.test(normalizedAvatar) || normalizedAvatar.startsWith('/')) {
+        return normalizedAvatar;
+    }
+
+    if (normalizedAvatar.startsWith('storage/')) {
+        return `/${normalizedAvatar}`;
+    }
+
+    return `/storage/${normalizedAvatar.replace(/^\/+/, '')}`;
+}
+
+function getWorkerMapInitials(name) {
+    const parts = String(name ?? '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    if (!parts.length) {
+        return 'TK';
+    }
+
+    if (parts.length === 1) {
+        return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 }
 
 function sanitizeWorkerMapTone(value) {

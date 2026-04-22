@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DonDatLich;
 use App\Models\ThanhToan;
+use App\Support\HttpClientTlsConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +16,7 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'don_dat_lich_id' => 'required|exists:don_dat_lich,id',
-            'phuong_thuc' => 'required|in:test,vnpay,momo,zalopay',
+            'phuong_thuc' => 'required|in:test,vnpay,momo,momo_atm,zalopay',
         ]);
 
         $booking = DonDatLich::findOrFail($validated['don_dat_lich_id']);
@@ -59,7 +60,8 @@ class PaymentController extends Controller
 
         return match ($validated['phuong_thuc']) {
             'vnpay' => $this->createVnpayPayment($request, $booking, $totalAmount),
-            'momo' => $this->createMomoPayment($request, $booking, $totalAmount),
+            'momo' => $this->createMomoWalletPayment($request, $booking, $totalAmount),
+            'momo_atm' => $this->createMomoAtmPayment($request, $booking, $totalAmount),
             'zalopay' => $this->createZalopayPayment($request, $booking, $totalAmount),
             default => $this->createTestPayment($booking, $totalAmount),
         };
@@ -70,11 +72,8 @@ class PaymentController extends Controller
         $inputData = $this->extractPrefixedFields($request, 'vnp_');
         $receivedHash = (string) $request->input('vnp_SecureHash', '');
 
-        unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
-        ksort($inputData);
-
         $secret = (string) env('VNP_HASH_SECRET', '');
-        $calculatedHash = hash_hmac('sha512', http_build_query($inputData, '', '&', PHP_QUERY_RFC3986), $secret);
+        $calculatedHash = $this->buildVnpaySecureHash($inputData, $secret);
 
         $txnRef = (string) $request->input('vnp_TxnRef', '');
         $bookingId = (int) explode('_', $txnRef)[0];
@@ -103,11 +102,8 @@ class PaymentController extends Controller
         $inputData = $this->extractPrefixedFields($request, 'vnp_');
         $receivedHash = (string) $request->input('vnp_SecureHash', '');
 
-        unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
-        ksort($inputData);
-
         $secret = (string) env('VNP_HASH_SECRET', '');
-        $calculatedHash = hash_hmac('sha512', http_build_query($inputData, '', '&', PHP_QUERY_RFC3986), $secret);
+        $calculatedHash = $this->buildVnpaySecureHash($inputData, $secret);
 
         if (!hash_equals($calculatedHash, $receivedHash)) {
             return response()->json(['RspCode' => '97', 'Message' => 'Invalid signature']);
@@ -192,21 +188,62 @@ class PaymentController extends Controller
 
     public function zalopayReturn(Request $request)
     {
-        return redirect('/customer/my-bookings?payment=' . ($request->input('status') == 1 ? 'success' : 'failed'));
+        $query = [
+            'appid' => (string) $request->input('appid', ''),
+            'apptransid' => (string) $request->input('apptransid', ''),
+            'pmcid' => (string) $request->input('pmcid', ''),
+            'bankcode' => (string) $request->input('bankcode', ''),
+            'amount' => (string) $request->input('amount', ''),
+            'discountamount' => (string) $request->input('discountamount', ''),
+            'status' => (string) $request->input('status', ''),
+        ];
+        $receivedChecksum = (string) $request->input('checksum', '');
+        $key2 = trim((string) env('ZALOPAY_KEY2', ''));
+
+        if ($receivedChecksum === '' || $key2 === '' || !hash_equals($this->buildZalopayRedirectChecksum($query, $key2), $receivedChecksum)) {
+            return redirect('/customer/my-bookings?payment=invalid_signature');
+        }
+
+        if ($query['status'] !== '1') {
+            return redirect('/customer/my-bookings?payment=failed');
+        }
+
+        $parts = explode('_', $query['apptransid']);
+        $bookingId = isset($parts[1]) ? (int) $parts[1] : 0;
+        if ($bookingId <= 0) {
+            return redirect('/customer/my-bookings?payment=failed');
+        }
+
+        $queryResult = $this->queryZalopayOrderStatus($query['apptransid']);
+        if (($queryResult['success'] ?? false) !== true) {
+            return redirect('/customer/my-bookings?payment=' . (($queryResult['processing'] ?? false) ? 'processing' : 'failed'));
+        }
+
+        $fallbackAmount = (float) ($query['amount'] !== '' ? $query['amount'] : '0');
+
+        $this->processSuccessPayment(
+            $bookingId,
+            (float) ($queryResult['amount'] ?? $fallbackAmount),
+            'zalopay',
+            (string) ($queryResult['zp_trans_id'] ?? $query['apptransid']),
+            $queryResult['raw'] ?? $request->query()
+        );
+
+        return redirect('/customer/my-bookings?payment=success');
     }
 
     public function zalopayIpn(Request $request)
     {
-        $key2 = (string) env('ZALOPAY_KEY2', '');
+        $key2 = trim((string) env('ZALOPAY_KEY2', ''));
         $payload = json_decode($request->getContent(), true);
 
         if (!is_array($payload) || empty($payload['data']) || empty($payload['mac'])) {
-            return response()->json(['return_code' => -1, 'return_message' => 'invalid payload']);
+            return response()->json(['return_code' => 2, 'return_message' => 'invalid payload']);
         }
 
         $calculatedMac = hash_hmac('sha256', $payload['data'], $key2);
         if (!hash_equals($calculatedMac, (string) $payload['mac'])) {
-            return response()->json(['return_code' => -1, 'return_message' => 'mac not equal']);
+            return response()->json(['return_code' => 2, 'return_message' => 'mac not equal']);
         }
 
         $data = json_decode($payload['data'], true);
@@ -231,6 +268,9 @@ class PaymentController extends Controller
         $tmnCode = (string) env('VNP_TMN_CODE', '');
         $hashSecret = (string) env('VNP_HASH_SECRET', '');
         $gatewayUrl = (string) env('VNP_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
+        $bankCode = trim((string) env('VNP_BANK_CODE', ''));
+        $expireMinutes = max(1, (int) env('VNP_EXPIRE_MINUTES', 15));
+        $vnpTimezone = trim((string) env('VNP_TIMEZONE', 'Asia/Ho_Chi_Minh'));
 
         if ($tmnCode === '' || $hashSecret === '') {
             return response()->json([
@@ -240,24 +280,29 @@ class PaymentController extends Controller
         }
 
         $txnRef = $booking->id . '_' . time();
+        $createDate = now()->setTimezone($vnpTimezone);
         $params = [
             'vnp_Version' => '2.1.0',
             'vnp_TmnCode' => $tmnCode,
             'vnp_Amount' => (int) round($totalAmount * 100),
             'vnp_Command' => 'pay',
-            'vnp_CreateDate' => now()->format('YmdHis'),
+            'vnp_CreateDate' => $createDate->format('YmdHis'),
             'vnp_CurrCode' => 'VND',
+            'vnp_ExpireDate' => $createDate->copy()->addMinutes($expireMinutes)->format('YmdHis'),
             'vnp_IpAddr' => $request->ip(),
             'vnp_Locale' => 'vn',
-            'vnp_OrderInfo' => 'Thanh toan don dat lich #' . $booking->id,
+            'vnp_OrderInfo' => 'Thanh toan don dat lich ma ' . $booking->id,
             'vnp_OrderType' => 'other',
             'vnp_ReturnUrl' => $this->buildCallbackUrl($request, 'vnpay-return'),
             'vnp_TxnRef' => $txnRef,
         ];
 
-        ksort($params);
-        $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
-        $secureHash = hash_hmac('sha512', $query, $hashSecret);
+        if ($bankCode !== '') {
+            $params['vnp_BankCode'] = $bankCode;
+        }
+
+        $query = $this->buildVnpayQuery($params);
+        $secureHash = $this->buildVnpaySecureHash($params, $hashSecret);
         $url = $gatewayUrl . '?' . $query . '&vnp_SecureHash=' . $secureHash;
 
         return response()->json([
@@ -266,7 +311,42 @@ class PaymentController extends Controller
         ]);
     }
 
-    private function createMomoPayment(Request $request, DonDatLich $booking, float $totalAmount)
+    private function createMomoWalletPayment(Request $request, DonDatLich $booking, float $totalAmount)
+    {
+        return $this->createMomoPaymentRequest(
+            $request,
+            $booking,
+            $totalAmount,
+            'captureWallet',
+            'Thanh toan don dat lich #' . $booking->id,
+        );
+    }
+
+    private function createMomoAtmPayment(Request $request, DonDatLich $booking, float $totalAmount)
+    {
+        if (round($totalAmount) < 10000) {
+            return response()->json([
+                'success' => false,
+                'message' => 'MoMo ATM/test card chi ho tro giao dich tu 10.000đ tro len.',
+            ], 422);
+        }
+
+        return $this->createMomoPaymentRequest(
+            $request,
+            $booking,
+            $totalAmount,
+            'payWithATM',
+            'Thanh toan don dat lich #' . $booking->id . ' qua MoMo ATM',
+        );
+    }
+
+    private function createMomoPaymentRequest(
+        Request $request,
+        DonDatLich $booking,
+        float $totalAmount,
+        string $requestType,
+        string $orderInfo
+    )
     {
         $partnerCode = (string) env('MOMO_PARTNER_CODE', '');
         $accessKey = (string) env('MOMO_ACCESS_KEY', '');
@@ -291,12 +371,12 @@ class PaymentController extends Controller
             'requestId' => $requestId,
             'amount' => (string) round($totalAmount),
             'orderId' => $orderId,
-            'orderInfo' => 'Thanh toan don dat lich #' . $booking->id,
+            'orderInfo' => $orderInfo,
             'redirectUrl' => $redirectUrl,
             'ipnUrl' => $ipnUrl,
             'lang' => 'vi',
             'extraData' => '',
-            'requestType' => 'captureWallet',
+            'requestType' => $requestType,
         ];
 
         $rawHash = 'accessKey=' . $accessKey
@@ -313,7 +393,9 @@ class PaymentController extends Controller
         $payload['signature'] = hash_hmac('sha256', $rawHash, $secretKey);
 
         try {
-            $response = Http::acceptJson()->post($endpoint, $payload);
+            $response = Http::withOptions(HttpClientTlsConfig::options())
+                ->acceptJson()
+                ->post($endpoint, $payload);
             $json = $response->json();
 
             if ($response->successful() && !empty($json['payUrl'])) {
@@ -324,6 +406,7 @@ class PaymentController extends Controller
             }
 
             Log::error('MoMo create payment failed', [
+                'request_type' => $requestType,
                 'status' => $response->status(),
                 'response' => $json,
             ]);
@@ -333,7 +416,10 @@ class PaymentController extends Controller
                 'message' => $json['message'] ?? 'Khong tao duoc giao dich MoMo.',
             ], 500);
         } catch (\Throwable $e) {
-            Log::error('MoMo request error', ['exception' => $e->getMessage()]);
+            Log::error('MoMo request error', [
+                'request_type' => $requestType,
+                'exception' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -344,9 +430,13 @@ class PaymentController extends Controller
 
     private function createZalopayPayment(Request $request, DonDatLich $booking, float $totalAmount)
     {
-        $appId = (string) env('ZALOPAY_APP_ID', '');
-        $key1 = (string) env('ZALOPAY_KEY1', '');
-        $endpoint = (string) env('ZALOPAY_ENDPOINT', 'https://sb-openapi.zalopay.vn/v2/create');
+        $appId = trim((string) env('ZALOPAY_APP_ID', ''));
+        $key1 = trim((string) env('ZALOPAY_KEY1', ''));
+        $endpoint = trim((string) env('ZALOPAY_ENDPOINT', 'https://sb-openapi.zalopay.vn/v2/create'));
+        $timezone = trim((string) env('ZALOPAY_TIMEZONE', 'Asia/Ho_Chi_Minh'));
+        $expireDurationSeconds = min(2592000, max(300, (int) env('ZALOPAY_EXPIRE_DURATION_SECONDS', 900)));
+        $bankCode = trim((string) env('ZALOPAY_BANK_CODE', ''));
+        $preferredPaymentMethods = $this->resolveZalopayPreferredPaymentMethods();
 
         if ($appId === '' || $key1 === '') {
             return response()->json([
@@ -355,34 +445,34 @@ class PaymentController extends Controller
             ], 500);
         }
 
-        $embedData = json_encode(['redirecturl' => $this->buildCallbackUrl($request, 'zalopay-return')], JSON_UNESCAPED_SLASHES);
-        $item = json_encode([['don_dat_lich' => $booking->id]], JSON_UNESCAPED_SLASHES);
-        $appTransId = date('ymd') . '_' . $booking->id . '_' . time();
+        $createdAt = now()->setTimezone($timezone);
+        $appTime = (string) $createdAt->valueOf();
+        $appTransId = $createdAt->format('ymd') . '_' . $booking->id . '_' . $createdAt->timestamp;
+        $embedData = json_encode([
+            'redirecturl' => $this->buildCallbackUrl($request, 'zalopay-return'),
+            'preferred_payment_method' => $preferredPaymentMethods,
+        ], JSON_UNESCAPED_SLASHES);
+        $item = json_encode([['booking_id' => (int) $booking->id]], JSON_UNESCAPED_SLASHES);
 
         $order = [
             'app_id' => $appId,
-            'app_time' => round(microtime(true) * 1000),
+            'app_time' => $appTime,
             'app_trans_id' => $appTransId,
             'app_user' => 'user_' . ($booking->khach_hang_id ?? 'guest'),
             'item' => $item,
             'embed_data' => $embedData,
-            'amount' => (int) round($totalAmount),
-            'description' => 'Thanh toan don dat lich #' . $booking->id,
-            'bank_code' => '',
+            'amount' => (string) ((int) round($totalAmount)),
+            'description' => 'Thanh toan don dat lich ma ' . $booking->id,
+            'bank_code' => $bankCode,
+            'callback_url' => $this->buildCallbackUrl($request, 'zalopay-ipn'),
+            'expire_duration_seconds' => (string) $expireDurationSeconds,
         ];
-
-        $data = $order['app_id']
-            . '|' . $order['app_trans_id']
-            . '|' . $order['app_user']
-            . '|' . $order['amount']
-            . '|' . $order['app_time']
-            . '|' . $order['embed_data']
-            . '|' . $order['item'];
-
-        $order['mac'] = hash_hmac('sha256', $data, $key1);
+        $order['mac'] = $this->buildZalopayCreateOrderMac($order, $key1);
 
         try {
-            $response = Http::asForm()->post($endpoint, $order);
+            $response = Http::withOptions(HttpClientTlsConfig::options())
+                ->asForm()
+                ->post($endpoint, $order);
             $json = $response->json();
 
             if ($response->successful() && !empty($json['order_url'])) {
@@ -395,11 +485,13 @@ class PaymentController extends Controller
             Log::error('ZaloPay create payment failed', [
                 'status' => $response->status(),
                 'response' => $json,
+                'app_id' => $appId,
+                'app_trans_id' => $appTransId,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $json['return_message'] ?? 'Khong tao duoc giao dich ZaloPay.',
+                'message' => $json['sub_return_message'] ?? $json['return_message'] ?? 'Khong tao duoc giao dich ZaloPay.',
             ], 500);
         } catch (\Throwable $e) {
             Log::error('ZaloPay request error', ['exception' => $e->getMessage()]);
@@ -489,7 +581,17 @@ class PaymentController extends Controller
 
     private function buildCallbackUrl(Request $request, string $suffix): string
     {
-        return rtrim($request->getSchemeAndHttpHost(), '/') . '/api/payment/' . ltrim($suffix, '/');
+        $baseUrl = trim((string) env('PAYMENT_CALLBACK_BASE_URL', ''));
+
+        if ($baseUrl === '') {
+            $baseUrl = trim((string) env('APP_URL', ''));
+        }
+
+        if ($baseUrl === '') {
+            $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+        }
+
+        return rtrim($baseUrl, '/') . '/api/payment/' . ltrim($suffix, '/');
     }
 
     private function extractPrefixedFields(Request $request, string $prefix): array
@@ -503,6 +605,127 @@ class PaymentController extends Controller
         }
 
         return $fields;
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     */
+    private function buildZalopayCreateOrderMac(array $order, string $key1): string
+    {
+        $data = (string) ($order['app_id'] ?? '')
+            . '|' . (string) ($order['app_trans_id'] ?? '')
+            . '|' . (string) ($order['app_user'] ?? '')
+            . '|' . (string) ($order['amount'] ?? '')
+            . '|' . (string) ($order['app_time'] ?? '')
+            . '|' . (string) ($order['embed_data'] ?? '')
+            . '|' . (string) ($order['item'] ?? '');
+
+        return hash_hmac('sha256', $data, $key1);
+    }
+
+    /**
+     * @param array<string, string> $query
+     */
+    private function buildZalopayRedirectChecksum(array $query, string $key2): string
+    {
+        $data = ($query['appid'] ?? '')
+            . '|' . ($query['apptransid'] ?? '')
+            . '|' . ($query['pmcid'] ?? '')
+            . '|' . ($query['bankcode'] ?? '')
+            . '|' . ($query['amount'] ?? '')
+            . '|' . ($query['discountamount'] ?? '')
+            . '|' . ($query['status'] ?? '');
+
+        return hash_hmac('sha256', $data, $key2);
+    }
+
+    /**
+     * @return array{success: bool, processing: bool, amount?: float|null, zp_trans_id?: string|null, raw?: array<string, mixed>}
+     */
+    private function queryZalopayOrderStatus(string $appTransId): array
+    {
+        $appId = trim((string) env('ZALOPAY_APP_ID', ''));
+        $key1 = trim((string) env('ZALOPAY_KEY1', ''));
+        $endpoint = trim((string) env('ZALOPAY_QUERY_ENDPOINT', 'https://sb-openapi.zalopay.vn/v2/query'));
+
+        if ($appId === '' || $key1 === '' || $appTransId === '') {
+            return ['success' => false, 'processing' => false];
+        }
+
+        $payload = [
+            'app_id' => $appId,
+            'app_trans_id' => $appTransId,
+        ];
+        $payload['mac'] = hash_hmac('sha256', $payload['app_id'] . '|' . $payload['app_trans_id'] . '|' . $key1, $key1);
+
+        try {
+            $response = Http::withOptions(HttpClientTlsConfig::options())
+                ->asForm()
+                ->post($endpoint, $payload);
+            $json = $response->json();
+
+            if (!$response->successful() || !is_array($json)) {
+                Log::error('ZaloPay query order failed', [
+                    'status' => $response->status(),
+                    'response' => $json,
+                    'app_trans_id' => $appTransId,
+                ]);
+
+                return ['success' => false, 'processing' => false];
+            }
+
+            return [
+                'success' => (int) ($json['return_code'] ?? 0) === 1,
+                'processing' => (int) ($json['return_code'] ?? 0) === 3 || (bool) ($json['is_processing'] ?? false),
+                'amount' => isset($json['amount']) ? (float) $json['amount'] : null,
+                'zp_trans_id' => isset($json['zp_trans_id']) ? (string) $json['zp_trans_id'] : null,
+                'raw' => $json,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('ZaloPay query order error', [
+                'exception' => $e->getMessage(),
+                'app_trans_id' => $appTransId,
+            ]);
+
+            return ['success' => false, 'processing' => false];
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveZalopayPreferredPaymentMethods(): array
+    {
+        $configured = trim((string) env('ZALOPAY_PREFERRED_PAYMENT_METHODS', 'zalopay_wallet'));
+        if ($configured === '') {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn (string $value): string => trim($value),
+            explode(',', $configured)
+        )));
+    }
+
+    /**
+     * VNPAY signs query data using application/x-www-form-urlencoded encoding.
+     *
+     * @param array<string, mixed> $params
+     */
+    private function buildVnpayQuery(array $params): string
+    {
+        unset($params['vnp_SecureHash'], $params['vnp_SecureHashType']);
+        ksort($params);
+
+        return http_build_query($params, '', '&', PHP_QUERY_RFC1738);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function buildVnpaySecureHash(array $params, string $secret): string
+    {
+        return hash_hmac('sha512', $this->buildVnpayQuery($params), $secret);
     }
 
     private function buildMomoReturnSignature(Request $request): string

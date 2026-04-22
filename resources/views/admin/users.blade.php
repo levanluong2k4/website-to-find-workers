@@ -172,6 +172,50 @@
         font-size: 0.875rem;
         color: white;
     }
+
+    .avatar-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: block;
+        object-fit: cover;
+        background: #e2e8f0;
+        flex-shrink: 0;
+    }
+
+    .worker-avatar-preview {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .worker-avatar-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: none;
+    }
+
+    .worker-avatar-preview.has-image img {
+        display: block;
+    }
+
+    .worker-avatar-preview.has-image .worker-avatar-preview__fallback {
+        display: none;
+    }
+
+    .worker-avatar-preview__fallback {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+    }
     
     .worker-name { margin-bottom: 0; font-weight: 600; font-size: 0.875rem; color: #0f172a; }
     .worker-contact { font-size: 0.75rem; color: #64748b; margin: 0; }
@@ -337,6 +381,15 @@
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Ảnh đại diện</label>
                                 <input type="file" class="form-control" id="workerAvatar" accept="image/*">
+                                <div class="d-flex align-items-center gap-3 mt-3">
+                                    <div class="worker-avatar-preview" id="workerAvatarPreview">
+                                        <img id="workerAvatarPreviewImage" alt="Avatar preview">
+                                        <span class="worker-avatar-preview__fallback" id="workerAvatarPreviewFallback">TT</span>
+                                    </div>
+                                    <div class="small text-muted">
+                                        áº¢nh hiá»‡n táº¡i hoáº·c áº£nh báº¡n vá»«a chá»n sáº½ hiá»‡n á»Ÿ Ä‘Ã¢y.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -379,5 +432,5 @@
 @endsection
 
 @push('scripts')
-<script type="module" src="{{ asset('assets/js/admin/users.js') }}"></script>
+<script type="module" src="{{ asset('assets/js/admin/users.js') }}?v={{ filemtime(public_path('assets/js/admin/users.js')) }}"></script>
 @endpush

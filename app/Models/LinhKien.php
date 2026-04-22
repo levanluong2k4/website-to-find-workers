@@ -16,10 +16,14 @@ class LinhKien extends Model
         'ten_linh_kien',
         'hinh_anh',
         'gia',
+        'so_luong_ton_kho',
+        'han_su_dung',
     ];
 
     protected $casts = [
         'gia' => 'float',
+        'so_luong_ton_kho' => 'integer',
+        'han_su_dung' => 'date:Y-m-d',
     ];
 
     public function dichVu()

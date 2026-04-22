@@ -161,10 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const getBookingPaymentMethod = (booking) => booking?.phuong_thuc_thanh_toan === 'transfer' ? 'transfer' : 'cod';
     const isCashPaymentBooking = (booking) => getBookingPaymentMethod(booking) === 'cod';
     const buildOnlineGatewayOptions = () => ({
-        momo: 'Ví MoMo',
+        momo_atm: 'MoMo ATM / test card',
         zalopay: 'Ví ZaloPay',
         vnpay: 'VNPAY / Thẻ ngân hàng',
-        ...(isLocalPaymentSandbox ? { test: 'Thanh toán test nội bộ' } : {}),
     });
     const normalizeLookupKey = (value = '') => String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9()]+/g, ' ').replace(/\s+/g, ' ').trim();
     const beautifyServiceName = (value = '') => ({
@@ -428,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const distance = Number(booking?.khoang_cach || 0);
         return distance > 0 ? `${distance.toFixed(1)} km từ điểm hỗ trợ` : 'Chưa cập nhật khoảng cách';
     };
-    const formatPaymentMethod = (value) => ({ cod: 'Tiền mặt', cash: 'Tiền mặt', transfer: 'Chuyển khoản online', test: 'Thanh toán test nội bộ', vnpay: 'Ví VNPAY / Thẻ', momo: 'Ví MoMo', zalopay: 'Ví ZaloPay' }[value] || 'Phương thức thanh toán');
+    const formatPaymentMethod = (value) => ({ cod: 'Tiền mặt', cash: 'Tiền mặt', transfer: 'Chuyển khoản online', vnpay: 'Ví VNPAY / Thẻ', momo: 'MoMo ATM / test card', momo_atm: 'MoMo ATM / test card', zalopay: 'Ví ZaloPay' }[value] || 'Phương thức thanh toán');
     const getStatusMeta = (status) => ({
         cho_xac_nhan: { label: 'Đang chờ tiếp nhận', summary: 'Hệ thống đang tìm kỹ thuật viên phù hợp cho yêu cầu của bạn.' },
         da_xac_nhan: { label: 'Đã nhận đơn', summary: 'Kỹ thuật viên đã xác nhận đơn và sẽ đến theo lịch hẹn.' },
@@ -513,6 +512,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<div class="detail-summary-action-stack"><div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div></div>${buildCustomerUnreachableNotice(booking)}`;
         }
         if (['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)) {
+            if (isCashPaymentBooking(booking)) {
+                return '<div class="detail-summary-note"><strong>Thanh toán tiền mặt</strong>Đơn này đang chờ thợ xác nhận đã thu tiền mặt, bạn không cần thao tác thêm.</div>';
+            }
             return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="pay">Chọn cách thanh toán</button></div>';
         }
         if (booking?.trang_thai === 'da_xong' && !review) return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="review">Gửi đánh giá</button></div>';
@@ -524,6 +526,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['cho_xac_nhan', 'da_xac_nhan'].includes(booking?.trang_thai)) return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div>';
         if (booking?.trang_thai === 'khong_lien_lac_duoc_voi_khach_hang') return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="cancel">Hủy yêu cầu</button></div>';
         if (['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)) {
+            if (isCashPaymentBooking(booking)) {
+                return '<div class="detail-summary-note"><strong>Thanh toán tiền mặt</strong>Đơn này đang chờ thợ xác nhận đã thu tiền mặt, bạn không cần thao tác thêm.</div>';
+            }
             return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="pay">Chọn cách thanh toán</button></div>';
         }
         if (booking?.trang_thai === 'da_xong' && !review) return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="review">Gửi đánh giá</button></div>';
@@ -560,7 +565,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         else if (isPaid) description = latestPayment?.ma_giao_dich ? `Mã giao dịch: ${latestPayment.ma_giao_dich}` : 'Đơn hàng đã được ghi nhận thanh toán thành công.';
         else if (booking?.trang_thai === 'da_huy') description = 'Đơn hàng đã hủy nên không còn chờ thanh toán.';
-        return `<section class="detail-card detail-payment-action-card"><div class="detail-payment-action-head"><span class="detail-payment-icon"><span class="material-symbols-outlined">account_balance_wallet</span></span><div class="detail-payment-copy"><div class="detail-payment-title-row"><strong>${escapeHtml(paymentMethod)}</strong><span class="detail-payment-badge"${badge.style ? ` style="${badge.style}"` : ''}>${escapeHtml(badge.label)}</span></div><p>${escapeHtml(description)}</p></div></div><div class="detail-payment-action">${isPayable ? '<button type="button" class="detail-solid-button" data-booking-action="pay">Chọn cách thanh toán</button>' : '<a href="/customer/my-bookings" class="detail-ghost-button">Quay lại lịch sử</a>'}</div></section>`;
+        const actionHtml = isPayable
+            ? (isCashPaymentBooking(booking) ? '' : '<button type="button" class="detail-solid-button" data-booking-action="pay">Chọn cách thanh toán</button>')
+            : '<a href="/customer/my-bookings" class="detail-ghost-button">Quay lại lịch sử</a>';
+        return `<section class="detail-card detail-payment-action-card"><div class="detail-payment-action-head"><span class="detail-payment-icon"><span class="material-symbols-outlined">account_balance_wallet</span></span><div class="detail-payment-copy"><div class="detail-payment-title-row"><strong>${escapeHtml(paymentMethod)}</strong><span class="detail-payment-badge"${badge.style ? ` style="${badge.style}"` : ''}>${escapeHtml(badge.label)}</span></div><p>${escapeHtml(description)}</p></div></div>${actionHtml ? `<div class="detail-payment-action">${actionHtml}</div>` : ''}</section>`;
     };
     const buildProgressCard = (booking) => {
         const review = getLatestReview(booking);
@@ -740,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const gatewayOptions = buildOnlineGatewayOptions();
         const gatewayKeys = Object.keys(gatewayOptions);
         const result = await Swal.fire({
-            title: 'Chọn ví điện tử',
+            title: 'Chọn cổng thanh toán',
             input: 'radio',
             inputOptions: gatewayOptions,
             inputValue: gatewayKeys[0] || 'momo',
@@ -753,14 +761,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return result.isConfirmed ? result.value : null;
     };
     const startOnlinePayment = async (booking, gateway) => {
+        const isMomoAtmPayment = gateway === 'momo_atm';
         const result = await Swal.fire({
-            title: gateway === 'test' ? 'Thanh toán test nội bộ' : 'Chuyển sang cổng thanh toán',
-            text: gateway === 'test'
-                ? 'Đây là payment test nội bộ, không phát sinh chuyển khoản thật. Bạn muốn tiếp tục?'
+            title: isMomoAtmPayment ? 'Chuyển sang MoMo ATM / test card' : 'Chuyển sang cổng thanh toán',
+            text: isMomoAtmPayment
+                ? 'Hệ thống sẽ chuyển bạn sang trang MoMo ATM/test card để nhập thẻ test trực tiếp trên web.'
                 : 'Hệ thống sẽ chuyển bạn sang ví điện tử hoặc cổng thanh toán đã chọn để hoàn tất đơn hàng.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: gateway === 'test' ? 'Thanh toán test' : 'Tiếp tục',
+            confirmButtonText: 'Tiếp tục',
             cancelButtonText: 'Đóng',
         });
         if (!result.isConfirmed) return;
@@ -770,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 don_dat_lich_id: booking.id,
                 phuong_thuc: gateway,
             }),
-            gateway === 'test' ? 'Không tạo được giao dịch thanh toán test' : 'Không tạo được giao dịch thanh toán'
+            'Không tạo được giao dịch thanh toán'
         );
 
         if (response.data?.url) {
@@ -1077,6 +1086,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadBooking();
 });
-
-
-

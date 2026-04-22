@@ -49,7 +49,7 @@
                     <input type="file" id="bookingWizardMediaPicker" accept="image/*,video/*" multiple hidden>
 
                     <div class="booking-worker-banner d-none" id="bookingWizardWorkerBanner">
-                        <img src="/assets/images/user-default.png" alt="Thợ đã chọn" id="bookingWizardWorkerAvatar">
+                        <img src="/assets/images/worker2.png" alt="Thợ đã chọn" id="bookingWizardWorkerAvatar">
                         <div>
                             <div class="booking-worker-banner-label">Thợ đã chọn</div>
                             <div class="booking-worker-banner-name" id="bookingWizardWorkerName">Đang tải thông tin thợ...</div>
@@ -215,7 +215,7 @@
                     </div>
 
                     <div class="booking-summary-item d-none" id="bookingSummaryWorkerCard">
-                        <img src="/assets/images/user-default.png" alt="Thợ đã chọn" class="booking-summary-thumb booking-summary-thumb-avatar" id="bookingSummaryWorkerThumb">
+                        <img src="/assets/images/worker2.png" alt="Thợ đã chọn" class="booking-summary-thumb booking-summary-thumb-avatar" id="bookingSummaryWorkerThumb">
                         <div class="booking-summary-item-body">
                             <div class="booking-summary-item-label">Thợ đã chọn</div>
                             <div class="booking-summary-item-value" id="bookingSummaryWorkerValue">Đang tải</div>

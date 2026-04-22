@@ -125,6 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/users', [\App\Http\Controllers\Api\AdminController::class, 'getUsers']);
             Route::patch('/users/{id}/toggle-status', [\App\Http\Controllers\Api\AdminController::class, 'toggleUserStatus']);
             Route::get('/worker-profiles', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerProfiles']);
+            Route::get('/worker-schedules/overview', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerSchedulesOverview']);
             Route::post('/workers', [\App\Http\Controllers\Api\AdminController::class, 'storeWorker']);
             Route::get('/workers/{userId}', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerDetail']);
             Route::put('/workers/{userId}', [\App\Http\Controllers\Api\AdminController::class, 'updateWorker']);

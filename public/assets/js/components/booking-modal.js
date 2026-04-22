@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_FREE_DISTANCE_KM = 1;
     const DEFAULT_TRAVEL_FEE_PER_KM = 5000;
     const DEFAULT_STORE_TRANSPORT_FEE = 0;
+    const DEFAULT_STORE_LATITUDE = 12.2618;
+    const DEFAULT_STORE_LONGITUDE = 109.1995;
+    const DEFAULT_MAX_SERVICE_DISTANCE_KM = 8;
     const DEFAULT_STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
     const TRAVEL_FEE_PER_KM = DEFAULT_TRAVEL_FEE_PER_KM;
     let storeAddress = DEFAULT_STORE_ADDRESS;
@@ -45,13 +48,16 @@ document.addEventListener('DOMContentLoaded', () => {
         free_distance_km: DEFAULT_FREE_DISTANCE_KM,
         default_per_km: DEFAULT_TRAVEL_FEE_PER_KM,
         store_address: DEFAULT_STORE_ADDRESS,
+        store_latitude: DEFAULT_STORE_LATITUDE,
+        store_longitude: DEFAULT_STORE_LONGITUDE,
+        max_service_distance_km: DEFAULT_MAX_SERVICE_DISTANCE_KM,
         store_transport_fee: DEFAULT_STORE_TRANSPORT_FEE,
         tiers: [],
     };
     const DEFAULT_REFERENCE_POINT = {
-        lat: 12.2618,
-        lng: 109.1995,
-        maxDistance: 20,
+        lat: DEFAULT_STORE_LATITUDE,
+        lng: DEFAULT_STORE_LONGITUDE,
+        maxDistance: DEFAULT_MAX_SERVICE_DISTANCE_KM,
         label: 'cửa hàng',
     };
 
@@ -67,16 +73,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${Math.round(Number(amount) || 0).toLocaleString('vi-VN')} ₫`;
     }
 
+    function getConfiguredMaxServiceDistanceKm() {
+        return Math.max(0, Number(travelFeeConfig.max_service_distance_km ?? DEFAULT_MAX_SERVICE_DISTANCE_KM));
+    }
+
     function getReferencePoint() {
+        const configuredMaxDistance = getConfiguredMaxServiceDistanceKm();
+
         if (
             selectedWorkerContext
             && Number.isFinite(selectedWorkerContext.lat)
             && Number.isFinite(selectedWorkerContext.lng)
         ) {
-            return selectedWorkerContext;
+            return {
+                ...selectedWorkerContext,
+                maxDistance: Math.min(
+                    Number(selectedWorkerContext.maxDistance || configuredMaxDistance),
+                    configuredMaxDistance
+                ),
+            };
         }
 
-        return DEFAULT_REFERENCE_POINT;
+        return {
+            ...DEFAULT_REFERENCE_POINT,
+            maxDistance: configuredMaxDistance,
+        };
     }
 
     function calculateDistanceKm(fromLat, fromLng, toLat, toLng) {
@@ -216,6 +237,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (config && typeof config === 'object') {
                 const tiers = normalizeTravelFeeTiers(config.tiers);
                 const derivedStoreTransportFee = deriveStoreTransportFeeFromTiers(tiers);
+                const storeLatitude = Number(config.store_latitude ?? DEFAULT_STORE_LATITUDE);
+                const storeLongitude = Number(config.store_longitude ?? DEFAULT_STORE_LONGITUDE);
+                const maxServiceDistanceKm = Number(config.max_service_distance_km ?? DEFAULT_MAX_SERVICE_DISTANCE_KM);
 
                 storeAddress = String(config.store_address || DEFAULT_STORE_ADDRESS).trim() || DEFAULT_STORE_ADDRESS;
                 storeTransportFee = Number(config.store_transport_fee ?? derivedStoreTransportFee ?? DEFAULT_STORE_TRANSPORT_FEE);
@@ -223,9 +247,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     free_distance_km: Number(config.free_distance_km ?? DEFAULT_FREE_DISTANCE_KM),
                     default_per_km: Number(config.default_per_km ?? DEFAULT_TRAVEL_FEE_PER_KM),
                     store_address: storeAddress,
+                    store_latitude: Number.isFinite(storeLatitude) ? storeLatitude : DEFAULT_STORE_LATITUDE,
+                    store_longitude: Number.isFinite(storeLongitude) ? storeLongitude : DEFAULT_STORE_LONGITUDE,
+                    max_service_distance_km: Number.isFinite(maxServiceDistanceKm) ? maxServiceDistanceKm : DEFAULT_MAX_SERVICE_DISTANCE_KM,
                     store_transport_fee: storeTransportFee,
                     tiers,
                 };
+                DEFAULT_REFERENCE_POINT.lat = travelFeeConfig.store_latitude;
+                DEFAULT_REFERENCE_POINT.lng = travelFeeConfig.store_longitude;
+                DEFAULT_REFERENCE_POINT.maxDistance = travelFeeConfig.max_service_distance_km;
                 updateStoreTransportSummary();
                 updateTravelFeeEstimate();
             }
@@ -540,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? {
                 lat: workerLat,
                 lng: workerLng,
-                maxDistance: Number.isFinite(workerRadius) ? workerRadius : 10,
+                maxDistance: Number.isFinite(workerRadius) ? workerRadius : getConfiguredMaxServiceDistanceKm(),
                 label: workerName,
             }
             : null;

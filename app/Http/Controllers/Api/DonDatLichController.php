@@ -85,8 +85,10 @@ class DonDatLichController extends Controller
             $hoSoTho = null;
 
             if (($validated['loai_dat_lich'] ?? '') === 'at_home') {
-                $storeLat = 12.2618;
-                $storeLng = 109.1995;
+                $storeCoordinates = $travelFeeConfigService->resolveStoreCoordinates();
+                $storeLat = (float) $storeCoordinates['lat'];
+                $storeLng = (float) $storeCoordinates['lng'];
+                $maxDistance = max(0, $travelFeeConfigService->resolveMaxServiceDistanceKm());
 
                 if ($assignedWorkerId) {
                     $hoSoTho = \App\Models\HoSoTho::where('user_id', $assignedWorkerId)->first();
@@ -95,22 +97,17 @@ class DonDatLichController extends Controller
                         $storeLng = $hoSoTho->kinh_do;
                         \Illuminate\Support\Facades\Log::info('Using worker coordinates for distance calculation', ['lat' => $storeLat, 'lng' => $storeLng]);
                     }
+
+                    $workerMaxDistance = is_numeric($hoSoTho?->ban_kinh_phuc_vu)
+                        ? max(0, (float) $hoSoTho->ban_kinh_phuc_vu)
+                        : $maxDistance;
+                    $maxDistance = min($workerMaxDistance, $maxDistance);
                 }
 
                 $lat = $validated['vi_do'] ?? 0;
                 $lng = $validated['kinh_do'] ?? 0;
 
-                $earthRadius = 6371;
-                $dLat = deg2rad($lat - $storeLat);
-                $dLng = deg2rad($lng - $storeLng);
-                $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($storeLat)) * cos(deg2rad($lat)) * sin($dLng / 2) * sin($dLng / 2);
-                $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-                $khoangCach = $earthRadius * $c;
-
-                $maxDistance = 8;
-                if ($assignedWorkerId && $hoSoTho) {
-                    $maxDistance = min((float) ($hoSoTho->ban_kinh_phuc_vu ?? 8), 8);
-                }
+                $khoangCach = $this->calculateDistanceKm((float) $storeLat, (float) $storeLng, (float) $lat, (float) $lng);
 
                 if ($khoangCach > $maxDistance) {
                     return response()->json([
@@ -163,6 +160,7 @@ class DonDatLichController extends Controller
                 $gioBatDau,
                 $khoangCach,
                 $phiDiLai,
+                $travelFeeConfigService,
                 $uploadedImages,
                 $uploadedVideoUrl
             ) {
@@ -200,7 +198,7 @@ class DonDatLichController extends Controller
                     $booking->khoang_cach = round((float) $khoangCach, 2);
                     $booking->phi_di_lai = $phiDiLai;
                 } else {
-                    $booking->dia_chi = '2 Duong Nguyen Dinh Chieu, Vinh Tho, Nha Trang, Khanh Hoa';
+                    $booking->dia_chi = $travelFeeConfigService->resolveStoreAddress();
                     $booking->phi_di_lai = 0;
                 }
 
@@ -215,7 +213,6 @@ class DonDatLichController extends Controller
                 \Illuminate\Support\Facades\Log::info('Saving booking');
                 $booking->save();
                 $booking->dichVus()->sync($serviceIds);
-                app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncSourceRecord('booking_case', $booking->id);
 
                 return $booking;
             });
@@ -812,7 +809,7 @@ class DonDatLichController extends Controller
     public function updatePaymentMethod(Request $request, $id)
     {
         $user = $request->user();
-        if (!$this->canActAsWorker($user)) {
+        if (!$user || (!$this->canActAsCustomer($user) && !$this->canActAsWorker($user))) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
@@ -821,7 +818,11 @@ class DonDatLichController extends Controller
             return response()->json(['success' => false, 'message' => 'Kh?ng t?m th?y ??n.'], 404);
         }
 
-        if (!$this->isAdmin($user) && (int) $booking->tho_id !== (int) $user->id) {
+        $isAdmin = $this->isAdmin($user);
+        $isBookingCustomer = (int) $booking->khach_hang_id === (int) $user->id;
+        $isAssignedWorker = (int) $booking->tho_id === (int) $user->id;
+
+        if (!$isAdmin && !$isBookingCustomer && !$isAssignedWorker) {
             return response()->json(['success' => false, 'message' => 'Ban khong co quyen cap nhat thanh toan cho don nay.'], 403);
         }
 

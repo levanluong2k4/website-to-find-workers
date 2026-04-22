@@ -61,6 +61,64 @@ class AdminManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_update_worker_even_when_worker_profile_is_missing(): void
+    {
+        $admin = $this->createAdmin();
+        $token = $admin->createToken('admin-test')->plainTextToken;
+
+        $worker = User::query()->create([
+            'name' => 'Worker Legacy',
+            'email' => 'worker-legacy@example.com',
+            'password' => bcrypt('password'),
+            'phone' => '0900000004',
+            'role' => 'worker',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $serviceId = DB::table('danh_muc_dich_vu')->insertGetId([
+            'ten_dich_vu' => 'Sua may giat',
+            'mo_ta' => 'Dich vu cho worker legacy',
+            'hinh_anh' => null,
+            'trang_thai' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson('/api/admin/workers/' . $worker->id, [
+                'name' => 'Worker Legacy Updated',
+                'email' => 'worker-legacy@example.com',
+                'phone' => '0900000004',
+                'cccd' => '012345678901',
+                'address' => '123 Duong Test',
+                'kinh_nghiem' => '5 nam kinh nghiem',
+                'dich_vu_ids' => [$serviceId],
+                'is_active' => false,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.name', 'Worker Legacy Updated')
+            ->assertJsonPath('data.is_active', false)
+            ->assertJsonPath('data.ho_so_tho.cccd', '012345678901')
+            ->assertJsonPath('data.ho_so_tho.kinh_nghiem', '5 nam kinh nghiem');
+
+        $this->assertDatabaseHas('ho_so_tho', [
+            'user_id' => $worker->id,
+            'cccd' => '012345678901',
+            'kinh_nghiem' => '5 nam kinh nghiem',
+            'trang_thai_duyet' => 'da_duyet',
+            'dang_hoat_dong' => 0,
+            'trang_thai_hoat_dong' => 'tam_khoa',
+        ]);
+
+        $this->assertDatabaseHas('tho_dich_vu', [
+            'user_id' => $worker->id,
+            'dich_vu_id' => $serviceId,
+        ]);
+    }
+
     public function test_admin_can_approve_worker_profile(): void
     {
         $admin = $this->createAdmin();
@@ -142,16 +200,24 @@ class AdminManagementTest extends TestCase
 
         $updateResponse = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->putJson('/api/admin/travel-fee-config', [
+                'store_address' => '25 Nguyen Thi Minh Khai, Nha Trang',
+                'store_latitude' => 12.2388,
+                'store_longitude' => 109.1967,
+                'max_service_distance_km' => 8,
                 'default_per_km' => 5000,
                 'tiers' => [
-                    ['from_km' => 0, 'to_km' => 2, 'fee' => 15000],
-                    ['from_km' => 2, 'to_km' => 5, 'fee' => 30000],
+                    ['from_km' => 0, 'to_km' => 2, 'transport_fee' => 0, 'travel_fee' => 15000],
+                    ['from_km' => 2.01, 'to_km' => 5, 'transport_fee' => 0, 'travel_fee' => 30000],
                 ],
             ]);
 
         $updateResponse->assertOk()
+            ->assertJsonPath('data.config.store_address', '25 Nguyen Thi Minh Khai, Nha Trang')
+            ->assertJsonPath('data.config.store_latitude', 12.2388)
+            ->assertJsonPath('data.config.store_longitude', 109.1967)
+            ->assertJsonPath('data.config.max_service_distance_km', 8)
             ->assertJsonPath('data.config.default_per_km', 5000)
-            ->assertJsonPath('data.config.tiers.0.fee', 15000)
+            ->assertJsonPath('data.config.tiers.0.travel_fee', 15000)
             ->assertJsonPath('data.config.tiers.1.to_km', 5);
 
         $this->assertDatabaseHas('app_settings', [
@@ -163,6 +229,7 @@ class AdminManagementTest extends TestCase
             ->getJson('/api/admin/travel-fee-config');
 
         $getResponse->assertOk()
+            ->assertJsonPath('data.config.max_service_distance_km', 8)
             ->assertJsonPath('data.config.tiers.0.from_km', 0)
             ->assertJsonPath('data.preview.samples.2.fee', 30000);
     }
@@ -446,6 +513,32 @@ class AdminManagementTest extends TestCase
                 $table->string('key')->unique();
                 $table->json('value')->nullable();
                 $table->unsignedBigInteger('updated_by')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (!Schema::hasTable('ai_knowledge_items')) {
+            Schema::create('ai_knowledge_items', function (Blueprint $table) {
+                $table->id();
+                $table->string('source_type');
+                $table->unsignedBigInteger('source_id');
+                $table->string('source_key')->unique();
+                $table->unsignedBigInteger('primary_service_id')->nullable();
+                $table->string('service_name')->nullable();
+                $table->string('title')->nullable();
+                $table->longText('content')->nullable();
+                $table->longText('normalized_content')->nullable();
+                $table->text('symptom_text')->nullable();
+                $table->text('cause_text')->nullable();
+                $table->text('solution_text')->nullable();
+                $table->text('price_context')->nullable();
+                $table->decimal('rating_avg', 5, 2)->nullable();
+                $table->decimal('quality_score', 8, 4)->nullable();
+                $table->json('metadata')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->timestamp('published_at')->nullable();
+                $table->string('qdrant_document_hash')->nullable();
+                $table->timestamp('qdrant_synced_at')->nullable();
                 $table->timestamps();
             });
         }

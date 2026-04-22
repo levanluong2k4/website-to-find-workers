@@ -13,7 +13,13 @@ class TravelFeeConfigService
 
     private const DEFAULT_FREE_DISTANCE_KM = 1;
 
+    private const DEFAULT_MAX_SERVICE_DISTANCE_KM = 8;
+
     private const DEFAULT_STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
+
+    private const DEFAULT_STORE_LATITUDE = 12.2618;
+
+    private const DEFAULT_STORE_LONGITUDE = 109.1995;
 
     private const DEFAULT_STORE_TRANSPORT_FEE = 0;
 
@@ -89,12 +95,21 @@ class TravelFeeConfigService
             'free_distance_km' => array_key_exists('free_distance_km', $config)
                 ? $config['free_distance_km']
                 : ($currentConfig['free_distance_km'] ?? self::DEFAULT_FREE_DISTANCE_KM),
+            'max_service_distance_km' => array_key_exists('max_service_distance_km', $config)
+                ? $config['max_service_distance_km']
+                : ($currentConfig['max_service_distance_km'] ?? self::DEFAULT_MAX_SERVICE_DISTANCE_KM),
             'default_per_km' => array_key_exists('default_per_km', $config)
                 ? $config['default_per_km']
                 : ($currentConfig['default_per_km'] ?? self::DEFAULT_PER_KM),
             'store_address' => array_key_exists('store_address', $config)
                 ? $config['store_address']
                 : ($currentConfig['store_address'] ?? self::DEFAULT_STORE_ADDRESS),
+            'store_latitude' => array_key_exists('store_latitude', $config)
+                ? $config['store_latitude']
+                : ($currentConfig['store_latitude'] ?? self::DEFAULT_STORE_LATITUDE),
+            'store_longitude' => array_key_exists('store_longitude', $config)
+                ? $config['store_longitude']
+                : ($currentConfig['store_longitude'] ?? self::DEFAULT_STORE_LONGITUDE),
             'store_transport_fee' => array_key_exists('store_transport_fee', $config)
                 ? $config['store_transport_fee']
                 : ($currentConfig['store_transport_fee'] ?? self::DEFAULT_STORE_TRANSPORT_FEE),
@@ -154,6 +169,32 @@ class TravelFeeConfigService
     public function resolveStoreAddress(): string
     {
         return (string) ($this->getConfig()['store_address'] ?? self::DEFAULT_STORE_ADDRESS);
+    }
+
+    public function resolveStoreLatitude(): float
+    {
+        return (float) ($this->getConfig()['store_latitude'] ?? self::DEFAULT_STORE_LATITUDE);
+    }
+
+    public function resolveStoreLongitude(): float
+    {
+        return (float) ($this->getConfig()['store_longitude'] ?? self::DEFAULT_STORE_LONGITUDE);
+    }
+
+    /**
+     * @return array{lat: float, lng: float}
+     */
+    public function resolveStoreCoordinates(): array
+    {
+        return [
+            'lat' => $this->resolveStoreLatitude(),
+            'lng' => $this->resolveStoreLongitude(),
+        ];
+    }
+
+    public function resolveMaxServiceDistanceKm(): float
+    {
+        return (float) ($this->getConfig()['max_service_distance_km'] ?? self::DEFAULT_MAX_SERVICE_DISTANCE_KM);
     }
 
     public function resolveStoreTransportFee(): float
@@ -239,7 +280,20 @@ class TravelFeeConfigService
     private function normalizeConfig(array $config): array
     {
         $defaultPerKm = round(max(0, (float) ($config['default_per_km'] ?? self::DEFAULT_PER_KM)));
+        $maxServiceDistanceKm = round(max(0, (float) ($config['max_service_distance_km'] ?? self::DEFAULT_MAX_SERVICE_DISTANCE_KM)), 2);
         $storeAddress = trim((string) ($config['store_address'] ?? self::DEFAULT_STORE_ADDRESS));
+        $storeLatitude = $this->normalizeCoordinate(
+            $config['store_latitude'] ?? self::DEFAULT_STORE_LATITUDE,
+            -90,
+            90,
+            self::DEFAULT_STORE_LATITUDE
+        );
+        $storeLongitude = $this->normalizeCoordinate(
+            $config['store_longitude'] ?? self::DEFAULT_STORE_LONGITUDE,
+            -180,
+            180,
+            self::DEFAULT_STORE_LONGITUDE
+        );
         $rawStoreTransportFee = round(max(0, (float) ($config['store_transport_fee'] ?? self::DEFAULT_STORE_TRANSPORT_FEE)));
         $storeHotline = trim((string) ($config['store_hotline'] ?? self::DEFAULT_STORE_HOTLINE));
         $storeOpeningHours = trim((string) ($config['store_opening_hours'] ?? self::DEFAULT_STORE_OPENING_HOURS));
@@ -282,8 +336,11 @@ class TravelFeeConfigService
 
         return [
             'free_distance_km' => $freeDistanceKm,
+            'max_service_distance_km' => $maxServiceDistanceKm,
             'default_per_km' => $defaultPerKm,
             'store_address' => $storeAddress !== '' ? $storeAddress : self::DEFAULT_STORE_ADDRESS,
+            'store_latitude' => $storeLatitude,
+            'store_longitude' => $storeLongitude,
             'store_transport_fee' => $storeTransportFee,
             'store_hotline' => $storeHotline !== '' ? $storeHotline : self::DEFAULT_STORE_HOTLINE,
             'store_opening_hours' => $storeOpeningHours !== '' ? $storeOpeningHours : self::DEFAULT_STORE_OPENING_HOURS,
@@ -303,12 +360,15 @@ class TravelFeeConfigService
         return [
             'store' => [
                 'address' => $config['store_address'],
+                'latitude' => $config['store_latitude'],
+                'longitude' => $config['store_longitude'],
                 'transport_fee' => $config['store_transport_fee'],
                 'hotline' => $config['store_hotline'],
                 'opening_hours' => $config['store_opening_hours'],
                 'map_url' => $this->resolveStoreMapUrl(),
             ],
             'free_distance_km' => $config['free_distance_km'],
+            'max_service_distance_km' => $config['max_service_distance_km'],
             'default_per_km' => $config['default_per_km'],
             'complaint_window_days' => $config['complaint_window_days'],
             'tiers' => array_map(function (array $tier): array {
@@ -406,5 +466,16 @@ class TravelFeeConfigService
         }
 
         return null;
+    }
+
+    /**
+     * @param  mixed  $value
+     */
+    private function normalizeCoordinate(mixed $value, float $min, float $max, float $default): float
+    {
+        $numeric = is_numeric($value) ? (float) $value : $default;
+        $numeric = min($max, max($min, $numeric));
+
+        return round($numeric, 6);
     }
 }

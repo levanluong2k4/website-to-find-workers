@@ -29,8 +29,11 @@ class TravelFeeConfigController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'free_distance_km' => 'nullable|numeric|min:0|max:1000',
+            'max_service_distance_km' => 'nullable|numeric|min:0|max:1000',
             'default_per_km' => 'nullable|numeric|min:0|max:1000000',
             'store_address' => 'required|string|max:500',
+            'store_latitude' => 'nullable|numeric|between:-90,90',
+            'store_longitude' => 'nullable|numeric|between:-180,180',
             'store_transport_fee' => 'nullable|numeric|min:0|max:100000000',
             'store_hotline' => 'nullable|string|max:50',
             'store_opening_hours' => 'nullable|string|max:100',
@@ -80,6 +83,16 @@ class TravelFeeConfigController extends Controller
 
                 $previousToKm = $tier['to_km'];
             }
+
+            $hasStoreLatitude = trim((string) $request->input('store_latitude', '')) !== '';
+            $hasStoreLongitude = trim((string) $request->input('store_longitude', '')) !== '';
+
+            if ($hasStoreLatitude xor $hasStoreLongitude) {
+                $validator->errors()->add(
+                    $hasStoreLatitude ? 'store_longitude' : 'store_latitude',
+                    'Vui long nhap day du ca vi do va kinh do cua cua hang.'
+                );
+            }
         });
 
         if ($validator->fails()) {
@@ -99,8 +112,24 @@ class TravelFeeConfigController extends Controller
             $payload['free_distance_km'] = (float) $request->input('free_distance_km');
         }
 
+        if ($request->exists('max_service_distance_km')) {
+            $payload['max_service_distance_km'] = (float) $request->input('max_service_distance_km');
+        }
+
         if ($request->exists('default_per_km')) {
             $payload['default_per_km'] = (float) $request->input('default_per_km');
+        }
+
+        if ($request->exists('store_latitude')) {
+            $payload['store_latitude'] = $request->filled('store_latitude')
+                ? (float) $request->input('store_latitude')
+                : null;
+        }
+
+        if ($request->exists('store_longitude')) {
+            $payload['store_longitude'] = $request->filled('store_longitude')
+                ? (float) $request->input('store_longitude')
+                : null;
         }
 
         if ($request->exists('store_transport_fee')) {

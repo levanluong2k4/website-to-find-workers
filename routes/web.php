@@ -1,12 +1,11 @@
 <?php
 
+use App\Http\Controllers\CustomerHomeController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use Illuminate\Support\Facades\Route;
 
 // Trang chủ (Landing Page)
-Route::get('/', function () {
-    return view('customer.home');
-})->name('home');
+Route::get('/', CustomerHomeController::class)->name('home');
 
 // Trang chọn vai trò (Role Selection)
 Route::get('/select-role', function () {
@@ -50,9 +49,7 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->
 
 // Khối Khách Hàng (Customer)
 Route::prefix('customer')->group(function () {
-    Route::get('/home', function () {
-        return view('customer.home');
-    })->name('customer.home');
+    Route::get('/home', CustomerHomeController::class)->name('customer.home');
 
     Route::get('/booking', function () {
         return view('customer.booking');
@@ -181,7 +178,10 @@ Route::prefix('admin')->group(function () {
     })->name('admin.services');
 
     Route::get('/linh-kien', function () {
-        return view('admin.parts');
+        return redirect()->route('admin.services', array_merge(
+            request()->query(),
+            ['tab' => 'parts']
+        ));
     })->name('admin.parts');
 
     Route::get('/tri-thuc-sua-chua', function () {
@@ -231,6 +231,10 @@ Route::prefix('admin')->group(function () {
     Route::get('/worker-schedules', function () {
         return view('admin.worker-schedules');
     })->name('admin.worker-schedules');
+
+    Route::get('/worker-schedules/{workerId}', function (string $workerId) {
+        return view('admin.worker-schedule-detail', ['workerId' => (int) $workerId]);
+    })->whereNumber('workerId')->name('admin.worker-schedules.show');
 
     Route::get('/dispatch', function () {
         return view('admin.dispatch');

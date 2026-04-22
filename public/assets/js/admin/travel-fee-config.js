@@ -5,8 +5,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const DEFAULT_VISIBLE_CONFIG = {
         store_address: '2 \u0110\u01b0\u1eddng Nguy\u1ec5n \u0110\u00ecnh Chi\u1ec3u, V\u0129nh Th\u1ecd, Nha Trang, Kh\u00e1nh H\u00f2a',
+        store_latitude: 12.2618,
+        store_longitude: 109.1995,
         store_hotline: '0905 123 456',
         store_opening_hours: 'Th\u1ee9 2 - CN: 07:00 - 20:00',
+        max_service_distance_km: 8,
         tiers: [
             { from_km: 0, to_km: 1, transport_fee: 0, travel_fee: 0 },
             { from_km: 1, to_km: 5, transport_fee: 50000, travel_fee: 17000 },
@@ -15,7 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const DEFAULT_LEGACY_CONFIG = {
         free_distance_km: 1,
+        max_service_distance_km: 8,
         default_per_km: 5000,
+        store_latitude: 12.2618,
+        store_longitude: 109.1995,
         store_transport_fee: 0,
         complaint_window_days: 3,
     };
@@ -24,14 +30,23 @@ document.addEventListener('DOMContentLoaded', () => {
         previewMode: 'tiered',
         activeDistanceKm: 3,
         legacyConfig: { ...DEFAULT_LEGACY_CONFIG },
+        coverageMap: {
+            map: null,
+            tileLayer: null,
+            marker: null,
+            circle: null,
+        },
     };
 
     const refs = {
         form: document.getElementById('travelFeeForm'),
         tierList: document.getElementById('travelTierList'),
         storeAddressInput: document.getElementById('travelFeeStoreAddress'),
+        storeLatitudeInput: document.getElementById('travelFeeStoreLatitude'),
+        storeLongitudeInput: document.getElementById('travelFeeStoreLongitude'),
         storeHotlineInput: document.getElementById('travelFeeStoreHotline'),
         storeOpeningHoursInput: document.getElementById('travelFeeStoreOpeningHours'),
+        maxServiceDistanceInput: document.getElementById('travelFeeMaxServiceDistance'),
         complaintWindowInput: document.getElementById('travelFeeComplaintWindowDays'),
         addTierButton: document.getElementById('btnAddTravelTier'),
         resetButton: document.getElementById('btnResetTravelFeeForm'),
@@ -53,7 +68,40 @@ document.addEventListener('DOMContentLoaded', () => {
         storeAddressPreview: document.getElementById('travelFeeStoreAddressPreview'),
         rulePreview: document.getElementById('travelFeeRulePreview'),
         sampleGrid: document.getElementById('travelFeeSampleGrid'),
+        coverageMapCanvas: document.getElementById('travelFeeCoverageMap'),
+        coverageFallback: document.getElementById('travelFeeCoverageFallback'),
+        coverageRadius: document.getElementById('travelFeeCoverageRadius'),
+        coverageHint: document.getElementById('travelFeeCoverageHint'),
+        coverageAddress: document.getElementById('travelFeeCoverageAddress'),
+        coverageCoordinates: document.getElementById('travelFeeCoverageCoordinates'),
     };
+
+    const ensureHookNode = (id, tagName = 'div', className = 'tw-hidden') => {
+        const existingNode = document.getElementById(id);
+        if (existingNode) {
+            return existingNode;
+        }
+
+        const node = document.createElement(tagName);
+        node.id = id;
+        node.className = className;
+        document.body.appendChild(node);
+        return node;
+    };
+
+    refs.statusChip = refs.statusChip || ensureHookNode('travelFeeStatusChip', 'span', 'tfc-status-chip tw-hidden');
+    refs.updatedChip = refs.updatedChip || ensureHookNode('travelFeeUpdatedChip', 'span', 'd-none');
+    refs.modeChip = refs.modeChip || ensureHookNode('travelFeeModeChip', 'span', 'tw-hidden');
+    refs.storeAddressPreview = refs.storeAddressPreview || ensureHookNode('travelFeeStoreAddressPreview', 'span', 'tw-hidden');
+    refs.activeRuleCopy = refs.activeRuleCopy || ensureHookNode('travelFeeActiveRuleCopy', 'div', 'tw-hidden');
+    refs.activeTransportMeta = refs.activeTransportMeta || ensureHookNode('travelFeeActiveTransportMeta', 'div', 'tw-hidden');
+    refs.rulePreview = refs.rulePreview || ensureHookNode('travelFeeRulePreview', 'div', 'tw-hidden');
+    refs.sampleGrid = refs.sampleGrid || ensureHookNode('travelFeeSampleGrid', 'div', 'tw-hidden');
+
+    refs.coverageMapCanvas?.parentElement?.querySelector('img[alt="Map Visualization"]')?.remove();
+    refs.coverageMapCanvas?.parentElement
+        ?.querySelector('.tw-absolute.tw-inset-0.tw-bg-gradient-to-t.tw-from-surface-container-highest\\/80.tw-to-transparent.tw-flex.tw-items-end.tw-p-6')
+        ?.remove();
 
     const syncFieldCopy = (input, options = {}) => {
         const wrapper = input?.closest('.tw-space-y-2');
@@ -82,6 +130,16 @@ document.addEventListener('DOMContentLoaded', () => {
             placeholder: 'VD: 2 \u0110\u01b0\u1eddng Nguy\u1ec5n \u0110\u00ecnh Chi\u1ec3u, V\u0129nh Th\u1ecd, Nha Trang',
             helper: 'Hi\u1ec3n cho kh\u00e1ch khi h\u1ecfi \u0111\u1ecba ch\u1ec9 c\u1eeda h\u00e0ng v\u00e0 link b\u1ea3n \u0111\u1ed3.',
         });
+        syncFieldCopy(refs.storeLatitudeInput, {
+            label: 'Vi do cua hang',
+            placeholder: 'VD: 12.2618',
+            helper: 'Nhap toa do GPS cua cua hang de he thong tinh khoang cach chinh xac.',
+        });
+        syncFieldCopy(refs.storeLongitudeInput, {
+            label: 'Kinh do cua hang',
+            placeholder: 'VD: 109.1995',
+            helper: 'Nhap toa do GPS cung cap voi vi do o tren.',
+        });
         syncFieldCopy(refs.storeHotlineInput, {
             label: 'Hotline c\u1eeda h\u00e0ng',
             placeholder: 'VD: 0905 123 456',
@@ -91,6 +149,11 @@ document.addEventListener('DOMContentLoaded', () => {
             label: 'Khung gi\u1edd m\u1edf c\u1eeda',
             placeholder: 'VD: Th\u1ee9 2 - CN: 07:00 - 20:00',
             helper: 'D\u00f9ng cho chatbot v\u00e0 c\u00e1c th\u00f4ng b\u00e1o gi\u1edd nh\u1eadn \u0111\u01a1n t\u1ea1i c\u1eeda h\u00e0ng.',
+        });
+        syncFieldCopy(refs.maxServiceDistanceInput, {
+            label: 'Pham vi phuc vu toi da (km)',
+            placeholder: 'VD: 8',
+            helper: 'Gioi han toi da cho sua tai nha tu cua hang hoac tu tho duoc chi dinh.',
         });
         syncFieldCopy(refs.complaintWindowInput, {
             helper: 'D\u00f9ng cho quy t\u1eafc h\u1ed7 tr\u1ee3 sau s\u1eeda ch\u1eefa v\u00e0 khi\u1ebfu n\u1ea1i.',
@@ -121,10 +184,164 @@ document.addEventListener('DOMContentLoaded', () => {
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
     const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} đ`;
     const km = (value) => `${Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km`;
+    const formatCoordinate = (value) => Number(value || 0).toLocaleString('vi-VN', {
+        minimumFractionDigits: 5,
+        maximumFractionDigits: 5,
+    });
 
     const setStatus = (message, tone = 'info') => {
         refs.statusChip.textContent = message;
         refs.statusChip.dataset.tone = tone;
+    };
+
+    const setCoverageFallback = (message = '', isVisible = false) => {
+        if (!refs.coverageFallback) {
+            return;
+        }
+
+        refs.coverageFallback.textContent = message;
+        refs.coverageFallback.style.display = isVisible ? 'flex' : 'none';
+    };
+
+    const buildCoverageMarkerIcon = () => {
+        if (!window.L) {
+            return null;
+        }
+
+        return window.L.divIcon({
+            className: 'tfc-coverage-marker-shell',
+            html: `
+                <span class="tfc-coverage-marker" aria-label="Cua hang">
+                    <span class="material-symbols-outlined tfc-coverage-marker__icon" aria-hidden="true">storefront</span>
+                </span>
+            `,
+            iconSize: [34, 34],
+            iconAnchor: [17, 17],
+        });
+    };
+
+    const ensureCoverageMap = (lat, lng) => {
+        if (!refs.coverageMapCanvas || !window.L) {
+            return null;
+        }
+
+        if (!state.coverageMap.map) {
+            state.coverageMap.map = window.L.map(refs.coverageMapCanvas, {
+                zoomControl: true,
+                attributionControl: false,
+                scrollWheelZoom: true,
+                dragging: true,
+                touchZoom: true,
+                doubleClickZoom: true,
+                boxZoom: true,
+                keyboard: true,
+                zoomSnap: 0.25,
+            });
+
+            state.coverageMap.tileLayer = window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+            }).addTo(state.coverageMap.map);
+        }
+
+        if (!state.coverageMap.marker) {
+            state.coverageMap.marker = window.L.marker([lat, lng], {
+                icon: buildCoverageMarkerIcon(),
+            }).addTo(state.coverageMap.map);
+        }
+
+        if (!state.coverageMap.circle) {
+            state.coverageMap.circle = window.L.circle([lat, lng], {
+                radius: 0,
+                color: '#0f6adb',
+                weight: 2,
+                opacity: 0.95,
+                fillColor: '#56c4ff',
+                fillOpacity: 0.2,
+            }).addTo(state.coverageMap.map);
+        }
+
+        return state.coverageMap.map;
+    };
+
+    const updateCoverageMap = (config) => {
+        const latitude = Number(config.store_latitude ?? state.legacyConfig.store_latitude);
+        const longitude = Number(config.store_longitude ?? state.legacyConfig.store_longitude);
+        const radiusKm = Math.max(0, Number(config.max_service_distance_km ?? state.legacyConfig.max_service_distance_km ?? 0));
+        const hasFiniteCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+        const address = String(config.store_address || DEFAULT_VISIBLE_CONFIG.store_address || '').trim() || 'Dia chi cua hang';
+
+        if (refs.coverageRadius) {
+            refs.coverageRadius.textContent = km(radiusKm);
+        }
+
+        if (refs.coverageAddress) {
+            refs.coverageAddress.textContent = address;
+        }
+
+        if (refs.coverageCoordinates) {
+            refs.coverageCoordinates.textContent = hasFiniteCoordinates
+                ? `${formatCoordinate(latitude)}, ${formatCoordinate(longitude)}`
+                : 'Lat --, Lng --';
+        }
+
+        if (refs.coverageHint) {
+            refs.coverageHint.textContent = hasFiniteCoordinates
+                ? `Vong tron dang mo phong pham vi sua tai nha trong ${km(radiusKm)} quanh cua hang.`
+                : 'Nhap day du vi do va kinh do de xem ban do vung phuc vu.';
+        }
+
+        if (!refs.coverageMapCanvas) {
+            return;
+        }
+
+        if (!window.L) {
+            setCoverageFallback('Khong tai duoc thu vien ban do OpenStreetMap.', true);
+            return;
+        }
+
+        if (!hasFiniteCoordinates) {
+            setCoverageFallback('Chua co toa do hop le de hien thi tam ban do.', true);
+            return;
+        }
+
+        const map = ensureCoverageMap(latitude, longitude);
+        if (!map || !state.coverageMap.marker || !state.coverageMap.circle) {
+            setCoverageFallback('Khong khoi tao duoc ban do.', true);
+            return;
+        }
+
+        const existingTooltip = state.coverageMap.marker.getTooltip();
+        if (existingTooltip) {
+            existingTooltip.setContent(address);
+        } else {
+            state.coverageMap.marker.bindTooltip(address, {
+                direction: 'top',
+                offset: [0, -20],
+                opacity: 1,
+                className: 'tfc-coverage-tooltip',
+            });
+        }
+
+        setCoverageFallback('', false);
+
+        const latLng = [latitude, longitude];
+        const radiusMeters = Math.max(0, radiusKm * 1000);
+        state.coverageMap.marker.setLatLng(latLng);
+        state.coverageMap.circle.setLatLng(latLng);
+        state.coverageMap.circle.setRadius(radiusMeters);
+
+        if (radiusMeters > 0) {
+            map.fitBounds(window.L.latLng(latitude, longitude).toBounds(Math.max(radiusMeters * 2.4, 800)).pad(0.15), {
+                animate: false,
+                padding: [24, 24],
+            });
+        } else {
+            map.setView(latLng, 15, { animate: false });
+        }
+
+        window.setTimeout(() => {
+            map.invalidateSize();
+        }, 0);
     };
 
     const setUpdatedMeta = (payload = {}) => {
@@ -152,16 +369,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getFormState = () => ({
         store_address: String(refs.storeAddressInput.value || '').trim(),
+        store_latitude: refs.storeLatitudeInput?.value ?? '',
+        store_longitude: refs.storeLongitudeInput?.value ?? '',
         store_hotline: String(refs.storeHotlineInput?.value || '').trim(),
         store_opening_hours: String(refs.storeOpeningHoursInput?.value || '').trim(),
+        max_service_distance_km: refs.maxServiceDistanceInput?.value ?? '',
         complaint_window_days: refs.complaintWindowInput?.value ?? '',
         tiers: readRows(),
     });
 
     const buildPreviewConfig = (rawState = getFormState()) => ({
         store_address: rawState.store_address || 'Chưa nhập địa chỉ cửa hàng',
+        store_latitude: parseNumber(rawState.store_latitude) ?? state.legacyConfig.store_latitude,
+        store_longitude: parseNumber(rawState.store_longitude) ?? state.legacyConfig.store_longitude,
         store_hotline: rawState.store_hotline || DEFAULT_VISIBLE_CONFIG.store_hotline,
         store_opening_hours: rawState.store_opening_hours || DEFAULT_VISIBLE_CONFIG.store_opening_hours,
+        max_service_distance_km: parseNumber(rawState.max_service_distance_km) ?? state.legacyConfig.max_service_distance_km,
         tiers: rawState.tiers
             .map((row) => ({
                 index: row.index,
@@ -214,8 +437,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        const storeLatitude = parseNumber(rawState.store_latitude);
+        const storeLongitude = parseNumber(rawState.store_longitude);
+        const maxServiceDistanceKm = parseNumber(rawState.max_service_distance_km);
+
         if (!rawState.store_address) {
             addError('store_address', 'Vui lòng nhập địa chỉ cửa hàng.');
+        }
+
+        if (String(rawState.store_latitude ?? '').trim() === '') {
+            addError('store_latitude', 'Vui long nhap vi do cua hang.');
+        } else if (storeLatitude === null) {
+            addError('store_latitude', 'Vi do cua hang khong hop le.');
+        } else if (storeLatitude < -90 || storeLatitude > 90) {
+            addError('store_latitude', 'Vi do phai nam trong khoang -90 den 90.');
+        }
+
+        if (String(rawState.store_longitude ?? '').trim() === '') {
+            addError('store_longitude', 'Vui long nhap kinh do cua hang.');
+        } else if (storeLongitude === null) {
+            addError('store_longitude', 'Kinh do cua hang khong hop le.');
+        } else if (storeLongitude < -180 || storeLongitude > 180) {
+            addError('store_longitude', 'Kinh do phai nam trong khoang -180 den 180.');
         }
 
         if (String(rawState.store_hotline ?? '').trim().length > 50) {
@@ -224,6 +467,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (String(rawState.store_opening_hours ?? '').trim().length > 100) {
             addError('store_opening_hours', 'Khung gi\u1edd m\u1edf c\u1eeda kh\u00f4ng \u0111\u01b0\u1ee3c v\u01b0\u1ee3t qu\u00e1 100 k\u00fd t\u1ef1.');
+        }
+
+        if (String(rawState.max_service_distance_km ?? '').trim() === '') {
+            addError('max_service_distance_km', 'Vui long nhap pham vi phuc vu toi da.');
+        } else if (maxServiceDistanceKm === null) {
+            addError('max_service_distance_km', 'Pham vi phuc vu toi da khong hop le.');
+        } else if (maxServiceDistanceKm < 0 || maxServiceDistanceKm > 1000) {
+            addError('max_service_distance_km', 'Pham vi phuc vu toi da phai tu 0 den 1000 km.');
         }
 
         const complaintWindowDays = parseNumber(rawState.complaint_window_days);
@@ -315,8 +566,11 @@ document.addEventListener('DOMContentLoaded', () => {
             preview,
             payload: {
                 store_address: rawState.store_address,
+                store_latitude: Number(storeLatitude ?? state.legacyConfig.store_latitude),
+                store_longitude: Number(storeLongitude ?? state.legacyConfig.store_longitude),
                 store_hotline: rawState.store_hotline,
                 store_opening_hours: rawState.store_opening_hours,
+                max_service_distance_km: Number(maxServiceDistanceKm ?? state.legacyConfig.max_service_distance_km),
                 free_distance_km: legacyConfig.free_distance_km,
                 default_per_km: state.legacyConfig.default_per_km,
                 store_transport_fee: legacyConfig.store_transport_fee,
@@ -358,10 +612,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyErrors = (errors = {}) => {
         setFieldError('store_address', errors.store_address || '');
         toggleInvalid(refs.storeAddressInput, Boolean(errors.store_address));
+        setFieldError('store_latitude', errors.store_latitude || '');
+        toggleInvalid(refs.storeLatitudeInput, Boolean(errors.store_latitude));
+        setFieldError('store_longitude', errors.store_longitude || '');
+        toggleInvalid(refs.storeLongitudeInput, Boolean(errors.store_longitude));
         setFieldError('store_hotline', errors.store_hotline || '');
         toggleInvalid(refs.storeHotlineInput, Boolean(errors.store_hotline));
         setFieldError('store_opening_hours', errors.store_opening_hours || '');
         toggleInvalid(refs.storeOpeningHoursInput, Boolean(errors.store_opening_hours));
+        setFieldError('max_service_distance_km', errors.max_service_distance_km || '');
+        toggleInvalid(refs.maxServiceDistanceInput, Boolean(errors.max_service_distance_km));
         setFieldError('complaint_window_days', errors.complaint_window_days || '');
         toggleInvalid(refs.complaintWindowInput, Boolean(errors.complaint_window_days));
 
@@ -481,7 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isActive = button.dataset.previewMode === state.previewMode;
             button.classList.toggle('is-active', isActive);
             // Stitch toggle: active = white bg, inactive = transparent+opacity
-            if (button.closest('.tw-bg-white\/10')) {
+            if (button.parentElement?.className?.includes('tw-bg-white/10')) {
                 button.className = isActive
                     ? 'tw-px-3 tw-py-1 tw-text-[10px] tw-font-bold tw-bg-white tw-text-primary tw-rounded-full'
                     : 'tw-px-3 tw-py-1 tw-text-[10px] tw-font-bold tw-text-white tw-opacity-60';
@@ -553,6 +813,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncModeUI();
 
         if (refs.storeAddressPreview) refs.storeAddressPreview.textContent = config.store_address;
+        updateCoverageMap(config);
 
         const activePricing = resolveActivePricing(state.activeDistanceKm, config);
         if (refs.transportPreview) refs.transportPreview.textContent = money(activePricing.transportFee);
@@ -609,8 +870,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const fill = (config = {}, preview = null) => {
         const visibleConfig = {
             store_address: config.store_address || DEFAULT_VISIBLE_CONFIG.store_address,
+            store_latitude: Number(config.store_latitude ?? DEFAULT_VISIBLE_CONFIG.store_latitude),
+            store_longitude: Number(config.store_longitude ?? DEFAULT_VISIBLE_CONFIG.store_longitude),
             store_hotline: config.store_hotline ?? DEFAULT_VISIBLE_CONFIG.store_hotline,
             store_opening_hours: config.store_opening_hours ?? DEFAULT_VISIBLE_CONFIG.store_opening_hours,
+            max_service_distance_km: Number(config.max_service_distance_km ?? DEFAULT_VISIBLE_CONFIG.max_service_distance_km),
             tiers: Array.isArray(config.tiers) && config.tiers.length
                 ? config.tiers.map((tier) => ({
                     from_km: tier.from_km,
@@ -622,11 +886,20 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         refs.storeAddressInput.value = visibleConfig.store_address;
+        if (refs.storeLatitudeInput) {
+            refs.storeLatitudeInput.value = String(visibleConfig.store_latitude);
+        }
+        if (refs.storeLongitudeInput) {
+            refs.storeLongitudeInput.value = String(visibleConfig.store_longitude);
+        }
         if (refs.storeHotlineInput) {
             refs.storeHotlineInput.value = String(visibleConfig.store_hotline ?? '');
         }
         if (refs.storeOpeningHoursInput) {
             refs.storeOpeningHoursInput.value = String(visibleConfig.store_opening_hours ?? '');
+        }
+        if (refs.maxServiceDistanceInput) {
+            refs.maxServiceDistanceInput.value = String(visibleConfig.max_service_distance_km);
         }
         if (refs.complaintWindowInput) {
             refs.complaintWindowInput.value = String(config.complaint_window_days ?? DEFAULT_LEGACY_CONFIG.complaint_window_days);
@@ -635,7 +908,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.legacyConfig = {
             free_distance_km: Number(config.free_distance_km ?? DEFAULT_LEGACY_CONFIG.free_distance_km),
+            max_service_distance_km: Number(config.max_service_distance_km ?? DEFAULT_LEGACY_CONFIG.max_service_distance_km),
             default_per_km: Number(config.default_per_km ?? DEFAULT_LEGACY_CONFIG.default_per_km),
+            store_latitude: Number(config.store_latitude ?? DEFAULT_LEGACY_CONFIG.store_latitude),
+            store_longitude: Number(config.store_longitude ?? DEFAULT_LEGACY_CONFIG.store_longitude),
             store_transport_fee: Number(config.store_transport_fee ?? preview?.store?.transport_fee ?? DEFAULT_LEGACY_CONFIG.store_transport_fee),
             complaint_window_days: Number(config.complaint_window_days ?? DEFAULT_LEGACY_CONFIG.complaint_window_days),
         };

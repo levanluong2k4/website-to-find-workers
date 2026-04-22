@@ -43,6 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
         exp: document.getElementById('workerExp'),
         active: document.getElementById('workerActive'),
         avatar: document.getElementById('workerAvatar'),
+        avatarPreview: document.getElementById('workerAvatarPreview'),
+        avatarPreviewImage: document.getElementById('workerAvatarPreviewImage'),
+        avatarPreviewFallback: document.getElementById('workerAvatarPreviewFallback'),
+        avatarPreviewHint: document.querySelector('#workerAvatarPreview + .small.text-muted'),
         label: document.getElementById('workerModalLabel'),
         save: document.getElementById('btnSaveWorker'),
         statusGroup: document.getElementById('statusGroup'),
@@ -50,6 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let allServices = [];
+
+    if (wFields.avatarPreviewHint) {
+        wFields.avatarPreviewHint.textContent = 'Anh hien tai hoac anh vua chon se hien o day.';
+    }
 
     const escapeHtml = (value) => (value ?? '')
         .toString()
@@ -113,6 +121,55 @@ document.addEventListener('DOMContentLoaded', () => {
             hash = str.charCodeAt(i) + ((hash << 5) - hash);
         }
         return colors[Math.abs(hash) % colors.length];
+    };
+
+    const resolveAvatarUrl = (avatar) => {
+        if (!avatar) return '';
+        if (/^https?:\/\//i.test(avatar) || avatar.startsWith('/')) {
+            return avatar;
+        }
+
+        return `/storage/${avatar}`;
+    };
+
+    const buildAvatarMarkup = (user) => {
+        const avatarUrl = resolveAvatarUrl(user.avatar);
+        if (avatarUrl) {
+            return `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(user.name || 'Avatar')}" class="avatar-photo shadow-sm" onerror="this.src='/assets/images/user-default.png'">`;
+        }
+
+        return `
+            <div class="avatar-initials ${getRandomColorClass(user.name || 'A')} shadow-sm">
+                ${escapeHtml(getInitials(user.name))}
+            </div>
+        `;
+    };
+
+    let currentAvatarPreviewObjectUrl = '';
+    let currentModalAvatarUrl = '';
+
+    const revokeAvatarPreviewObjectUrl = () => {
+        if (!currentAvatarPreviewObjectUrl) return;
+        URL.revokeObjectURL(currentAvatarPreviewObjectUrl);
+        currentAvatarPreviewObjectUrl = '';
+    };
+
+    const renderWorkerAvatarPreview = (avatarUrl, name = '') => {
+        if (!wFields.avatarPreview || !wFields.avatarPreviewImage || !wFields.avatarPreviewFallback) {
+            return;
+        }
+
+        const resolvedAvatarUrl = resolveAvatarUrl(avatarUrl);
+        wFields.avatarPreviewFallback.textContent = name ? getInitials(name) : 'TT';
+
+        if (resolvedAvatarUrl) {
+            wFields.avatarPreviewImage.src = resolvedAvatarUrl;
+            wFields.avatarPreview.classList.add('has-image');
+            return;
+        }
+
+        wFields.avatarPreviewImage.removeAttribute('src');
+        wFields.avatarPreview.classList.remove('has-image');
     };
 
     const renderUsers = (users) => {
@@ -181,9 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="ps-4 fw-semibold text-muted">#${user.id}</td>
                     <td>
                         <div class="d-flex align-items-center gap-3">
-                            <div class="avatar-initials ${getRandomColorClass(user.name || 'A')} shadow-sm">
-                                ${getInitials(user.name)}
-                            </div>
+                            ${buildAvatarMarkup(user)}
                             <div>
                                 <p class="worker-name">${escapeHtml(user.name)}</p>
                                 <p class="worker-contact">${escapeHtml(user.email)} / ${escapeHtml(user.phone || '--')}</p>
@@ -508,6 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAddWorker) {
         btnAddWorker.addEventListener('click', () => {
             workerForm.reset();
+            revokeAvatarPreviewObjectUrl();
+            currentModalAvatarUrl = '';
             wFields.id.value = '';
             wFields.label.textContent = 'Thêm thợ kỹ thuật mới';
             wFields.statusGroup.style.display = 'none';
@@ -515,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
             wFields.passwordHelp.style.display = 'none';
             wFields.password.required = true;
             if (wFields.avatar) wFields.avatar.value = '';
+            renderWorkerAvatarPreview(currentModalAvatarUrl, wFields.name.value);
             document.querySelectorAll('input[name="dich_vu_ids"]').forEach(cb => cb.checked = false);
         });
     }
@@ -539,6 +597,9 @@ document.addEventListener('DOMContentLoaded', () => {
             wFields.exp.value = profile.kinh_nghiem || '';
             wFields.active.checked = worker.is_active;
             if (wFields.avatar) wFields.avatar.value = '';
+            revokeAvatarPreviewObjectUrl();
+            currentModalAvatarUrl = worker.avatar || '';
+            renderWorkerAvatarPreview(currentModalAvatarUrl, worker.name || '');
 
             wFields.label.textContent = 'Cập nhật thợ';
             wFields.statusGroup.style.display = 'block';
@@ -553,6 +614,29 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Lỗi lấy thông tin thợ', 'error');
         }
     };
+
+    if (wFields.avatar) {
+        wFields.avatar.addEventListener('change', () => {
+            revokeAvatarPreviewObjectUrl();
+
+            const file = wFields.avatar.files?.[0];
+            if (!file) {
+                renderWorkerAvatarPreview(currentModalAvatarUrl, wFields.name.value || '');
+                return;
+            }
+
+            currentAvatarPreviewObjectUrl = URL.createObjectURL(file);
+            renderWorkerAvatarPreview(currentAvatarPreviewObjectUrl, wFields.name.value || '');
+        });
+    }
+
+    if (wFields.name) {
+        wFields.name.addEventListener('input', () => {
+            if (wFields.avatar?.files?.[0]) return;
+            if (wFields.id.value) return;
+            renderWorkerAvatarPreview('', wFields.name.value || '');
+        });
+    }
 
     if (workerForm) {
         workerForm.addEventListener('submit', async (e) => {
@@ -594,7 +678,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (res?.ok) {
                     showToast(res.data?.message || 'Đã lưu thông tin thợ');
                     workerModal.hide();
-                    fetchUsers();
+                    revokeAvatarPreviewObjectUrl();
+                    currentModalAvatarUrl = '';
+                    renderWorkerAvatarPreview('', '');
+                    await fetchUsers();
                 } else {
                     showToast(res.data?.message || 'Lỗi', 'error');
                 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ChatMagic;
+use App\Models\DanhMucDichVu;
 use App\Services\Chat\AssistantSoulConfigService;
 use App\Services\Chat\ChatContextBuilderService;
 use App\Services\Chat\ChatMemoryService;
@@ -92,6 +93,8 @@ class ChatbotController extends Controller
             [
                 'cases' => $assistantPayload['cases'],
                 'technicians' => $assistantPayload['technicians'],
+                'services' => $assistantPayload['services'] ?? [],
+                'services_more_url' => $assistantPayload['services_more_url'] ?? null,
                 'youtube_links' => $assistantPayload['youtube_links'],
                 'model' => $assistantPayload['model'],
                 'ai' => $assistantPayload['ai'] ?? null,
@@ -157,6 +160,8 @@ class ChatbotController extends Controller
             'assistant_text' => $assistantPayload['assistant_text'] ?? '',
             'cases' => $assistantPayload['cases'] ?? [],
             'technicians' => $assistantPayload['technicians'] ?? [],
+            'services' => $assistantPayload['services'] ?? [],
+            'services_more_url' => $assistantPayload['services_more_url'] ?? null,
             'youtube_links' => $assistantPayload['youtube_links'] ?? [],
             'model' => $assistantPayload['model'] ?? null,
             'ai' => $assistantPayload['ai'] ?? null,
@@ -226,37 +231,78 @@ class ChatbotController extends Controller
         if ($this->containsEmergencyKeyword($text)) {
             $technicians = $this->technicianRecommendationService->recommend($text, [], 3);
 
-            return [
+            return $this->finalizeAssistantPayload($text, [
                 'assistant_text' => $this->buildEmergencyAssistantText($technicians),
                 'cases' => [],
                 'technicians' => $technicians,
                 'youtube_links' => [],
                 'model' => null,
                 'ai' => $this->deterministicAiMeta('emergency_rule'),
-            ];
+            ]);
         }
 
         if ($this->isStoreHotlineQuestion($text)) {
-            return $this->buildStoreInfoPayload('store_hotline_rule', $this->buildStoreHotlineAssistantText());
+            return $this->finalizeAssistantPayload(
+                $text,
+                $this->buildStoreInfoPayload('store_hotline_rule', $this->buildStoreHotlineAssistantText())
+            );
         }
 
         if ($this->isStoreOpeningHoursQuestion($text)) {
-            return $this->buildStoreInfoPayload('store_hours_rule', $this->buildStoreOpeningHoursAssistantText());
+            return $this->finalizeAssistantPayload(
+                $text,
+                $this->buildStoreInfoPayload('store_hours_rule', $this->buildStoreOpeningHoursAssistantText())
+            );
         }
 
         if ($this->isStoreTransportFeeQuestion($text)) {
-            return $this->buildStoreInfoPayload('store_transport_fee_rule', $this->buildStoreTransportFeeAssistantText());
+            return $this->finalizeAssistantPayload(
+                $text,
+                $this->buildStoreInfoPayload('store_transport_fee_rule', $this->buildStoreTransportFeeAssistantText())
+            );
         }
 
         if ($this->isStoreMapQuestion($text)) {
-            return $this->buildStoreInfoPayload('store_map_rule', $this->buildStoreMapAssistantText());
+            return $this->finalizeAssistantPayload(
+                $text,
+                $this->buildStoreInfoPayload('store_map_rule', $this->buildStoreMapAssistantText())
+            );
         }
 
         if ($this->isStoreAddressQuestion($text)) {
-            return $this->buildStoreInfoPayload('store_address_rule', $this->buildStoreAddressAssistantText());
+            return $this->finalizeAssistantPayload(
+                $text,
+                $this->buildStoreInfoPayload('store_address_rule', $this->buildStoreAddressAssistantText())
+            );
+        }
+
+        if ($this->isServiceCatalogQuestion($text)) {
+            return $this->finalizeAssistantPayload($text, [
+                'assistant_text' => $this->buildServiceCatalogAssistantText(),
+                'cases' => [],
+                'technicians' => [],
+                'services' => $this->buildServiceCatalogCards(),
+                'services_more_url' => route('customer.search'),
+                'youtube_links' => [],
+                'model' => null,
+                'ai' => $this->deterministicAiMeta('service_catalog_rule'),
+            ]);
         }
 
         $serviceSearchIntent = $this->serviceSearchIntentService->detect($text);
+        if ($serviceSearchIntent['is_unsupported_service_search']) {
+            return $this->finalizeAssistantPayload($text, [
+                'assistant_text' => $this->buildUnsupportedServiceAssistantText(
+                    (string) ($serviceSearchIntent['requested_service_name'] ?? '')
+                ),
+                'cases' => [],
+                'technicians' => [],
+                'youtube_links' => [],
+                'model' => null,
+                'ai' => $this->deterministicAiMeta('unsupported_service_rule'),
+            ]);
+        }
+
         if ($serviceSearchIntent['is_service_search']) {
             $technicians = $this->technicianRecommendationService->recommend(
                 $text,
@@ -265,7 +311,7 @@ class ChatbotController extends Controller
                 $serviceSearchIntent['service_id']
             );
 
-            return [
+            return $this->finalizeAssistantPayload($text, [
                 'assistant_text' => $this->buildServiceSearchAssistantText(
                     (string) $serviceSearchIntent['service_name'],
                     $technicians
@@ -275,7 +321,7 @@ class ChatbotController extends Controller
                 'youtube_links' => [],
                 'model' => null,
                 'ai' => $this->deterministicAiMeta('service_search_rule'),
-            ];
+            ]);
         }
 
         $cases = $this->similarIssueSearchService->search($text, 3);
@@ -295,14 +341,14 @@ class ChatbotController extends Controller
 
         $aiPayload = $this->openAiChatService->generateResponse($context['messages']);
 
-        return [
+        return $this->finalizeAssistantPayload($text, [
             'assistant_text' => (string) ($aiPayload['assistant_text'] ?? 'Tôi đã ghi nhận vấn đề. Bạn xem thông tin gợi ý bên dưới để chọn thợ phù hợp.'),
             'cases' => $cases,
             'technicians' => $technicians,
             'youtube_links' => $youtubeLinks,
             'model' => $aiPayload['model'] ?? null,
             'ai' => $aiPayload['ai'] ?? $this->deterministicAiMeta('system_data_only'),
-        ];
+        ]);
     }
 
     /**
@@ -319,6 +365,249 @@ class ChatbotController extends Controller
         return $technicians === []
             ? 'Hiện chưa có thợ ' . mb_strtolower($serviceName, 'UTF-8') . ' phù hợp.'
             : 'Đây là các thợ ' . mb_strtolower($serviceName, 'UTF-8') . ' phù hợp.';
+    }
+
+    private function buildUnsupportedServiceAssistantText(string $requestedServiceName): string
+    {
+        $requestedServiceName = trim($requestedServiceName);
+
+        if ($requestedServiceName === '') {
+            return 'Hiện tại dịch vụ này chưa có trong cửa hàng. Bạn vui lòng chọn dịch vụ khác.';
+        }
+
+        return 'Hiện tại dịch vụ sửa ' . mb_strtolower($requestedServiceName, 'UTF-8') . ' chưa có trong cửa hàng. Bạn vui lòng chọn dịch vụ khác.';
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function finalizeAssistantPayload(string $userText, array $payload): array
+    {
+        $assistantText = trim((string) ($payload['assistant_text'] ?? ''));
+        $assistantText = $this->trimUnrequestedAssistantLines($assistantText, $userText);
+        $assistantText = $this->appendRelatedFollowUpQuestion(
+            $assistantText,
+            $userText,
+            (array) ($payload['cases'] ?? []),
+            (array) ($payload['technicians'] ?? []),
+            (string) data_get($payload, 'ai.status', '')
+        );
+
+        $payload['assistant_text'] = $assistantText;
+
+        return $payload;
+    }
+
+    private function trimUnrequestedAssistantLines(string $assistantText, string $userText): string
+    {
+        if ($assistantText === '') {
+            return '';
+        }
+
+        $keepProcess = $this->isProcessQuestion($userText);
+        $keepHotline = $this->isStoreHotlineQuestion($userText);
+        $keepAddress = $this->isStoreAddressQuestion($userText);
+        $keepOpeningHours = $this->isStoreOpeningHoursQuestion($userText);
+        $keepTransportFee = $this->isStoreTransportFeeQuestion($userText);
+        $keepStoreMap = $this->isStoreMapQuestion($userText);
+        $keepPrice = $this->isPriceQuestion($userText) || $this->serviceSearchIntentService->detect($userText)['is_service_search'];
+
+        $lines = preg_split('/\R+/u', $assistantText) ?: [];
+        $filteredLines = [];
+
+        foreach ($lines as $line) {
+            $trimmedLine = trim($line);
+            if ($trimmedLine === '') {
+                continue;
+            }
+
+            $normalizedLine = \App\Services\Chat\TextNormalizer::normalize($trimmedLine);
+
+            if (str_starts_with($normalizedLine, 'quy trinh tiep nhan') && !$keepProcess) {
+                continue;
+            }
+
+            if ((str_starts_with($normalizedLine, 'hotline') || str_contains($normalizedLine, 'goi truc tiep')) && !$keepHotline) {
+                continue;
+            }
+
+            if (str_starts_with($normalizedLine, 'dia chi cua hang') && !$keepAddress) {
+                continue;
+            }
+
+            if (str_starts_with($normalizedLine, 'gio mo cua') && !$keepOpeningHours) {
+                continue;
+            }
+
+            if ((str_starts_with($normalizedLine, 'phi mang den cua hang') || str_starts_with($normalizedLine, 'neu ban can cua hang ho tro cho')) && !$keepTransportFee) {
+                continue;
+            }
+
+            if ((str_starts_with($normalizedLine, 'ban do cua hang') || str_starts_with($normalizedLine, 'cua hang o')) && !$keepStoreMap) {
+                continue;
+            }
+
+            if (str_starts_with($normalizedLine, 'gia tham khao') && !$keepPrice) {
+                continue;
+            }
+
+            $filteredLines[] = $trimmedLine;
+        }
+
+        return $filteredLines === []
+            ? $assistantText
+            : implode("\n", $filteredLines);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $cases
+     * @param  array<int, array<string, mixed>>  $technicians
+     */
+    private function appendRelatedFollowUpQuestion(
+        string $assistantText,
+        string $userText,
+        array $cases,
+        array $technicians,
+        string $aiStatus
+    ): string {
+        $assistantText = trim($assistantText);
+        if ($assistantText === '' || preg_match('/\?\s*$/u', $assistantText) === 1) {
+            return $assistantText;
+        }
+
+        $followUpQuestion = $this->buildRelatedFollowUpQuestion($userText, $cases, $technicians, $aiStatus);
+        if ($followUpQuestion === null || $followUpQuestion === '') {
+            return $assistantText;
+        }
+
+        return $assistantText . "\n\n" . $followUpQuestion;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $cases
+     * @param  array<int, array<string, mixed>>  $technicians
+     */
+    private function buildRelatedFollowUpQuestion(string $userText, array $cases, array $technicians, string $aiStatus): ?string
+    {
+        if ($this->containsEmergencyKeyword($userText)) {
+            return 'Bạn có muốn tôi tìm thợ điện phù hợp ngay bây giờ không?';
+        }
+
+        if ($aiStatus === 'unsupported_service_rule') {
+            return 'Bạn có muốn tôi gợi ý dịch vụ khác đang có trong cửa hàng không?';
+        }
+
+        if ($aiStatus === 'service_catalog_rule') {
+            return 'Bạn đang cần hỗ trợ về dịch vụ nào trong số này?';
+        }
+
+        if ($this->isStoreHotlineQuestion($userText)) {
+            return 'Bạn có muốn tôi tìm thợ phù hợp cho trường hợp này không?';
+        }
+
+        if ($this->isStoreAddressQuestion($userText) || $this->isStoreMapQuestion($userText)) {
+            return 'Bạn có muốn tôi tìm thợ đến tận nơi thay vì mang thiết bị tới cửa hàng không?';
+        }
+
+        if ($this->isStoreOpeningHoursQuestion($userText) || $this->isStoreTransportFeeQuestion($userText)) {
+            return 'Bạn có muốn tôi gợi ý nên sửa tại nhà hay mang tới cửa hàng không?';
+        }
+
+        $serviceSearchIntent = $this->serviceSearchIntentService->detect($userText);
+        if ($serviceSearchIntent['is_service_search']) {
+            return $technicians === []
+                ? 'Bạn có muốn tôi tìm thêm thợ phù hợp ở dịch vụ này không?'
+                : 'Bạn có muốn tôi mở hồ sơ hoặc đặt lịch với một thợ phù hợp không?';
+        }
+
+        $serviceName = $this->resolveRelevantServiceName($userText, $cases);
+        if ($serviceName !== null) {
+            return 'Bạn có muốn tôi tìm thợ ' . mb_strtolower($serviceName, 'UTF-8') . ' phù hợp không?';
+        }
+
+        if ($technicians !== [] || $cases !== [] || $aiStatus === 'system_fallback_overloaded') {
+            return 'Bạn có muốn tôi tìm thợ phù hợp cho trường hợp này không?';
+        }
+
+        return 'Bạn có muốn tôi hỏi thêm vài chi tiết để khoanh vùng lỗi chính xác hơn không?';
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $cases
+     */
+    private function resolveRelevantServiceName(string $userText, array $cases): ?string
+    {
+        $serviceSearchIntent = $this->serviceSearchIntentService->detect($userText);
+        $serviceName = trim((string) ($serviceSearchIntent['service_name'] ?? ''));
+        if ($serviceName !== '') {
+            return $serviceName;
+        }
+
+        $caseServiceName = trim((string) ($cases[0]['service_type'] ?? $cases[0]['service_name'] ?? ''));
+        if ($caseServiceName !== '') {
+            return $caseServiceName;
+        }
+
+        return $this->detectMentionedServiceName($userText);
+    }
+
+    private function detectMentionedServiceName(string $userText): ?string
+    {
+        $normalizedMessage = \App\Services\Chat\TextNormalizer::normalize($userText);
+        if ($normalizedMessage === '') {
+            return null;
+        }
+
+        $messageTokens = \App\Services\Chat\TextNormalizer::tokens($userText);
+        $bestName = null;
+        $bestScore = 0.0;
+
+        foreach (DanhMucDichVu::query()->select('ten_dich_vu')->get() as $service) {
+            $serviceName = trim((string) $service->ten_dich_vu);
+            if ($serviceName === '') {
+                continue;
+            }
+
+            $normalizedService = \App\Services\Chat\TextNormalizer::normalize($serviceName);
+            $serviceTokens = \App\Services\Chat\TextNormalizer::tokens($serviceName);
+            $phraseScore = str_contains($normalizedMessage, $normalizedService) ? 1.0 : 0.0;
+            $tokenScore = \App\Services\Chat\TextNormalizer::overlapScore($serviceTokens, $messageTokens);
+            $score = max($phraseScore, $tokenScore);
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestName = $serviceName;
+            }
+        }
+
+        return $bestScore >= 0.6 ? $bestName : null;
+    }
+
+    private function isProcessQuestion(string $text): bool
+    {
+        return $this->matchesNormalizedMarkers($text, [
+            'quy trinh tiep nhan',
+            'quy trinh sua chua',
+            'quy trinh dat lich',
+            'quy trinh lam viec',
+            'lam nhu the nao',
+            'tiep nhan nhu the nao',
+        ]);
+    }
+
+    private function isPriceQuestion(string $text): bool
+    {
+        return $this->matchesNormalizedMarkers($text, [
+            'gia bao nhieu',
+            'chi phi bao nhieu',
+            'ton bao nhieu',
+            'gia tham khao',
+            'bao nhieu tien',
+            'gia sua',
+            'phi sua',
+            'bao gia',
+        ]);
     }
 
     private function containsEmergencyKeyword(string $text): bool
@@ -415,8 +704,8 @@ class ChatbotController extends Controller
         $storeAddress = trim($this->travelFeeConfigService->resolveStoreAddress());
 
         return $storeAddress !== ''
-            ? 'Địa chỉ cửa hàng là: ' . $storeAddress . '. Bạn có thể mang thiết bị đến cửa hàng hoặc đặt lịch để hệ thống gợi ý thợ phù hợp.'
-            : 'Hiện hệ thống chưa cấu hình địa chỉ cửa hàng. Bạn vui lòng liên hệ admin để cập nhật thông tin này.';
+            ? 'Địa chỉ cửa hàng: ' . $storeAddress . '.'
+            : 'Hiện hệ thống chưa cấu hình địa chỉ cửa hàng.';
     }
 
     private function isStoreHotlineQuestion(string $text): bool
@@ -437,8 +726,8 @@ class ChatbotController extends Controller
         $hotline = trim($this->travelFeeConfigService->resolveStoreHotline());
 
         return $hotline !== ''
-            ? 'Hotline cửa hàng hiện tại là: ' . $hotline . '. Nếu cần tư vấn nhanh hoặc xác nhận lịch, bạn có thể gọi trực tiếp số này.'
-            : 'Hiện hệ thống chưa cấu hình hotline cửa hàng. Bạn vui lòng liên hệ admin để cập nhật số điện thoại hỗ trợ.';
+            ? 'Hotline cửa hàng: ' . $hotline . '.'
+            : 'Hiện hệ thống chưa cấu hình hotline cửa hàng.';
     }
 
     private function isStoreOpeningHoursQuestion(string $text): bool
@@ -459,8 +748,8 @@ class ChatbotController extends Controller
         $openingHours = trim($this->travelFeeConfigService->resolveStoreOpeningHours());
 
         return $openingHours !== ''
-            ? 'Giờ mở cửa hiện tại của cửa hàng là: ' . $openingHours . '. Bạn nên gọi trước nếu muốn xác nhận kỹ thuật viên hoặc lịch nhận máy.'
-            : 'Hiện hệ thống chưa cấu hình giờ mở cửa. Bạn vui lòng liên hệ hotline cửa hàng để xác nhận khung giờ làm việc.';
+            ? 'Giờ mở cửa cửa hàng: ' . $openingHours . '.'
+            : 'Hiện hệ thống chưa cấu hình giờ mở cửa.';
     }
 
     private function isStoreTransportFeeQuestion(string $text): bool
@@ -480,12 +769,12 @@ class ChatbotController extends Controller
         $transportFee = $this->travelFeeConfigService->resolveStoreTransportFee();
 
         if ($transportFee <= 0) {
-            return 'Hiện phí mang đến cửa hàng là 0 đồng nếu bạn tự mang thiết bị đến. Nếu cần cửa hàng hỗ trợ vận chuyển, bạn nên liên hệ trước để xác nhận chi phí thực tế.';
+            return 'Phí mang đến cửa hàng: 0 đồng nếu bạn tự mang thiết bị tới.';
         }
 
-        return 'Nếu bạn cần cửa hàng hỗ trợ chở thiết bị đến cửa hàng, phí tham khảo hiện tại là '
+        return 'Phí hỗ trợ vận chuyển đến cửa hàng tham khảo: '
             . $this->formatCurrencyVnd($transportFee)
-            . '. Nếu bạn tự mang thiết bị đến thì không phát sinh khoản phí này.';
+            . '.';
     }
 
     private function isStoreMapQuestion(string $text): bool
@@ -510,10 +799,59 @@ class ChatbotController extends Controller
         }
 
         if ($mapUrl === '') {
-            return 'Địa chỉ cửa hàng là: ' . $storeAddress . '.';
+            return 'Địa chỉ cửa hàng: ' . $storeAddress . '.';
         }
 
-        return 'Cửa hàng ở: ' . $storeAddress . '. Bạn có thể mở bản đồ tại đây: ' . $mapUrl;
+        return 'Bản đồ cửa hàng: ' . $mapUrl;
+    }
+
+    private function isServiceCatalogQuestion(string $text): bool
+    {
+        return $this->matchesNormalizedMarkers($text, [
+            'liet ke dich vu',
+            'liet ke cac dich vu',
+            'danh sach dich vu',
+            'cac dich vu co trong cua hang',
+            'dich vu co trong cua hang',
+            'cua hang co nhung dich vu nao',
+            'cua hang co dich vu nao',
+            'hien co nhung dich vu nao',
+            'co nhung dich vu nao',
+        ]);
+    }
+
+    private function buildServiceCatalogAssistantText(): string
+    {
+        if ($this->buildServiceCatalogCards() === []) {
+            return 'Hiện tại cửa hàng chưa cấu hình dịch vụ nào.';
+        }
+
+        return 'Đây là các dịch vụ hiện có trong cửa hàng.';
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildServiceCatalogCards(): array
+    {
+        $query = DanhMucDichVu::query()->orderBy('ten_dich_vu');
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('danh_muc_dich_vu', 'trang_thai')) {
+            $query->where('trang_thai', true);
+        }
+
+        return $query
+            ->limit(5)
+            ->get(['id', 'ten_dich_vu', 'hinh_anh'])
+            ->filter(static fn (DanhMucDichVu $service) => trim((string) $service->ten_dich_vu) !== '')
+            ->map(static fn (DanhMucDichVu $service): array => [
+                'id' => (int) $service->id,
+                'name' => (string) $service->ten_dich_vu,
+                'image' => $service->hinh_anh ?: asset('assets/images/logontu.png'),
+                'url' => route('customer.search'),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

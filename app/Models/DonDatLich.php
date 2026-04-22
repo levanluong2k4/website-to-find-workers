@@ -7,6 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class DonDatLich extends Model
 {
+    public const FIXED_TIME_SLOTS = [
+        '08:00-10:00',
+        '10:00-12:00',
+        '12:00-14:00',
+        '14:00-17:00',
+    ];
+
     public const CANCEL_REASON_DOI_Y_KHONG_MUON_DAT = 'doi_y_khong_muon_dat';
     public const CANCEL_REASON_THAY_DOI_THOI_GIAN_DAT = 'thay_doi_thoi_gian_dat';
     public const CANCEL_REASON_KHONG_CO_THO_NAO_NHAN = 'khong_co_tho_nao_nhan';
@@ -122,6 +129,11 @@ class DonDatLich extends Model
     public static function scheduleBlockingStatuses(): array
     {
         return self::SCHEDULE_BLOCKING_STATUSES;
+    }
+
+    public static function fixedTimeSlots(): array
+    {
+        return self::FIXED_TIME_SLOTS;
     }
 
     public static function normalizeTimeSlot(?string $timeSlot): string

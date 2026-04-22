@@ -274,13 +274,42 @@ class AiKnowledgeSyncService
 
     public function syncBookingCaseRecord(int $bookingId): void
     {
-        $booking = DonDatLich::query()
-            ->with(['dichVus:id,ten_dich_vu', 'danhGias:id,don_dat_lich_id,so_sao,nhan_xet'])
+        if (!$this->tableExists((new DonDatLich())->getTable())) {
+            return;
+        }
+
+        $bookingState = DonDatLich::query()
+            ->select(['id', 'trang_thai'])
             ->find($bookingId);
 
-        if (!$booking || $booking->trang_thai !== 'da_xong') {
+        if (!$bookingState || $bookingState->trang_thai !== 'da_xong') {
             $this->deleteSourceRecord('booking_case', $bookingId);
             return;
+        }
+
+        $relations = [];
+
+        if ($this->tableExists('don_dat_lich_dich_vu') && $this->tableExists((new DanhMucDichVu())->getTable())) {
+            $relations['dichVus'] = static fn ($query) => $query->select('danh_muc_dich_vu.id', 'ten_dich_vu');
+        }
+
+        if ($this->tableExists('danh_gia')) {
+            $relations['danhGias'] = static fn ($query) => $query->select('id', 'don_dat_lich_id', 'so_sao', 'nhan_xet');
+        }
+
+        $booking = DonDatLich::query()->with($relations)->find($bookingId);
+
+        if (!$booking) {
+            $this->deleteSourceRecord('booking_case', $bookingId);
+            return;
+        }
+
+        if (!array_key_exists('dichVus', $relations)) {
+            $booking->setRelation('dichVus', collect());
+        }
+
+        if (!array_key_exists('danhGias', $relations)) {
+            $booking->setRelation('danhGias', collect());
         }
 
         $payload = $this->buildBookingCasePayload($booking);

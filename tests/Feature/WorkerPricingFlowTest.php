@@ -518,6 +518,8 @@ class WorkerPricingFlowTest extends TestCase
                 $table->string('ten_linh_kien');
                 $table->string('hinh_anh')->nullable();
                 $table->decimal('gia', 12, 2)->nullable();
+                $table->unsignedInteger('so_luong_ton_kho')->default(0);
+                $table->date('han_su_dung')->nullable();
                 $table->timestamps();
             });
         }

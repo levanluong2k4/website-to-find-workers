@@ -97,6 +97,7 @@ class ChatbotApiTest extends TestCase
         $this->assertSame('user', ChatMagic::query()->orderBy('id')->first()->sender);
         $this->assertSame('assistant', ChatMagic::query()->orderByDesc('id')->first()->sender);
         $this->assertGreaterThanOrEqual(1, ChatMemory::query()->count());
+        $this->assertStringContainsString('Bạn có muốn', (string) $response->json('data.assistant_text'));
 
         Http::assertSent(function (HttpRequest $request): bool {
             $systemInstruction = (string) data_get($request->data(), 'systemInstruction.parts.0.text', '');
@@ -196,7 +197,7 @@ class ChatbotApiTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('data.assistant_text', 'Fallback model da tra loi.');
+        $this->assertStringContainsString('Fallback model da tra loi.', (string) $response->json('data.assistant_text'));
         $response->assertJsonPath('data.model', 'gemini-2.5-flash-lite');
         $response->assertJsonPath('data.ai.status', 'fallback_model');
         $response->assertJsonPath('data.ai.badge', null);
@@ -248,7 +249,7 @@ class ChatbotApiTest extends TestCase
         $response->assertJsonPath('data.ai.status', 'store_address_rule');
 
         $assistantText = (string) $response->json('data.assistant_text');
-        $this->assertStringContainsString('Địa chỉ cửa hàng là:', $assistantText);
+        $this->assertStringContainsString('Địa chỉ cửa hàng:', $assistantText);
         $this->assertStringContainsString('2 Đường Nguyễn Đình Chiểu', $assistantText);
 
         Http::assertNothingSent();
@@ -265,7 +266,9 @@ class ChatbotApiTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.model', null);
         $response->assertJsonPath('data.ai.status', 'store_hotline_rule');
-        $response->assertJsonPath('data.assistant_text', 'Hotline cửa hàng hiện tại là: 0905 123 456. Nếu cần tư vấn nhanh hoặc xác nhận lịch, bạn có thể gọi trực tiếp số này.');
+        $assistantText = (string) $response->json('data.assistant_text');
+        $this->assertStringContainsString('Hotline cửa hàng:', $assistantText);
+        $this->assertStringContainsString('0905 123 456', $assistantText);
 
         Http::assertNothingSent();
     }
@@ -283,7 +286,7 @@ class ChatbotApiTest extends TestCase
         $response->assertJsonPath('data.ai.status', 'store_hours_rule');
 
         $assistantText = (string) $response->json('data.assistant_text');
-        $this->assertStringContainsString('Giờ mở cửa hiện tại của cửa hàng là:', $assistantText);
+        $this->assertStringContainsString('Giờ mở cửa cửa hàng:', $assistantText);
         $this->assertStringContainsString('Thứ 2 - CN: 07:00 - 20:00', $assistantText);
 
         Http::assertNothingSent();
@@ -302,7 +305,7 @@ class ChatbotApiTest extends TestCase
         $response->assertJsonPath('data.ai.status', 'store_transport_fee_rule');
 
         $assistantText = (string) $response->json('data.assistant_text');
-        $this->assertStringContainsString('Hiện phí mang đến cửa hàng là 0 đồng', $assistantText);
+        $this->assertStringContainsString('Phí mang đến cửa hàng: 0 đồng', $assistantText);
 
         Http::assertNothingSent();
     }
@@ -320,7 +323,7 @@ class ChatbotApiTest extends TestCase
         $response->assertJsonPath('data.ai.status', 'store_map_rule');
 
         $assistantText = (string) $response->json('data.assistant_text');
-        $this->assertStringContainsString('Cửa hàng ở:', $assistantText);
+        $this->assertStringContainsString('Bản đồ cửa hàng:', $assistantText);
         $this->assertStringContainsString('https://www.google.com/maps/search/?api=1&query=', $assistantText);
 
         Http::assertNothingSent();
@@ -532,6 +535,108 @@ class ChatbotApiTest extends TestCase
         $assistantText = (string) $response->json('data.assistant_text');
         $this->assertStringContainsString('thợ', mb_strtolower($assistantText, 'UTF-8'));
         $this->assertStringContainsString('sua may lanh', strtolower($assistantText));
+        $this->assertStringContainsString('Bạn có muốn', $assistantText);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_ai_reply_removes_unasked_process_and_hotline_then_appends_related_follow_up(): void
+    {
+        DB::table('danh_muc_dich_vu')->insert([
+            'ten_dich_vu' => 'Sửa tivi',
+        ]);
+
+        Http::fake([
+            'https://generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                [
+                                    'text' => json_encode([
+                                        'assistant_text' => "Bạn nên ngắt nguồn tivi trước khi kiểm tra.\nCó thể tivi bị lỗi nguồn hoặc bo mạch hiển thị.\nQuy trình tiếp nhận: cửa hàng sẽ nhận máy, kiểm tra và báo giá.\nHotline: 0905 123 456.",
+                                        'cases' => [],
+                                        'technicians' => [],
+                                        'youtube_links' => [],
+                                    ], JSON_UNESCAPED_UNICODE),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'tivi bị mất hình',
+        ]);
+
+        $response->assertOk();
+
+        $assistantText = (string) $response->json('data.assistant_text');
+        $this->assertStringNotContainsString('Quy trình tiếp nhận', $assistantText);
+        $this->assertStringNotContainsString('Hotline', $assistantText);
+        $this->assertStringContainsString('Bạn có muốn tôi tìm thợ sửa tivi phù hợp không?', $assistantText);
+    }
+
+    public function test_unsupported_service_request_returns_store_unavailable_message_without_ai_call(): void
+    {
+        DB::table('danh_muc_dich_vu')->insert([
+            'ten_dich_vu' => 'Sửa máy lạnh',
+        ]);
+
+        Http::fake();
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'thợ nào sửa bếp ga',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'unsupported_service_rule');
+
+        $assistantText = (string) $response->json('data.assistant_text');
+        $this->assertStringContainsString('dịch vụ sửa bếp ga chưa có trong cửa hàng', mb_strtolower($assistantText, 'UTF-8'));
+        $this->assertStringContainsString('Bạn có muốn tôi gợi ý dịch vụ khác đang có trong cửa hàng không?', $assistantText);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_service_catalog_question_ignores_previous_unsupported_context_and_lists_current_services(): void
+    {
+        DB::table('danh_muc_dich_vu')->insert([
+            ['ten_dich_vu' => 'Sửa máy lạnh'],
+            ['ten_dich_vu' => 'Sửa tivi'],
+            ['ten_dich_vu' => 'Điện nước dân dụng'],
+        ]);
+
+        Http::fake();
+
+        $guestToken = 'catalog-followup-guest';
+
+        $this->withHeader('X-Guest-Token', $guestToken)->postJson('/api/chat/send', [
+            'text' => 'thợ nào sửa laptop',
+        ])->assertOk();
+
+        $response = $this->withHeader('X-Guest-Token', $guestToken)->postJson('/api/chat/send', [
+            'text' => 'liệt kê các dịch vụ có trong cửa hàng',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'service_catalog_rule');
+        $response->assertJsonCount(3, 'data.services');
+        $response->assertJsonPath('data.services_more_url', route('customer.search'));
+
+        $assistantText = (string) $response->json('data.assistant_text');
+        $this->assertStringContainsString('Đây là các dịch vụ hiện có trong cửa hàng.', $assistantText);
+        $this->assertStringNotContainsString('laptop chưa có trong cửa hàng', mb_strtolower($assistantText, 'UTF-8'));
+        $this->assertStringContainsString('Bạn đang cần hỗ trợ về dịch vụ nào trong số này?', $assistantText);
+
+        $serviceNames = collect($response->json('data.services'))->pluck('name')->all();
+        $this->assertContains('Sửa máy lạnh', $serviceNames);
+        $this->assertContains('Sửa tivi', $serviceNames);
+        $this->assertContains('Điện nước dân dụng', $serviceNames);
 
         Http::assertNothingSent();
     }

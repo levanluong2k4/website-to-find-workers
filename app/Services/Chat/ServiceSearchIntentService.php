@@ -7,7 +7,13 @@ use App\Models\DanhMucDichVu;
 class ServiceSearchIntentService
 {
     /**
-     * @return array{is_service_search: bool, service_id: int|null, service_name: string|null}
+     * @return array{
+     *     is_service_search: bool,
+     *     service_id: int|null,
+     *     service_name: string|null,
+     *     is_unsupported_service_search: bool,
+     *     requested_service_name: string|null
+     * }
      */
     public function detect(string $message): array
     {
@@ -16,6 +22,7 @@ class ServiceSearchIntentService
             return $this->emptyResult();
         }
 
+        $requestedServiceName = $this->extractRequestedServiceName($message);
         $messageTokens = TextNormalizer::tokens($message);
         $bestMatch = null;
         $bestScore = 0.0;
@@ -49,6 +56,16 @@ class ServiceSearchIntentService
         }
 
         if ($bestMatch === null || $bestScore < 0.6) {
+            if ($this->hasServiceRequestIntent($normalizedMessage) && $requestedServiceName !== null) {
+                return [
+                    'is_service_search' => false,
+                    'service_id' => null,
+                    'service_name' => null,
+                    'is_unsupported_service_search' => true,
+                    'requested_service_name' => $requestedServiceName,
+                ];
+            }
+
             return $this->emptyResult();
         }
 
@@ -60,6 +77,8 @@ class ServiceSearchIntentService
             'is_service_search' => true,
             'service_id' => $bestMatch['service_id'],
             'service_name' => $bestMatch['service_name'],
+            'is_unsupported_service_search' => false,
+            'requested_service_name' => $requestedServiceName,
         ];
     }
 
@@ -95,6 +114,7 @@ class ServiceSearchIntentService
             'dat tho',
             'thue tho',
             'tho sua',
+            'tho nao sua',
             'tim nguoi sua',
             'can nguoi sua',
         ];
@@ -106,6 +126,12 @@ class ServiceSearchIntentService
         }
 
         return false;
+    }
+
+    private function hasServiceRequestIntent(string $normalizedMessage): bool
+    {
+        return $this->hasServiceSearchIntent($normalizedMessage)
+            || preg_match('/\b(sua|ve sinh|lap dat)\b/u', $normalizedMessage) === 1;
     }
 
     private function isCompactServiceRequest(string $normalizedMessage, string $serviceName): bool
@@ -122,7 +148,13 @@ class ServiceSearchIntentService
     }
 
     /**
-     * @return array{is_service_search: bool, service_id: int|null, service_name: string|null}
+     * @return array{
+     *     is_service_search: bool,
+     *     service_id: int|null,
+     *     service_name: string|null,
+     *     is_unsupported_service_search: bool,
+     *     requested_service_name: string|null
+     * }
      */
     private function emptyResult(): array
     {
@@ -130,6 +162,39 @@ class ServiceSearchIntentService
             'is_service_search' => false,
             'service_id' => null,
             'service_name' => null,
+            'is_unsupported_service_search' => false,
+            'requested_service_name' => null,
         ];
+    }
+
+    private function extractRequestedServiceName(string $message): ?string
+    {
+        $patterns = [
+            '/\b(?:thợ nào sửa|tim tho sua|tìm thợ sửa|can tho sua|cần thợ sửa|goi tho sua|gọi thợ sửa|thue tho sua|thuê thợ sửa|tim nguoi sua|tìm người sửa|can nguoi sua|cần người sửa)\s+(.+)$/iu',
+            '/\b(?:sua|sửa|ve sinh|vệ sinh|lap dat|lắp đặt)\s+(.+)$/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $message, $matches) !== 1) {
+                continue;
+            }
+
+            $candidate = trim((string) ($matches[1] ?? ''));
+            $candidate = preg_replace('/[?.!,;:]+$/u', '', $candidate) ?? $candidate;
+            $candidate = trim($candidate);
+
+            if ($candidate === '') {
+                continue;
+            }
+
+            $tokens = preg_split('/\s+/u', TextNormalizer::normalize($candidate)) ?: [];
+            if (count($tokens) > 5) {
+                return null;
+            }
+
+            return $candidate;
+        }
+
+        return null;
     }
 }

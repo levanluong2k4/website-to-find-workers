@@ -2798,6 +2798,229 @@ class AdminController extends Controller
         ]);
     }
 
+    public function getWorkerSchedulesOverview(Request $request)
+    {
+        $view = in_array((string) $request->query('view', 'day'), ['day', 'week'], true)
+            ? (string) $request->query('view', 'day')
+            : 'day';
+        $preserveDate = $request->boolean('preserve_date');
+
+        try {
+            $anchorDate = Carbon::parse((string) $request->query('date', now()->toDateString()))->startOfDay();
+        } catch (\Throwable $exception) {
+            $anchorDate = now()->startOfDay();
+        }
+
+        $timeSlots = DonDatLich::fixedTimeSlots();
+        $blockingStatuses = DonDatLich::scheduleBlockingStatuses();
+
+        $workerProfiles = HoSoTho::query()
+            ->with([
+                'user:id,name,email,phone,address,avatar,is_active,created_at',
+                'user.dichVus:id,ten_dich_vu',
+            ])
+            ->where('trang_thai_duyet', 'da_duyet')
+            ->whereHas('user', function (Builder $query) {
+                $query->where('role', 'worker');
+            })
+            ->get();
+
+        $workerIds = $workerProfiles
+            ->pluck('user_id')
+            ->map(fn ($workerId): int => (int) $workerId)
+            ->filter()
+            ->values();
+
+        $availableDates = $this->buildAdminWorkerScheduleAvailableDates($workerIds);
+
+        if ($view === 'day' && !$preserveDate) {
+            $resolvedAnchorDate = $this->resolveAdminWorkerScheduleAnchorDate(
+                $anchorDate->toDateString(),
+                $availableDates
+            );
+
+            if ($resolvedAnchorDate !== null) {
+                $anchorDate = Carbon::parse($resolvedAnchorDate)->startOfDay();
+            }
+        }
+
+        if ($view === 'day' && $preserveDate) {
+            $requestedDate = $anchorDate->toDateString();
+            $hasRequestedDate = $availableDates->contains(
+                fn (array $option): bool => (string) ($option['date'] ?? '') === $requestedDate
+            );
+
+            if (!$hasRequestedDate) {
+                $availableDates = $availableDates
+                    ->push([
+                        'date' => $requestedDate,
+                        'label' => $this->adminWorkerScheduleWeekdayShortLabel($anchorDate) . ' ' . $anchorDate->format('d/m/Y'),
+                        'full_label' => $this->adminWorkerScheduleWeekdayFullLabel($anchorDate) . ' ' . $anchorDate->format('d/m/Y'),
+                        'booking_count' => 0,
+                        'is_today' => $anchorDate->isToday(),
+                    ])
+                    ->sortBy('date')
+                    ->values();
+            }
+        }
+
+        $range = $this->resolveAdminWorkerScheduleRange($view, $anchorDate);
+
+        $activeBookingsByWorker = DonDatLich::query()
+            ->with(['dichVus:id,ten_dich_vu'])
+            ->whereNotNull('tho_id')
+            ->when(
+                $workerIds->isNotEmpty(),
+                fn ($query) => $query->whereIn('tho_id', $workerIds->all()),
+                fn ($query) => $query->whereRaw('1 = 0')
+            )
+            ->whereIn('trang_thai', $blockingStatuses)
+            ->get()
+            ->groupBy(fn (DonDatLich $booking) => (int) $booking->tho_id);
+
+        $rangeBookingsByWorker = DonDatLich::query()
+            ->with([
+                'dichVus:id,ten_dich_vu',
+                'khachHang:id,name,phone',
+            ])
+            ->whereNotNull('tho_id')
+            ->when(
+                $workerIds->isNotEmpty(),
+                fn ($query) => $query->whereIn('tho_id', $workerIds->all()),
+                fn ($query) => $query->whereRaw('1 = 0')
+            )
+            ->whereBetween('ngay_hen', [$range['date_from'], $range['date_to']])
+            ->orderBy('ngay_hen')
+            ->orderBy('khung_gio_hen')
+            ->get()
+            ->groupBy(fn (DonDatLich $booking) => (int) $booking->tho_id);
+
+        $workers = $workerProfiles
+            ->map(function (HoSoTho $workerProfile) use ($activeBookingsByWorker, $rangeBookingsByWorker, $range, $timeSlots): array {
+                $workerId = (int) $workerProfile->user_id;
+
+                return $this->buildAdminWorkerScheduleSnapshot(
+                    $workerProfile,
+                    $activeBookingsByWorker->get($workerId, collect()),
+                    $rangeBookingsByWorker->get($workerId, collect()),
+                    $range,
+                    $timeSlots
+                );
+            })
+            ->sortBy(function (array $worker): string {
+                return sprintf(
+                    '%02d-%s',
+                    (int) ($worker['sort_order'] ?? 99),
+                    Str::lower((string) ($worker['name'] ?? ''))
+                );
+            })
+            ->values()
+            ->map(function (array $worker): array {
+                unset($worker['sort_order']);
+
+                return $worker;
+            })
+            ->values();
+
+        $totalBusySlots = (int) $workers->sum('busy_slot_count');
+        $totalFreeSlots = (int) $workers->sum('free_slot_count');
+        $totalCapacitySlots = max(0, $totalBusySlots + $totalFreeSlots);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'meta' => [
+                    'view' => $view,
+                    'anchor_date' => $anchorDate->toDateString(),
+                    'date_from' => $range['date_from'],
+                    'date_to' => $range['date_to'],
+                    'range_label' => $range['range_label'],
+                    'day_count' => count($range['dates']),
+                    'slot_count' => count($timeSlots),
+                    'available_dates' => $availableDates->all(),
+                    'time_slots' => collect($timeSlots)->map(fn (string $slot): array => [
+                        'value' => $slot,
+                        'label' => $this->formatAdminWorkerScheduleSlotLabel($slot),
+                    ])->values()->all(),
+                    'dates' => $range['dates'],
+                    'updated_at' => now()->format('H:i'),
+                ],
+                'summary' => [
+                    'total_workers' => $workers->count(),
+                    'available_workers' => $workers->where('current_status.key', 'available')->count(),
+                    'scheduled_workers' => $workers->where('current_status.key', 'scheduled')->count(),
+                    'repairing_workers' => $workers->where('current_status.key', 'repairing')->count(),
+                    'offline_workers' => $workers->where('current_status.key', 'offline')->count(),
+                    'workers_with_free_slots' => $workers->filter(fn (array $worker): bool => (int) ($worker['free_slot_count'] ?? 0) > 0)->count(),
+                    'fully_booked_workers' => $workers->filter(fn (array $worker): bool => (int) ($worker['capacity_slot_count'] ?? 0) > 0 && (int) ($worker['free_slot_count'] ?? 0) === 0)->count(),
+                    'total_busy_slots' => $totalBusySlots,
+                    'total_free_slots' => $totalFreeSlots,
+                    'utilization_percent' => $totalCapacitySlots > 0
+                        ? (int) round(($totalBusySlots / $totalCapacitySlots) * 100)
+                        : 0,
+                ],
+                'workers' => $workers->all(),
+            ],
+        ]);
+    }
+
+    private function buildAdminWorkerScheduleAvailableDates(Collection $workerIds): Collection
+    {
+        if ($workerIds->isEmpty()) {
+            return collect();
+        }
+
+        return DonDatLich::query()
+            ->selectRaw('DATE(ngay_hen) as booking_date, COUNT(*) as booking_count')
+            ->whereNotNull('tho_id')
+            ->whereIn('tho_id', $workerIds->all())
+            ->whereNotNull('ngay_hen')
+            ->groupBy('booking_date')
+            ->orderBy('booking_date')
+            ->get()
+            ->map(function ($row): array {
+                $date = Carbon::parse((string) ($row->booking_date ?? now()->toDateString()))->startOfDay();
+
+                return [
+                    'date' => $date->toDateString(),
+                    'label' => $this->adminWorkerScheduleWeekdayShortLabel($date) . ' ' . $date->format('d/m/Y'),
+                    'full_label' => $this->adminWorkerScheduleWeekdayFullLabel($date) . ' ' . $date->format('d/m/Y'),
+                    'booking_count' => (int) ($row->booking_count ?? 0),
+                    'is_today' => $date->isToday(),
+                ];
+            })
+            ->values();
+    }
+
+    private function resolveAdminWorkerScheduleAnchorDate(string $requestedDate, Collection $availableDates): ?string
+    {
+        if ($availableDates->isEmpty()) {
+            return null;
+        }
+
+        $requestedOption = $availableDates->firstWhere('date', $requestedDate);
+        if (is_array($requestedOption)) {
+            return (string) ($requestedOption['date'] ?? $requestedDate);
+        }
+
+        $upcomingOption = $availableDates->first(
+            fn (array $option): bool => (string) ($option['date'] ?? '') >= $requestedDate
+        );
+        if (is_array($upcomingOption)) {
+            return (string) ($upcomingOption['date'] ?? $requestedDate);
+        }
+
+        $today = now()->toDateString();
+        $todayOption = $availableDates->first(
+            fn (array $option): bool => (string) ($option['date'] ?? '') >= $today
+        );
+        if (is_array($todayOption)) {
+            return (string) ($todayOption['date'] ?? $requestedDate);
+        }
+
+        return (string) (($availableDates->last()['date'] ?? $requestedDate));
+    }
+
     public function updateWorkerApproval(Request $request, string $userId)
     {
         $validator = Validator::make($request->all(), [
@@ -2844,6 +3067,288 @@ class AdminController extends Controller
                 'user.dichVus:id,ten_dich_vu',
             ]),
         ]);
+    }
+
+    private function resolveAdminWorkerScheduleRange(string $view, Carbon $anchorDate): array
+    {
+        $rangeStart = $view === 'day'
+            ? $anchorDate->copy()
+            : $anchorDate->copy()->startOfWeek(Carbon::MONDAY);
+        $rangeEnd = $view === 'day'
+            ? $anchorDate->copy()
+            : $anchorDate->copy()->endOfWeek(Carbon::SUNDAY);
+
+        $cursor = $rangeStart->copy();
+        $dates = [];
+
+        while ($cursor->lte($rangeEnd)) {
+            $dates[] = [
+                'date' => $cursor->toDateString(),
+                'short_label' => $this->adminWorkerScheduleWeekdayShortLabel($cursor),
+                'full_label' => $this->adminWorkerScheduleWeekdayFullLabel($cursor),
+                'day_number' => $cursor->format('d'),
+                'month_label' => 'Th' . $cursor->format('m'),
+                'display_label' => $this->adminWorkerScheduleWeekdayShortLabel($cursor) . ' ' . $cursor->format('d/m'),
+                'is_today' => $cursor->isToday(),
+                'is_weekend' => in_array($cursor->dayOfWeekIso, [6, 7], true),
+            ];
+
+            $cursor->addDay();
+        }
+
+        $rangeLabel = $view === 'day'
+            ? 'Ngay ' . $anchorDate->format('d/m/Y')
+            : $rangeStart->format('d/m') . ' - ' . $rangeEnd->format('d/m/Y');
+
+        return [
+            'date_from' => $rangeStart->toDateString(),
+            'date_to' => $rangeEnd->toDateString(),
+            'dates' => $dates,
+            'range_label' => $rangeLabel,
+        ];
+    }
+
+    private function buildAdminWorkerScheduleSnapshot(
+        HoSoTho $workerProfile,
+        Collection $activeBookings,
+        Collection $rangeBookings,
+        array $range,
+        array $timeSlots
+    ): array {
+        $worker = $workerProfile->user;
+        $currentBooking = $this->resolveDashboardWorkerCurrentBooking($activeBookings);
+        $currentStatus = $this->resolveDashboardWorkerMapStatus($worker, $currentBooking);
+        $serviceIds = $worker?->dichVus?->pluck('id')
+            ?->map(fn ($serviceId): int => (int) $serviceId)
+            ?->filter()
+            ?->values() ?? collect();
+        $services = $worker?->dichVus?->pluck('ten_dich_vu')->filter()->values() ?? collect();
+        $bookingsByDate = $rangeBookings->groupBy(
+            fn (DonDatLich $booking) => optional($booking->ngay_hen)->toDateString() ?: (string) $booking->ngay_hen
+        );
+
+        $days = collect($range['dates'])
+            ->map(function (array $dateMeta) use ($bookingsByDate, $currentStatus, $timeSlots): array {
+                $date = (string) ($dateMeta['date'] ?? '');
+
+                return $this->buildAdminWorkerScheduleDaySnapshot(
+                    $dateMeta,
+                    $bookingsByDate->get($date, collect()),
+                    $timeSlots,
+                    (string) ($currentStatus['key'] ?? 'available')
+                );
+            })
+            ->values();
+
+        $busySlotCount = (int) $days->sum('busy_count');
+        $freeSlotCount = (int) $days->sum('free_count');
+        $capacitySlotCount = max(0, $busySlotCount + $freeSlotCount);
+        $reviewCount = (int) ($workerProfile->tong_so_danh_gia ?? 0);
+        $ratingValue = (float) ($workerProfile->danh_gia_trung_binh ?? 0);
+        $upcomingBookings = $days
+            ->pluck('bookings')
+            ->flatten(1)
+            ->sortBy([
+                ['date', 'asc'],
+                ['slot', 'asc'],
+            ])
+            ->values();
+
+        return [
+            'id' => (int) ($worker?->id ?? 0),
+            'name' => (string) ($worker?->name ?: 'Tho ky thuat'),
+            'phone' => (string) ($worker?->phone ?: ''),
+            'avatar' => (string) ($worker?->avatar ?: '/assets/images/worker2.png'),
+            'service_ids' => $serviceIds->all(),
+            'services' => $services->all(),
+            'services_label' => $services->isNotEmpty()
+                ? $services->take(3)->implode(', ') . ($services->count() > 3 ? ' +' . ($services->count() - 3) : '')
+                : 'Chua gan nhom dich vu',
+            'rating' => round($ratingValue, 1),
+            'review_count' => $reviewCount,
+            'rating_label' => $reviewCount > 0
+                ? number_format($ratingValue, 1) . '/5 • ' . $reviewCount . ' danh gia'
+                : 'Chua co danh gia',
+            'current_status' => $currentStatus,
+            'current_booking_label' => $currentBooking
+                ? $this->formatDashboardBookingCode($currentBooking->id) . ' • ' . ($currentBooking->dichVus->pluck('ten_dich_vu')->filter()->implode(', ') ?: 'Don dang mo')
+                : 'Chua co lich dang mo',
+            'schedule_label' => $this->buildDashboardWorkerScheduleLabel($currentBooking),
+            'area_label' => $this->extractCustomerArea($currentBooking?->dia_chi ?: $worker?->address) ?: 'Chua co khu vuc',
+            'busy_slot_count' => $busySlotCount,
+            'free_slot_count' => $freeSlotCount,
+            'capacity_slot_count' => $capacitySlotCount,
+            'utilization_percent' => $capacitySlotCount > 0
+                ? (int) round(($busySlotCount / $capacitySlotCount) * 100)
+                : 0,
+            'next_free_slot_label' => $this->resolveAdminWorkerNextFreeSlotLabel($days),
+            'upcoming_bookings' => $upcomingBookings->take(8)->values()->all(),
+            'days' => $days->all(),
+            'sort_order' => $this->resolveDashboardWorkerStatusOrder((string) ($currentStatus['key'] ?? 'offline')),
+        ];
+    }
+
+    private function buildAdminWorkerScheduleDaySnapshot(
+        array $dateMeta,
+        Collection $bookingsForDate,
+        array $timeSlots,
+        string $workerStatusKey
+    ): array {
+        $slotMap = $bookingsForDate
+            ->groupBy(fn (DonDatLich $booking) => DonDatLich::normalizeTimeSlot($booking->khung_gio_hen))
+            ->map(fn (Collection $items) => $items
+                ->sortBy(fn (DonDatLich $booking): string => sprintf(
+                    '%02d-%s',
+                    $this->resolveAdminWorkerScheduleBookingPriority((string) $booking->trang_thai),
+                    optional($booking->updated_at)->format('YmdHis') ?? '00000000000000'
+                ))
+                ->first());
+
+        $bookings = $bookingsForDate
+            ->map(fn (DonDatLich $booking): array => $this->serializeAdminWorkerScheduleBooking($booking))
+            ->sortBy([
+                ['date', 'asc'],
+                ['slot', 'asc'],
+            ])
+            ->values();
+
+        $slots = collect($timeSlots)
+            ->map(function (string $slot) use ($slotMap, $workerStatusKey): array {
+                /** @var DonDatLich|null $booking */
+                $booking = $slotMap->get($slot);
+
+                if ($booking) {
+                    return [
+                        'slot' => $slot,
+                        'label' => $this->formatAdminWorkerScheduleSlotLabel($slot),
+                        'state' => $this->resolveAdminWorkerScheduleSlotState((string) $booking->trang_thai),
+                        'booking' => $this->serializeAdminWorkerScheduleBooking($booking),
+                    ];
+                }
+
+                return [
+                    'slot' => $slot,
+                    'label' => $this->formatAdminWorkerScheduleSlotLabel($slot),
+                    'state' => $workerStatusKey === 'offline' ? 'offline' : 'free',
+                    'booking' => null,
+                ];
+            })
+            ->values();
+
+        $busyCount = $slots->whereIn('state', ['busy', 'repairing', 'completed', 'cancelled'])->count();
+        $freeCount = $slots->where('state', 'free')->count();
+        $statusKey = $slots->contains(fn (array $slot): bool => $slot['state'] === 'repairing')
+            ? 'repairing'
+            : ($slots->contains(fn (array $slot): bool => in_array($slot['state'], ['busy', 'completed', 'cancelled'], true))
+                ? 'scheduled'
+                : ($workerStatusKey === 'offline' ? 'offline' : 'available'));
+
+        return [
+            ...$dateMeta,
+            'status_key' => $statusKey,
+            'busy_count' => $busyCount,
+            'free_count' => $freeCount,
+            'bookings' => $bookings->all(),
+            'slots' => $slots->all(),
+        ];
+    }
+
+    private function serializeAdminWorkerScheduleBooking(DonDatLich $booking): array
+    {
+        $costLabor = (float) ($booking->tien_cong ?? 0);
+        $costParts = (float) ($booking->phi_linh_kien ?? 0);
+        $costTravel = (float) ($booking->phi_di_lai ?? 0);
+        $costTransport = (float) ($booking->tien_thue_xe ?? 0);
+        $totalAmount = (float) ($booking->tong_tien ?? 0);
+
+        if ($totalAmount <= 0) {
+            $totalAmount = $costLabor + $costParts + $costTravel + $costTransport;
+        }
+
+        return [
+            'id' => (int) $booking->id,
+            'code' => $this->formatDashboardBookingCode($booking->id),
+            'date' => $booking->ngay_hen?->toDateString(),
+            'slot' => DonDatLich::normalizeTimeSlot($booking->khung_gio_hen),
+            'slot_label' => $this->formatAdminWorkerScheduleSlotLabel((string) $booking->khung_gio_hen),
+            'status' => (string) $booking->trang_thai,
+            'status_label' => DonDatLich::statusLabel($booking->trang_thai),
+            'service_ids' => $booking->resolveServiceIds(),
+            'service_label' => $booking->dichVus->pluck('ten_dich_vu')->filter()->implode(', ') ?: 'Sua chua',
+            'customer_name' => (string) ($booking->khachHang?->name ?: 'Khach hang'),
+            'customer_phone' => (string) ($booking->khachHang?->phone ?: ''),
+            'mode' => (string) ($booking->loai_dat_lich ?: 'at_store'),
+            'mode_label' => ($booking->loai_dat_lich === 'at_store') ? 'Tại cửa hàng' : 'Tại nhà',
+            'address' => (string) ($booking->dia_chi ?: ''),
+            'problem_excerpt' => $this->truncateDashboardText((string) ($booking->mo_ta_van_de ?: 'Khách chưa để mô tả vấn đề.'), 120),
+            'total_amount' => $totalAmount,
+            'scheduled_at' => $booking->thoi_gian_hen?->toIso8601String(),
+        ];
+    }
+
+    private function resolveAdminWorkerScheduleSlotState(string $status): string
+    {
+        return match ($status) {
+            'dang_lam' => 'repairing',
+            'da_xong' => 'completed',
+            'da_huy' => 'cancelled',
+            default => 'busy',
+        };
+    }
+
+    private function resolveAdminWorkerScheduleBookingPriority(string $status): int
+    {
+        return match ($status) {
+            'dang_lam' => 1,
+            'da_xac_nhan', 'cho_xac_nhan', 'cho_hoan_thanh', 'cho_thanh_toan', DonDatLich::STATUS_CUSTOMER_UNREACHABLE => 2,
+            'da_xong' => 3,
+            'da_huy' => 4,
+            default => 9,
+        };
+    }
+
+    private function resolveAdminWorkerNextFreeSlotLabel(Collection $days): string
+    {
+        foreach ($days as $day) {
+            foreach ((array) ($day['slots'] ?? []) as $slot) {
+                if (($slot['state'] ?? null) === 'free') {
+                    return (($day['display_label'] ?? $day['date'] ?? '') . ' • ' . ($slot['label'] ?? $slot['slot'] ?? ''));
+                }
+            }
+        }
+
+        return 'Khong con slot trong trong khung hien tai';
+    }
+
+    private function adminWorkerScheduleWeekdayShortLabel(Carbon $date): string
+    {
+        return match ($date->dayOfWeekIso) {
+            1 => 'T2',
+            2 => 'T3',
+            3 => 'T4',
+            4 => 'T5',
+            5 => 'T6',
+            6 => 'T7',
+            default => 'CN',
+        };
+    }
+
+    private function adminWorkerScheduleWeekdayFullLabel(Carbon $date): string
+    {
+        return match ($date->dayOfWeekIso) {
+            1 => 'Thu 2',
+            2 => 'Thu 3',
+            3 => 'Thu 4',
+            4 => 'Thu 5',
+            5 => 'Thu 6',
+            6 => 'Thu 7',
+            default => 'Chu nhat',
+        };
+    }
+
+    private function formatAdminWorkerScheduleSlotLabel(string $slot): string
+    {
+        return str_replace('-', ' - ', DonDatLich::normalizeTimeSlot($slot));
     }
 
     public function getAllBookings(Request $request)
@@ -4478,6 +4983,8 @@ class AdminController extends Controller
                 }),
             ],
             'gia' => 'nullable|numeric|min:0',
+            'so_luong_ton_kho' => 'nullable|integer|min:0|max:1000000',
+            'han_su_dung' => 'nullable|date',
             'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
@@ -4493,6 +5000,10 @@ class AdminController extends Controller
             'dich_vu_id' => $request->integer('dich_vu_id'),
             'ten_linh_kien' => trim((string) $request->input('ten_linh_kien')),
             'gia' => $request->filled('gia') ? (float) $request->input('gia') : null,
+            'so_luong_ton_kho' => max(0, (int) $request->input('so_luong_ton_kho', 0)),
+            'han_su_dung' => $request->filled('han_su_dung')
+                ? $request->date('han_su_dung')?->toDateString()
+                : null,
             'hinh_anh' => $request->hasFile('hinh_anh')
                 ? $this->storePartImage($request->file('hinh_anh'))
                 : null,
@@ -4531,6 +5042,8 @@ class AdminController extends Controller
                     }),
             ],
             'gia' => 'nullable|numeric|min:0',
+            'so_luong_ton_kho' => 'nullable|integer|min:0|max:1000000',
+            'han_su_dung' => 'nullable|date',
             'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'remove_image' => 'nullable|boolean',
         ]);
@@ -4559,6 +5072,10 @@ class AdminController extends Controller
             'dich_vu_id' => $request->integer('dich_vu_id'),
             'ten_linh_kien' => trim((string) $request->input('ten_linh_kien')),
             'gia' => $request->filled('gia') ? (float) $request->input('gia') : null,
+            'so_luong_ton_kho' => max(0, (int) $request->input('so_luong_ton_kho', 0)),
+            'han_su_dung' => $request->filled('han_su_dung')
+                ? $request->date('han_su_dung')?->toDateString()
+                : null,
             'hinh_anh' => $imagePath,
         ]);
 
@@ -4847,24 +5364,17 @@ class AdminController extends Controller
             if ($request->hasFile('avatar')) {
                 $file = $request->file('avatar');
                 if ($file instanceof UploadedFile) {
-                    $fileName = 'worker_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $path = $file->storeAs('avatars', $fileName, 'public');
-                    $user->update(['avatar' => '/storage/' . $path]);
+                    $this->storeWorkerAvatar($user, $file);
                 }
             }
 
-            $user->hoSoTho()->create([
+            $this->upsertWorkerProfile($user, [
                 'cccd' => $request->cccd,
                 'kinh_nghiem' => $request->kinh_nghiem,
-                'trang_thai_duyet' => 'da_duyet',
-                'dang_hoat_dong' => true,
-                'trang_thai_hoat_dong' => 'dang_hoat_dong',
-            ]);
+            ], true);
 
-            if ($request->has('dich_vu_ids')) {
-                $user->dichVus()->sync($request->dich_vu_ids);
-                app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncSourceRecord('worker_profile', $user->id);
-            }
+            $user->dichVus()->sync($this->normalizeWorkerServiceIds($request->input('dich_vu_ids', [])));
+            $this->syncWorkerKnowledge($user->id);
 
             return response()->json([
                 'status' => 'success',
@@ -4916,12 +5426,13 @@ class AdminController extends Controller
         }
 
         return DB::transaction(function () use ($request, $worker) {
+            $isActive = $request->boolean('is_active', true);
             $userData = [
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'address' => $request->address,
-                'is_active' => $request->boolean('is_active', true),
+                'is_active' => $isActive,
             ];
 
             if ($request->filled('password')) {
@@ -4930,15 +5441,20 @@ class AdminController extends Controller
 
             $worker->update($userData);
 
-            $worker->hoSoTho->update([
+            if ($request->hasFile('avatar')) {
+                $file = $request->file('avatar');
+                if ($file instanceof UploadedFile) {
+                    $this->storeWorkerAvatar($worker, $file);
+                }
+            }
+
+            $this->upsertWorkerProfile($worker, [
                 'cccd' => $request->cccd,
                 'kinh_nghiem' => $request->kinh_nghiem,
-            ]);
+            ], $isActive);
 
-            if ($request->has('dich_vu_ids')) {
-                $worker->dichVus()->sync($request->dich_vu_ids);
-                app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncSourceRecord('worker_profile', $worker->id);
-            }
+            $worker->dichVus()->sync($this->normalizeWorkerServiceIds($request->input('dich_vu_ids', [])));
+            $this->syncWorkerKnowledge($worker->id);
 
             return response()->json([
                 'status' => 'success',
@@ -5842,6 +6358,23 @@ class AdminController extends Controller
 
     private function serializeAdminPart(LinhKien $part): array
     {
+        $expiryDate = $part->han_su_dung;
+        $expiryLabel = $expiryDate?->format('d/m/Y');
+        $expiryState = 'none';
+
+        if ($expiryDate) {
+            $today = Carbon::today();
+            $warningThreshold = $today->copy()->addMonthsNoOverflow(6);
+
+            if ($expiryDate->lt($today)) {
+                $expiryState = 'expired';
+            } elseif ($expiryDate->lte($warningThreshold)) {
+                $expiryState = 'expiring_soon';
+            } else {
+                $expiryState = 'active';
+            }
+        }
+
         return [
             'id' => $part->id,
             'dich_vu_id' => $part->dich_vu_id,
@@ -5850,6 +6383,11 @@ class AdminController extends Controller
             'hinh_anh' => $part->hinh_anh,
             'gia' => $part->gia !== null ? (float) $part->gia : null,
             'gia_label' => $part->gia !== null ? number_format((float) $part->gia, 0, ',', '.') . ' đ' : 'Chua cap nhat',
+            'so_luong_ton_kho' => (int) ($part->so_luong_ton_kho ?? 0),
+            'so_luong_ton_kho_label' => number_format((int) ($part->so_luong_ton_kho ?? 0), 0, ',', '.'),
+            'han_su_dung' => $expiryDate?->toDateString(),
+            'han_su_dung_label' => $expiryLabel ?: 'Khong co',
+            'han_su_dung_state' => $expiryState,
             'updated_at' => optional($part->updated_at)->toIso8601String(),
             'updated_label' => optional($part->updated_at)->format('d/m/Y H:i'),
         ];
@@ -6093,6 +6631,54 @@ class AdminController extends Controller
     private function deleteStoredPartImage(?string $imagePath): void
     {
         $this->deleteStoredCatalogImage($imagePath);
+    }
+
+    private function upsertWorkerProfile(User $worker, array $attributes, bool $isActive): HoSoTho
+    {
+        $profile = $worker->hoSoTho()->firstOrNew(['user_id' => $worker->id]);
+
+        if (!$profile->exists) {
+            $profile->fill([
+                'trang_thai_duyet' => 'da_duyet',
+                'dang_hoat_dong' => $isActive,
+                'trang_thai_hoat_dong' => $isActive ? 'dang_hoat_dong' : 'tam_khoa',
+            ]);
+        }
+
+        $profile->fill($attributes);
+        $profile->save();
+
+        return $profile;
+    }
+
+    private function normalizeWorkerServiceIds(array $serviceIds): array
+    {
+        return collect($serviceIds)
+            ->filter(static fn ($serviceId) => $serviceId !== null && $serviceId !== '')
+            ->map(static fn ($serviceId) => (int) $serviceId)
+            ->filter(static fn (int $serviceId) => $serviceId > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function storeWorkerAvatar(User $worker, UploadedFile $file): void
+    {
+        $this->deleteStoredCatalogImage($worker->avatar);
+
+        $fileName = 'worker_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('avatars', $fileName, 'public');
+
+        $worker->update(['avatar' => '/storage/' . $path]);
+    }
+
+    private function syncWorkerKnowledge(int $workerId): void
+    {
+        if (!Schema::hasTable('ai_knowledge_items')) {
+            return;
+        }
+
+        app(AiKnowledgeSyncService::class)->syncSourceRecord('worker_profile', $workerId);
     }
 
     private function deleteStoredCatalogImage(?string $imagePath): void

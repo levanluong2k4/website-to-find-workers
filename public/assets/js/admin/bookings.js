@@ -125,6 +125,9 @@ document.addEventListener('DOMContentLoaded', () => {
         maximumFractionDigits: 0,
     });
     const numberFormatter = new Intl.NumberFormat('vi-VN');
+    const initialUrlParams = new URLSearchParams(window.location.search);
+    const requestedBookingId = Number(initialUrlParams.get('booking') || 0);
+    let hasAppliedInitialBooking = false;
 
     const escapeHtml = (value = '') => String(value)
         .replaceAll('&', '&amp;')
@@ -682,6 +685,10 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTable();
             renderPagination();
             renderBulkBar();
+            if (!hasAppliedInitialBooking && requestedBookingId > 0) {
+                hasAppliedInitialBooking = true;
+                openBookingDetail(requestedBookingId);
+            }
         } catch (error) {
             console.error('Load admin bookings error:', error);
             setTableLoading('Không thể tải danh sách đơn hàng.');
@@ -1629,7 +1636,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadBookings();
 });
-
-
 
 

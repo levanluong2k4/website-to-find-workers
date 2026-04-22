@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const DEFAULT_STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
     const STORE_REFERENCE = { lat: 12.2618, lng: 109.1995, maxDistance: 20, label: 'cửa hàng' };
+    const DEFAULT_STORE_LATITUDE = 12.2618;
+    const DEFAULT_STORE_LONGITUDE = 109.1995;
+    const DEFAULT_MAX_SERVICE_DISTANCE_KM = 8;
     const DEFAULT_FREE_DISTANCE_KM = 1;
     const TRAVEL_FEE_PER_KM = 5000;
     const DEFAULT_STORE_TRANSPORT_FEE = 0;
@@ -15,6 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
         free_distance_km: DEFAULT_FREE_DISTANCE_KM,
         default_per_km: TRAVEL_FEE_PER_KM,
         store_address: DEFAULT_STORE_ADDRESS,
+        store_latitude: DEFAULT_STORE_LATITUDE,
+        store_longitude: DEFAULT_STORE_LONGITUDE,
+        max_service_distance_km: DEFAULT_MAX_SERVICE_DISTANCE_KM,
         store_transport_fee: DEFAULT_STORE_TRANSPORT_FEE,
         tiers: [],
     };
@@ -117,6 +123,39 @@ document.addEventListener('DOMContentLoaded', () => {
             && lng >= -180
             && lng <= 180
             && !(lat === 0 && lng === 0);
+    };
+    const getConfiguredMaxServiceDistanceKm = () => Math.max(
+        0,
+        Number(travelFeeConfig.max_service_distance_km ?? STORE_REFERENCE.maxDistance ?? DEFAULT_MAX_SERVICE_DISTANCE_KM)
+    );
+    const getHomeReferencePoint = () => {
+        const configuredMaxDistance = getConfiguredMaxServiceDistanceKm();
+
+        if (hasWorkerReferenceCoordinates()) {
+            const workerMaxDistance = Number(state.worker?.ban_kinh_phuc_vu ?? configuredMaxDistance);
+
+            return {
+                lat: Number(state.worker.vi_do),
+                lng: Number(state.worker.kinh_do),
+                maxDistance: Math.min(
+                    Number.isFinite(workerMaxDistance) ? workerMaxDistance : configuredMaxDistance,
+                    configuredMaxDistance
+                ),
+                label: state.worker?.user?.name || 'tho da chon',
+            };
+        }
+
+        return {
+            ...STORE_REFERENCE,
+            maxDistance: configuredMaxDistance,
+            label: 'cua hang',
+        };
+    };
+    const formatServiceDistanceKm = (value) => Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+    const buildOutOfRangeValidationMessage = () => {
+        const refPoint = getHomeReferencePoint();
+
+        return `Dia chi cua ban vuot qua ${formatServiceDistanceKm(refPoint.maxDistance)} km. Vui long chon dia chi gan hon hoac mang thiet bi den cua hang.`;
     };
     const relativeDateLabel = (offset) => {
         if (offset === 0) return 'Hôm nay';
@@ -244,6 +283,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (config && typeof config === 'object') {
                 const tiers = normalizeTravelFeeTiers(config.tiers);
                 const derivedStoreTransportFee = deriveStoreTransportFeeFromTiers(tiers);
+                const storeLatitude = Number(config.store_latitude ?? DEFAULT_STORE_LATITUDE);
+                const storeLongitude = Number(config.store_longitude ?? DEFAULT_STORE_LONGITUDE);
+                const maxServiceDistanceKm = Number(config.max_service_distance_km ?? DEFAULT_MAX_SERVICE_DISTANCE_KM);
 
                 storeAddress = String(config.store_address || DEFAULT_STORE_ADDRESS).trim() || DEFAULT_STORE_ADDRESS;
                 storeTransportFee = Number(config.store_transport_fee ?? derivedStoreTransportFee ?? DEFAULT_STORE_TRANSPORT_FEE);
@@ -251,9 +293,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     free_distance_km: Number(config.free_distance_km ?? DEFAULT_FREE_DISTANCE_KM),
                     default_per_km: Number(config.default_per_km ?? TRAVEL_FEE_PER_KM),
                     store_address: storeAddress,
+                    store_latitude: Number.isFinite(storeLatitude) ? storeLatitude : DEFAULT_STORE_LATITUDE,
+                    store_longitude: Number.isFinite(storeLongitude) ? storeLongitude : DEFAULT_STORE_LONGITUDE,
+                    max_service_distance_km: Number.isFinite(maxServiceDistanceKm) ? maxServiceDistanceKm : DEFAULT_MAX_SERVICE_DISTANCE_KM,
                     store_transport_fee: storeTransportFee,
                     tiers,
                 };
+                STORE_REFERENCE.lat = travelFeeConfig.store_latitude;
+                STORE_REFERENCE.lng = travelFeeConfig.store_longitude;
+                STORE_REFERENCE.maxDistance = travelFeeConfig.max_service_distance_km;
                 applyStoreConfigToView();
                 if (state.repairMode === 'at_home' && state.lat && state.lng) {
                     updateTravelEstimate();
@@ -1405,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.mediaPicker.dispatchEvent(new Event('change'));
     });
 
-    STORE_REFERENCE.maxDistance = 8;
+    STORE_REFERENCE.maxDistance = DEFAULT_MAX_SERVICE_DISTANCE_KM;
 
     function resetState(prefill = {}) {
         const addressData = state.addressData;
@@ -1484,21 +1532,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const workerMaxDistance = Number(state.worker?.ban_kinh_phuc_vu ?? 8);
-        const refPoint = hasWorkerReferenceCoordinates()
-            ? {
-                lat: Number(state.worker.vi_do),
-                lng: Number(state.worker.kinh_do),
-                maxDistance: Math.min(workerMaxDistance, 8),
-                label: state.worker?.user?.name || 'tho da chon',
-            }
-            : { ...STORE_REFERENCE, maxDistance: 8, label: 'cua hang' };
+        const refPoint = getHomeReferencePoint();
 
         const distanceKm = distKm(refPoint.lat, refPoint.lng, lat, lng);
         const rounded = Number(distanceKm.toFixed(1));
         state.travelFee = resolveTravelFeeLinear(distanceKm);
         state.distanceKm = rounded;
-        state.isOutOfRange = rounded > Number(refPoint.maxDistance || 8);
+        state.isOutOfRange = rounded > Number(refPoint.maxDistance || getConfiguredMaxServiceDistanceKm());
         state.travelMessage = state.isOutOfRange
             ? `Dia chi dang vuot qua pham vi phuc vu ${refPoint.maxDistance} km tu ${refPoint.label}.`
             : buildTravelTierMessage({
@@ -1570,7 +1610,7 @@ document.addEventListener('DOMContentLoaded', () => {
             syncHidden();
             updateTravelEstimate();
             refs.locationStatus.textContent = state.isOutOfRange
-                ? 'Dia chi dang vuot qua 8 km nen he thong khong cho phep tiep tuc.'
+                ? `Dia chi dang vuot qua ${formatServiceDistanceKm(getHomeReferencePoint().maxDistance)} km nen he thong khong cho phep tiep tuc.`
                 : 'Da cap nhat phi di lai theo dia chi ban nhap.';
         } catch (error) {
             if (lookupId !== addressLookupRequestId) return;
@@ -1722,7 +1762,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui long chon hinh thuc sua chua.' };
         if (step === 3 && state.repairMode === 'at_home') {
             if (!state.lat || !state.lng) return { valid: false, message: 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.' };
-            if (state.isOutOfRange) return { valid: false, message: 'Dia chi cua ban vuot qua 8 km. Vui long chon dia chi gan hon hoac mang thiet bi den cua hang.' };
+            if (state.isOutOfRange) return { valid: false, message: buildOutOfRangeValidationMessage() };
             if (!state.tinh || !state.huyen || !state.xa) return { valid: false, message: 'Vui long chon day du Tinh / Huyen / Xa.' };
             if (!state.soNha.trim()) return { valid: false, message: 'Vui long nhap dia chi chi tiet.' };
         }
@@ -2005,7 +2045,7 @@ document.addEventListener('DOMContentLoaded', () => {
             syncHidden();
             updateTravelEstimate();
             refs.locationStatus.textContent = state.isOutOfRange
-                ? 'Dia chi dang vuot qua 8 km nen he thong khong cho phep tiep tuc.'
+                ? `Dia chi dang vuot qua ${formatServiceDistanceKm(getHomeReferencePoint().maxDistance)} km nen he thong khong cho phep tiep tuc.`
                 : 'Da cap nhat phi di lai theo dia chi ban nhap.';
         } catch (error) {
             if (lookupId !== addressLookupRequestId) return;
@@ -2129,7 +2169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui long chon hinh thuc sua chua.' };
         if (step === 3 && state.repairMode === 'at_home') {
             if (!state.lat || !state.lng) return { valid: false, message: 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.' };
-            if (state.isOutOfRange) return { valid: false, message: 'Dia chi cua ban vuot qua 8 km. Vui long chon dia chi gan hon hoac mang thiet bi den cua hang.' };
+            if (state.isOutOfRange) return { valid: false, message: buildOutOfRangeValidationMessage() };
             if (isMergedAddressMode()) {
                 if (!state.tinh || !state.xa) return { valid: false, message: 'Vui long chon day du Tinh / Thanh pho va Phuong / Xa.' };
             } else if (!state.tinh || !state.huyen || !state.xa) {

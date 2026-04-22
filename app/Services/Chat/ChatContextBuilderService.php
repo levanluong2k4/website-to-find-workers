@@ -99,6 +99,9 @@ class ChatContextBuilderService
         }
 
         $sections[] = 'Luôn trả lời bằng tiếng Việt có dấu đầy đủ, không dùng kiểu viết không dấu.';
+        $sections[] = 'Chỉ trả lời đúng trọng tâm câu hỏi cuối cùng của người dùng.';
+        $sections[] = 'Không tự thêm hotline, địa chỉ, giờ mở cửa, quy trình tiếp nhận, phí vận chuyển hoặc thông tin cửa hàng nếu người dùng không hỏi trực tiếp.';
+        $sections[] = 'Sau khi trả lời xong, kết thúc bằng đúng một câu hỏi follow-up ngắn liên quan trực tiếp đến vấn đề vừa nêu.';
 
         $responseGoals = $this->arrayConfig($assistantConfig, 'response_goals');
         if ($responseGoals !== []) {

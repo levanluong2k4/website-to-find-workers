@@ -5,6 +5,7 @@
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script id="tailwind-config">
 tailwind.config = {
@@ -94,6 +95,269 @@ tailwind.config = {
   .tfc-field-error { color:#ba1a1a; font-size:0.75rem; margin-top:2px; min-height:1rem; }
   /* active tier row highlight */
   [data-tier-row].is-active { background: #eff6ff; }
+  .tfc-coverage-stage {
+    position: relative;
+    min-height: 18rem;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.65);
+    border-radius: 2rem;
+    background:
+      radial-gradient(circle at 22% 18%, rgba(94, 234, 212, 0.24), transparent 34%),
+      radial-gradient(circle at 82% 78%, rgba(56, 189, 248, 0.2), transparent 30%),
+      linear-gradient(135deg, #f5f8fd 0%, #d9e6f4 100%);
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
+    isolation: isolate;
+  }
+  .tfc-coverage-stage > img,
+  .tfc-coverage-stage > .tw-absolute.tw-inset-0.tw-bg-gradient-to-t {
+    display: none !important;
+  }
+  .tfc-coverage-map,
+  .tfc-coverage-map .leaflet-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+  }
+  .tfc-coverage-map .leaflet-control-attribution {
+    display: none;
+  }
+  .tfc-coverage-map .leaflet-top,
+  .tfc-coverage-map .leaflet-right {
+    z-index: 460;
+  }
+  .tfc-coverage-map .leaflet-control-zoom {
+    margin: 0.85rem;
+    border: 0;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+  }
+  .tfc-coverage-map .leaflet-control-zoom a {
+    width: 2.15rem;
+    height: 2.15rem;
+    line-height: 2.05rem;
+    border: 0;
+    color: #17304f;
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(12px);
+  }
+  .tfc-coverage-map .leaflet-control-zoom a:hover {
+    background: #ffffff;
+    color: #0058be;
+  }
+  .tfc-coverage-stage__radius-chip {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    z-index: 455;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.94);
+    color: #17304f;
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
+    backdrop-filter: blur(12px);
+    pointer-events: none;
+  }
+  .tfc-coverage-stage__radius-chip .material-symbols-outlined {
+    font-size: 1rem;
+    color: #0058be;
+  }
+  .tfc-coverage-stage__veil {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(248, 250, 252, 0.05) 0%, rgba(248, 250, 252, 0) 30%, rgba(15, 23, 42, 0.34) 100%),
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08), transparent 60%);
+    pointer-events: none;
+    z-index: 360;
+  }
+  .tfc-coverage-stage__top,
+  .tfc-coverage-stage__bottom {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    z-index: 420;
+  }
+  .tfc-coverage-stage__top,
+  .tfc-coverage-stage__bottom,
+  .tfc-coverage-stage__veil {
+    display: none !important;
+  }
+  .tfc-coverage-stage__top {
+    top: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .tfc-coverage-stage__badge,
+  .tfc-coverage-stage__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.84);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+    color: #17304f;
+  }
+  .tfc-coverage-stage__badge {
+    font-size: 0.76rem;
+    font-weight: 800;
+  }
+  .tfc-coverage-stage__badge strong {
+    font-size: 0.92rem;
+    font-weight: 900;
+    color: #0058be;
+  }
+  .tfc-coverage-stage__hint {
+    max-width: 14rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+  .tfc-coverage-stage__bottom {
+    bottom: 1rem;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.9rem;
+  }
+  .tfc-coverage-stage__pin {
+    width: 3rem;
+    height: 3rem;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #0d6cf2 0%, #0058be 100%);
+    color: #fff;
+    box-shadow: 0 16px 30px rgba(0, 88, 190, 0.36);
+  }
+  .tfc-coverage-stage__copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    padding: 0.9rem 1rem;
+    border-radius: 1.35rem;
+    background: rgba(248,250,252,0.86);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18);
+  }
+  .tfc-coverage-stage__eyebrow {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(23, 48, 79, 0.7);
+  }
+  .tfc-coverage-stage__address {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.96rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: #0f172a;
+  }
+  .tfc-coverage-stage__meta {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: rgba(15, 23, 42, 0.72);
+  }
+  .tfc-coverage-stage__fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #17304f;
+    background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
+    z-index: 300;
+  }
+  .tfc-coverage-map .leaflet-div-icon {
+    background: transparent;
+    border: 0;
+  }
+  .tfc-coverage-marker {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 3px solid rgba(255,255,255,0.92);
+    background: linear-gradient(135deg, #0d6cf2 0%, #0058be 100%);
+    box-shadow: 0 0 0 10px rgba(0, 88, 190, 0.16), 0 12px 22px rgba(0, 88, 190, 0.28);
+  }
+  .tfc-coverage-marker::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 88, 190, 0.28);
+    transform: translate(-50%, -50%);
+  }
+  .tfc-coverage-marker__icon {
+    font-size: 1.15rem;
+    color: #ffffff;
+    line-height: 1;
+  }
+  .tfc-coverage-map .tfc-coverage-tooltip {
+    width: 13.5rem;
+    max-width: 13.5rem;
+    padding: 0.65rem 0.85rem;
+    border: 0;
+    border-radius: 1rem;
+    background: rgba(15, 23, 42, 0.9);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.22);
+    backdrop-filter: blur(12px);
+    white-space: normal !important;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+  .tfc-coverage-map .tfc-coverage-tooltip.leaflet-tooltip-top::before {
+    border-top-color: rgba(15, 23, 42, 0.9);
+  }
+  @media (max-width: 768px) {
+    .tfc-coverage-stage {
+      min-height: 16rem;
+    }
+    .tfc-coverage-stage__top {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .tfc-coverage-stage__hint {
+      max-width: none;
+    }
+    .tfc-coverage-stage__bottom {
+      left: 0.75rem;
+      right: 0.75rem;
+      gap: 0.75rem;
+    }
+    .tfc-coverage-stage__copy {
+      padding: 0.8rem 0.9rem;
+    }
+  }
 </style>
 @endpush
 
@@ -141,6 +405,24 @@ tailwind.config = {
 <div class="tfc-field-error" data-error-for="store_address"></div>
 </div>
 <div class="tw-space-y-2">
+<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">VÄ© Ä‘á»™ cá»­a hÃ ng</label>
+<div class="tw-relative group">
+<span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">my_location</span>
+<input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="number" value="" id="travelFeeStoreLatitude" placeholder="VD: 12.2618" min="-90" max="90" step="0.000001"/>
+</div>
+<p class="tw-text-xs tw-text-slate-500">Nháº­p vÄ© Ä‘á»™ GPS tÆ°Æ¡ng á»©ng vá»›i Ä‘á»‹a chá»‰ cá»­a hÃ ng.</p>
+<div class="tfc-field-error" data-error-for="store_latitude"></div>
+</div>
+<div class="tw-space-y-2">
+<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Kinh Ä‘á»™ cá»­a hÃ ng</label>
+<div class="tw-relative group">
+<span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">pin_drop</span>
+<input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="number" value="" id="travelFeeStoreLongitude" placeholder="VD: 109.1995" min="-180" max="180" step="0.000001"/>
+</div>
+<p class="tw-text-xs tw-text-slate-500">Nháº­p kinh Ä‘á»™ GPS Ä‘á»ƒ há»‡ thá»‘ng tÃ­nh khoáº£ng cÃ¡ch tá»« cá»­a hÃ ng.</p>
+<div class="tfc-field-error" data-error-for="store_longitude"></div>
+</div>
+<div class="tw-space-y-2">
 <label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Hotline cá»­a hÃ ng</label>
 <div class="tw-relative group">
 <span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">call</span>
@@ -157,6 +439,15 @@ tailwind.config = {
 </div>
 <p class="tw-text-xs tw-text-slate-500">DÃ¹ng cho chatbot vÃ  cÃ¡c thÃ´ng bÃ¡o giá» nháº­n Ä‘Æ¡n táº¡i cá»­a hÃ ng.</p>
 <div class="tfc-field-error" data-error-for="store_opening_hours"></div>
+</div>
+<div class="tw-space-y-2">
+<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Pháº¡m vi phá»¥c vá»¥ tá»‘i Ä‘a (km)</label>
+<div class="tw-relative group">
+<span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">straighten</span>
+<input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="number" id="travelFeeMaxServiceDistance" value="" placeholder="8" min="0" max="1000" step="0.1"/>
+</div>
+<p class="tw-text-xs tw-text-slate-500">Giá»›i háº¡n tá»‘i Ä‘a cho Ä‘Æ¡n sá»­a táº¡i nhÃ . Náº¿u Ä‘Ã£ chá»n thá»£, há»‡ thá»‘ng sáº½ láº¥y má»©c tháº¥p hÆ¡n giá»¯a báº¡n kÃ­nh thá»£ vÃ  má»©c nÃ y.</p>
+<div class="tfc-field-error" data-error-for="max_service_distance_km"></div>
 </div>
 <div class="tw-space-y-2">
 <label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Thời hạn khiếu nại (Ngày)</label>
@@ -276,7 +567,31 @@ tailwind.config = {
 </div>
 </div>
 <!-- Map/Visual Insight -->
-<div class="tw-mt-6 tw-rounded-[2rem] tw-h-64 tw-bg-surface-container tw-overflow-hidden tw-relative group tw-shadow-sm tw-border tw-border-white/50">
+<div class="tw-mt-6 tfc-coverage-stage">
+<div id="travelFeeCoverageMap" class="tfc-coverage-map" aria-label="Bản đồ phạm vi phục vụ cửa hàng"></div>
+<div class="tfc-coverage-stage__radius-chip">
+<span class="material-symbols-outlined" aria-hidden="true">straighten</span>
+<span id="travelFeeCoverageRadius">8 km</span>
+</div>
+<div class="tfc-coverage-stage__fallback" id="travelFeeCoverageFallback">Dang tai ban do vung phuc vu...</div>
+<div class="tfc-coverage-stage__veil"></div>
+<div class="tfc-coverage-stage__top">
+<div class="tfc-coverage-stage__badge">
+<span class="material-symbols-outlined tw-text-primary">radio_button_checked</span>
+<span>Ban kinh hien tai <strong>8 km</strong></span>
+</div>
+<div class="tfc-coverage-stage__hint" id="travelFeeCoverageHint">Tam ban do dang bam vao toa do cua hang trong cau hinh admin.</div>
+</div>
+<div class="tfc-coverage-stage__bottom">
+<div class="tfc-coverage-stage__pin">
+<span class="material-symbols-outlined">my_location</span>
+</div>
+<div class="tfc-coverage-stage__copy">
+<span class="tfc-coverage-stage__eyebrow">Vung phu song hien tai</span>
+<span class="tfc-coverage-stage__address" id="travelFeeCoverageAddress">Dia chi cua hang</span>
+<span class="tfc-coverage-stage__meta" id="travelFeeCoverageCoordinates">Lat --, Lng --</span>
+</div>
+</div>
 <img alt="Map Visualization" class="tw-w-full tw-h-full tw-object-cover tw-opacity-60 group-hover:tw-scale-110 tw-transition-transform tw-duration-700" data-alt="Abstract aerial city map layout with blue glowing transit lines and minimalist design, soft focus, high tech dashboard style" data-location="Hanoi" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTOIzBBOFpRE7cN-ibbygV6k-0p57AcsDXVq0wIGlIcs2A7jo4enLogdiyCktXNn4lCqPQrkbYtnHyIYDnM9psATIJazWUz6oKdFaCGB7mqujTocysM4ccwI7tcA0nMqY5vLKywQGDJxSOOsbkchBxoBUf3Vz5U6Y4MCCIPmk_NRI6xcjIjXiCelDrB0RbVgU6uxFK6Crl99WVEiLT0w4Z5Sazd_NpslGsLkx5-qHrk64bLy1iyurFr69uHa2qoUnks355cOUXVzo"/>
 <div class="tw-absolute tw-inset-0 tw-bg-gradient-to-t tw-from-surface-container-highest/80 tw-to-transparent tw-flex tw-items-end tw-p-6">
 <div class="tw-flex tw-items-center tw-gap-3">
@@ -294,45 +609,6 @@ tailwind.config = {
 @endsection
 
 @push('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module" src="{{ asset('assets/js/admin/travel-fee-config.js') }}"></script>
-<script>
-// Wire status chip id
-document.addEventListener('DOMContentLoaded', () => {
-  // Add hidden status chip for JS hooks
-  const chip = document.createElement('span');
-  chip.id = 'travelFeeStatusChip';
-  chip.className = 'tfc-status-chip tw-hidden';
-  chip.dataset.tone = 'info';
-  document.body.appendChild(chip);
-
-  const updatedChip = document.createElement('span');
-  updatedChip.id = 'travelFeeUpdatedChip';
-  updatedChip.className = 'd-none';
-  document.body.appendChild(updatedChip);
-
-  const modeChip = document.createElement('span');
-  modeChip.id = 'travelFeeModeChip';
-  modeChip.className = 'tw-hidden';
-  document.body.appendChild(modeChip);
-
-  // Wire storeAddress preview placeholder
-  const storeAddrPreview = document.getElementById('travelFeeStoreAddressPreview');
-  if (!storeAddrPreview) {
-    const el = document.createElement('span');
-    el.id = 'travelFeeStoreAddressPreview';
-    el.className = 'tw-hidden';
-    document.body.appendChild(el);
-  }
-
-  // activeRuleCopy, rulePreview, sampleGrid placeholders  
-  ['travelFeeActiveRuleCopy','travelFeeActiveTransportMeta','travelFeeRulePreview','travelFeeSampleGrid'].forEach(id => {
-    if (!document.getElementById(id)) {
-      const el = document.createElement('div');
-      el.id = id;
-      el.className = 'tw-hidden';
-      document.body.appendChild(el);
-    }
-  });
-});
-</script>
 @endpush

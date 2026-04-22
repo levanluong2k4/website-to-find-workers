@@ -92,6 +92,211 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.10);
   }
 
+  .hero-trust-card {
+    position: relative;
+    overflow: hidden;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .hero-review-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .hero-review-divider::before,
+  .hero-review-divider::after {
+    content: '';
+    height: 1px;
+    flex: 1;
+    background: rgba(148, 163, 184, 0.34);
+  }
+
+  .hero-review-marquee {
+    position: relative;
+    overflow: hidden;
+    margin-top: 1.35rem;
+    padding-block: 0.3rem;
+  }
+
+  .hero-review-marquee::before,
+  .hero-review-marquee::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    width: clamp(2rem, 4vw, 4.5rem);
+    pointer-events: none;
+  }
+
+  .hero-review-marquee::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0));
+  }
+
+  .hero-review-marquee::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0));
+  }
+
+  .hero-review-marquee__track {
+    display: flex;
+    width: max-content;
+    animation: hero-review-marquee 34s linear infinite;
+  }
+
+  .hero-review-marquee:hover .hero-review-marquee__track {
+    animation-play-state: paused;
+  }
+
+  .hero-review-marquee__group {
+    display: flex;
+    flex-shrink: 0;
+    gap: 1.15rem;
+    padding-right: 1.15rem;
+  }
+
+  .hero-review-card {
+    display: flex;
+    min-width: clamp(18rem, 31vw, 28rem);
+    max-width: clamp(18rem, 31vw, 28rem);
+    flex-direction: column;
+    gap: 0.8rem;
+    border-radius: 1.35rem;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+    padding: 1.2rem 1.25rem;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  }
+
+  .hero-review-card__top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+  }
+
+  .hero-review-card__avatar {
+    width: 3rem;
+    height: 3rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    object-fit: cover;
+    box-shadow: 0 10px 24px rgba(14, 165, 233, 0.16);
+  }
+
+  .hero-review-card__avatar--fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(186, 242, 233, 0.88));
+    color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+  }
+
+  .hero-review-card__stars {
+    margin-top: 0.3rem;
+    display: flex;
+    gap: 0.1rem;
+    color: #f59e0b;
+  }
+
+  .hero-review-card__stars .material-symbols-outlined {
+    font-size: 1rem;
+    font-variation-settings: 'FILL' 1;
+  }
+
+  .hero-review-card__comment {
+    margin: 0;
+    min-height: 4.9rem;
+    color: #1e293b;
+    font-size: 0.94rem;
+    line-height: 1.7;
+  }
+
+  .hero-review-card__subline {
+    margin-top: 0.1rem;
+    color: #64748b;
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+
+  .hero-review-card__meta {
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .hero-review-empty {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-radius: 1.35rem;
+    border: 1px dashed rgba(148, 163, 184, 0.4);
+    background: rgba(255, 255, 255, 0.78);
+    padding: 1rem 1.1rem;
+    color: #475569;
+  }
+
+  .hero-review-empty .material-symbols-outlined {
+    font-size: 2rem;
+    color: #0ea5e9;
+  }
+
+  .hero-review-empty strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #0f172a;
+  }
+
+  .hero-review-empty p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  @keyframes hero-review-marquee {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-review-marquee__track {
+      animation-duration: 1ms;
+      animation-iteration-count: 1;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .hero-review-divider {
+      gap: 0.65rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+    }
+
+    .hero-review-card {
+      min-width: min(18rem, calc(100vw - 4.5rem));
+      max-width: min(18rem, calc(100vw - 4.5rem));
+      padding: 1rem 1.05rem;
+    }
+  }
+
   .c-button {
     color: #000;
     font-weight: 700;
@@ -314,57 +519,50 @@
           Chuyên sửa chữa thiết bị điện gia dụng và điện lạnh chuyên nghiệp. Minh bạch giá cả, bảo hành dài hạn.
         </p>
 
-        <!-- Quick Booking Form -->
-        <div class="booking-card p-8 max-w-2xl">
-          <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-900">
-            <span class="material-symbols-outlined text-primary-dark">event_upcoming</span>
-            Đặt lịch nhanh
-          </h3>
-          <div class="grid md:grid-cols-2 gap-4">
-            <div class="flex flex-col gap-2">
-              <label class="text-sm font-semibold text-slate-700">Thiết bị cần sửa</label>
-              <div class="relative">
-                <select id="heroDevice" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 appearance-none text-sm">
-                  <option value="">Chọn loại thiết bị</option>
-                  <option>Tivi</option>
-                  <option>Máy giặt</option>
-                  <option>Tủ lạnh</option>
-                  <option>Điều hòa</option>
-                  <option>Bếp điện</option>
-                  <option>Lò vi sóng</option>
-                  <option>Khác</option>
-                </select>
-                <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400 text-lg">expand_more</span>
+        <div class="hero-trust-card max-w-4xl">
+          <div class="hero-review-divider">
+            <span>Đánh giá từ khách hàng</span>
+          </div>
+            @if(($highlightReviews ?? collect())->isNotEmpty())
+            <div class="hero-review-marquee" aria-label="Đánh giá 5 sao từ khách hàng">
+              <div class="hero-review-marquee__track">
+                @for($marqueeLoop = 0; $marqueeLoop < 2; $marqueeLoop++)
+                <div class="hero-review-marquee__group" @if($marqueeLoop === 1) aria-hidden="true" @endif>
+                  @foreach($highlightReviews as $review)
+                  <article class="hero-review-card">
+                    <div class="hero-review-card__top">
+                      @if(!empty($review['reviewer_avatar']))
+                      <img class="hero-review-card__avatar" src="{{ $review['reviewer_avatar'] }}" alt="{{ $review['reviewer_name'] }}">
+                      @else
+                      <div class="hero-review-card__avatar hero-review-card__avatar--fallback">{{ $review['reviewer_initials'] }}</div>
+                      @endif
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-black text-slate-900">{{ $review['reviewer_name'] }}</p>
+                        <p class="hero-review-card__subline">{{ $review['service_label'] }} · {{ $review['mode_label'] }}</p>
+                        <div class="hero-review-card__stars" aria-label="5 trên 5 sao">
+                          @for($star = 0; $star < 5; $star++)
+                          <span class="material-symbols-outlined">star</span>
+                          @endfor
+                        </div>
+                      </div>
+                    </div>
+                    <p class="hero-review-card__comment">“{{ $review['comment'] }}”</p>
+                    <p class="hero-review-card__meta">{{ $review['date_label'] }} @if(!empty($review['booking_code'])) · {{ $review['booking_code'] }} @endif</p>
+                  </article>
+                  @endforeach
+                </div>
+                @endfor
               </div>
             </div>
-            <div class="flex flex-col gap-2">
-              <label class="text-sm font-semibold text-slate-700">Địa chỉ tại Nha Trang</label>
-              <input id="heroAddress" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 text-sm" placeholder="Số nhà, tên đường..." type="text" />
-            </div>
-            <div class="flex flex-col gap-2">
-              <label class="text-sm font-semibold text-slate-700">Ngày hẹn</label>
-              <input id="heroDate" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 text-sm" type="date" />
-            </div>
-            <div class="flex flex-col gap-2">
-              <label class="text-sm font-semibold text-slate-700">Giờ hẹn</label>
-              <div class="relative">
-                <select id="heroTime" class="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary-dark px-4 appearance-none text-sm">
-                  <option>Sáng (08:00 – 12:00)</option>
-                  <option>Chiều (13:30 – 17:30)</option>
-                  <option>Tối (18:00 – 20:00)</option>
-                </select>
-                <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400 text-lg">schedule</span>
+            @else
+            <div class="hero-review-empty mt-5">
+              <span class="material-symbols-outlined">reviews</span>
+              <div>
+                <strong>Đánh giá 5 sao sẽ tự động xuất hiện tại đây ngay khi khách hoàn tất đơn hàng.</strong>
+                <p>Phần này đang chờ thêm review xác thực từ hệ thống.</p>
               </div>
             </div>
-          </div>
-          <div class="flex flex-wrap gap-4 mt-6">
-            <button id="btnHeroBook" class="flex-1 min-w-[160px] h-14 rounded-xl bg-primary-dark text-white font-bold text-base shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
-              <span class="material-symbols-outlined">send</span> Đặt lịch ngay
-            </button>
-            <button id="btnHeroAI" class="flex-1 min-w-[180px] h-14 rounded-xl bg-slate-100 text-slate-900 font-bold shadow-sm hover:bg-primary/60 transition-all flex items-center justify-center gap-2">
-              <span class="material-symbols-outlined text-primary-dark">smart_toy</span> AI kiểm tra lỗi
-            </button>
-          </div>
+            @endif
         </div>
       </div>
 
@@ -770,18 +968,6 @@
     if (serviceName) targetUrl.searchParams.set('service_name', serviceName);
     window.location.href = targetUrl.toString();
   }
-
-  // Hero booking form quick submit
-  document.getElementById('btnHeroBook')?.addEventListener('click', () => {
-    const device = document.getElementById('heroDevice')?.value;
-    const address = document.getElementById('heroAddress')?.value;
-    const date = document.getElementById('heroDate')?.value;
-    if (!device) {
-      alert('Vui lòng chọn thiết bị cần sửa');
-      return;
-    }
-    openBookingModal(device);
-  });
 
   // AI Section button scroll
   document.getElementById('btnHeroAI')?.addEventListener('click', () => {

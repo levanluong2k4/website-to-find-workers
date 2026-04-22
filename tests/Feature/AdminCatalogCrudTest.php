@@ -29,11 +29,15 @@ class AdminCatalogCrudTest extends TestCase
                 'dich_vu_id' => $serviceId,
                 'ten_linh_kien' => 'Board nguon inverter',
                 'gia' => 650000,
+                'so_luong_ton_kho' => 12,
+                'han_su_dung' => '2026-12-31',
             ]);
 
         $createResponse->assertCreated()
             ->assertJsonPath('data.ten_linh_kien', 'Board nguon inverter')
-            ->assertJsonPath('data.service_name', 'Sua may giat');
+            ->assertJsonPath('data.service_name', 'Sua may giat')
+            ->assertJsonPath('data.so_luong_ton_kho', 12)
+            ->assertJsonPath('data.han_su_dung', '2026-12-31');
 
         $partId = (int) $createResponse->json('data.id');
 
@@ -49,17 +53,69 @@ class AdminCatalogCrudTest extends TestCase
                 'dich_vu_id' => $serviceId,
                 'ten_linh_kien' => 'Board nguon inverter LG',
                 'gia' => 720000,
+                'so_luong_ton_kho' => 8,
+                'han_su_dung' => '2027-01-15',
             ]);
 
         $updateResponse->assertOk()
             ->assertJsonPath('data.ten_linh_kien', 'Board nguon inverter LG')
-            ->assertJsonPath('data.gia', 720000);
+            ->assertJsonPath('data.gia', 720000)
+            ->assertJsonPath('data.so_luong_ton_kho', 8)
+            ->assertJsonPath('data.han_su_dung', '2027-01-15');
 
         $deleteResponse = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->deleteJson('/api/admin/linh-kien/' . $partId);
 
         $deleteResponse->assertOk();
         $this->assertDatabaseMissing('linh_kien', ['id' => $partId]);
+    }
+
+    public function test_part_expiry_warning_only_applies_within_six_months(): void
+    {
+        $admin = $this->createAdmin('expiry-admin@example.com');
+        $token = $admin->createToken('catalog-admin')->plainTextToken;
+        $serviceId = $this->createService('Sua lo vi song');
+
+        $farFutureId = (int) DB::table('linh_kien')->insertGetId([
+            'dich_vu_id' => $serviceId,
+            'ten_linh_kien' => 'Tu dien 8 thang nua moi het han',
+            'gia' => 120000,
+            'so_luong_ton_kho' => 4,
+            'han_su_dung' => now()->addMonths(8)->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $nearExpiryId = (int) DB::table('linh_kien')->insertGetId([
+            'dich_vu_id' => $serviceId,
+            'ten_linh_kien' => 'Cau chi con 5 thang han',
+            'gia' => 45000,
+            'so_luong_ton_kho' => 10,
+            'han_su_dung' => now()->addMonths(5)->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $expiredId = (int) DB::table('linh_kien')->insertGetId([
+            'dich_vu_id' => $serviceId,
+            'ten_linh_kien' => 'Pin da het han',
+            'gia' => 98000,
+            'so_luong_ton_kho' => 2,
+            'han_su_dung' => now()->subDays(2)->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/admin/linh-kien?service_id=' . $serviceId);
+
+        $response->assertOk();
+
+        $items = collect($response->json('data.items'));
+
+        $this->assertSame('active', $items->firstWhere('id', $farFutureId)['han_su_dung_state']);
+        $this->assertSame('expiring_soon', $items->firstWhere('id', $nearExpiryId)['han_su_dung_state']);
+        $this->assertSame('expired', $items->firstWhere('id', $expiredId)['han_su_dung_state']);
     }
 
     public function test_admin_can_create_update_and_delete_symptom_with_causes(): void
@@ -257,6 +313,8 @@ class AdminCatalogCrudTest extends TestCase
                 $table->string('ten_linh_kien');
                 $table->string('hinh_anh')->nullable();
                 $table->decimal('gia', 15, 2)->nullable();
+                $table->unsignedInteger('so_luong_ton_kho')->default(0);
+                $table->date('han_su_dung')->nullable();
                 $table->timestamps();
             });
         }

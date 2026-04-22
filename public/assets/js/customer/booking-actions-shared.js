@@ -49,10 +49,9 @@ export const openRebookBooking = (
 };
 
 export const buildOnlineGatewayOptions = ({ isLocalPaymentSandbox = false } = {}) => ({
-  momo: 'Ví MoMo',
+  momo_atm: 'MoMo ATM / test card',
   zalopay: 'Ví ZaloPay',
   vnpay: 'VNPAY / Thẻ ngân hàng',
-  ...(isLocalPaymentSandbox ? { test: 'Thanh toán test nội bộ' } : {}),
 });
 
 export const showCashPaymentInstructions = async ({ swal }) => {
@@ -77,7 +76,7 @@ export const selectOnlineGateway = async ({
   const gatewayOptions = buildOnlineGatewayOptions({ isLocalPaymentSandbox });
   const gatewayKeys = Object.keys(gatewayOptions);
   const result = await swal.fire({
-    title: 'Chọn ví điện tử',
+    title: 'Chọn cổng thanh toán',
     input: 'radio',
     inputOptions: gatewayOptions,
     inputValue: gatewayKeys[0] || 'momo',

@@ -5,7 +5,7 @@ const isCustomerScope = path === '/' || path.startsWith('/customer');
 
 if (isCustomerScope) {
     const BOT_AVATAR = '/assets/images/robotAI.png';
-    const USER_AVATAR = '/assets/images/customer.png';
+    const DEFAULT_USER_AVATAR = '/assets/images/customer.png';
     const SEND_ICON = `
         <svg viewBox="0 0 17 14" fill="none" aria-hidden="true">
             <path d="M0.87 13.39C0.55 13.55 0.18 13.25 0.28 12.91L1.8 7.5L0.28 2.09C0.18 1.75 0.55 1.45 0.87 1.61L15.32 6.47C15.7 6.6 15.7 7.14 15.32 7.27L0.87 12.13V13.39Z" fill="currentColor"/>
@@ -22,6 +22,39 @@ if (isCustomerScope) {
     const input = document.getElementById('customerChatInput');
     const sendButton = document.getElementById('customerChatSend');
     const messagesContainer = document.getElementById('customerChatMessages');
+    const suggestionsContainer = document.getElementById('customerChatSuggestions');
+    const bladeUserAvatar = widget?.dataset.userAvatar?.trim() || '';
+    const FAQ_SUGGESTIONS = [
+        'Địa chỉ cửa hàng ở đâu?',
+        'Hotline cửa hàng là gì?',
+        'Giờ mở cửa của cửa hàng?',
+        'Liệt kê các dịch vụ có trong cửa hàng',
+        'Tôi muốn tìm thợ sửa máy lạnh',
+    ];
+
+    const resolveAvatarUrl = (avatar) => {
+        if (!avatar) {
+            return '';
+        }
+
+        if (/^https?:\/\//i.test(avatar) || avatar.startsWith('/')) {
+            return avatar;
+        }
+
+        return `/storage/${avatar}`;
+    };
+
+    const resolveCurrentUserAvatar = () => {
+        try {
+            const rawUser = localStorage.getItem('user');
+            const parsedUser = rawUser ? JSON.parse(rawUser) : null;
+            const frontendAvatar = resolveAvatarUrl(parsedUser?.avatar || '');
+
+            return frontendAvatar || bladeUserAvatar || DEFAULT_USER_AVATAR;
+        } catch (error) {
+            return bladeUserAvatar || DEFAULT_USER_AVATAR;
+        }
+    };
 
     if (
         widget
@@ -38,6 +71,7 @@ if (isCustomerScope) {
 
         let isLoaded = false;
         let lastSender = null;
+        let currentUserAvatar = resolveCurrentUserAvatar();
 
         const escapeHtml = (value) => (value ?? '')
             .toString()
@@ -86,6 +120,16 @@ if (isCustomerScope) {
             appendTimestamp();
         };
 
+        const refreshRenderedUserAvatars = () => {
+            currentUserAvatar = resolveCurrentUserAvatar();
+
+            messagesContainer
+                .querySelectorAll('.customer-chat-user-avatar')
+                .forEach((avatarNode) => {
+                    avatarNode.src = currentUserAvatar;
+                });
+        };
+
         const renderStatusBadge = (meta) => {
             const badge = meta?.ai?.badge;
             if (!badge || typeof badge !== 'object') {
@@ -109,8 +153,12 @@ if (isCustomerScope) {
 
             const cases = Array.isArray(meta.cases) ? meta.cases : [];
             const technicians = Array.isArray(meta.technicians) ? meta.technicians : [];
+            const services = Array.isArray(meta.services) ? meta.services : [];
+            const servicesMoreUrl = typeof meta.services_more_url === 'string' && meta.services_more_url
+                ? meta.services_more_url
+                : '/customer/search';
 
-            if (!cases.length && !technicians.length) {
+            if (!cases.length && !technicians.length && !services.length) {
                 return '';
             }
 
@@ -142,7 +190,23 @@ if (isCustomerScope) {
                 </div>
             `).join('');
 
-            return `<div class="customer-chat-rich-content">${caseHtml}${techHtml}</div>`;
+            const serviceHtml = services.length
+                ? `
+                    <div class="customer-chat-service-grid">
+                        ${services.slice(0, 5).map((item) => `
+                            <a href="${escapeHtml(item.url || servicesMoreUrl)}" class="customer-chat-service-card">
+                                <div class="customer-chat-service-card-media">
+                                    <img src="${escapeHtml(item.image || '/assets/images/logontu.png')}" alt="${escapeHtml(item.name || 'Dịch vụ')}" onerror="this.onerror=null;this.src='/assets/images/logontu.png';">
+                                </div>
+                                <div class="customer-chat-service-card-name">${escapeHtml(item.name || 'Dịch vụ')}</div>
+                            </a>
+                        `).join('')}
+                    </div>
+                    <a href="${escapeHtml(servicesMoreUrl)}" class="chat-card-button customer-chat-services-more">Xem thêm</a>
+                `
+                : '';
+
+            return `<div class="customer-chat-rich-content">${caseHtml}${techHtml}${serviceHtml}</div>`;
         };
 
         const appendMessage = (sender, text, meta = null) => {
@@ -160,7 +224,7 @@ if (isCustomerScope) {
                 avatarSlot.className = 'customer-chat-avatar-slot';
                 avatarSlot.innerHTML = isCompactUserMessage
                     ? '<span class="customer-chat-avatar-placeholder" aria-hidden="true"></span>'
-                    : `<img src="${USER_AVATAR}" alt="Khách hàng" class="customer-chat-user-avatar">`;
+                    : `<img src="${currentUserAvatar}" alt="Khách hàng" class="customer-chat-user-avatar" onerror="this.onerror=null;this.src='${DEFAULT_USER_AVATAR}';">`;
                 wrapper.appendChild(avatarSlot);
             }
 
@@ -252,6 +316,77 @@ if (isCustomerScope) {
             }
         };
 
+        const ensurePanelReady = async () => {
+            if (panel.style.display !== 'flex') {
+                setPanelOpen(true);
+            }
+
+            if (!isLoaded) {
+                await renderHistory();
+                isLoaded = true;
+            }
+        };
+
+        const renderSuggestionChips = () => {
+            if (!suggestionsContainer) {
+                return;
+            }
+
+            suggestionsContainer.innerHTML = FAQ_SUGGESTIONS.map((question) => `
+                <button class="customer-chat-suggestion-chip" type="button" data-question="${escapeHtml(question)}">
+                    ${escapeHtml(question)}
+                </button>
+            `).join('');
+        };
+
+        const submitMessage = async (rawText = null) => {
+            const text = (rawText ?? input.value).trim();
+            if (!text || sendButton.disabled) {
+                return;
+            }
+
+            appendMessage('user', text);
+            input.value = '';
+            setSendingState(true);
+
+            const loadingId = `typing-${Date.now()}`;
+            const typingNode = createTypingIndicator(loadingId);
+            messagesContainer.appendChild(typingNode);
+            lastSender = 'assistant';
+            scrollBottom();
+
+            try {
+                const response = await callApi('/chat/send', 'POST', { text });
+                document.getElementById(loadingId)?.remove();
+
+                if (!response.ok) {
+                    throw new Error(response.data?.message || 'Gá»­i tin nháº¯n tháº¥t báº¡i');
+                }
+
+                const payload = response.data?.data || {};
+                appendMessage(
+                    'assistant',
+                    payload.assistant_text || 'TÃ´i Ä‘Ã£ nháº­n Ä‘Æ°á»£c yÃªu cáº§u cá»§a báº¡n.',
+                    {
+                        cases: payload.cases || [],
+                        technicians: payload.technicians || [],
+                        services: payload.services || [],
+                        services_more_url: payload.services_more_url || null,
+                        ai: payload.ai || null,
+                    },
+                );
+            } catch (error) {
+                document.getElementById(loadingId)?.remove();
+                appendMessage('assistant', 'TÃ´i chÆ°a xá»­ lÃ½ Ä‘Æ°á»£c yÃªu cáº§u ngay lÃºc nÃ y. Báº¡n thá»­ láº¡i sau vÃ i giÃ¢y.');
+                showToast(error.message || 'KhÃ´ng gá»­i Ä‘Æ°á»£c tin nháº¯n', 'error');
+            } finally {
+                setSendingState(false);
+                input.focus();
+            }
+        };
+
+        renderSuggestionChips();
+
         toggleButton.addEventListener('click', async () => {
             const isOpening = panel.style.display !== 'flex';
             setPanelOpen(isOpening);
@@ -266,21 +401,29 @@ if (isCustomerScope) {
             setPanelOpen(false);
         });
 
+        window.addEventListener('user-updated', () => {
+            refreshRenderedUserAvatars();
+        });
+
         focusInputButton?.addEventListener('click', () => {
             input.focus();
         });
 
         quickHotlineButton?.addEventListener('click', async () => {
-            if (panel.style.display !== 'flex') {
-                setPanelOpen(true);
-                if (!isLoaded) {
-                    await renderHistory();
-                    isLoaded = true;
-                }
-            }
+            await ensurePanelReady();
 
             input.value = 'Hotline cửa hàng là gì?';
             input.focus();
+        });
+
+        suggestionsContainer?.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-question]');
+            if (!button) {
+                return;
+            }
+
+            await ensurePanelReady();
+            await submitMessage(button.dataset.question || '');
         });
 
         form.addEventListener('submit', async (event) => {
@@ -316,6 +459,8 @@ if (isCustomerScope) {
                     {
                         cases: payload.cases || [],
                         technicians: payload.technicians || [],
+                        services: payload.services || [],
+                        services_more_url: payload.services_more_url || null,
                         ai: payload.ai || null,
                     },
                 );

@@ -146,6 +146,56 @@ class BookingStoreCompatibilityTest extends TestCase
         ]);
     }
 
+    public function test_store_uses_configured_store_coordinates_and_max_distance_for_home_booking(): void
+    {
+        Notification::fake();
+
+        $customer = $this->createUser('store-coordinates@example.com', 'customer');
+        $serviceId = $this->createService('Sua may lanh tai nha');
+        $this->createWorkerWithService($serviceId, 'coordinate-worker@example.com');
+
+        DB::table('app_settings')->insert([
+            'key' => 'travel_fee_config',
+            'value' => json_encode([
+                'store_address' => '1 Le Loi, Quan 1, TP HCM',
+                'store_latitude' => 10.7756,
+                'store_longitude' => 106.7009,
+                'max_service_distance_km' => 8,
+                'default_per_km' => 5000,
+                'tiers' => [
+                    ['from_km' => 0, 'to_km' => 6, 'transport_fee' => 0, 'travel_fee' => 15000],
+                    ['from_km' => 6, 'to_km' => 8, 'transport_fee' => 0, 'travel_fee' => 30000],
+                ],
+            ]),
+            'updated_by' => $customer->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $token = $customer->createToken('customer-store-coordinate-booking')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson('/api/don-dat-lich', [
+                'loai_dat_lich' => 'at_home',
+                'dich_vu_id' => $serviceId,
+                'ngay_hen' => now()->addDay()->toDateString(),
+                'khung_gio_hen' => '10:00-12:00',
+                'dia_chi' => 'Cach cua hang khoang 5.5 km',
+                'vi_do' => 10.8250,
+                'kinh_do' => 106.7009,
+                'mo_ta_van_de' => 'May lanh khong lanh',
+            ]);
+
+        $response->assertCreated();
+
+        $bookingId = (int) $response->json('data.id');
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'phi_di_lai' => 15000,
+        ]);
+    }
+
     private function createUser(string $email, string $role): User
     {
         return User::query()->create([

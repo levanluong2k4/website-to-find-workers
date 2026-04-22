@@ -231,6 +231,465 @@
         z-index: 1;
     }
 
+    .adm-meta {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #64748b;
+    }
+
+    .adm-map-summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .adm-map-summary__item {
+        padding: 0.875rem 1rem;
+        border-radius: 1rem;
+        background: linear-gradient(180deg, #f8fbff 0%, #f3f7fd 100%);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .adm-map-summary__item span {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+    }
+
+    .adm-map-summary__item strong {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--lumina-on-surface);
+    }
+
+    .adm-map-stage .leaflet-container {
+        background: #e8eef7;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .adm-map-stage .leaflet-div-icon {
+        background: transparent;
+        border: 0;
+    }
+
+    .adm-map-status {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        z-index: 450;
+        max-width: calc(100% - 32px);
+        padding: 0.625rem 0.875rem;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.94);
+        color: #24364d;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        box-shadow: var(--shadow-sm);
+        backdrop-filter: blur(10px);
+    }
+
+    .adm-map-legend {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        z-index: 450;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        max-width: calc(100% - 32px);
+    }
+
+    .adm-map-legend__chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.55rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.94);
+        color: #304257;
+        font-size: 0.75rem;
+        font-weight: 700;
+        box-shadow: var(--shadow-sm);
+        backdrop-filter: blur(10px);
+    }
+
+    .adm-map-legend__dot,
+    .adm-map-tooltip__dot,
+    .adm-worker-marker__dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        flex: 0 0 10px;
+    }
+
+    .adm-map-legend__dot--busy,
+    .adm-map-tooltip__dot--busy,
+    .adm-worker-marker--busy .adm-worker-marker__dot {
+        background: #ef4444;
+    }
+
+    .adm-map-legend__dot--scheduled,
+    .adm-map-tooltip__dot--scheduled,
+    .adm-worker-marker--scheduled .adm-worker-marker__dot {
+        background: #f59e0b;
+    }
+
+    .adm-map-legend__dot--free,
+    .adm-map-tooltip__dot--free,
+    .adm-worker-marker--free .adm-worker-marker__dot {
+        background: #22c55e;
+    }
+
+    .adm-map-legend__dot--offline,
+    .adm-map-tooltip__dot--offline,
+    .adm-worker-marker--offline .adm-worker-marker__dot {
+        background: #64748b;
+    }
+
+    .adm-map-empty {
+        position: absolute;
+        inset: 72px 16px 82px;
+        z-index: 430;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 1.5rem;
+        border: 1px dashed rgba(148, 163, 184, 0.28);
+        border-radius: 1rem;
+        background: rgba(248, 250, 252, 0.94);
+        color: #475569;
+        text-align: center;
+        backdrop-filter: blur(6px);
+    }
+
+    .adm-map-empty i {
+        font-size: 1.5rem;
+        color: var(--lumina-primary);
+    }
+
+    .adm-map-empty strong {
+        font-size: 1rem;
+        color: var(--lumina-on-surface);
+    }
+
+    .adm-map-empty p {
+        margin: 0;
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+
+    .adm-map-empty.is-hidden {
+        display: none;
+    }
+
+    .adm-map-info {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 450;
+        width: min(320px, calc(100% - 32px));
+        padding: 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 1.25rem;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: var(--shadow-md);
+        backdrop-filter: blur(14px);
+    }
+
+    .adm-map-info.is-hidden {
+        display: none;
+    }
+
+    .adm-map-info__top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .adm-map-info__actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .adm-map-info__eyebrow {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .adm-map-info h3 {
+        margin: 0.25rem 0 0;
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--lumina-on-surface);
+    }
+
+    .adm-map-info__status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.42rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .adm-map-info__status--busy {
+        background: rgba(254, 226, 226, 0.96);
+        color: #b91c1c;
+    }
+
+    .adm-map-info__status--scheduled {
+        background: rgba(254, 243, 199, 0.96);
+        color: #b45309;
+    }
+
+    .adm-map-info__status--free {
+        background: rgba(220, 252, 231, 0.96);
+        color: #15803d;
+    }
+
+    .adm-map-info__status--offline {
+        background: rgba(226, 232, 240, 0.96);
+        color: #475569;
+    }
+
+    .adm-map-info__detail {
+        margin: 0.85rem 0 0;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: #516174;
+    }
+
+    .adm-map-info__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 14px;
+        margin-top: 1rem;
+    }
+
+    .adm-map-info__line {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 0.8125rem;
+        color: #24364d;
+    }
+
+    .adm-map-info__line i {
+        margin-top: 2px;
+        color: var(--lumina-primary);
+    }
+
+    .adm-map-info-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.96);
+        color: #334155;
+        font-size: 0.72rem;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+    }
+
+    .adm-map-info-toggle:hover {
+        color: var(--lumina-primary);
+        border-color: rgba(0, 88, 190, 0.22);
+    }
+
+    .adm-map-info-toggle--hide {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        flex: 0 0 32px;
+    }
+
+    .adm-map-info-toggle--show {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 451;
+        padding: 0.625rem 0.9rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .adm-map-info-toggle.is-hidden {
+        display: none;
+    }
+
+    .adm-map-tooltip {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .adm-map-tooltip .leaflet-tooltip-content {
+        margin: 0;
+    }
+
+    .adm-map-tooltip__bubble {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.55rem 0.8rem;
+        border-radius: 999px;
+        background: #0f172a;
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.24);
+    }
+
+    .adm-worker-marker {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        min-width: 110px;
+        transform: translateZ(0);
+    }
+
+    .adm-worker-marker__avatar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 46px;
+        height: 46px;
+        border: 3px solid #fff;
+        border-radius: 999px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.22);
+    }
+
+    .adm-worker-marker__avatar::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: -14px;
+        width: 4px;
+        height: 16px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.18);
+        transform: translateX(-50%);
+    }
+
+    .adm-worker-marker__avatar img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .adm-worker-marker__fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        padding: 0 6px;
+        color: #fff;
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .adm-worker-marker__name {
+        display: none;
+        max-width: 96px;
+        padding: 0.28rem 0.55rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.96);
+        color: #0f172a;
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+    }
+
+    .adm-worker-marker.is-name .adm-worker-marker__name {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .adm-worker-marker__dot {
+        position: absolute;
+        right: 2px;
+        bottom: 2px;
+        width: 12px;
+        height: 12px;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72);
+    }
+
+    .adm-worker-marker--busy .adm-worker-marker__avatar {
+        box-shadow: 0 12px 24px rgba(239, 68, 68, 0.24);
+    }
+
+    .adm-worker-marker--busy .adm-worker-marker__fallback {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .adm-worker-marker--scheduled .adm-worker-marker__avatar {
+        box-shadow: 0 12px 24px rgba(245, 158, 11, 0.24);
+    }
+
+    .adm-worker-marker--scheduled .adm-worker-marker__fallback {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .adm-worker-marker--free .adm-worker-marker__avatar {
+        box-shadow: 0 12px 24px rgba(34, 197, 94, 0.24);
+    }
+
+    .adm-worker-marker--free .adm-worker-marker__fallback {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    }
+
+    .adm-worker-marker--offline .adm-worker-marker__avatar {
+        box-shadow: 0 12px 24px rgba(100, 116, 139, 0.24);
+    }
+
+    .adm-worker-marker--offline .adm-worker-marker__fallback {
+        background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    }
+
+    @media (max-width: 991.98px) {
+        .adm-map-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .adm-map-info {
+            top: auto;
+            right: 16px;
+            bottom: 84px;
+        }
+    }
+
     .adm-table-wrap { padding-top: 1rem; overflow-x: auto; }
     .adm-table { width: 100%; border-collapse: collapse; }
     .adm-table th {
@@ -382,13 +841,22 @@
                                 <strong>Chưa có dữ liệu vị trí thợ</strong>
                                 <p>Bản đồ sẽ hiển thị khi thợ có tọa độ hợp lệ trong hồ sơ và đã được phê duyệt hoạt động.</p>
                             </div>
+                            <button type="button" id="workerMapInfoShowButton" class="adm-map-info-toggle adm-map-info-toggle--show is-hidden">
+                                <i class="fa-solid fa-eye"></i>
+                                Hiện theo dõi
+                            </button>
                             <div id="workerMapInfoCard" class="adm-map-info">
                                 <div class="adm-map-info__top">
                                     <div>
                                         <span class="adm-map-info__eyebrow">Theo dõi lúc này</span>
                                         <h3 id="workerMapInfoName">Di chuột vào avatar thợ</h3>
                                     </div>
-                                    <span id="workerMapInfoStatus" class="adm-map-info__status adm-map-info__status--free">Trống lịch</span>
+                                    <div class="adm-map-info__actions">
+                                        <span id="workerMapInfoStatus" class="adm-map-info__status adm-map-info__status--free">Trống lịch</span>
+                                        <button type="button" id="workerMapInfoHideButton" class="adm-map-info-toggle adm-map-info-toggle--hide" aria-label="Ẩn bảng theo dõi">
+                                            <i class="fa-solid fa-eye-slash"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <p id="workerMapInfoDetail" class="adm-map-info__detail">Hover vào avatar trên bản đồ để xem nhanh tình trạng của từng thợ.</p>
                                 <div class="adm-map-info__grid">

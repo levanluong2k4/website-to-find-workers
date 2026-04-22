@@ -1,4 +1,15 @@
-<div id="customerChatWidget" style="display:none;">
+@php
+    $chatUserAvatar = auth()->user()?->avatar;
+    $chatUserAvatarUrl = '';
+
+    if (filled($chatUserAvatar)) {
+        $chatUserAvatarUrl = preg_match('/^https?:\/\//i', $chatUserAvatar) || str_starts_with($chatUserAvatar, '/')
+            ? $chatUserAvatar
+            : '/storage/' . ltrim($chatUserAvatar, '/');
+    }
+@endphp
+
+<div id="customerChatWidget" style="display:none;" data-user-avatar="{{ $chatUserAvatarUrl }}">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700&display=swap');
 
@@ -154,6 +165,71 @@
             border-radius: 999px;
         }
 
+        .customer-chat-suggestions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 12px 0;
+            background: #ffffff;
+            border-top: 1px solid #eceef0;
+        }
+
+        .customer-chat-suggestions-title {
+            color: #727785;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .customer-chat-suggestions-list {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(114, 119, 133, 0.24) transparent;
+        }
+
+        .customer-chat-suggestions-list::-webkit-scrollbar {
+            height: 5px;
+        }
+
+        .customer-chat-suggestions-list::-webkit-scrollbar-thumb {
+            background: rgba(114, 119, 133, 0.24);
+            border-radius: 999px;
+        }
+
+        .customer-chat-suggestion-chip {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 32px;
+            padding: 0 12px;
+            border: 1px solid rgba(0, 88, 190, 0.14);
+            border-radius: 999px;
+            background: #f4f8ff;
+            color: #0058be;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 16px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .customer-chat-suggestion-chip:hover {
+            background: #eaf3ff;
+            border-color: rgba(0, 88, 190, 0.22);
+            transform: translateY(-1px);
+        }
+
+        .customer-chat-suggestion-chip:focus-visible {
+            outline: 2px solid rgba(0, 88, 190, 0.22);
+            outline-offset: 2px;
+        }
+
         .customer-chat-timestamp {
             align-self: center;
             color: #424754;
@@ -229,8 +305,8 @@
         }
 
         .chat-bubble-user {
-            background: #e6e8ea;
-            color: #191c1e;
+            background: #0058be;
+            color: #ffffff;
             border-radius: 16px 16px 16px 2px;
         }
 
@@ -239,8 +315,8 @@
         }
 
         .chat-bubble-assistant {
-            background: #0058be;
-            color: #ffffff;
+            background: #e6e8ea;
+            color: #191c1e;
             border-radius: 16px 16px 2px 16px;
         }
 
@@ -344,6 +420,64 @@
             object-fit: cover;
             border-radius: 8px;
             border: 1px solid #d8dde6;
+        }
+
+        .customer-chat-service-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .customer-chat-service-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 62px;
+            padding: 8px;
+            border: 1px solid #dce4f2;
+            border-radius: 12px;
+            background: #ffffff;
+            color: #191c1e;
+            text-decoration: none;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .customer-chat-service-card:hover {
+            transform: translateY(-1px);
+            border-color: #b8ccf5;
+            box-shadow: 0 10px 18px -16px rgba(0, 88, 190, 0.5);
+        }
+
+        .customer-chat-service-card-media {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #eef4ff;
+        }
+
+        .customer-chat-service-card-media img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+
+        .customer-chat-service-card-name {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 16px;
+            color: #191c1e;
+        }
+
+        .customer-chat-services-more {
+            width: 100%;
+            margin-top: 2px;
         }
 
         .customer-chat-status-badge {
@@ -596,6 +730,11 @@
         </div>
 
         <div id="customerChatMessages" aria-live="polite"></div>
+
+        <div class="customer-chat-suggestions" id="customerChatSuggestionsWrap">
+            <div class="customer-chat-suggestions-title">Câu hỏi thường gặp</div>
+            <div class="customer-chat-suggestions-list" id="customerChatSuggestions" aria-label="Gợi ý câu hỏi thường gặp"></div>
+        </div>
 
         <form id="customerChatForm" autocomplete="off">
             <button id="customerChatFocusInput" class="customer-chat-input-action" type="button" aria-label="Tập trung vào ô nhập tin nhắn">
