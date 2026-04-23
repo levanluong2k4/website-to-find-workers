@@ -1,6 +1,10 @@
 import { callApi, getCurrentUser, showToast } from '../api.js';
 import { createReviewMediaController } from './review-media.js';
 import { setupReviewLightbox } from '../review-lightbox.js';
+import {
+    selectOnlineGateway as selectSharedOnlineGateway,
+    showCashPaymentInstructions as showSharedCashPaymentInstructions,
+} from './booking-actions-shared.js';
 
 const user = getCurrentUser();
 if (!user || !['customer', 'admin'].includes(user.role)) {
@@ -696,20 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hydrateReviewMedia(booking);
         attachActionListeners();
     };
-    const showCashPaymentInstructions = async () => {
-        await Swal.fire({
-            title: 'Thanh toán tiền mặt',
-            html: `
-                <div style="text-align:left; line-height:1.65;">
-                    <p style="margin-bottom:0.75rem;">Thợ đã chốt đơn này với phương thức <strong>tiền mặt</strong>.</p>
-                    <p style="margin-bottom:0.75rem;">Bạn thanh toán trực tiếp cho thợ sau khi kiểm tra kết quả sửa chữa.</p>
-                    <p style="margin:0;">Nếu đơn chưa hoàn tất ngay, vui lòng liên hệ thợ hoặc cửa hàng để được hỗ trợ đối soát.</p>
-                </div>
-            `,
-            icon: 'info',
-            confirmButtonText: 'Đã hiểu',
-        });
-    };
+    const showCashPaymentInstructions = async () => showSharedCashPaymentInstructions({ swal: Swal });
     const syncBookingPaymentMethod = async (booking, paymentMethod) => {
         if (getBookingPaymentMethod(booking) === paymentMethod) {
             return booking;
@@ -744,22 +735,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return result.isConfirmed ? result.value : null;
     };
-    const selectOnlineGateway = async () => {
-        const gatewayOptions = buildOnlineGatewayOptions();
-        const gatewayKeys = Object.keys(gatewayOptions);
-        const result = await Swal.fire({
-            title: 'Chọn cổng thanh toán',
-            input: 'radio',
-            inputOptions: gatewayOptions,
-            inputValue: gatewayKeys[0] || 'momo',
-            inputValidator: (value) => (!value ? 'Vui lòng chọn ví hoặc cổng thanh toán.' : undefined),
-            showCancelButton: true,
-            confirmButtonText: 'Mở thanh toán',
-            cancelButtonText: 'Quay lại',
-        });
-
-        return result.isConfirmed ? result.value : null;
-    };
+    const selectOnlineGateway = async (booking) => selectSharedOnlineGateway({
+        booking,
+        isLocalPaymentSandbox,
+        swal: Swal,
+    });
     const startOnlinePayment = async (booking, gateway) => {
         const isMomoAtmPayment = gateway === 'momo_atm';
         const result = await Swal.fire({
@@ -796,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const selectedGateway = await selectOnlineGateway();
+        const selectedGateway = await selectOnlineGateway(booking);
         if (!selectedGateway) {
             return;
         }

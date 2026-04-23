@@ -266,6 +266,39 @@
     line-height: 1.6;
   }
 
+  .featured-worker-book-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.9rem 1.35rem;
+    border: none;
+    border-radius: 6px;
+    background: #0ea5e9;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    box-shadow: 0 8px 24px -6px rgba(14, 165, 233, 0.4);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .featured-worker-book-btn:hover {
+    background: #0284c7;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -8px rgba(14, 165, 233, 0.6);
+  }
+
+  .featured-worker-book-btn__icon {
+    display: inline-flex;
+    transition: transform 0.3s ease;
+  }
+
+  .featured-worker-book-btn:hover .featured-worker-book-btn__icon {
+    transform: translateX(4px);
+  }
+
   @keyframes hero-review-marquee {
     from {
       transform: translate3d(0, 0, 0);
@@ -783,58 +816,104 @@
     <div class="flex items-end justify-between mb-10">
       <div>
         <h2 class="text-3xl font-bold text-slate-900">Thợ Nổi Bật</h2>
-        <p class="text-slate-500 mt-2">Những chuyên gia được đánh giá cao nhất trong khu vực</p>
+        <p class="text-slate-500 mt-2">Hồ sơ thật đang hoạt động và nhận việc trên hệ thống</p>
       </div>
       <a class="text-primary-dark font-semibold flex items-center gap-1 hover:underline underline-offset-4" href="/customer/search">
         Xem tất cả <span class="material-symbols-outlined text-sm">arrow_forward</span>
       </a>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      @php
-      $technicians = [
-      ['Nguyễn Văn An','Điện tử - Điện lạnh','8','120','4.9','https://lh3.googleusercontent.com/aida-public/AB6AXuCHlxvrKvXJRdgRmIN9C2gjJg1qrwrCqxFDxa2bJPdZdgcZdPhP2IAnIyD8EJbJQsufm7Hwx9GJEd__kWt-GI5kvbsrfDCj0RCJgNCXbmbEKfh3ppogjQbvjtwhPgxpxXRB-itoy8hfTGUdEOzaZlZ5DWdpLwRev5du1qe8YbUF2EhiYEfVe7w-ykXhGTKfid92jn3dFb8pyUuKukF-Q7HOIieNd9C8ixkDY8Djqc2A_0pp15e9lr4XOsYxJMP4oTTHneWTzDwYUtKF'],
-      ['Trần Thị Bình','Máy Lạnh - Tủ Lạnh','5','85','4.8','https://lh3.googleusercontent.com/aida-public/AB6AXuCZ6WPzDWa973i46Iti6WGzxatmssgABgRSSqC-Bq-Dg9PrkT3IemVoB5xMR0W8xtMgvpen_7iWNSZ60jEqetlvfgH79bfqqDetw3HyjFFL3SKiS8EBKTYV_IfyUUdyAssKz-Pe8GV5d5oCFwocnlXnhcN9jAAl6cix8iEJoZBkyb4e3uzX-EPXEcDDl_zcf5sb_UK3kljwBA3c7SpEU_IN8ephehzOc17So5u9TKGz1zW2LWZPxI3oU6Rdy7XamJK6XiMuzVWevocy'],
-      ['Lê Văn Cường','Điện Dân Dụng','10','200','5.0','https://lh3.googleusercontent.com/aida-public/AB6AXuBurEaN2EYTRrzaP5wlyCNx92vnsNABdb2VEmrH96QumpgHLW20UC1sn1-_gETRzNWmtDkaR8VHUH_d1nRMb7dAdHBCBsC8vQ-hXpMRDR6nZNLxLK30IedFWT-3HgwUfDnf2QO3d5gl2hUcHSoYdSRR9gmnWU2mjYtouypzW-zjkWan5Xj9ncctCPPOvaQxhxXZ5M3qs7l7cMIYkJDizcJg0Uq6umLx51rSyIXiy-59kz5UMjfH5h6tX_QQDw1lH9wEH86vNvITx3hg'],
-      ];
-      @endphp
-      @foreach($technicians as [$name,$specialty,$years,$jobs,$rating,$img])
+      @forelse(($featuredWorkers ?? collect()) as $worker)
       <div class="bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
         <div class="h-64 overflow-hidden relative">
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
-          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="{{ $img }}" alt="{{ $name }}" />
+          <img class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" src="{{ $worker['avatar_url'] }}" alt="{{ $worker['name'] }}" onerror="this.onerror=null;this.src='/assets/images/worker2.png';" />
           <div class="absolute bottom-4 left-4 z-20">
-            <span class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">{{ $specialty }}</span>
+            <span class="bg-primary text-slate-900 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">{{ $worker['specialty_label'] }}</span>
           </div>
         </div>
         <div class="p-6">
           <div class="flex justify-between items-start mb-3">
-            <h3 class="text-xl font-bold text-slate-900">{{ $name }}</h3>
+            <h3 class="text-xl font-bold text-slate-900">{{ $worker['name'] }}</h3>
             <div class="flex items-center gap-1 text-yellow-500">
               <span class="material-symbols-outlined text-sm">star</span>
-              <span class="text-sm font-bold">{{ $rating }}</span>
+              <span class="text-sm font-bold">{{ $worker['rating_label'] }}</span>
             </div>
           </div>
           <div class="space-y-2 mb-6">
             <div class="flex items-center gap-2 text-slate-500 text-sm">
               <span class="material-symbols-outlined text-base">work_history</span>
-              <span>{{ $years }} năm kinh nghiệm</span>
+              <span>{{ $worker['experience_label'] }}</span>
             </div>
             <div class="flex items-center gap-2 text-slate-500 text-sm">
               <span class="material-symbols-outlined text-base">check_circle</span>
-              <span>Đã hoàn thành {{ $jobs }}+ công việc</span>
+              <span>{{ $worker['completed_jobs_label'] }}</span>
             </div>
           </div>
-          <a href="/customer/search" class="w-full bg-slate-100 hover:bg-primary hover:text-slate-900 text-slate-900 font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
-            Xem chi tiết <span class="material-symbols-outlined text-sm">open_in_new</span>
-          </a>
+          <div class="mt-4 flex flex-col gap-3">
+            <a href="{{ $worker['profile_url'] }}" class="w-full bg-slate-100 hover:bg-primary hover:text-slate-900 text-slate-900 font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+              Xem chi tiết <span class="material-symbols-outlined text-sm">open_in_new</span>
+            </a>
+            <button type="button" class="featured-worker-book-btn" onclick="openWorkerBooking({{ $worker['id'] }})">
+              <span>Đặt lịch ngay</span>
+              <span class="featured-worker-book-btn__icon" aria-hidden="true">
+                <svg viewBox="0 0 16 19" xmlns="http://www.w3.org/2000/svg" style="width:0.9rem;height:1rem;fill:currentColor;">
+                  <path d="M7 18C7 18.5523 7.44772 19 8 19C8.55228 19 9 18.5523 9 18H7ZM8.70711 0.292893C8.31658 -0.0976311 7.68342 -0.0976311 7.29289 0.292893L0.928932 6.65685C0.538408 7.04738 0.538408 7.68054 0.928932 8.07107C1.31946 8.46159 1.95262 8.46159 2.34315 8.07107L8 2.41421L13.6569 8.07107C14.0474 8.46159 14.6805 8.46159 15.0711 8.07107C15.4616 7.68054 15.4616 7.04738 15.0711 6.65685L8.70711 0.292893ZM9 18L9 1H7L7 18H9Z"></path>
+                </svg>
+              </span>
+            </button>
+          </div>
         </div>
       </div>
-      @endforeach
+      @empty
+      <div class="md:col-span-2 lg:col-span-3 rounded-2xl border border-dashed border-slate-300 bg-white/80 px-6 py-10 text-center text-slate-500">
+        Chưa có thợ đang hoạt động để hiển thị. Vui lòng quay lại sau hoặc xem toàn bộ danh sách thợ.
+      </div>
+      @endforelse
     </div>
   </section>
 
   <!-- ===================== PRICING ===================== -->
   <section id="pricing" class="bg-slate-50 py-16 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="mb-10">
+        <h2 class="text-3xl font-black text-slate-900 mb-3">Bảng Giá Dịch Vụ Tham Khảo</h2>
+        <div class="flex items-center gap-3 p-4 bg-primary/20 rounded-xl border border-primary/40 max-w-2xl">
+          <span class="material-symbols-outlined text-primary-dark">info</span>
+          <p class="text-slate-600 text-sm">Giá hiển thị là mức thấp nhất từ các hướng xử lý đã có giá tham khảo trong hệ thống. Chi phí thực tế sẽ được xác nhận sau khi kiểm tra thiết bị.</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        @foreach(($pricingHighlights ?? collect()) as $pricingItem)
+        <div class="group flex flex-col bg-white p-6 rounded-2xl border border-slate-200 hover:border-primary-dark transition-all shadow-sm hover:shadow-xl">
+          <div class="flex justify-between items-start mb-6">
+            <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary-dark">
+              <span class="material-symbols-outlined text-2xl">{{ $pricingItem['icon'] }}</span>
+            </div>
+            <span class="bg-primary-dark text-white text-xs font-bold px-2 py-1 rounded uppercase">{{ $pricingItem['badge_label'] }}</span>
+          </div>
+          <h3 class="text-lg font-bold mb-2">{{ $pricingItem['name'] }}</h3>
+          <div class="flex items-baseline gap-1 mb-6">
+            <span class="text-3xl font-black text-primary-dark">{{ $pricingItem['price_label'] }}</span>
+            @if($pricingItem['price_value'] !== null)
+            <span class="text-sm font-bold text-slate-500">đ</span>
+            @endif
+          </div>
+          <ul class="space-y-3 mb-8 flex-1 text-sm text-slate-600">
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-primary-dark text-base">check_circle</span> Kiểm tra tận nhà</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-primary-dark text-base">check_circle</span> Linh kiện chính hãng</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-primary-dark text-base">check_circle</span> Báo giá theo hướng xử lý phù hợp</li>
+          </ul>
+          <button class="w-full bg-slate-100 group-hover:bg-primary-dark group-hover:text-white py-3 rounded-xl font-bold transition-colors" onclick="openBookingModal('{{ $pricingItem['booking_name'] }}')">
+            Liên hệ ngay
+          </button>
+        </div>
+        @endforeach
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing-legacy" class="hidden">
     <div class="max-w-7xl mx-auto">
       <div class="mb-10">
         <h2 class="text-3xl font-black text-slate-900 mb-3">Bảng Giá Dịch Vụ Tham Khảo</h2>
@@ -966,6 +1045,23 @@
     }
     const targetUrl = new URL('{{ route('customer.booking') }}', window.location.origin);
     if (serviceName) targetUrl.searchParams.set('service_name', serviceName);
+    window.location.href = targetUrl.toString();
+  }
+
+  function openWorkerBooking(workerId) {
+    const normalizedWorkerId = Number(workerId);
+
+    if (window.BookingWizardModal?.open) {
+      window.BookingWizardModal.open({
+        workerId: normalizedWorkerId
+      });
+      return;
+    }
+
+    const targetUrl = new URL('{{ route('customer.booking') }}', window.location.origin);
+    if (Number.isFinite(normalizedWorkerId) && normalizedWorkerId > 0) {
+      targetUrl.searchParams.set('worker_id', String(normalizedWorkerId));
+    }
     window.location.href = targetUrl.toString();
   }
 

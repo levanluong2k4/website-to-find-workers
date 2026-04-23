@@ -884,7 +884,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return result.isConfirmed ? result.value : null;
     };
 
-    const selectOnlineGateway = async () => selectSharedOnlineGateway({
+    const selectOnlineGateway = async (booking) => selectSharedOnlineGateway({
+        booking,
         isLocalPaymentSandbox,
         swal: Swal,
     });
@@ -924,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const selectedGateway = await selectOnlineGateway();
+        const selectedGateway = await selectOnlineGateway(booking);
         if (!selectedGateway) {
             return;
         }
