@@ -431,14 +431,19 @@ tailwind.config = {
 <p class="tw-text-xs tw-text-slate-500">Chatbot vÃ  trang khÃ¡ch sáº½ dÃ¹ng sá»‘ nÃ y khi há»i hotline.</p>
 <div class="tfc-field-error" data-error-for="store_hotline"></div>
 </div>
-<div class="tw-space-y-2">
-<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Khung giá» má»Ÿ cá»­a</label>
-<div class="tw-relative group">
-<span class="material-symbols-outlined tw-absolute tw-left-4 tw-top-1/2 tw--translate-y-1/2 tw-text-slate-400 group-focus-within:tw-text-primary tw-transition-colors">schedule</span>
-<input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="text" value="" id="travelFeeStoreOpeningHours" placeholder="VD: Thá»© 2 - CN: 07:00 - 20:00"/>
+<div class="tw-space-y-3 md:tw-col-span-2">
+<div class="tw-flex tw-items-center tw-justify-between tw-gap-4">
+<div>
+<label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Khung giờ khách có thể đặt</label>
+<p class="tw-text-xs tw-text-slate-500 tw-mt-1">Danh sách này sẽ hiển thị cho khách khi đặt đơn. Bạn có thể chỉnh sửa, thêm hoặc xóa từng khung giờ.</p>
 </div>
-<p class="tw-text-xs tw-text-slate-500">DÃ¹ng cho chatbot vÃ  cÃ¡c thÃ´ng bÃ¡o giá» nháº­n Ä‘Æ¡n táº¡i cá»­a hÃ ng.</p>
-<div class="tfc-field-error" data-error-for="store_opening_hours"></div>
+<button id="btnAddBookingTimeSlot" type="button" class="tw-inline-flex tw-items-center tw-gap-2 tw-px-4 tw-py-2 tw-rounded-full tw-bg-primary/10 tw-text-primary tw-text-sm tw-font-bold hover:tw-bg-primary/15 tw-transition-colors">
+<span class="material-symbols-outlined tw-text-base">add_circle</span>
+Thêm khung giờ
+</button>
+</div>
+<div id="travelFeeBookingSlotList" class="tw-space-y-3"></div>
+<div class="tfc-field-error" data-error-for="booking_time_slots"></div>
 </div>
 <div class="tw-space-y-2">
 <label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Pháº¡m vi phá»¥c vá»¥ tá»‘i Ä‘a (km)</label>

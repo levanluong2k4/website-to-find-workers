@@ -46,6 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
         detailComplaint: document.getElementById('detailComplaint'),
         detailComplaintLink: document.getElementById('detailComplaintLink'),
         detailPayments: document.getElementById('detailPaymentsBody'),
+        detailReadonlyNotice: document.getElementById('detailReadonlyNotice'),
+        detailActionsGrid: document.getElementById('detailActionsGrid'),
         detailStatusSelect: document.getElementById('detailStatusSelect'),
         detailCancelReason: document.getElementById('detailCancelReasonSelect'),
         detailCancelNote: document.getElementById('detailCancelNoteInput'),
@@ -56,14 +58,23 @@ document.addEventListener('DOMContentLoaded', () => {
         detailPartCost: document.getElementById('detailPartCost'),
         detailTravelCost: document.getElementById('detailTravelCost'),
         detailTransportCost: document.getElementById('detailTransportCost'),
+        detailPartCatalogSearch: document.getElementById('detailPartCatalogSearch'),
+        detailPartCatalogSuggestions: document.getElementById('detailPartCatalogSuggestions'),
+        detailPartCatalogResults: document.getElementById('detailPartCatalogResults'),
+        detailPartCatalogStatus: document.getElementById('detailPartCatalogStatus'),
+        detailPartItemsEditor: document.getElementById('detailPartItemsEditor'),
         detailPartNote: document.getElementById('detailPartNote'),
         detailPaymentMethod: document.getElementById('detailPaymentMethodSelect'),
         btnUpdateStatus: document.getElementById('btnUpdateBookingStatus'),
         btnAssignWorker: document.getElementById('btnAssignWorker'),
         btnReschedule: document.getElementById('btnRescheduleBooking'),
         btnUpdateCosts: document.getElementById('btnUpdateBookingCost'),
+        btnAddBookingPartRow: document.getElementById('btnAddBookingPartRow'),
+        btnAddManualBookingPartRow: document.getElementById('btnAddManualBookingPartRow'),
         btnUpdatePaymentMethod: document.getElementById('btnUpdatePaymentMethod'),
         btnConfirmCashPayment: document.getElementById('btnConfirmCashPayment'),
+        btnToggleMoreFilters: document.getElementById('btnToggleMoreFilters'),
+        moreFiltersSection: document.getElementById('moreFiltersSection'),
     };
 
     if (!refs.tableBody) {
@@ -114,6 +125,17 @@ document.addEventListener('DOMContentLoaded', () => {
         selected: new Set(),
         activeBookingId: null,
         detail: null,
+        partCatalog: {
+            items: [],
+            cache: new Map(),
+            fallbackItems: [],
+            fallbackCache: new Map(),
+            selectedIds: new Set(),
+            activeSuggestionIndex: -1,
+            requestId: 0,
+            searchRequestId: 0,
+            serviceIds: [],
+        },
         searchTimer: null,
         loadingList: false,
         loadingDetail: false,
@@ -175,6 +197,911 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const normalized = Number(String(value).replaceAll(',', '').trim());
         return Number.isFinite(normalized) ? Math.max(0, normalized) : 0;
+    };
+
+    const parseInteger = (value, minimum = 0, fallback = minimum) => {
+        if (value === null || value === undefined || value === '') {
+            return fallback;
+        }
+
+        const normalized = Number(String(value).trim());
+        if (!Number.isFinite(normalized)) {
+            return fallback;
+        }
+
+        return Math.max(minimum, Math.round(normalized));
+    };
+
+    const completedBookingStatuses = new Set(['da_xong', 'hoan_thanh']);
+    const isCompletedBookingStatus = (status) => completedBookingStatuses.has(String(status || '').trim());
+    const isLockedBookingDetail = (detail = state.detail) => isCompletedBookingStatus(detail?.status_key || detail?.status || detail?.trang_thai);
+
+    const setMutationLockState = (control, isLocked) => {
+        if (!control) {
+            return;
+        }
+
+        control.dataset.mutationLocked = isLocked ? '1' : '0';
+        control.disabled = Boolean(isLocked);
+    };
+
+    const buildWarrantyOptionsMarkup = (value = '', { placeholder = 'Bao hanh' } = {}) => {
+        const normalizedValue = value === '' ? '' : Math.max(0, Math.trunc(parseAmount(value)));
+        const presets = ['', 0, 1, 3, 6, 12, 24];
+
+        if (normalizedValue !== '' && !presets.includes(normalizedValue)) {
+            presets.push(normalizedValue);
+        }
+
+        return presets
+            .filter((option, index, array) => array.indexOf(option) === index)
+            .sort((left, right) => {
+                if (left === '') {
+                    return -1;
+                }
+
+                if (right === '') {
+                    return 1;
+                }
+
+                return Number(left) - Number(right);
+            })
+            .map((option) => {
+                const selected = option === normalizedValue ? 'selected' : '';
+                const label = option === ''
+                    ? placeholder
+                    : option === 0
+                        ? '0 Thang'
+                        : `${option} Thang`;
+
+                return `<option value="${option}" ${selected}>${label}</option>`;
+            })
+            .join('');
+    };
+
+    const buildDetailPartItem = (item = {}) => {
+        const quantity = parseInteger(item?.so_luong, 1, 1);
+        const total = parseAmount(item?.so_tien);
+        const unitPrice = parseAmount(item?.don_gia);
+        const warrantyMonths = item?.bao_hanh_thang === null || item?.bao_hanh_thang === undefined || item?.bao_hanh_thang === ''
+            ? null
+            : parseInteger(item?.bao_hanh_thang, 0, 0);
+
+        return {
+            noi_dung: String(item?.noi_dung || '').trim(),
+            so_luong: quantity,
+            don_gia: unitPrice > 0 ? unitPrice : (quantity > 0 ? total / quantity : total),
+            so_tien: total > 0 ? total : (unitPrice * quantity),
+            bao_hanh_thang: warrantyMonths,
+        };
+    };
+
+    const buildDetailPartRowMarkup = (item = {}) => {
+        const normalizedItem = buildDetailPartItem(item);
+
+        return `
+            <div class="admin-orders-part-row">
+                <label>
+                    <span>Nội dung linh kiện</span>
+                    <input type="text" class="form-control js-booking-part-name" maxlength="255" value="${escapeHtml(normalizedItem.noi_dung)}" placeholder="Ví dụ: Tụ quạt dàn nóng">
+                </label>
+                <label>
+                    <span>Số lượng</span>
+                    <input type="number" class="form-control js-booking-part-qty" min="1" max="999" step="1" value="${escapeHtml(normalizedItem.so_luong)}">
+                </label>
+                <label>
+                    <span>Đơn giá</span>
+                    <input type="number" class="form-control js-booking-part-price" min="0" step="1000" value="${escapeHtml(Math.round(normalizedItem.don_gia || 0))}">
+                </label>
+                <label>
+                    <span>Bảo hành</span>
+                    <input type="number" class="form-control js-booking-part-warranty" min="0" max="60" step="1" placeholder="Tháng" value="${escapeHtml(normalizedItem.bao_hanh_thang ?? '')}">
+                </label>
+                <div class="admin-orders-part-row__meta">
+                    <span>Tạm tính</span>
+                    <strong class="js-booking-part-total" data-value="${escapeHtml(normalizedItem.so_tien)}">${escapeHtml(formatMoney(normalizedItem.so_tien))}</strong>
+                </div>
+                <button type="button" class="admin-orders-part-row__remove js-remove-booking-part-row">Xóa</button>
+            </div>
+        `;
+    };
+
+    const collectDetailPartItems = () => {
+        if (!refs.detailPartItemsEditor) {
+            return [];
+        }
+
+        return Array.from(refs.detailPartItemsEditor.querySelectorAll('.admin-orders-part-row'))
+            .map((row) => buildDetailPartItem({
+                noi_dung: row.querySelector('.js-booking-part-name')?.value || '',
+                so_luong: row.querySelector('.js-booking-part-qty')?.value || 1,
+                don_gia: row.querySelector('.js-booking-part-price')?.value || 0,
+                bao_hanh_thang: row.querySelector('.js-booking-part-warranty')?.value || null,
+                so_tien: row.querySelector('.js-booking-part-total')?.dataset.value || 0,
+            }))
+            .filter((item) => item.noi_dung !== '' || item.so_tien > 0 || item.don_gia > 0);
+    };
+
+    const syncDetailPartCost = () => {
+        if (!refs.detailPartItemsEditor) {
+            return 0;
+        }
+
+        let grandTotal = 0;
+
+        Array.from(refs.detailPartItemsEditor.querySelectorAll('.admin-orders-part-row')).forEach((row) => {
+            const quantityInput = row.querySelector('.js-booking-part-qty');
+            const priceInput = row.querySelector('.js-booking-part-price');
+            const warrantyInput = row.querySelector('.js-booking-part-warranty');
+            const totalNode = row.querySelector('.js-booking-part-total');
+
+            const quantity = parseInteger(quantityInput?.value, 1, 1);
+            const unitPrice = parseAmount(priceInput?.value);
+            const warrantyMonths = warrantyInput?.value === '' ? '' : String(parseInteger(warrantyInput?.value, 0, 0));
+            const lineTotal = quantity * unitPrice;
+
+            if (quantityInput) {
+                quantityInput.value = String(quantity);
+            }
+            if (priceInput) {
+                priceInput.value = unitPrice > 0 ? String(Math.round(unitPrice)) : '0';
+            }
+            if (warrantyInput) {
+                warrantyInput.value = warrantyMonths;
+            }
+            if (totalNode) {
+                totalNode.dataset.value = String(lineTotal);
+                totalNode.textContent = formatMoney(lineTotal);
+            }
+
+            grandTotal += lineTotal;
+        });
+
+        if (refs.detailPartCost) {
+            refs.detailPartCost.value = String(Math.round(grandTotal));
+        }
+
+        return grandTotal;
+    };
+
+    const renderDetailPartItems = (items = []) => {
+        if (!refs.detailPartItemsEditor) {
+            return;
+        }
+
+        const normalizedItems = Array.isArray(items)
+            ? items
+                .map(buildDetailPartItem)
+                .filter((item) => item.noi_dung !== '' || item.so_tien > 0 || item.don_gia > 0)
+            : [];
+
+        if (!normalizedItems.length) {
+            refs.detailPartItemsEditor.innerHTML = `
+                <div class="admin-orders-part-editor__empty">
+                    Chưa có dòng linh kiện. Nhấn "Thêm linh kiện" để bổ sung.
+                </div>
+            `;
+            if (refs.detailPartCost) {
+                refs.detailPartCost.value = '0';
+            }
+            return;
+        }
+
+        refs.detailPartItemsEditor.innerHTML = normalizedItems.map((item) => buildDetailPartRowMarkup(item)).join('');
+        syncDetailPartCost();
+    };
+
+    const getAdminPartCatalogKeyword = () => String(refs.detailPartCatalogSearch?.value || '').trim().toLocaleLowerCase('vi-VN');
+    const getAdminPartCatalogItemName = (item) => String(item?.ten_linh_kien || '').trim();
+    const getAdminPartCatalogServiceName = (item) => String(item?.service_name || item?.dich_vu?.ten_dich_vu || state.detail?.service_label || 'Danh muc').trim();
+
+    const normalizeAdminPartItem = (item = {}) => {
+        const quantity = parseInteger(item?.so_luong, 1, 1);
+        const total = parseAmount(item?.so_tien);
+        const unitPrice = parseAmount(item?.don_gia);
+        const warrantyMonths = item?.bao_hanh_thang === null || item?.bao_hanh_thang === undefined || item?.bao_hanh_thang === ''
+            ? null
+            : parseInteger(item?.bao_hanh_thang, 0, 0);
+        const catalogPartId = parseInteger(item?.linh_kien_id, 0, 0);
+        const serviceId = parseInteger(item?.dich_vu_id, 0, 0);
+
+        return {
+            linh_kien_id: catalogPartId > 0 ? catalogPartId : null,
+            dich_vu_id: serviceId > 0 ? serviceId : null,
+            service_name: String(item?.service_name || item?.dich_vu?.ten_dich_vu || '').trim(),
+            hinh_anh: String(item?.hinh_anh || '').trim(),
+            noi_dung: String(item?.noi_dung || item?.ten_linh_kien || '').trim(),
+            so_luong: quantity,
+            don_gia: unitPrice > 0 ? unitPrice : (quantity > 0 ? total / quantity : total),
+            so_tien: total > 0 ? total : (unitPrice * quantity),
+            bao_hanh_thang: warrantyMonths,
+        };
+    };
+
+    const buildAdminPartRowMarkup = (item = {}) => {
+        const normalizedItem = normalizeAdminPartItem(item);
+        const isCatalogItem = normalizedItem.linh_kien_id !== null;
+        const amountValue = normalizedItem.don_gia > 0 ? normalizedItem.don_gia : '';
+        const quantityValue = normalizedItem.so_luong > 0 ? normalizedItem.so_luong : 1;
+        const warrantyValue = normalizedItem.bao_hanh_thang ?? '';
+        const metaText = normalizedItem.service_name || (isCatalogItem ? 'Tu danh muc linh kien' : 'Tu nhap thu cong');
+
+        return `
+            <div class="dispatch-line-item dispatch-pricing-v2-part-card admin-orders-part-row" data-line-type="part" data-catalog-part-id="${escapeHtml(normalizedItem.linh_kien_id || '')}">
+                <input type="hidden" class="js-line-part-id" value="${escapeHtml(normalizedItem.linh_kien_id || '')}">
+                <input type="hidden" class="js-line-service-id" value="${escapeHtml(normalizedItem.dich_vu_id || '')}">
+                <input type="hidden" class="js-line-image" value="${escapeHtml(normalizedItem.hinh_anh || '')}">
+                <input type="hidden" class="js-line-service-name" value="${escapeHtml(normalizedItem.service_name || '')}">
+                <div class="dispatch-pricing-v2-part-card-inner">
+                    <div class="dispatch-pricing-v2-part-main">
+                        <div class="dispatch-pricing-v2-field-label">Ten linh kien / Vat tu</div>
+                        <input type="text" class="dispatch-pricing-v2-input-dark js-line-description dispatch-pricing-v2-inline-input dispatch-pricing-v2-part-title" value="${escapeHtml(normalizedItem.noi_dung)}" placeholder="Bo mach chu Samsung" ${isCatalogItem ? 'readonly' : ''}>
+                        <div class="dispatch-pricing-v2-part-meta">${escapeHtml(metaText)}</div>
+                    </div>
+                    <div class="dispatch-pricing-v2-part-col">
+                        <div class="dispatch-pricing-v2-field-label">Don gia (d)</div>
+                        <input type="number" class="dispatch-pricing-v2-input-dark js-line-amount dispatch-pricing-v2-inline-input dispatch-pricing-v2-inline-input--price" value="${escapeHtml(amountValue)}" placeholder="650000" ${isCatalogItem ? 'readonly' : ''}>
+                    </div>
+                    <div class="dispatch-pricing-v2-part-col">
+                        <div class="dispatch-pricing-v2-field-label">So luong</div>
+                        <div class="dispatch-pricing-v2-stepper">
+                            <button type="button" class="dispatch-pricing-v2-stepper-btn js-quantity-step" data-step="-1" aria-label="Giam so luong">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">remove</span>
+                            </button>
+                            <input type="number" class="dispatch-pricing-v2-input-dark js-line-quantity dispatch-pricing-v2-inline-input" min="1" step="1" value="${escapeHtml(quantityValue)}" placeholder="1">
+                            <button type="button" class="dispatch-pricing-v2-stepper-btn js-quantity-step" data-step="1" aria-label="Tang so luong">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">add</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="dispatch-pricing-v2-part-col">
+                        <div class="dispatch-pricing-v2-field-label">Bao hanh</div>
+                        <select class="js-line-warranty dispatch-pricing-v2-select">
+                            ${buildWarrantyOptionsMarkup(warrantyValue)}
+                        </select>
+                    </div>
+                    <button type="button" class="dispatch-pricing-v2-part-remove dispatch-line-item__remove js-remove-booking-part-row" aria-label="Xoa dong">
+                        <span class="material-symbols-outlined" style="font-size: 14px;">delete</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    };
+
+    const collectAdminPartItems = () => {
+        if (!refs.detailPartItemsEditor) {
+            return [];
+        }
+
+        return Array.from(refs.detailPartItemsEditor.querySelectorAll('.dispatch-line-item'))
+            .map((row) => normalizeAdminPartItem({
+                linh_kien_id: row.querySelector('.js-line-part-id')?.value || '',
+                dich_vu_id: row.querySelector('.js-line-service-id')?.value || '',
+                service_name: row.querySelector('.js-line-service-name')?.value || '',
+                hinh_anh: row.querySelector('.js-line-image')?.value || '',
+                noi_dung: row.querySelector('.js-line-description')?.value || '',
+                so_luong: row.querySelector('.js-line-quantity')?.value || 1,
+                don_gia: row.querySelector('.js-line-amount')?.value || 0,
+                bao_hanh_thang: row.querySelector('.js-line-warranty')?.value || null,
+                so_tien: parseAmount(row.querySelector('.js-line-amount')?.value || 0) * Math.max(1, parseInteger(row.querySelector('.js-line-quantity')?.value || 1, 1, 1)),
+            }))
+            .filter((item) => item.noi_dung !== '' || item.so_tien > 0 || item.don_gia > 0);
+    };
+
+    const syncAdminPartCost = () => {
+        if (!refs.detailPartItemsEditor) {
+            return 0;
+        }
+
+        let grandTotal = 0;
+
+        Array.from(refs.detailPartItemsEditor.querySelectorAll('.dispatch-line-item')).forEach((row) => {
+            const quantityInput = row.querySelector('.js-line-quantity');
+            const priceInput = row.querySelector('.js-line-amount');
+            const warrantyInput = row.querySelector('.js-line-warranty');
+
+            const quantity = parseInteger(quantityInput?.value, 1, 1);
+            const unitPrice = parseAmount(priceInput?.value);
+            const warrantyMonths = warrantyInput?.value === '' ? '' : String(parseInteger(warrantyInput?.value, 0, 0));
+            const lineTotal = quantity * unitPrice;
+
+            if (quantityInput) {
+                quantityInput.value = String(quantity);
+            }
+            if (priceInput) {
+                priceInput.value = unitPrice > 0 ? String(Math.round(unitPrice)) : '0';
+            }
+            if (warrantyInput) {
+                warrantyInput.value = warrantyMonths;
+            }
+
+            grandTotal += lineTotal;
+        });
+
+        if (refs.detailPartCost) {
+            refs.detailPartCost.value = String(Math.round(grandTotal));
+        }
+
+        return grandTotal;
+    };
+
+    const renderAdminPartItems = (items = []) => {
+        if (!refs.detailPartItemsEditor) {
+            return;
+        }
+
+        refs.detailPartItemsEditor.classList.add('dispatch-pricing-v2-parts-list');
+
+        const normalizedItems = Array.isArray(items)
+            ? items
+                .map(normalizeAdminPartItem)
+                .filter((item) => item.noi_dung !== '' || item.so_tien > 0 || item.don_gia > 0)
+            : [];
+
+        if (!normalizedItems.length) {
+            refs.detailPartItemsEditor.innerHTML = `
+                <div class="admin-orders-part-editor__empty dispatch-part-suggestion-empty">
+                    Chua co dong linh kien. Chon o danh muc ben tren hoac bam "Them tay".
+                </div>
+            `;
+            if (refs.detailPartCost) {
+                refs.detailPartCost.value = '0';
+            }
+            syncAdminPartEditorLock();
+            return;
+        }
+
+        refs.detailPartItemsEditor.innerHTML = normalizedItems.map((item) => buildAdminPartRowMarkup(item)).join('');
+        syncAdminPartCost();
+        syncAdminPartEditorLock();
+    };
+
+    const updateAdminPartAddButtonState = () => {
+        if (!refs.btnAddBookingPartRow) {
+            return;
+        }
+
+        const isLocked = isLockedBookingDetail();
+        const selectedCount = state.partCatalog.selectedIds.size;
+        refs.btnAddBookingPartRow.disabled = isLocked || selectedCount === 0;
+        refs.btnAddBookingPartRow.innerHTML = `
+            <span class="material-symbols-outlined">playlist_add</span>
+            ${selectedCount > 0 ? `Them ${selectedCount} linh kien` : 'Them linh kien da chon'}
+        `;
+
+        if (refs.btnAddManualBookingPartRow) {
+            refs.btnAddManualBookingPartRow.disabled = isLocked;
+            refs.btnAddManualBookingPartRow.innerHTML = `
+                <span class="material-symbols-outlined">edit_square</span>
+                Them tay
+            `;
+        }
+    };
+
+    const syncAdminPartEditorLock = (isLocked = isLockedBookingDetail()) => {
+        if (!refs.detailPartItemsEditor) {
+            return;
+        }
+
+        refs.detailPartItemsEditor.classList.toggle('is-readonly', isLocked);
+        refs.detailPartItemsEditor
+            .querySelectorAll('.js-line-description, .js-line-amount, .js-line-quantity, .js-line-warranty, .js-remove-booking-part-row, .js-quantity-step')
+            .forEach((control) => {
+                setMutationLockState(control, isLocked);
+            });
+    };
+
+    const syncDetailMutationLock = (detail = state.detail) => {
+        const isLocked = isLockedBookingDetail(detail);
+        if (refs.detailReadonlyNotice) {
+            refs.detailReadonlyNotice.classList.toggle('hidden', !isLocked);
+        }
+        if (refs.detailActionsGrid) {
+            refs.detailActionsGrid.classList.toggle('hidden', isLocked);
+        }
+
+        [
+            refs.detailStatusSelect,
+            refs.detailCancelReason,
+            refs.detailCancelNote,
+            refs.detailWorkerSelect,
+            refs.detailRescheduleDate,
+            refs.detailRescheduleSlot,
+            refs.detailLaborCost,
+            refs.detailPartCost,
+            refs.detailTravelCost,
+            refs.detailTransportCost,
+            refs.detailPartCatalogSearch,
+            refs.detailPartNote,
+            refs.detailPaymentMethod,
+            refs.btnUpdateStatus,
+            refs.btnAssignWorker,
+            refs.btnReschedule,
+            refs.btnUpdateCosts,
+            refs.btnUpdatePaymentMethod,
+            refs.btnConfirmCashPayment,
+        ].forEach((control) => setMutationLockState(control, isLocked));
+
+        syncAdminPartEditorLock(isLocked);
+        updateAdminPartAddButtonState();
+        if (isLocked) {
+            hideAdminPartCatalogSuggestions();
+        }
+
+        return isLocked;
+    };
+
+    const hydrateAdminPartCatalogCopy = () => {
+        const editorRoot = refs.btnAddBookingPartRow?.closest('.admin-orders-part-editor');
+        const editorTitle = editorRoot?.querySelector('.admin-orders-part-editor__head strong');
+        const editorCopy = editorRoot?.querySelector('.admin-orders-part-editor__head p');
+        const catalogRoot = refs.detailPartCatalogSearch?.closest('.admin-orders-part-catalog');
+        const catalogField = refs.detailPartCatalogSearch?.closest('.admin-orders-part-catalog__field');
+        const catalogLabel = catalogField?.querySelector('span');
+        const searchShell = refs.detailPartCatalogSearch?.closest('.admin-orders-part-catalog__search-shell');
+        const searchIcon = searchShell?.querySelector('.material-symbols-outlined');
+
+        editorRoot?.classList.add('dispatch-part-admin-surface');
+        catalogRoot?.classList.add('dispatch-part-catalog');
+        catalogField?.classList.add('dispatch-part-catalog__field');
+        searchShell?.classList.add('dispatch-part-catalog__search-shell');
+        refs.detailPartCatalogSuggestions?.classList.add('dispatch-part-catalog__suggestions');
+        refs.detailPartCatalogStatus?.classList.add('dispatch-part-catalog__status');
+        refs.detailPartCatalogResults?.classList.add('dispatch-part-catalog__results');
+        refs.detailPartItemsEditor?.classList.add('dispatch-pricing-v2-parts-list');
+
+        if (searchIcon) {
+            searchIcon.classList.add('dispatch-pricing-v2-search-icon');
+        }
+
+        if (refs.btnAddBookingPartRow) {
+            refs.btnAddBookingPartRow.classList.remove('btn', 'btn-sm', 'btn-primary');
+            refs.btnAddBookingPartRow.classList.add('dispatch-pricing-v2-inline-add', 'dispatch-pricing-v2-inline-add--primary');
+        }
+
+        if (refs.btnAddManualBookingPartRow) {
+            refs.btnAddManualBookingPartRow.classList.remove('btn', 'btn-sm', 'btn-outline-secondary');
+            refs.btnAddManualBookingPartRow.classList.add('dispatch-pricing-v2-inline-add');
+        }
+
+        if (editorTitle) {
+            editorTitle.textContent = 'Linh kien thay the';
+        }
+
+        if (editorCopy) {
+            editorCopy.textContent = 'Lay lai dung picker linh kien cua worker: tim nhanh, goi y, chon nhieu va dua vao bang chi phi.';
+        }
+
+        if (catalogLabel) {
+            catalogLabel.textContent = 'Tim trong danh muc linh kien';
+        }
+
+        if (refs.detailPartCatalogSearch) {
+            refs.detailPartCatalogSearch.classList.add('dispatch-pricing-v2-searchbox');
+            refs.detailPartCatalogSearch.classList.remove('form-control');
+            refs.detailPartCatalogSearch.placeholder = 'Tim linh kien theo ten';
+        }
+
+        if (refs.detailPartCatalogStatus && !state.detail) {
+            refs.detailPartCatalogStatus.textContent = 'Mo chi tiet don de tai danh muc linh kien theo dich vu.';
+        }
+    };
+
+    const hideAdminPartCatalogSuggestions = () => {
+        state.partCatalog.activeSuggestionIndex = -1;
+
+        if (refs.detailPartCatalogSuggestions) {
+            refs.detailPartCatalogSuggestions.innerHTML = '';
+            refs.detailPartCatalogSuggestions.hidden = true;
+        }
+        refs.detailPartCatalogSearch?.setAttribute('aria-expanded', 'false');
+    };
+
+    const getVisibleAdminPartCatalogItems = () => {
+        const keyword = getAdminPartCatalogKeyword();
+        const filteredItems = state.partCatalog.items.filter((item) => getAdminPartCatalogItemName(item)
+            .toLocaleLowerCase('vi-VN')
+            .includes(keyword));
+
+        if (!keyword) {
+            return filteredItems;
+        }
+
+        return filteredItems.slice().sort((left, right) => {
+            const nameA = getAdminPartCatalogItemName(left).toLocaleLowerCase('vi-VN');
+            const nameB = getAdminPartCatalogItemName(right).toLocaleLowerCase('vi-VN');
+            const prefixDiff = Number(!nameA.startsWith(keyword)) - Number(!nameB.startsWith(keyword));
+
+            if (prefixDiff !== 0) {
+                return prefixDiff;
+            }
+
+            const matchDiff = nameA.indexOf(keyword) - nameB.indexOf(keyword);
+            if (matchDiff !== 0) {
+                return matchDiff;
+            }
+
+            const lengthDiff = nameA.length - nameB.length;
+            if (lengthDiff !== 0) {
+                return lengthDiff;
+            }
+
+            return nameA.localeCompare(nameB, 'vi');
+        });
+    };
+
+    const getKnownAdminPartCatalogItems = () => {
+        const itemMap = new Map();
+
+        [...state.partCatalog.items, ...state.partCatalog.fallbackItems].forEach((item) => {
+            const partId = parseInteger(item?.id, 0, 0);
+            if (partId > 0 && !itemMap.has(partId)) {
+                itemMap.set(partId, item);
+            }
+        });
+
+        return Array.from(itemMap.values());
+    };
+
+    const getSuggestionAdminPartCatalogItems = (visibleItems = getVisibleAdminPartCatalogItems()) => (
+        visibleItems.length ? visibleItems : state.partCatalog.fallbackItems
+    );
+
+    const hasLoadedAdminFallbackSuggestionsForKeyword = (keyword) => {
+        const cacheKey = String(keyword || '').trim().toLocaleLowerCase('vi-VN');
+        return cacheKey !== '' && state.partCatalog.fallbackCache.has(cacheKey);
+    };
+
+    const renderAdminPartCatalogSuggestions = (visibleItems = getSuggestionAdminPartCatalogItems()) => {
+        if (!refs.detailPartCatalogSuggestions) {
+            return;
+        }
+
+        const rawKeyword = String(refs.detailPartCatalogSearch?.value || '').trim();
+        const isLocked = isLockedBookingDetail();
+        if (!rawKeyword) {
+            hideAdminPartCatalogSuggestions();
+            return;
+        }
+
+        if (!visibleItems.length) {
+            refs.detailPartCatalogSuggestions.innerHTML = '<div class="dispatch-part-suggestion-empty">Khong tim thay linh kien phu hop voi tu khoa dang nhap.</div>';
+            refs.detailPartCatalogSuggestions.hidden = false;
+            refs.detailPartCatalogSearch?.setAttribute('aria-expanded', 'true');
+            return;
+        }
+
+        const suggestionItems = visibleItems.slice(0, 6);
+        if (state.partCatalog.activeSuggestionIndex >= suggestionItems.length) {
+            state.partCatalog.activeSuggestionIndex = suggestionItems.length - 1;
+        }
+
+        refs.detailPartCatalogSuggestions.innerHTML = suggestionItems.map((item, index) => {
+            const partId = parseInteger(item?.id, 0, 0);
+            const hasPrice = parseAmount(item?.gia) > 0;
+            const isSelected = state.partCatalog.selectedIds.has(partId);
+            const serviceName = getAdminPartCatalogServiceName(item);
+
+            return `
+                <button
+                    type="button"
+                    class="dispatch-part-suggestion js-admin-part-suggestion ${index === state.partCatalog.activeSuggestionIndex ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''} ${hasPrice ? '' : 'is-disabled'}"
+                    data-part-id="${partId}"
+                    data-index="${index}"
+                    ${hasPrice && !isLocked ? '' : 'disabled'}
+                >
+                    <span class="dispatch-part-suggestion__thumb">
+                        ${item?.hinh_anh
+                            ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}">`
+                            : '<span class="material-symbols-outlined">image_not_supported</span>'}
+                    </span>
+                    <span class="dispatch-part-suggestion__body">
+                        <span class="dispatch-part-suggestion__title">${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}</span>
+                        <span class="dispatch-part-suggestion__meta">${escapeHtml(serviceName)}</span>
+                    </span>
+                    <span class="dispatch-part-suggestion__aside">
+                        <strong class="dispatch-part-suggestion__price">${hasPrice ? formatMoney(item?.gia) : 'Chua co gia'}</strong>
+                        ${isSelected ? '<span class="dispatch-part-suggestion__badge">Da chon</span>' : ''}
+                    </span>
+                </button>
+            `;
+        }).join('');
+
+        refs.detailPartCatalogSuggestions.hidden = false;
+        refs.detailPartCatalogSearch?.setAttribute('aria-expanded', 'true');
+    };
+
+    const renderAdminPartCatalogResults = () => {
+        if (!refs.detailPartCatalogResults || !refs.detailPartCatalogStatus) {
+            return;
+        }
+
+        const rawKeyword = String(refs.detailPartCatalogSearch?.value || '').trim();
+        const isLocked = isLockedBookingDetail();
+        const visibleItems = getVisibleAdminPartCatalogItems();
+        const suggestionItems = getSuggestionAdminPartCatalogItems(visibleItems);
+        const isShowingFallback = !visibleItems.length && suggestionItems.length > 0;
+
+        if (!state.partCatalog.items.length) {
+            if (!state.detail) {
+                refs.detailPartCatalogStatus.textContent = 'Mo don de tai danh muc linh kien dung theo dich vu cua don.';
+            } else if (isShowingFallback) {
+                refs.detailPartCatalogStatus.textContent = `Dich vu cua don nay chua co linh kien mau. Dang goi y ${suggestionItems.length} linh kien tu toan bo kho theo tu khoa "${rawKeyword}".`;
+            } else if (rawKeyword && hasLoadedAdminFallbackSuggestionsForKeyword(rawKeyword)) {
+                refs.detailPartCatalogStatus.textContent = `Khong tim thay linh kien nao trong toan bo kho theo tu khoa "${rawKeyword}".`;
+            } else if (rawKeyword) {
+                refs.detailPartCatalogStatus.textContent = 'Dich vu cua don nay chua co linh kien mau. Tiep tuc nhap de tim tren toan bo kho linh kien.';
+            } else {
+                refs.detailPartCatalogStatus.textContent = 'Dich vu cua don nay chua co linh kien mau hoac chua dong bo danh muc.';
+            }
+
+            refs.detailPartCatalogResults.innerHTML = '';
+            renderAdminPartCatalogSuggestions(suggestionItems);
+            updateAdminPartAddButtonState();
+            return;
+        }
+
+        refs.detailPartCatalogStatus.textContent = visibleItems.length
+            ? `Dang hien thi ${visibleItems.length}/${state.partCatalog.items.length} linh kien phu hop voi dich vu cua don.`
+            : isShowingFallback
+                ? `Khong thay linh kien khop trong dich vu cua don. Dang goi y ${suggestionItems.length} linh kien tu toan bo kho theo tu khoa "${rawKeyword}".`
+                : hasLoadedAdminFallbackSuggestionsForKeyword(rawKeyword)
+                    ? `Khong tim thay linh kien khop voi tu khoa "${rawKeyword}" trong dich vu cua don hoac toan bo kho.`
+                    : `Khong tim thay linh kien khop voi tu khoa "${refs.detailPartCatalogSearch?.value || ''}".`;
+
+        refs.detailPartCatalogResults.innerHTML = visibleItems.map((item) => {
+            const partId = parseInteger(item?.id, 0, 0);
+            const hasPrice = parseAmount(item?.gia) > 0;
+            const isSelected = state.partCatalog.selectedIds.has(partId);
+            const serviceName = getAdminPartCatalogServiceName(item);
+
+            return `
+                <label class="dispatch-part-option ${isSelected ? 'is-selected' : ''} ${hasPrice && !isLocked ? '' : 'is-disabled'}">
+                    <input type="checkbox" class="dispatch-part-option__check js-admin-part-check" value="${partId}" ${isSelected ? 'checked' : ''} ${hasPrice && !isLocked ? '' : 'disabled'}>
+                    <div class="dispatch-part-option__thumb">
+                        ${item?.hinh_anh
+                            ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}">`
+                            : '<span class="material-symbols-outlined">image_not_supported</span>'}
+                    </div>
+                    <div class="dispatch-part-option__body">
+                        <div class="dispatch-part-option__title">${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}</div>
+                        <div class="dispatch-part-option__meta">${escapeHtml(serviceName)}</div>
+                    </div>
+                    <div class="dispatch-part-option__price">${hasPrice ? formatMoney(item?.gia) : 'Chua co gia'}</div>
+                </label>
+            `;
+        }).join('');
+
+        renderAdminPartCatalogSuggestions(suggestionItems);
+        updateAdminPartAddButtonState();
+    };
+
+    const loadAdminFallbackPartSuggestions = async () => {
+        const rawKeyword = String(refs.detailPartCatalogSearch?.value || '').trim();
+        const visibleItems = getVisibleAdminPartCatalogItems();
+
+        if (!rawKeyword || visibleItems.length) {
+            state.partCatalog.fallbackItems = [];
+            renderAdminPartCatalogResults();
+            return;
+        }
+
+        const cacheKey = rawKeyword.toLocaleLowerCase('vi-VN');
+        if (state.partCatalog.fallbackCache.has(cacheKey)) {
+            state.partCatalog.fallbackItems = state.partCatalog.fallbackCache.get(cacheKey) || [];
+            renderAdminPartCatalogResults();
+            return;
+        }
+
+        const requestId = state.partCatalog.searchRequestId;
+
+        try {
+            const params = new URLSearchParams({ keyword: rawKeyword });
+            const response = await callApi(`/linh-kien?${params.toString()}`, 'GET');
+
+            if (requestId !== state.partCatalog.searchRequestId) {
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(response.data?.message || 'Khong the tim linh kien.');
+            }
+
+            const items = Array.isArray(response.data) ? response.data : [];
+            state.partCatalog.fallbackItems = items;
+            state.partCatalog.fallbackCache.set(cacheKey, items);
+            renderAdminPartCatalogResults();
+        } catch {
+            if (requestId !== state.partCatalog.searchRequestId) {
+                return;
+            }
+
+            state.partCatalog.fallbackItems = [];
+            renderAdminPartCatalogResults();
+        }
+    };
+
+    const refreshAdminPartCatalogSearch = async () => {
+        state.partCatalog.searchRequestId += 1;
+        renderAdminPartCatalogResults();
+        await loadAdminFallbackPartSuggestions();
+    };
+
+    const setAdminPartCatalogSelectionState = (partId, isSelected) => {
+        if (partId <= 0 || isLockedBookingDetail()) {
+            return;
+        }
+
+        if (isSelected) {
+            state.partCatalog.selectedIds.add(partId);
+        } else {
+            state.partCatalog.selectedIds.delete(partId);
+        }
+
+        updateAdminPartAddButtonState();
+    };
+
+    const selectAdminPartCatalogSuggestion = (partId) => {
+        if (isLockedBookingDetail()) {
+            return;
+        }
+
+        const selectedItem = getKnownAdminPartCatalogItems().find((item) => parseInteger(item?.id, 0, 0) === partId);
+        if (!selectedItem || parseAmount(selectedItem?.gia) <= 0) {
+            return;
+        }
+
+        setAdminPartCatalogSelectionState(partId, true);
+        if (refs.detailPartCatalogSearch) {
+            refs.detailPartCatalogSearch.value = getAdminPartCatalogItemName(selectedItem);
+        }
+
+        state.partCatalog.activeSuggestionIndex = -1;
+        renderAdminPartCatalogResults();
+        hideAdminPartCatalogSuggestions();
+
+        const selectedCheckbox = refs.detailPartCatalogResults?.querySelector(`.js-admin-part-check[value="${partId}"]`);
+        selectedCheckbox?.closest('.dispatch-part-option')?.scrollIntoView({
+            block: 'nearest',
+            behavior: 'smooth',
+        });
+    };
+
+    const loadAdminPartCatalogForBooking = async (detail) => {
+        state.partCatalog.requestId += 1;
+        const requestId = state.partCatalog.requestId;
+        const serviceIds = Array.isArray(detail?.service_ids)
+            ? detail.service_ids.map((id) => parseInteger(id, 0, 0)).filter((id) => id > 0)
+            : [];
+
+        state.partCatalog.serviceIds = serviceIds;
+        state.partCatalog.selectedIds = new Set();
+        state.partCatalog.activeSuggestionIndex = -1;
+        state.partCatalog.fallbackItems = [];
+        state.partCatalog.searchRequestId += 1;
+
+        if (refs.detailPartCatalogSearch) {
+            refs.detailPartCatalogSearch.value = '';
+            refs.detailPartCatalogSearch.placeholder = 'Tim linh kien theo ten';
+        }
+
+        hideAdminPartCatalogSuggestions();
+        updateAdminPartAddButtonState();
+
+        if (!refs.detailPartCatalogStatus || !refs.detailPartCatalogResults) {
+            return;
+        }
+
+        if (!serviceIds.length) {
+            state.partCatalog.items = [];
+            renderAdminPartCatalogResults();
+            return;
+        }
+
+        const cacheKey = serviceIds.slice().sort((left, right) => left - right).join(',');
+        if (state.partCatalog.cache.has(cacheKey)) {
+            state.partCatalog.items = state.partCatalog.cache.get(cacheKey) || [];
+            renderAdminPartCatalogResults();
+            return;
+        }
+
+        refs.detailPartCatalogStatus.textContent = 'Dang tai danh muc linh kien theo dich vu cua don...';
+        refs.detailPartCatalogResults.innerHTML = '';
+
+        try {
+            const responses = await Promise.all(serviceIds.map((serviceId) => callApi(`/admin/linh-kien?service_id=${serviceId}`, 'GET')));
+
+            if (requestId !== state.partCatalog.requestId) {
+                return;
+            }
+
+            const itemMap = new Map();
+            responses.forEach((response) => {
+                const payload = ensureSuccess(response, 'Khong the tai danh muc linh kien');
+                const items = Array.isArray(payload?.items) ? payload.items : [];
+                items.forEach((item) => {
+                    const partId = parseInteger(item?.id, 0, 0);
+                    if (partId > 0 && !itemMap.has(partId)) {
+                        itemMap.set(partId, item);
+                    }
+                });
+            });
+
+            state.partCatalog.items = Array.from(itemMap.values()).sort((left, right) => (
+                String(left?.ten_linh_kien || '').localeCompare(String(right?.ten_linh_kien || ''), 'vi')
+            ));
+            state.partCatalog.cache.set(cacheKey, state.partCatalog.items);
+            renderAdminPartCatalogResults();
+        } catch (error) {
+            if (requestId !== state.partCatalog.requestId) {
+                return;
+            }
+
+            state.partCatalog.items = [];
+            refs.detailPartCatalogStatus.textContent = error.message || 'Khong the tai danh muc linh kien.';
+            refs.detailPartCatalogResults.innerHTML = '';
+        }
+    };
+
+    const addSelectedAdminCatalogParts = () => {
+        if (isLockedBookingDetail()) {
+            showToast('Don da hoan thanh, khong the chinh sua nua.', 'error');
+            return;
+        }
+
+        const selectedParts = getKnownAdminPartCatalogItems().filter((item) => state.partCatalog.selectedIds.has(parseInteger(item?.id, 0, 0)));
+        if (!selectedParts.length) {
+            showToast('Vui long chon it nhat 1 linh kien trong danh muc.', 'error');
+            return;
+        }
+
+        const existingIds = new Set(Array.from(refs.detailPartItemsEditor?.querySelectorAll('.js-line-part-id') || [])
+            .map((input) => parseInteger(input?.value, 0, 0))
+            .filter((id) => id > 0));
+
+        let addedCount = 0;
+
+        if (!refs.detailPartItemsEditor?.querySelector('.admin-orders-part-row')) {
+            refs.detailPartItemsEditor.innerHTML = '';
+        }
+
+        selectedParts.forEach((item) => {
+            const partId = parseInteger(item?.id, 0, 0);
+            const partPrice = parseAmount(item?.gia);
+
+            if (partId <= 0 || partPrice <= 0 || existingIds.has(partId)) {
+                return;
+            }
+
+            refs.detailPartItemsEditor?.insertAdjacentHTML('beforeend', buildAdminPartRowMarkup({
+                linh_kien_id: partId,
+                dich_vu_id: parseInteger(item?.dich_vu_id || item?.dich_vu?.id, 0, 0),
+                service_name: getAdminPartCatalogServiceName(item),
+                hinh_anh: item?.hinh_anh || '',
+                noi_dung: getAdminPartCatalogItemName(item) || 'Linh kien',
+                don_gia: partPrice,
+                so_luong: 1,
+                so_tien: partPrice,
+                bao_hanh_thang: null,
+            }));
+
+            existingIds.add(partId);
+            addedCount += 1;
+        });
+
+        if (addedCount === 0) {
+            showToast('Linh kien da duoc them truoc do hoac chua co gia.', 'error');
+            return;
+        }
+
+        state.partCatalog.selectedIds = new Set();
+        state.partCatalog.fallbackItems = [];
+        if (refs.detailPartCatalogSearch) {
+            refs.detailPartCatalogSearch.value = '';
+        }
+        renderAdminPartCatalogResults();
+        hideAdminPartCatalogSuggestions();
+        syncAdminPartCost();
     };
 
     const buildQuery = (extra = {}) => {
@@ -467,65 +1394,66 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderBookingRow = (booking) => {
-        const checked = state.selected.has(Number(booking.id)) ? 'checked' : '';
+        const isCompleted = isCompletedBookingStatus(booking?.status_key || booking?.status);
+        const checked = !isCompleted && state.selected.has(Number(booking.id)) ? 'checked' : '';
         const complaintLink = booking?.flags?.has_complaint
-            ? `<a class="btn btn-sm btn-outline-danger" href="/admin/customer-feedback?search=${encodeURIComponent(booking.code || '')}">Khiếu nại</a>`
+            ? `<a class="text-xs font-medium text-error hover:underline mt-1 inline-block" href="/admin/customer-feedback?search=${encodeURIComponent(booking.code || '')}">Xem khiếu nại</a>`
             : '';
 
         return `
-            <tr data-booking-id="${escapeHtml(booking.id)}">
-                <td class="text-center">
-                    <input type="checkbox" data-row-select="${escapeHtml(booking.id)}" ${checked}>
+            <tr data-booking-id="${escapeHtml(booking.id)}" class="hover:bg-surface-container-lowest/50 transition-colors group">
+                <td class="p-4 text-center border-t border-surface-container/50">
+                    <input type="checkbox" data-row-select="${escapeHtml(booking.id)}" class="rounded border-outline-variant text-primary focus:ring-primary/50" ${checked} ${isCompleted ? 'disabled title="Don da hoan thanh"' : ''}>
                 </td>
-                <td>
-                    <div class="admin-orders-row-main">${escapeHtml(booking.code || '--')}</div>
-                    <div class="admin-orders-row-sub mt-1">
+                <td class="p-4 border-t border-surface-container/50 align-top">
+                    <div class="font-headline font-bold text-on-surface">${escapeHtml(booking.code || '--')}</div>
+                    <div class="flex flex-wrap gap-1 mt-1.5">
                         ${buildPill(booking.status_label || '--', booking.status_tone || 'info')}
                         ${buildPill(booking.priority_label || '--', booking.priority_tone || 'muted')}
                         ${buildPill(booking.sla_label || '--', booking.sla_tone || 'muted')}
                     </div>
                 </td>
-                <td>
-                    <div class="admin-orders-row-main">${escapeHtml(booking?.customer?.name || 'Khách hàng')}</div>
-                    <div class="admin-orders-row-sub">${escapeHtml(booking?.customer?.phone || 'Chưa có SĐT')}</div>
-                    <div class="admin-orders-row-sub">${escapeHtml(booking?.customer?.address || 'Chưa có địa chỉ')}</div>
-                    <div class="admin-orders-row-sub mt-1">${escapeHtml(booking.mode_label || '--')}</div>
+                <td class="p-4 border-t border-surface-container/50 align-top">
+                    <div class="font-medium text-on-surface">${escapeHtml(booking?.customer?.name || 'Khách hàng')}</div>
+                    <div class="text-xs text-on-surface-variant mt-0.5">${escapeHtml(booking?.customer?.phone || 'Chưa có SĐT')}</div>
+                    <div class="text-xs text-on-surface-variant mt-0.5 line-clamp-1" title="${escapeHtml(booking?.customer?.address || 'Chưa có địa chỉ')}">${escapeHtml(booking?.customer?.address || 'Chưa có địa chỉ')}</div>
+                    <div class="text-xs font-medium text-primary mt-1.5">${escapeHtml(booking.mode_label || '--')}</div>
                 </td>
-                <td>
-                    <div class="admin-orders-row-main">${escapeHtml(booking.service_label || 'Chưa xác định dịch vụ')}</div>
-                    <div class="admin-orders-row-sub">${escapeHtml(booking.problem_excerpt || 'Khách chưa mô tả sự cố')}</div>
-                    <div class="admin-orders-row-sub mt-1">
-                        ${escapeHtml(String(booking?.media?.total || 0))} ảnh/video đính kèm
+                <td class="p-4 border-t border-surface-container/50 align-top">
+                    <div class="font-medium text-on-surface">${escapeHtml(booking.service_label || 'Chưa xác định dịch vụ')}</div>
+                    <div class="text-xs text-on-surface-variant mt-0.5 line-clamp-2" title="${escapeHtml(booking.problem_excerpt || 'Khách chưa mô tả sự cố')}">${escapeHtml(booking.problem_excerpt || 'Khách chưa mô tả sự cố')}</div>
+                    <div class="text-xs text-on-surface-variant mt-1 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">attachment</span>
+                        ${escapeHtml(String(booking?.media?.total || 0))} đính kèm
                     </div>
                 </td>
-                <td>
-                    <div class="admin-orders-row-main">${escapeHtml(booking?.worker?.name || 'Chưa phân công')}</div>
-                    <div class="admin-orders-row-sub">${escapeHtml(booking?.worker?.phone || 'Không có SĐT')}</div>
-                    <div class="admin-orders-row-sub mt-1">${escapeHtml(booking?.schedule?.label || '--')}</div>
+                <td class="p-4 border-t border-surface-container/50 align-top">
+                    <div class="font-medium text-on-surface">${escapeHtml(booking?.worker?.name || 'Chưa phân công')}</div>
+                    <div class="text-xs text-on-surface-variant mt-0.5">${escapeHtml(booking?.worker?.phone || 'Không có SĐT')}</div>
+                    <div class="text-xs font-medium text-primary-fixed-dim mt-1.5 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">event</span>
+                        ${escapeHtml(booking?.schedule?.label || '--')}
+                    </div>
                 </td>
-                <td>
-                    <div class="admin-orders-row-sub">Tiền công: <strong>${escapeHtml(formatMoney(booking?.costs?.labor || 0))}</strong></div>
-                    <div class="admin-orders-row-sub">Linh kiện: <strong>${escapeHtml(formatMoney(booking?.costs?.parts || 0))}</strong></div>
-                    <div class="admin-orders-row-sub">Di chuyển: <strong>${escapeHtml(formatMoney((booking?.costs?.travel || 0) + (booking?.costs?.transport || 0)))}</strong></div>
-                    <div class="admin-orders-row-main mt-1">${escapeHtml(formatMoney(booking?.costs?.total || 0))}</div>
+                <td class="p-4 border-t border-surface-container/50 align-top">
+                    <div class="text-xs text-on-surface-variant flex justify-between gap-2"><span>Tiền công:</span> <strong class="text-on-surface">${escapeHtml(formatMoney(booking?.costs?.labor || 0))}</strong></div>
+                    <div class="text-xs text-on-surface-variant flex justify-between gap-2 mt-0.5"><span>Linh kiện:</span> <strong class="text-on-surface">${escapeHtml(formatMoney(booking?.costs?.parts || 0))}</strong></div>
+                    <div class="text-xs text-on-surface-variant flex justify-between gap-2 mt-0.5 border-b border-outline-variant/30 pb-1"><span>Di chuyển:</span> <strong class="text-on-surface">${escapeHtml(formatMoney((booking?.costs?.travel || 0) + (booking?.costs?.transport || 0)))}</strong></div>
+                    <div class="text-sm font-bold text-primary mt-1 text-right">${escapeHtml(formatMoney(booking?.costs?.total || 0))}</div>
                 </td>
-                <td>
-                    <div class="admin-orders-row-sub mb-1">
+                <td class="p-4 border-t border-surface-container/50 align-top">
+                    <div class="mb-1.5">
                         ${buildPill(booking?.payment?.status_label || '--', booking?.payment?.status_tone || 'muted')}
                     </div>
-                    <div class="admin-orders-row-sub">${escapeHtml(booking?.payment?.method_label || '--')}</div>
-                    <div class="admin-orders-row-sub">${escapeHtml(booking?.payment?.latest_transaction_label || 'Chưa có giao dịch')}</div>
-                    <div class="mt-2">${renderFlags(booking)}</div>
+                    <div class="text-xs text-on-surface-variant">${escapeHtml(booking?.payment?.method_label || '--')}</div>
+                    <div class="text-[10px] text-on-surface-variant mt-0.5 truncate max-w-[150px]" title="${escapeHtml(booking?.payment?.latest_transaction_label || 'Chưa có giao dịch')}">${escapeHtml(booking?.payment?.latest_transaction_label || 'Chưa có giao dịch')}</div>
+                    <div class="mt-2 flex flex-col gap-1">${renderFlags(booking)}</div>
                 </td>
-                <td>
-                    <div class="admin-orders-row-sub">Tạo: ${escapeHtml(booking?.milestones?.created_label || '--')}</div>
-                    <div class="admin-orders-row-sub">Cập nhật: ${escapeHtml(booking?.milestones?.updated_label || '--')}</div>
-                    <div class="admin-orders-row-sub">Hoàn tất: ${escapeHtml(booking?.milestones?.completed_label || '--')}</div>
-                    <div class="admin-orders-row-sub">Hủy: ${escapeHtml(booking?.milestones?.cancelled_label || '--')}</div>
-                </td>
-                <td>
-                    <div class="admin-orders-actions">
-                        <button type="button" class="btn btn-sm btn-outline-primary" data-action="open-detail" data-id="${escapeHtml(booking.id)}">Chi tiết</button>
+                <td class="p-4 border-t border-surface-container/50 align-top text-right">
+                    <div class="flex flex-col items-end gap-2">
+                        <button type="button" class="text-xs font-medium px-3 py-1.5 bg-surface-container text-primary rounded-md hover:bg-surface-container-high transition-colors border border-outline-variant/20" data-action="open-detail" data-id="${escapeHtml(booking.id)}">
+                            Chi tiết
+                        </button>
                         ${complaintLink}
                     </div>
                 </td>
@@ -538,13 +1466,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const pageIds = state.items.map((booking) => Number(booking.id)).filter(Boolean);
+        const pageIds = state.items
+            .filter((booking) => !isCompletedBookingStatus(booking?.status_key || booking?.status))
+            .map((booking) => Number(booking.id))
+            .filter(Boolean);
         if (pageIds.length === 0) {
             refs.selectAll.checked = false;
             refs.selectAll.indeterminate = false;
+            refs.selectAll.disabled = true;
             return;
         }
 
+        refs.selectAll.disabled = false;
         const selectedInPage = pageIds.filter((id) => state.selected.has(id)).length;
         refs.selectAll.checked = selectedInPage === pageIds.length;
         refs.selectAll.indeterminate = selectedInPage > 0 && selectedInPage < pageIds.length;
@@ -560,6 +1493,10 @@ document.addEventListener('DOMContentLoaded', () => {
             syncSelectAllState();
             return;
         }
+
+        state.items
+            .filter((booking) => isCompletedBookingStatus(booking?.status_key || booking?.status))
+            .forEach((booking) => state.selected.delete(Number(booking.id)));
 
         refs.tableBody.innerHTML = state.items.map(renderBookingRow).join('');
         syncSelectAllState();
@@ -704,10 +1641,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openDrawerShell = () => {
         if (refs.drawerOverlay) {
-            refs.drawerOverlay.hidden = false;
+            refs.drawerOverlay.classList.remove('hidden');
         }
         if (refs.drawer) {
-            refs.drawer.classList.add('is-open');
+            refs.drawer.classList.remove('translate-x-full');
             refs.drawer.setAttribute('aria-hidden', 'false');
         }
         lockBodyScroll(true);
@@ -715,10 +1652,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const closeDrawer = () => {
         if (refs.drawerOverlay) {
-            refs.drawerOverlay.hidden = true;
+            refs.drawerOverlay.classList.add('hidden');
         }
         if (refs.drawer) {
-            refs.drawer.classList.remove('is-open');
+            refs.drawer.classList.add('translate-x-full');
             refs.drawer.setAttribute('aria-hidden', 'true');
         }
         state.activeBookingId = null;
@@ -741,6 +1678,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
         }
+        if (refs.detailReadonlyNotice) refs.detailReadonlyNotice.classList.add('hidden');
+        if (refs.detailActionsGrid) refs.detailActionsGrid.classList.remove('hidden');
     };
 
     const renderDetailKv = (items) => {
@@ -749,10 +1688,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         refs.detailInfo.innerHTML = items.map((item) => `
-            <article class="admin-orders-kv-item">
-                <span class="label">${escapeHtml(item.label)}</span>
-                <span class="value">${escapeHtml(item.value || '--')}</span>
-            </article>
+            <div class="flex flex-col gap-1 p-3 bg-surface rounded-lg border border-surface-container">
+                <span class="text-xs text-on-surface-variant font-medium">${escapeHtml(item.label)}</span>
+                <span class="text-sm text-on-surface font-semibold">${escapeHtml(item.value || '--')}</span>
+            </div>
         `).join('');
     };
 
@@ -945,11 +1884,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (refs.detailRescheduleDate) refs.detailRescheduleDate.value = detail?.schedule?.date || '';
         if (refs.detailCancelNote) refs.detailCancelNote.value = detail.cancel_note || '';
         if (refs.detailLaborCost) refs.detailLaborCost.value = String(Math.round(detail?.costs?.labor || 0));
-        if (refs.detailPartCost) refs.detailPartCost.value = String(Math.round(detail?.costs?.parts || 0));
         if (refs.detailTravelCost) refs.detailTravelCost.value = String(Math.round(detail?.costs?.travel || 0));
         if (refs.detailTransportCost) refs.detailTransportCost.value = String(Math.round(detail?.costs?.transport || 0));
         if (refs.detailPartNote) refs.detailPartNote.value = detail?.cost_details?.part_note || '';
         if (refs.detailPaymentMethod) refs.detailPaymentMethod.value = detail?.payment?.method || 'cod';
+
+        const detailPartItems = Array.isArray(detail?.cost_details?.part_items)
+            ? detail.cost_details.part_items
+            : [];
+        const fallbackPartItems = detailPartItems.length === 0 && Number(detail?.costs?.parts || 0) > 0
+            ? [{
+                noi_dung: 'Linh kiện thay thế',
+                so_luong: 1,
+                don_gia: Number(detail?.costs?.parts || 0),
+                so_tien: Number(detail?.costs?.parts || 0),
+                bao_hanh_thang: null,
+            }]
+            : [];
+
+        renderAdminPartItems(detailPartItems.length ? detailPartItems : fallbackPartItems);
+        syncDetailMutationLock(detail);
     };
 
     const renderBookingDetail = (detail) => {
@@ -1023,6 +1977,8 @@ document.addEventListener('DOMContentLoaded', () => {
             state.detail = detail;
             state.activeBookingId = Number(detail.id || bookingId);
             renderBookingDetail(detail);
+            await loadAdminPartCatalogForBooking(detail);
+            syncDetailMutationLock(detail);
         } catch (error) {
             console.error('Load booking detail error:', error);
             showToast(error.message || 'Không thể tải chi tiết đơn', 'error');
@@ -1064,13 +2020,18 @@ document.addEventListener('DOMContentLoaded', () => {
             await handler();
         } finally {
             button.dataset.loading = '0';
-            button.disabled = false;
+            button.disabled = button.dataset.mutationLocked === '1';
         }
     };
 
     const updateBookingStatus = async () => {
         if (!state.activeBookingId) {
             showToast('Chưa chọn đơn để cập nhật trạng thái', 'error');
+            return;
+        }
+
+        if (isLockedBookingDetail()) {
+            showToast('Don da hoan thanh, khong the chinh sua nua.', 'error');
             return;
         }
 
@@ -1109,6 +2070,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (isLockedBookingDetail()) {
+            showToast('Don da hoan thanh, khong the chinh sua nua.', 'error');
+            return;
+        }
+
         const workerId = Number(refs.detailWorkerSelect?.value || 0);
         if (!workerId) {
             showToast('Vui lòng chọn thợ kỹ thuật', 'error');
@@ -1126,6 +2092,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const rescheduleBooking = async () => {
         if (!state.activeBookingId) {
             showToast('Chưa chọn đơn để đổi lịch', 'error');
+            return;
+        }
+
+        if (isLockedBookingDetail()) {
+            showToast('Don da hoan thanh, khong the chinh sua nua.', 'error');
             return;
         }
 
@@ -1152,8 +2123,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (isLockedBookingDetail()) {
+            showToast('Don da hoan thanh, khong the chinh sua nua.', 'error');
+            return;
+        }
+
         const labor = parseAmount(refs.detailLaborCost?.value);
-        const part = parseAmount(refs.detailPartCost?.value);
+        syncAdminPartCost();
+        const partItems = collectAdminPartItems();
+        const part = partItems.reduce((sum, item) => sum + Number(item.so_tien || 0), 0);
         const travel = parseAmount(refs.detailTravelCost?.value);
         const transport = parseAmount(refs.detailTransportCost?.value);
         const partNote = refs.detailPartNote?.value?.trim() || '';
@@ -1177,6 +2155,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }]
                 : [],
         };
+        payload.chi_tiet_linh_kien = partItems;
 
         const response = await callApi(`/admin/bookings/${state.activeBookingId}/financials`, 'PUT', payload);
         ensureSuccess(response, 'Không thể cập nhật chi phí');
@@ -1187,6 +2166,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const updatePaymentMethod = async () => {
         if (!state.activeBookingId) {
             showToast('Chưa chọn đơn để cập nhật thanh toán', 'error');
+            return;
+        }
+
+        if (isLockedBookingDetail()) {
+            showToast('Don da hoan thanh, khong the chinh sua nua.', 'error');
             return;
         }
 
@@ -1202,6 +2186,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmCashPayment = async () => {
         if (!state.activeBookingId) {
             showToast('Chưa chọn đơn để xác nhận tiền mặt', 'error');
+            return;
+        }
+
+        if (isLockedBookingDetail()) {
+            showToast('Don da hoan thanh, khong the chinh sua nua.', 'error');
             return;
         }
 
@@ -1475,6 +2464,10 @@ document.addEventListener('DOMContentLoaded', () => {
         loadBookings();
     });
 
+    refs.btnToggleMoreFilters?.addEventListener('click', () => {
+        refs.moreFiltersSection?.classList.toggle('hidden');
+    });
+
     refs.exportCsv?.addEventListener('click', async () => {
         try {
             await exportBookings();
@@ -1486,7 +2479,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     refs.selectAll?.addEventListener('change', (event) => {
-        const pageIds = state.items.map((item) => Number(item.id)).filter(Boolean);
+        const pageIds = state.items
+            .filter((item) => !isCompletedBookingStatus(item?.status_key || item?.status))
+            .map((item) => Number(item.id))
+            .filter(Boolean);
         if (event.target.checked) {
             pageIds.forEach((id) => state.selected.add(id));
         } else {
@@ -1596,6 +2592,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (refs.slaDropdown?.contains(event.target)) {
             return;
         }
+
+        if (!refs.detailPartCatalogSearch?.closest('.admin-orders-part-catalog')?.contains(event.target)) {
+            hideAdminPartCatalogSuggestions();
+        }
         closeSlaDropdown();
     });
 
@@ -1605,7 +2605,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         closeSlaDropdown();
-        if (refs.drawer?.classList.contains('is-open')) {
+        if (!refs.drawer?.classList.contains('translate-x-full')) {
             closeDrawer();
         }
     });
@@ -1622,6 +2622,167 @@ document.addEventListener('DOMContentLoaded', () => {
         await runButtonAction(refs.btnReschedule, rescheduleBooking);
     });
 
+    refs.btnAddBookingPartRow?.addEventListener('click', () => {
+        addSelectedAdminCatalogParts();
+    });
+
+    refs.btnAddManualBookingPartRow?.addEventListener('click', () => {
+        if (isLockedBookingDetail()) {
+            return;
+        }
+
+        if (!refs.detailPartItemsEditor) {
+            return;
+        }
+
+        if (!refs.detailPartItemsEditor.querySelector('.admin-orders-part-row')) {
+            refs.detailPartItemsEditor.innerHTML = '';
+        }
+
+        refs.detailPartItemsEditor.insertAdjacentHTML('beforeend', buildAdminPartRowMarkup({
+            noi_dung: '',
+            so_luong: 1,
+            don_gia: 0,
+            so_tien: 0,
+            bao_hanh_thang: null,
+        }));
+        syncAdminPartCost();
+
+        const rows = refs.detailPartItemsEditor.querySelectorAll('.admin-orders-part-row');
+        rows[rows.length - 1]?.querySelector('.js-line-description')?.focus();
+    });
+
+    refs.detailPartCatalogSearch?.addEventListener('input', async () => {
+        state.partCatalog.activeSuggestionIndex = -1;
+        await refreshAdminPartCatalogSearch();
+    });
+
+    refs.detailPartCatalogSearch?.addEventListener('focus', async () => {
+        if (String(refs.detailPartCatalogSearch.value || '').trim()) {
+            await refreshAdminPartCatalogSearch();
+        }
+    });
+
+    refs.detailPartCatalogSearch?.addEventListener('blur', () => {
+        window.setTimeout(() => {
+            if (document.activeElement !== refs.detailPartCatalogSearch) {
+                hideAdminPartCatalogSuggestions();
+            }
+        }, 120);
+    });
+
+    refs.detailPartCatalogSearch?.addEventListener('keydown', (event) => {
+        const visibleItems = getSuggestionAdminPartCatalogItems().slice(0, 6);
+
+        if (event.key === 'Escape') {
+            hideAdminPartCatalogSuggestions();
+            return;
+        }
+
+        if (!visibleItems.length) {
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            state.partCatalog.activeSuggestionIndex = (state.partCatalog.activeSuggestionIndex + 1 + visibleItems.length) % visibleItems.length;
+            renderAdminPartCatalogSuggestions();
+            return;
+        }
+
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            state.partCatalog.activeSuggestionIndex = state.partCatalog.activeSuggestionIndex <= 0
+                ? visibleItems.length - 1
+                : state.partCatalog.activeSuggestionIndex - 1;
+            renderAdminPartCatalogSuggestions();
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const selectedIndex = state.partCatalog.activeSuggestionIndex >= 0 ? state.partCatalog.activeSuggestionIndex : 0;
+            const selectedItem = visibleItems[selectedIndex];
+            if (selectedItem) {
+                selectAdminPartCatalogSuggestion(parseInteger(selectedItem?.id, 0, 0));
+            }
+        }
+    });
+
+    refs.detailPartCatalogSuggestions?.addEventListener('mousedown', (event) => {
+        if (event.target.closest('.js-admin-part-suggestion')) {
+            event.preventDefault();
+        }
+    });
+
+    refs.detailPartCatalogSuggestions?.addEventListener('click', (event) => {
+        const suggestion = event.target.closest('.js-admin-part-suggestion');
+        if (!suggestion) {
+            return;
+        }
+
+        selectAdminPartCatalogSuggestion(parseInteger(suggestion.dataset.partId, 0, 0));
+    });
+
+    refs.detailPartCatalogResults?.addEventListener('change', (event) => {
+        const input = event.target.closest('.js-admin-part-check');
+        if (!input) {
+            return;
+        }
+
+        const partId = parseInteger(input.value, 0, 0);
+        setAdminPartCatalogSelectionState(partId, input.checked);
+        input.closest('.dispatch-part-option')?.classList.toggle('is-selected', input.checked);
+        renderAdminPartCatalogSuggestions();
+    });
+
+    refs.detailPartItemsEditor?.addEventListener('input', (event) => {
+        if (!event.target.closest('.admin-orders-part-row')) {
+            return;
+        }
+
+        syncAdminPartCost();
+    });
+
+    refs.detailPartItemsEditor?.addEventListener('change', (event) => {
+        if (!event.target.closest('.admin-orders-part-row')) {
+            return;
+        }
+
+        syncAdminPartCost();
+    });
+
+    refs.detailPartItemsEditor?.addEventListener('click', (event) => {
+        const quantityStepButton = event.target.closest('.js-quantity-step');
+        if (quantityStepButton) {
+            const lineItem = quantityStepButton.closest('.dispatch-line-item');
+            const quantityInput = lineItem?.querySelector('.js-line-quantity');
+
+            if (quantityInput) {
+                const step = Math.trunc(Number(quantityStepButton.dataset.step || 0));
+                const nextValue = Math.max(1, parseInteger(quantityInput.value || 1, 1, 1) + step);
+                quantityInput.value = String(nextValue);
+                syncAdminPartCost();
+            }
+
+            return;
+        }
+
+        const removeButton = event.target.closest('.js-remove-booking-part-row');
+        if (!removeButton) {
+            return;
+        }
+
+        removeButton.closest('.admin-orders-part-row')?.remove();
+
+        if (!refs.detailPartItemsEditor?.querySelector('.admin-orders-part-row')) {
+            renderAdminPartItems([]);
+            return;
+        }
+
+        syncAdminPartCost();
+    });
+
     refs.btnUpdateCosts?.addEventListener('click', async () => {
         await runButtonAction(refs.btnUpdateCosts, updateBookingCosts);
     });
@@ -1634,7 +2795,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await runButtonAction(refs.btnConfirmCashPayment, confirmCashPayment);
     });
 
+    hydrateAdminPartCatalogCopy();
+    updateAdminPartAddButtonState();
     loadBookings();
 });
-
-

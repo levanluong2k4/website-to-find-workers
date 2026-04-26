@@ -48,10 +48,6 @@
                     <span class="material-symbols-outlined icon">schedule</span>
                     <select class="premium-input form-select" id="filterTimeSlot">
                         <option value="">Chọn khung giờ</option>
-                        <option value="08:00-10:00">08:00 - 10:00</option>
-                        <option value="10:00-12:00">10:00 - 12:00</option>
-                        <option value="12:00-14:00">12:00 - 14:00</option>
-                        <option value="14:00-17:00">14:00 - 17:00</option>
                     </select>
                 </div>
             </div>

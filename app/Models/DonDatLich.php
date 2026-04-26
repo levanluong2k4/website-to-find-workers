@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\TravelFeeConfigService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,6 +20,10 @@ class DonDatLich extends Model
     public const CANCEL_REASON_KHONG_CO_THO_NAO_NHAN = 'khong_co_tho_nao_nhan';
     public const CANCEL_REASON_CHO_QUA_LAU = 'cho_qua_lau';
     public const STATUS_CUSTOMER_UNREACHABLE = 'khong_lien_lac_duoc_voi_khach_hang';
+    public const COMPLETED_STATUSES = [
+        'da_xong',
+        'hoan_thanh',
+    ];
     public const SCHEDULE_BLOCKING_STATUSES = [
         'cho_xac_nhan',
         'da_xac_nhan',
@@ -131,9 +136,28 @@ class DonDatLich extends Model
         return self::SCHEDULE_BLOCKING_STATUSES;
     }
 
+    public static function completedStatuses(): array
+    {
+        return self::COMPLETED_STATUSES;
+    }
+
+    public static function isCompletedStatus(?string $status): bool
+    {
+        return in_array((string) $status, self::COMPLETED_STATUSES, true);
+    }
+
+    public function isCompleted(): bool
+    {
+        return self::isCompletedStatus($this->trang_thai);
+    }
+
     public static function fixedTimeSlots(): array
     {
-        return self::FIXED_TIME_SLOTS;
+        try {
+            return app(TravelFeeConfigService::class)->resolveBookingTimeSlots();
+        } catch (\Throwable) {
+            return self::FIXED_TIME_SLOTS;
+        }
     }
 
     public static function normalizeTimeSlot(?string $timeSlot): string

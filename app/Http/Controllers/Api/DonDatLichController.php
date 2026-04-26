@@ -24,13 +24,6 @@ use Illuminate\Validation\ValidationException;
 
 class DonDatLichController extends Controller
 {
-    private const FIXED_TIME_SLOTS = [
-        '08:00-10:00',
-        '10:00-12:00',
-        '12:00-14:00',
-        '14:00-17:00',
-    ];
-
     private const MAX_CUSTOMER_RESCHEDULES = 1;
 
     private const MIN_FUTURE_RESCHEDULE_SLOTS = 2;
@@ -183,7 +176,7 @@ class DonDatLichController extends Controller
                 $this->hydrateLegacyServiceColumn($booking, $serviceIds);
                 $booking->loai_dat_lich = $validated['loai_dat_lich'] ?? 'at_store';
                 $booking->ngay_hen = $bookingDate;
-                $booking->khung_gio_hen = $normalizedTimeSlot ?: '08:00-10:00';
+                $booking->khung_gio_hen = $normalizedTimeSlot ?: ($this->configuredTimeSlots()[0] ?? '08:00-10:00');
                 $booking->thoi_gian_hen = Carbon::parse($bookingDate . ' ' . $gioBatDau . ':00');
                 $booking->mo_ta_van_de = $validated['mo_ta_van_de'] ?? null;
                 $booking->thue_xe_cho = $validated['thue_xe_cho'] ?? false;
@@ -412,6 +405,13 @@ class DonDatLichController extends Controller
             return response()->json(['success' => false, 'message' => 'Bạn không phải thợ của đơn này.'], 403);
         }
 
+        if ($booking->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Don da hoan thanh, khong the chinh sua nua.',
+            ], 422);
+        }
+
         if (!in_array((string) $booking->trang_thai, ['da_xac_nhan', DonDatLich::STATUS_CUSTOMER_UNREACHABLE], true)) {
             return response()->json([
                 'success' => false,
@@ -468,6 +468,12 @@ class DonDatLichController extends Controller
         $isAdmin = $this->isAdmin($user);
         if (!$isAdmin && $booking->khach_hang_id !== $user->id) {
             return response()->json(['message' => 'Ban khong co quyen doi lich cho don nay'], 403);
+        }
+
+        if ($booking->isCompleted()) {
+            return response()->json([
+                'message' => 'Don da hoan thanh, khong the chinh sua nua.',
+            ], 422);
         }
 
         $allowedStatuses = $isAdmin
@@ -578,6 +584,12 @@ class DonDatLichController extends Controller
             return response()->json(['message' => 'Kh?ng t?m th?y ??n ??t l?ch'], 404);
         }
 
+        if ($booking->isCompleted()) {
+            return response()->json([
+                'message' => 'Don da hoan thanh, khong the chinh sua nua.',
+            ], 422);
+        }
+
         $validated = $request->validated();
         $newStatus = $validated['trang_thai'];
         $previousStatus = (string) $booking->trang_thai;
@@ -677,20 +689,23 @@ class DonDatLichController extends Controller
             return response()->json(['message' => 'Ban khong phai tho cua don nay'], 403);
         }
 
+        if ($booking->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Don da hoan thanh, khong the chinh sua nua.',
+            ], 422);
+        }
+
         if ($booking->trang_thai !== 'dang_lam') {
             return response()->json(['success' => false, 'message' => 'Trang thai don khong hop le.'], 400);
         }
 
         $validated = $request->validated();
         $laborItems = $this->normalizeLaborCostItems($validated['chi_tiet_tien_cong'] ?? [], $booking);
-        $partItems = $this->normalizePartCostItems($validated['chi_tiet_linh_kien'] ?? [], $booking);
 
         $booking->tien_cong = $this->sumCostItems($laborItems);
         $booking->chi_tiet_tien_cong = $laborItems;
-        $booking->phi_linh_kien = $this->sumCostItems($partItems);
-        $booking->chi_tiet_linh_kien = $partItems;
         $booking->tien_thue_xe = (float) ($validated['tien_thue_xe'] ?? $booking->tien_thue_xe ?? 0);
-        $booking->ghi_chu_linh_kien = $validated['ghi_chu_linh_kien'] ?? null;
         $booking->tong_tien = (float) $booking->phi_di_lai
             + (float) $booking->phi_linh_kien
             + (float) $booking->tien_cong
@@ -714,6 +729,13 @@ class DonDatLichController extends Controller
         $booking = DonDatLich::find($id);
         if (!$booking || (!$this->isAdmin($user) && (int) $booking->tho_id !== (int) $user->id)) {
             return response()->json(['success' => false, 'message' => 'Kh?ng t?m th?y ??n.'], 404);
+        }
+
+        if ($booking->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Don da hoan thanh, khong the chinh sua nua.',
+            ], 422);
         }
 
         if ($booking->trang_thai !== 'dang_lam') {
@@ -826,7 +848,7 @@ class DonDatLichController extends Controller
             return response()->json(['success' => false, 'message' => 'Ban khong co quyen cap nhat thanh toan cho don nay.'], 403);
         }
 
-        if (in_array((string) $booking->trang_thai, ['da_xong', 'da_huy'], true) || (bool) ($booking->trang_thai_thanh_toan ?? false)) {
+        if ($booking->isCompleted() || in_array((string) $booking->trang_thai, ['da_huy'], true) || (bool) ($booking->trang_thai_thanh_toan ?? false)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Don nay da ket thuc nen khong the doi phuong thuc thanh toan.',
@@ -879,6 +901,13 @@ class DonDatLichController extends Controller
         $booking = DonDatLich::find($id);
         if (!$booking || (!$this->isAdmin($user) && (int) $booking->tho_id !== (int) $user->id)) {
             return response()->json(['success' => false, 'message' => 'Kh?ng t?m th?y ??n.'], 404);
+        }
+
+        if ($booking->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Don da hoan thanh, khong the chinh sua nua.',
+            ], 422);
         }
 
         if (!in_array((string) $booking->trang_thai, ['cho_thanh_toan', 'cho_hoan_thanh'], true)) {
@@ -1284,7 +1313,7 @@ class DonDatLichController extends Controller
             'reschedule_count' => $rescheduleCount,
             'remaining_changes' => $remainingChanges,
             'window_days' => self::CUSTOMER_RESCHEDULE_WINDOW_DAYS,
-            'time_slots' => self::FIXED_TIME_SLOTS,
+            'time_slots' => $this->configuredTimeSlots(),
             'minimum_allowed_at' => $minimumSchedule?->toIso8601String(),
             'minimum_allowed_date' => $minimumSchedule?->toDateString(),
             'minimum_allowed_slot' => $minimumSchedule ? $this->resolveSlotValueFromStart($minimumSchedule) : null,
@@ -1313,7 +1342,7 @@ class DonDatLichController extends Controller
         for ($dayOffset = 0; $dayOffset < 30; $dayOffset += 1) {
             $dateValue = $baseDate->copy()->addDays($dayOffset)->toDateString();
 
-            foreach (self::FIXED_TIME_SLOTS as $slot) {
+            foreach ($this->configuredTimeSlots() as $slot) {
                 $scheduledAt = $this->resolveScheduledAt($dateValue, $slot);
 
                 if ($scheduledAt !== null && $scheduledAt->gt($from)) {
@@ -1353,7 +1382,7 @@ class DonDatLichController extends Controller
     {
         $startTime = $scheduledAt->format('H:i');
 
-        foreach (self::FIXED_TIME_SLOTS as $slot) {
+        foreach ($this->configuredTimeSlots() as $slot) {
             $slotStart = trim(explode('-', $slot, 2)[0] ?? '');
 
             if ($slotStart === $startTime) {
@@ -1367,6 +1396,14 @@ class DonDatLichController extends Controller
     private function formatSlotForDisplay(string $slot): string
     {
         return str_replace('-', ' - ', $slot);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function configuredTimeSlots(): array
+    {
+        return app(TravelFeeConfigService::class)->resolveBookingTimeSlots();
     }
 
     private function formatScheduleForDisplay(Carbon $scheduledAt): string
@@ -1426,34 +1463,34 @@ class DonDatLichController extends Controller
                 'action_label' => 'Xem chi tiết đơn',
             ],
             'dang_lam' => [
-                'title' => 'Tho dang xu ly don dat lich',
-                'message' => 'Tho ' . $actorName . ' dang bat dau xu ly don #' . $booking->id . ' cua ban.',
+                'title' => 'Thợ đang xử lý đơn đặt lịch của bạn',
+                'message' => 'Thợ' . $actorName . ' đang bắt đầu xử lý đơn #' . $booking->id . ' cua ban.',
                 'type' => 'booking_in_progress',
             ],
             'cho_hoan_thanh' => [
-                'title' => 'Don dat lich dang cho hoan tat',
-                'message' => 'Tho ' . $actorName . ' da cap nhat don #' . $booking->id . ' sang trang thai cho xac nhan COD.',
+                'title' => 'Đang chờ hoàn thành đơn đặt lịch',
+                'message' => 'Thợ ' . $actorName . ' đã cập nhật đơn #' . $booking->id . ' sang trạng thái chờ thanh toán COD.',
                 'type' => 'booking_waiting_completion',
             ],
             'cho_thanh_toan' => [
-                'title' => 'Don dat lich dang cho thanh toan online',
-                'message' => 'Tho ' . $actorName . ' da hoan thanh don #' . $booking->id . '. Vui long chon cong thanh toan de hoan tat.',
+                'title' => 'Đang chờ thanh toán online',
+                'message' => 'Thợ ' . $actorName . ' đã hoàn thành đơn #' . $booking->id . '. Vui lòng chọn cổng thanh toán để hoàn tất.',
                 'type' => 'booking_waiting_completion',
             ],
             'da_huy' => [
-                'title' => 'Don dat lich da bi huy',
-                'message' => 'Don #' . $booking->id . ' da bi huy.'
-                    . ($booking->ly_do_huy ? ' Ly do: ' . $booking->ly_do_huy . '.' : ''),
+                'title' => 'Đơn đặt lịch đã bị hủy',
+                'message' => 'Đơn #' . $booking->id . ' đã bị hủy.'
+                    . ($booking->ly_do_huy ? ' Lý do: ' . $booking->ly_do_huy . '.' : ''),
                 'type' => 'booking_cancelled',
             ],
             'da_xong' => [
-                'title' => 'Don dat lich da hoan tat',
-                'message' => 'Don #' . $booking->id . ' da duoc cap nhat thanh hoan tat.',
+                'title' => 'Đơn đặt lịch đã hoàn tất',
+                'message' => 'Đơn #' . $booking->id . ' đã được cập nhật thành công.',
                 'type' => 'booking_completed',
             ],
             default => [
-                'title' => 'Don dat lich vua duoc cap nhat',
-                'message' => 'Don #' . $booking->id . ' da duoc cap nhat sang trang thai "' . $this->resolveStatusLabel($status) . '".',
+                'title' => 'Đơn đặt lịch vừa được cập nhật',
+                'message' => 'Đơn #' . $booking->id . ' đã được cập nhật trạng thái "' . $this->resolveStatusLabel($status) . '".',
                 'type' => 'booking_status_updated',
             ],
         };

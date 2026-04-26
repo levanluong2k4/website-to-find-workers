@@ -4,7 +4,9 @@ namespace App\Http\Requests\DonDatLich;
 
 use App\Models\DonDatLich;
 use App\Models\HoSoTho;
+use App\Services\TravelFeeConfigService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreDonDatLichRequest extends FormRequest
 {
@@ -51,6 +53,7 @@ class StoreDonDatLichRequest extends FormRequest
     public function rules(): array
     {
         $latestBookingDate = now()->addDays(6)->toDateString();
+        $timeSlots = app(TravelFeeConfigService::class)->resolveBookingTimeSlots();
 
         return [
             'loai_dat_lich' => 'required|in:at_home,at_store',
@@ -58,7 +61,7 @@ class StoreDonDatLichRequest extends FormRequest
             'dich_vu_ids.*' => 'required|exists:danh_muc_dich_vu,id',
             'tho_id' => 'nullable|exists:users,id',
             'ngay_hen' => "required|date|after_or_equal:today|before_or_equal:{$latestBookingDate}",
-            'khung_gio_hen' => 'required|in:08:00-10:00,10:00-12:00,12:00-14:00,14:00-17:00',
+            'khung_gio_hen' => ['required', Rule::in($timeSlots)],
             'dia_chi' => 'required_if:loai_dat_lich,at_home|nullable|string',
             'vi_do' => 'required_if:loai_dat_lich,at_home|nullable|numeric',
             'kinh_do' => 'required_if:loai_dat_lich,at_home|nullable|numeric',

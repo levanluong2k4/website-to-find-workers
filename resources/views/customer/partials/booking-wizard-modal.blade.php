@@ -170,6 +170,8 @@
                                     <textarea id="bookingWizardDescription" name="mo_ta_van_de" rows="5" placeholder="Ví dụ: Điều hòa không lạnh sâu, máy chạy nhưng gió yếu và có tiếng ồn bất thường."></textarea>
                                 </label>
 
+                                <div class="booking-problem-fields" id="bookingWizardProblemFields"></div>
+
                                 <div class="booking-problem-assist">
                                     <div class="booking-problem-suggest d-none" id="bookingWizardProblemSuggest">
                                         <div class="booking-problem-suggest-head">

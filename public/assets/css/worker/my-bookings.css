@@ -3001,6 +3001,59 @@
     transform: none;
   }
 
+  .dispatch-pricing-v2-handoff-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 16px;
+    border: 1px dashed rgba(37, 99, 235, 0.25);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(239, 246, 255, 0.95), rgba(248, 250, 252, 0.98));
+  }
+
+  .dispatch-pricing-v2-handoff-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+  }
+
+  .dispatch-pricing-v2-handoff-card__copy {
+    display: grid;
+    gap: 6px;
+  }
+
+  .dispatch-pricing-v2-handoff-card__copy h3 {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .dispatch-pricing-v2-handoff-card__copy p {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: #475569;
+  }
+
+  .dispatch-pricing-v2-inline-add:disabled,
+  .dispatch-pricing-v2-inline-add--primary:disabled {
+    background: rgba(148, 163, 184, 0.18);
+    color: #94a3b8;
+    cursor: not-allowed;
+    opacity: 1;
+  }
+
+  .dispatch-pricing-v2-inline-add:disabled:hover,
+  .dispatch-pricing-v2-inline-add--primary:disabled:hover {
+    background: rgba(148, 163, 184, 0.18);
+    color: #94a3b8;
+  }
+
   .dispatch-pricing-v2-labor-catalog {
     display: grid;
     gap: 14px;

@@ -46,7 +46,7 @@ class WorkerPricingFlowTest extends TestCase
             ->postJson("/api/bookings/{$bookingId}/request-payment");
 
         $response->assertStatus(422)
-            ->assertJsonPath('message', 'Vui lòng cập nhật giá trước khi báo hoàn thành.');
+            ->assertJsonPath('message', 'Vui long cap nhat gia truoc khi bao hoan thanh.');
 
         $this->assertDatabaseHas('don_dat_lich', [
             'id' => $bookingId,
@@ -55,7 +55,7 @@ class WorkerPricingFlowTest extends TestCase
         ]);
     }
 
-    public function test_worker_can_request_payment_after_price_was_updated(): void
+    public function test_worker_can_request_cash_completion_after_price_was_updated(): void
     {
         Notification::fake();
 
@@ -75,15 +75,18 @@ class WorkerPricingFlowTest extends TestCase
         ]);
 
         $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->postJson("/api/bookings/{$bookingId}/request-payment");
+            ->postJson("/api/bookings/{$bookingId}/request-payment", [
+                'phuong_thuc_thanh_toan' => 'cod',
+            ]);
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('booking.trang_thai', 'cho_hoan_thanh');
+            ->assertJsonPath('booking.trang_thai', 'da_xong')
+            ->assertJsonPath('booking.phuong_thuc_thanh_toan', 'cod');
 
         $this->assertDatabaseHas('don_dat_lich', [
             'id' => $bookingId,
-            'trang_thai' => 'cho_hoan_thanh',
+            'trang_thai' => 'da_xong',
             'gia_da_cap_nhat' => 1,
         ]);
     }
@@ -122,12 +125,13 @@ class WorkerPricingFlowTest extends TestCase
 
         $response = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->post("/api/bookings/{$bookingId}/request-payment", [
+                'phuong_thuc_thanh_toan' => 'cod',
                 'hinh_anh_ket_qua' => [UploadedFile::fake()->image('completed.jpg')],
             ]);
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('booking.trang_thai', 'cho_hoan_thanh')
+            ->assertJsonPath('booking.trang_thai', 'da_xong')
             ->assertJsonPath('booking.hinh_anh_ket_qua.0', 'https://example.com/bookings/results/images/completed.jpg');
 
         $storedImages = DB::table('don_dat_lich')
@@ -140,7 +144,7 @@ class WorkerPricingFlowTest extends TestCase
         );
     }
 
-    public function test_worker_request_payment_respects_customer_selected_transfer_method(): void
+    public function test_worker_can_request_transfer_payment_explicitly(): void
     {
         Notification::fake();
 
@@ -161,7 +165,9 @@ class WorkerPricingFlowTest extends TestCase
         ]);
 
         $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->postJson("/api/bookings/{$bookingId}/request-payment");
+            ->postJson("/api/bookings/{$bookingId}/request-payment", [
+                'phuong_thuc_thanh_toan' => 'transfer',
+            ]);
 
         $response->assertOk()
             ->assertJsonPath('success', true)
@@ -175,7 +181,7 @@ class WorkerPricingFlowTest extends TestCase
         ]);
     }
 
-    public function test_worker_can_update_costs_with_clear_breakdown_and_warranty(): void
+    public function test_worker_can_update_costs_without_updating_parts(): void
     {
         Notification::fake();
 
@@ -197,59 +203,48 @@ class WorkerPricingFlowTest extends TestCase
         $response = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->putJson("/api/don-dat-lich/{$bookingId}/update-costs", [
                 'tien_thue_xe' => 20000,
-                'ghi_chu_linh_kien' => 'Bao gia da duoc thong bao ro cho khach.',
                 'chi_tiet_tien_cong' => [
                     ['noi_dung' => 'Thay long giat', 'so_tien' => 50000],
                     ['noi_dung' => 'Sua voi ri nuoc', 'so_tien' => 50000],
-                ],
-                'chi_tiet_linh_kien' => [
-                    ['noi_dung' => 'Thay long giat', 'so_tien' => 500000, 'bao_hanh_thang' => 12],
-                    ['noi_dung' => 'Thay voi', 'so_tien' => 400000, 'bao_hanh_thang' => 6],
                 ],
             ]);
 
         $response->assertOk()
             ->assertJsonPath('data.chi_tiet_tien_cong.0.noi_dung', 'Thay long giat')
-            ->assertJsonPath('data.chi_tiet_linh_kien.0.bao_hanh_thang', 12)
+            ->assertJsonPath('data.phi_linh_kien', 0)
+            ->assertJsonPath('data.tong_tien', 130000)
             ->assertJsonPath('data.gia_da_cap_nhat', true);
 
         $this->assertDatabaseHas('don_dat_lich', [
             'id' => $bookingId,
             'tien_cong' => 100000.00,
-            'phi_linh_kien' => 900000.00,
-            'tong_tien' => 1030000.00,
+            'phi_linh_kien' => 0.00,
+            'tong_tien' => 130000.00,
             'gia_da_cap_nhat' => 1,
         ]);
     }
 
-    public function test_worker_can_update_costs_by_selecting_catalog_parts(): void
+    public function test_worker_cost_update_preserves_existing_admin_part_breakdown(): void
     {
         Notification::fake();
 
         [$worker, $customer, $token] = $this->createWorkerContext();
-        $serviceId = DB::table('danh_muc_dich_vu')->insertGetId([
-            'ten_dich_vu' => 'Sua dieu hoa',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $partAId = DB::table('linh_kien')->insertGetId([
-            'dich_vu_id' => $serviceId,
-            'ten_linh_kien' => 'Bo mat nhan LG',
-            'hinh_anh' => null,
-            'gia' => 330000,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $partBId = DB::table('linh_kien')->insertGetId([
-            'dich_vu_id' => $serviceId,
-            'ten_linh_kien' => 'Hall dem quat dan lanh',
-            'hinh_anh' => null,
-            'gia' => 130000,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $existingPartItems = [
+            [
+                'noi_dung' => 'Bo mat nhan LG',
+                'don_gia' => 330000,
+                'so_luong' => 1,
+                'so_tien' => 330000,
+                'bao_hanh_thang' => 12,
+            ],
+            [
+                'noi_dung' => 'Hall dem quat dan lanh',
+                'don_gia' => 130000,
+                'so_luong' => 1,
+                'so_tien' => 130000,
+                'bao_hanh_thang' => 6,
+            ],
+        ];
 
         $bookingId = DB::table('don_dat_lich')->insertGetId([
             'khach_hang_id' => $customer->id,
@@ -257,7 +252,9 @@ class WorkerPricingFlowTest extends TestCase
             'trang_thai' => 'dang_lam',
             'gia_da_cap_nhat' => false,
             'phi_di_lai' => 10000,
-            'phi_linh_kien' => 0,
+            'phi_linh_kien' => 460000,
+            'chi_tiet_linh_kien' => json_encode($existingPartItems, JSON_THROW_ON_ERROR),
+            'ghi_chu_linh_kien' => 'Admin da chot linh kien cho don nay.',
             'tien_cong' => 0,
             'tien_thue_xe' => 0,
             'tong_tien' => null,
@@ -265,40 +262,44 @@ class WorkerPricingFlowTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::table('don_dat_lich_dich_vu')->insert([
-            'don_dat_lich_id' => $bookingId,
-            'dich_vu_id' => $serviceId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
         $response = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->putJson("/api/don-dat-lich/{$bookingId}/update-costs", [
+                'tien_thue_xe' => 30000,
                 'chi_tiet_tien_cong' => [
                     ['noi_dung' => 'Ve sinh va kiem tra tong quat', 'so_tien' => 120000],
                 ],
+                'ghi_chu_linh_kien' => 'Worker khong duoc sua ghi chu linh kien.',
                 'chi_tiet_linh_kien' => [
-                    ['linh_kien_id' => $partAId, 'noi_dung' => 'Gia bi sua tay', 'so_tien' => 1, 'bao_hanh_thang' => 12],
-                    ['linh_kien_id' => $partBId, 'noi_dung' => 'Gia bi sua tay', 'so_tien' => 2, 'bao_hanh_thang' => 6],
+                    ['noi_dung' => 'Worker thu thay linh kien khac', 'don_gia' => 999000, 'so_luong' => 1, 'so_tien' => 999000, 'bao_hanh_thang' => 1],
                 ],
             ]);
 
         $response->assertOk()
-            ->assertJsonPath('data.chi_tiet_linh_kien.0.linh_kien_id', $partAId)
             ->assertJsonPath('data.chi_tiet_linh_kien.0.noi_dung', 'Bo mat nhan LG')
             ->assertJsonPath('data.chi_tiet_linh_kien.0.so_tien', 330000)
             ->assertJsonPath('data.chi_tiet_linh_kien.1.noi_dung', 'Hall dem quat dan lanh')
             ->assertJsonPath('data.chi_tiet_linh_kien.1.so_tien', 130000)
             ->assertJsonPath('data.phi_linh_kien', 460000)
-            ->assertJsonPath('data.tong_tien', 590000);
+            ->assertJsonPath('data.ghi_chu_linh_kien', 'Admin da chot linh kien cho don nay.')
+            ->assertJsonPath('data.tong_tien', 620000);
 
         $this->assertDatabaseHas('don_dat_lich', [
             'id' => $bookingId,
             'tien_cong' => 120000.00,
             'phi_linh_kien' => 460000.00,
-            'tong_tien' => 590000.00,
+            'ghi_chu_linh_kien' => 'Admin da chot linh kien cho don nay.',
+            'tong_tien' => 620000.00,
             'gia_da_cap_nhat' => 1,
         ]);
+
+        $storedPartItems = DB::table('don_dat_lich')
+            ->where('id', $bookingId)
+            ->value('chi_tiet_linh_kien');
+
+        $this->assertSame(
+            $existingPartItems,
+            json_decode((string) $storedPartItems, true, 512, JSON_THROW_ON_ERROR)
+        );
     }
 
     public function test_worker_can_update_costs_by_selecting_catalog_labor(): void

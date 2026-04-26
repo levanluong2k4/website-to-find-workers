@@ -1,4 +1,51 @@
-export const getBookingServices = (booking) => Array.isArray(booking?.dich_vus) ? booking.dich_vus : [];
+export const getBookingServices = (booking) => {
+  const relationServices = [
+    booking?.dich_vus,
+    booking?.dichVus,
+    booking?.services,
+  ].find((value) => Array.isArray(value) && value.length > 0);
+
+  if (relationServices) {
+    return relationServices.filter(Boolean);
+  }
+
+  const singleService = booking?.dich_vu || booking?.dichVu || null;
+
+  return singleService ? [singleService] : [];
+};
+
+export const getBookingServiceNames = (booking) => {
+  const seen = new Set();
+
+  return getBookingServices(booking)
+    .map((service) => String(service?.ten_dich_vu || service?.name || '').trim())
+    .filter((serviceName) => {
+      if (!serviceName) {
+        return false;
+      }
+
+      const normalizedName = serviceName.toLowerCase();
+      if (seen.has(normalizedName)) {
+        return false;
+      }
+
+      seen.add(normalizedName);
+
+      return true;
+    });
+};
+
+export const getBookingServiceTitle = (
+  booking,
+  {
+    fallback = 'Dịch vụ sửa chữa',
+    separator = ' · ',
+  } = {},
+) => {
+  const serviceNames = getBookingServiceNames(booking);
+
+  return serviceNames.length ? serviceNames.join(separator) : fallback;
+};
 
 export const getBookingPaymentMethod = (booking) => booking?.phuong_thuc_thanh_toan === 'transfer' ? 'transfer' : 'cod';
 
@@ -9,7 +56,7 @@ export const getBookingRebookPayload = (booking) => {
   const serviceIds = services
     .map((service) => Number(service?.id || 0))
     .filter((serviceId) => Number.isInteger(serviceId) && serviceId > 0);
-  const firstServiceName = services[0]?.ten_dich_vu || '';
+  const firstServiceName = getBookingServiceNames(booking)[0] || '';
   const workerId = Number(booking?.tho?.id || booking?.tho_id || 0);
 
   return {
@@ -162,7 +209,7 @@ const getServicePreview = (booking) => {
   const scheduleText = scheduleParts.join(' • ') || 'Chờ xác nhận lịch thanh toán';
 
   return {
-    title: firstService?.ten_dich_vu || 'Dịch vụ sửa chữa',
+    title: getBookingServiceTitle(booking),
     meta: services.length > 1
       ? `${services.length} dịch vụ trong đơn • ${scheduleText}`
       : scheduleText,

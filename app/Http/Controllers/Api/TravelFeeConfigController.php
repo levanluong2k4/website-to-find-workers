@@ -37,6 +37,8 @@ class TravelFeeConfigController extends Controller
             'store_transport_fee' => 'nullable|numeric|min:0|max:100000000',
             'store_hotline' => 'nullable|string|max:50',
             'store_opening_hours' => 'nullable|string|max:100',
+            'booking_time_slots' => 'required|array|min:1|max:12',
+            'booking_time_slots.*' => 'required|string|max:20',
             'complaint_window_days' => 'nullable|integer|min:1|max:30',
             'tiers' => 'required|array|min:1|max:20',
             'tiers.*.from_km' => 'required|numeric|min:0|max:1000',
@@ -74,10 +76,10 @@ class TravelFeeConfigController extends Controller
                     );
                 }
 
-                if ($previousToKm !== null && $tier['from_km'] <= $previousToKm) {
+                if ($previousToKm !== null && $tier['from_km'] < $previousToKm) {
                     $validator->errors()->add(
                         'tiers.' . $tier['index'] . '.from_km',
-                        'Khoang cach dang bi chong len hoac cham moc ket thuc cua dong truoc.'
+                        'Khoang cach dang bi chong len voi dong truoc.'
                     );
                 }
 
@@ -92,6 +94,80 @@ class TravelFeeConfigController extends Controller
                     $hasStoreLatitude ? 'store_longitude' : 'store_latitude',
                     'Vui long nhap day du ca vi do va kinh do cua cua hang.'
                 );
+            }
+
+            $slots = collect($request->input('booking_time_slots', []))
+                ->map(fn ($slot, $index) => [
+                    'index' => $index,
+                    'value' => preg_replace('/\s+/', '', (string) $slot) ?: '',
+                ])
+                ->filter(fn (array $slot) => $slot['value'] !== '')
+                ->map(function (array $slot): array {
+                    preg_match('/^(?<start>\d{2}:\d{2})-(?<end>\d{2}:\d{2})$/', $slot['value'], $matches);
+
+                    return [
+                        ...$slot,
+                        'start' => $matches['start'] ?? null,
+                        'end' => $matches['end'] ?? null,
+                    ];
+                })
+                ->values();
+
+            if ($slots->isEmpty()) {
+                $validator->errors()->add('booking_time_slots', 'Vui lòng cấu hình ít nhất 1 khung giờ đặt đơn.');
+            }
+
+            $seenValues = [];
+            $sortedSlots = collect();
+
+            foreach ($slots as $slot) {
+                if ($slot['start'] === null || $slot['end'] === null) {
+                    $validator->errors()->add(
+                        'booking_time_slots.' . $slot['index'],
+                        'Khung giờ phải có định dạng HH:MM-HH:MM.'
+                    );
+                    continue;
+                }
+
+                $startMinutes = $this->slotTimeToMinutes($slot['start']);
+                $endMinutes = $this->slotTimeToMinutes($slot['end']);
+
+                if ($startMinutes === null || $endMinutes === null || $endMinutes <= $startMinutes) {
+                    $validator->errors()->add(
+                        'booking_time_slots.' . $slot['index'],
+                        'Giờ kết thúc phải lớn hơn giờ bắt đầu.'
+                    );
+                    continue;
+                }
+
+                if (in_array($slot['value'], $seenValues, true)) {
+                    $validator->errors()->add(
+                        'booking_time_slots.' . $slot['index'],
+                        'Khung giờ này đang bị trùng.'
+                    );
+                    continue;
+                }
+
+                $seenValues[] = $slot['value'];
+                $sortedSlots->push([
+                    ...$slot,
+                    'start_minutes' => $startMinutes,
+                    'end_minutes' => $endMinutes,
+                ]);
+            }
+
+            $sortedSlots = $sortedSlots->sortBy('start_minutes')->values();
+
+            for ($index = 1; $index < $sortedSlots->count(); $index += 1) {
+                $previous = $sortedSlots[$index - 1];
+                $current = $sortedSlots[$index];
+
+                if ($current['start_minutes'] < $previous['end_minutes']) {
+                    $validator->errors()->add(
+                        'booking_time_slots.' . $current['index'],
+                        'Khung giờ này đang chồng lấn với khung trước.'
+                    );
+                }
             }
         });
 
@@ -144,6 +220,14 @@ class TravelFeeConfigController extends Controller
             $payload['store_opening_hours'] = (string) $request->input('store_opening_hours');
         }
 
+        if ($request->exists('booking_time_slots')) {
+            $payload['booking_time_slots'] = collect($request->input('booking_time_slots', []))
+                ->map(fn ($slot) => preg_replace('/\s+/', '', (string) $slot) ?: '')
+                ->filter()
+                ->values()
+                ->all();
+        }
+
         if ($request->exists('complaint_window_days')) {
             $payload['complaint_window_days'] = (int) $request->input('complaint_window_days');
         }
@@ -155,5 +239,21 @@ class TravelFeeConfigController extends Controller
             'message' => 'Da cap nhat bang phi van chuyen theo khoang cach',
             'data' => $state,
         ]);
+    }
+
+    private function slotTimeToMinutes(string $value): ?int
+    {
+        if (!preg_match('/^(?<hour>\d{2}):(?<minute>\d{2})$/', trim($value), $matches)) {
+            return null;
+        }
+
+        $hour = (int) $matches['hour'];
+        $minute = (int) $matches['minute'];
+
+        if ($hour < 0 || $hour > 23 || $minute < 0 || $minute > 59) {
+            return null;
+        }
+
+        return ($hour * 60) + $minute;
     }
 }

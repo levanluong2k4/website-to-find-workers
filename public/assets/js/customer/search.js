@@ -16,15 +16,85 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnApplyTimeFilter = document.getElementById('btnApplyTimeFilter');
     const btnResetSearchFilters = document.getElementById('btnResetSearchFilters');
     const DEFAULT_SORT = 'jobs';
+    const DEFAULT_BOOKING_TIME_SLOTS = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'];
     const searchParams = new URLSearchParams(window.location.search);
+    let bookingTimeSlots = [...DEFAULT_BOOKING_TIME_SLOTS];
     let categoriesCache = [];
 
+    renderTimeSlotOptions();
     syncControlsFromParams();
     renderActiveFilterChips();
     updateContextualCopy();
     bindStaticEvents();
+    loadBookingTimeSlots();
     fetchCategories();
     fetchWorkers();
+
+    function normalizeTimeSlotValue(value) {
+        return String(value || '').replace(/\s+/g, '');
+    }
+
+    function timeToMinutes(value) {
+        const matched = String(value || '').trim().match(/^(\d{2}):(\d{2})$/);
+        if (!matched) return null;
+
+        const hour = Number(matched[1]);
+        const minute = Number(matched[2]);
+        if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+            return null;
+        }
+
+        return (hour * 60) + minute;
+    }
+
+    function getBookingTimeSlots() {
+        const normalizedSlots = (Array.isArray(bookingTimeSlots) && bookingTimeSlots.length
+            ? bookingTimeSlots
+            : DEFAULT_BOOKING_TIME_SLOTS)
+            .map((slot) => normalizeTimeSlotValue(slot))
+            .filter(Boolean)
+            .filter((slot, index, items) => items.indexOf(slot) === index)
+            .sort((left, right) => {
+                const leftStart = timeToMinutes(String(left).split('-', 1)[0]);
+                const rightStart = timeToMinutes(String(right).split('-', 1)[0]);
+                return Number(leftStart ?? 0) - Number(rightStart ?? 0);
+            });
+
+        return normalizedSlots.length ? normalizedSlots : [...DEFAULT_BOOKING_TIME_SLOTS];
+    }
+
+    function renderTimeSlotOptions() {
+        if (!filterTimeSlot) return;
+
+        const currentValue = normalizeTimeSlotValue(searchParams.get('khung_gio_hen') || filterTimeSlot.value);
+        const slots = getBookingTimeSlots();
+
+        filterTimeSlot.innerHTML = [
+            '<option value="">Chọn khung giờ</option>',
+            ...slots.map((slot) => `<option value="${slot}">${slot.replace('-', ' - ')}</option>`),
+        ].join('');
+
+        if (slots.includes(currentValue)) {
+            filterTimeSlot.value = currentValue;
+        }
+    }
+
+    async function loadBookingTimeSlots() {
+        try {
+            const result = await callApi('/travel-fee-config', 'GET');
+            if (result?.ok) {
+                const config = result.data?.data?.config;
+                bookingTimeSlots = Array.isArray(config?.booking_time_slots)
+                    ? config.booking_time_slots
+                    : [];
+            }
+        } catch (error) {
+            console.warn('Không tải được cấu hình khung giờ đặt lịch.', error);
+        } finally {
+            renderTimeSlotOptions();
+            syncControlsFromParams();
+        }
+    }
 
     function bindStaticEvents() {
         filterDate?.setAttribute('min', getTodayString());

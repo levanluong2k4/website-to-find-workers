@@ -108,15 +108,25 @@ export function createPricingModalController({
   };
   const pricingWizardSteps = {
     1: {
-      kicker: 'B??c 1 tr�n 2',
-      title: 'Ch?n ti?n c�ng',
-      copy: 'Ch?n tri?u ch?ng, nguy�n nh�n v� h??ng x? l� ?? h�nh th�nh c�c d�ng ti?n c�ng tr??c khi sang b??c linh ki?n.',
+      kicker: 'Bước 1 trên 2',
+      title: 'Chọn tiền công',
+      copy: 'Chọn triệu chứng, nguyên nhân và hướng xử lý để hình thành các dòng tiền công trước khi sang bước linh kiện.',
     },
     2: {
-      kicker: 'B??c 2 tr�n 2',
-      title: 'Th�m linh ki?n',
-      copy: 'Ch?n linh ki?n t? danh m?c ho?c th�m th? c�ng, r?i l?u b�o gi� ngay trong modal n�y.',
+      kicker: 'Bước 2 trên 2',
+      title: 'Thêm linh kiện',
+      copy: 'Chọn linh kiện từ danh mục hoặc thêm thủ công, rồi lưu báo giá ngay trong modal này.',
     },
+  };
+  pricingWizardSteps[1] = {
+    kicker: 'Bước 1 trên 2',
+    title: 'Cập nhật tiền công',
+    copy: 'Chọn triệu chứng, nguyên nhân và hướng xử lý để thêm đúng các dòng tiền công cho đơn đang sửa.',
+  };
+  pricingWizardSteps[2] = {
+    kicker: 'Bước 2 trên 2',
+    title: 'Kiểm tra phụ phí',
+    copy: 'Linh kiện do admin cập nhật ở trang chi tiết đơn. Tại đây thợ chỉ cần kiểm tra phụ phí và lưu phần tiền công.',
   };
   const laborSearchablePickers = {
     symptom: {
@@ -127,9 +137,9 @@ export function createPricingModalController({
       searchEl: laborSymptomSearch,
       optionsEl: laborSymptomOptions,
       selectEl: laborSymptomSelect,
-      placeholder: 'Ch?n tri?u ch?ng',
-      emptyText: 'Kh�ng t�m th?y tri?u ch?ng ph� h?p.',
-      getLabel: (item) => item?.ten_trieu_chung || 'Tri?u ch?ng',
+      placeholder: 'Chọn triệu chứng',
+      emptyText: 'Không tìm thấy triệu chứng phù hợp.',
+      getLabel: (item) => item?.ten_trieu_chung || 'Triệu chứng',
     },
     cause: {
       rootEl: laborCausePicker,
@@ -139,9 +149,9 @@ export function createPricingModalController({
       searchEl: laborCauseSearch,
       optionsEl: laborCauseOptions,
       selectEl: laborCauseSelect,
-      placeholder: 'Ch?n nguy�n nh�n',
-      emptyText: 'Kh�ng t�m th?y nguy�n nh�n ph� h?p.',
-      getLabel: (item) => item?.ten_nguyen_nhan || 'Nguy�n nh�n',
+      placeholder: 'Chọn nguyên nhân',
+      emptyText: 'Không tìm thấy nguyên nhân phù hợp.',
+      getLabel: (item) => item?.ten_nguyen_nhan || 'Nguyên nhân',
     },
   };
 
@@ -170,14 +180,14 @@ export function createPricingModalController({
     const warrantyValue = isPart && item?.bao_hanh_thang !== null && item?.bao_hanh_thang !== undefined
       ? getNumeric(item.bao_hanh_thang)
       : '';
-    const partMeta = isCatalogItem ? 'T? danh m?c linh ki?n' : 'T? nh?p th? c�ng';
+    const partMeta = isCatalogItem ? 'Từ danh mục linh kiện' : 'Tự nhập thủ công';
     const laborNote = !isPart ? escapeHtml(item?.mo_ta_cong_viec || '') : '';
     const laborSymptom = !isPart ? escapeHtml(item?.ten_trieu_chung || item?.trieu_chung || '') : '';
     const laborCause = !isPart
       ? escapeHtml(item?.ten_nguyen_nhan || item?.nguyen_nhan?.ten_nguyen_nhan || '')
       : '';
-    const laborMeta = [laborSymptom, laborCause, laborNote].filter(Boolean).join(' � ')
-      || (isCatalogLaborItem ? 'T? danh m?c ti?n c�ng' : 'D? li?u ti?n c�ng ?� l?u');
+    const laborMeta = [laborSymptom, laborCause, laborNote].filter(Boolean).join(' • ')
+      || (isCatalogLaborItem ? 'Từ danh mục tiền công' : 'Dữ liệu tiền công đã lưu');
 
     if (isPart) {
       return `
@@ -187,33 +197,33 @@ export function createPricingModalController({
           <input type="hidden" class="js-line-image" value="${image}">
           <div class="dispatch-pricing-v2-part-card-inner">
             <div class="dispatch-pricing-v2-part-main">
-              <div class="dispatch-pricing-v2-field-label">T�n linh ki?n / V?t t?</div>
-              <input type="text" class="dispatch-pricing-v2-input-dark js-line-description dispatch-pricing-v2-inline-input dispatch-pricing-v2-part-title" value="${description}" placeholder="Bo m?ch ch? Samsung" ${isCatalogItem ? 'readonly' : ''}>
+              <div class="dispatch-pricing-v2-field-label">Tên linh kiện / Vật tư</div>
+              <input type="text" class="dispatch-pricing-v2-input-dark js-line-description dispatch-pricing-v2-inline-input dispatch-pricing-v2-part-title" value="${description}" placeholder="Bo mạch chủ Samsung" ${isCatalogItem ? 'readonly' : ''}>
               <div class="dispatch-pricing-v2-part-meta">${escapeHtml(partMeta)}</div>
             </div>
             <div class="dispatch-pricing-v2-part-col">
-              <div class="dispatch-pricing-v2-field-label">??n gi� (?)</div>
+              <div class="dispatch-pricing-v2-field-label">Đơn giá (đ)</div>
               <input type="number" class="dispatch-pricing-v2-input-dark js-line-amount dispatch-pricing-v2-inline-input dispatch-pricing-v2-inline-input--price" value="${amountValue}" placeholder="650000" ${isCatalogItem ? 'readonly' : ''}>
             </div>
             <div class="dispatch-pricing-v2-part-col">
-              <div class="dispatch-pricing-v2-field-label">S? l??ng</div>
+              <div class="dispatch-pricing-v2-field-label">Số lượng</div>
               <div class="dispatch-pricing-v2-stepper">
-                <button type="button" class="dispatch-pricing-v2-stepper-btn js-quantity-step" data-step="-1" aria-label="Gi?m s? l??ng">
+                <button type="button" class="dispatch-pricing-v2-stepper-btn js-quantity-step" data-step="-1" aria-label="Giảm số lượng">
                   <span class="material-symbols-outlined" style="font-size: 14px;">remove</span>
                 </button>
                 <input type="number" class="dispatch-pricing-v2-input-dark js-line-quantity dispatch-pricing-v2-inline-input" min="1" step="1" value="${quantityValue}" placeholder="1">
-                <button type="button" class="dispatch-pricing-v2-stepper-btn js-quantity-step" data-step="1" aria-label="T?ng s? l??ng">
+                <button type="button" class="dispatch-pricing-v2-stepper-btn js-quantity-step" data-step="1" aria-label="Tăng số lượng">
                   <span class="material-symbols-outlined" style="font-size: 14px;">add</span>
                 </button>
               </div>
             </div>
             <div class="dispatch-pricing-v2-part-col">
-              <div class="dispatch-pricing-v2-field-label">B?o h�nh</div>
+              <div class="dispatch-pricing-v2-field-label">Bảo hành</div>
               <select class="js-line-warranty dispatch-pricing-v2-select">
                 ${buildWarrantyOptionsMarkup(warrantyValue)}
               </select>
             </div>
-            <button type="button" class="dispatch-pricing-v2-part-remove dispatch-line-item__remove" aria-label="X�a d�ng">
+            <button type="button" class="dispatch-pricing-v2-part-remove dispatch-line-item__remove" aria-label="Xóa dòng">
               <span class="material-symbols-outlined" style="font-size: 14px;">delete</span>
             </button>
           </div>
@@ -229,18 +239,18 @@ export function createPricingModalController({
         <input type="hidden" class="js-line-work-note" value="${laborNote}">
         <input type="hidden" class="js-line-amount" value="${amountValue}">
         <div class="dispatch-pricing-v2-labor-main">
-          <div class="dispatch-pricing-v2-field-label">T�n h?ng m?c c�ng</div>
-          <input type="text" class="dispatch-pricing-v2-input-dark js-line-description dispatch-pricing-v2-inline-input" value="${description}" placeholder="Ch?n h??ng x? l� t? danh m?c" readonly>
+          <div class="dispatch-pricing-v2-field-label">Tên hạng mục công</div>
+          <input type="text" class="dispatch-pricing-v2-input-dark js-line-description dispatch-pricing-v2-inline-input" value="${description}" placeholder="Chọn hướng xử lý từ danh mục" readonly>
           <div class="dispatch-pricing-v2-labor-row-meta">${laborMeta}</div>
         </div>
         <div class="dispatch-pricing-v2-labor-col dispatch-pricing-v2-labor-col--price">
-          <div class="dispatch-pricing-v2-field-label">??n gi� (?)</div>
+          <div class="dispatch-pricing-v2-field-label">Đơn giá (đ)</div>
           <div class="dispatch-pricing-v2-labor-price">
             <span>${formattedAmountValue}</span>
-            <span class="dispatch-pricing-v2-labor-price__suffix">?</span>
+            <span class="dispatch-pricing-v2-labor-price__suffix">đ</span>
           </div>
         </div>
-        <button type="button" class="dispatch-pricing-v2-labor-remove dispatch-line-item__remove" aria-label="X�a d�ng">
+        <button type="button" class="dispatch-pricing-v2-labor-remove dispatch-line-item__remove" aria-label="Xóa dòng">
           <span class="material-symbols-outlined" style="font-size: 14px;">delete</span>
         </button>
       </div>
@@ -351,7 +361,7 @@ export function createPricingModalController({
 
         symptomMap.set(symptomId, {
           id: symptomId,
-          ten_trieu_chung: symptom?.ten_trieu_chung || 'Tri?u ch?ng',
+          ten_trieu_chung: symptom?.ten_trieu_chung || 'Triệu chứng',
           dich_vu_id: getNumeric(symptom?.dich_vu_id) || null,
         });
       });
@@ -390,7 +400,7 @@ export function createPricingModalController({
 
       causeMap.set(causeId, {
         id: causeId,
-        ten_nguyen_nhan: item?.nguyen_nhan?.ten_nguyen_nhan || 'Nguy�n nh�n',
+        ten_nguyen_nhan: item?.nguyen_nhan?.ten_nguyen_nhan || 'Nguyên nhân',
       });
     });
 
@@ -591,9 +601,9 @@ export function createPricingModalController({
 
     if (laborSymptomSelect) {
       laborSymptomSelect.innerHTML = [
-        '<option value="">Ch?n tri?u ch?ng</option>',
+        '<option value="">Chọn triệu chứng</option>',
         ...symptoms.map((symptom) => (
-          `<option value="${symptom.id}" ${getNumeric(laborCatalogState.selectedSymptomId) === getNumeric(symptom.id) ? 'selected' : ''}>${escapeHtml(symptom.ten_trieu_chung || 'Tri?u ch?ng')}</option>`
+          `<option value="${symptom.id}" ${getNumeric(laborCatalogState.selectedSymptomId) === getNumeric(symptom.id) ? 'selected' : ''}>${escapeHtml(symptom.ten_trieu_chung || 'Triệu chứng')}</option>`
         )),
       ].join('');
       laborSymptomSelect.disabled = symptoms.length === 0;
@@ -602,9 +612,9 @@ export function createPricingModalController({
 
     if (laborCauseSelect) {
       laborCauseSelect.innerHTML = [
-        '<option value="">Ch?n nguy�n nh�n</option>',
+        '<option value="">Chọn nguyên nhân</option>',
         ...causes.map((cause) => (
-          `<option value="${cause.id}" ${getNumeric(laborCatalogState.selectedCauseId) === getNumeric(cause.id) ? 'selected' : ''}>${escapeHtml(cause.ten_nguyen_nhan || 'Nguy�n nh�n')}</option>`
+          `<option value="${cause.id}" ${getNumeric(laborCatalogState.selectedCauseId) === getNumeric(cause.id) ? 'selected' : ''}>${escapeHtml(cause.ten_nguyen_nhan || 'Nguyên nhân')}</option>`
         )),
       ].join('');
       laborCauseSelect.disabled = causes.length === 0;
@@ -613,56 +623,69 @@ export function createPricingModalController({
 
     if (laborResolutionSelect) {
       laborResolutionSelect.innerHTML = [
-        '<option value="">Ch?n h??ng x? l�</option>',
+        '<option value="">Chọn hướng xử lý</option>',
         ...resolutions.map((resolution) => (
-          `<option value="${resolution.id}" ${getNumeric(laborCatalogState.selectedResolutionId) === getNumeric(resolution.id) ? 'selected' : ''}>${escapeHtml(resolution.ten_huong_xu_ly || 'H??ng x? l�')}</option>`
+          `<option value="${resolution.id}" ${getNumeric(laborCatalogState.selectedResolutionId) === getNumeric(resolution.id) ? 'selected' : ''}>${escapeHtml(resolution.ten_huong_xu_ly || 'Hướng xử lý')}</option>`
         )),
       ].join('');
       laborResolutionSelect.disabled = resolutions.length === 0;
     }
 
     const selectedResolution = getSelectedLaborResolution();
+    const selectedResolutionPrice = getNumeric(selectedResolution?.gia_tham_khao);
+    const missingReferencePrice = !!selectedResolution && selectedResolutionPrice <= 0;
     const alreadyAdded = selectedResolution && getDraftLaborIds().has(getNumeric(selectedResolution.id));
     if (addLaborItemButton) {
-      addLaborItemButton.disabled = !selectedResolution || getNumeric(selectedResolution?.gia_tham_khao) <= 0 || alreadyAdded;
+      const isDisabled = !selectedResolution || missingReferencePrice || alreadyAdded;
+      addLaborItemButton.disabled = isDisabled;
+      addLaborItemButton.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
+      addLaborItemButton.title = !selectedResolution
+        ? 'Chọn hướng xử lý trước.'
+        : missingReferencePrice
+          ? 'Hướng xử lý này chưa có giá tham khảo nên chưa thể thêm.'
+          : alreadyAdded
+            ? 'Hướng xử lý này đã có trong bảng tiền công.'
+            : 'Thêm tiền công vào bảng.';
     }
 
     if (!laborCatalogState.items.length) {
       if (laborCatalogStatus) {
         laborCatalogStatus.textContent = currentCostBooking
-          ? 'Ch?a c� danh m?c ti?n c�ng cho nh�m d?ch v? c?a ??n n�y.'
-          : 'M? ??n ?? t?i danh m?c ti?n c�ng.';
+          ? 'Chưa có danh mục tiền công cho nhóm dịch vụ của đơn này.'
+          : 'Mở đơn để tải danh mục tiền công.';
       }
       if (laborResolutionPrice) {
-        laborResolutionPrice.textContent = 'C?n ??ng b? danh m?c h??ng x? l� ?? th? ch?n t? dropdown.';
+        laborResolutionPrice.textContent = 'Cần đồng bộ danh mục hướng xử lý để chọn từ dropdown.';
       }
       return;
     }
 
     if (!laborCatalogState.selectedSymptomId) {
-      laborCatalogStatus.textContent = 'Ch?n tri?u ch?ng tr??c ?? l?c nguy�n nh�n t??ng ?ng.';
-      laborResolutionPrice.textContent = `H? th?ng ?ang c� ${laborCatalogState.items.length} h??ng x? l� theo d?ch v? c?a ??n.`;
+      laborCatalogStatus.textContent = 'Chọn triệu chứng trước để lọc nguyên nhân tương ứng.';
+      laborResolutionPrice.textContent = `Hệ thống đang có ${laborCatalogState.items.length} hướng xử lý theo dịch vụ của đơn.`;
       return;
     }
 
     if (!laborCatalogState.selectedCauseId) {
-      laborCatalogStatus.textContent = 'Ti?p t?c ch?n nguy�n nh�n ?? thu h?p danh s�ch h??ng x? l�.';
-      laborResolutionPrice.textContent = `${causes.length} nguy�n nh�n ph� h?p v?i tri?u ch?ng ?ang ch?n.`;
+      laborCatalogStatus.textContent = 'Tiếp tục chọn nguyên nhân để thu hẹp danh sách hướng xử lý.';
+      laborResolutionPrice.textContent = `${causes.length} nguyên nhân phù hợp với triệu chứng đang chọn.`;
       return;
     }
 
     if (!selectedResolution) {
-      laborCatalogStatus.textContent = 'Ch?n h??ng x? l� ?? th�m ?�ng d�ng ti?n c�ng.';
-      laborResolutionPrice.textContent = `${resolutions.length} h??ng x? l� ?ang kh?p v?i tri?u ch?ng v� nguy�n nh�n.`;
+      laborCatalogStatus.textContent = 'Chọn hướng xử lý để thêm đúng dòng tiền công.';
+      laborResolutionPrice.textContent = `${resolutions.length} hướng xử lý đang khớp với triệu chứng và nguyên nhân.`;
       return;
     }
 
     laborCatalogStatus.textContent = selectedResolution.mo_ta_cong_viec
       ? selectedResolution.mo_ta_cong_viec
-      : 'H??ng x? l� n�y ch?a c� m� t? c�ng vi?c chi ti?t.';
+      : 'Hướng xử lý này chưa có mô tả công việc chi tiết.';
     laborResolutionPrice.textContent = alreadyAdded
-      ? 'H??ng x? l� n�y ?� c� trong b?ng ti?n c�ng.'
-      : `Gi� tham kh?o: ${formatMoney(selectedResolution.gia_tham_khao)}. Ch?n "Th�m ti?n c�ng" ?? ??a v�o b?ng.`;
+      ? 'Hướng xử lý này đã có trong bảng tiền công.'
+      : missingReferencePrice
+        ? 'Hướng xử lý này chưa có giá tham khảo nên chưa thể thêm vào bảng tiền công.'
+        : `Giá tham khảo: ${formatMoney(selectedResolutionPrice)}. Chọn "Thêm tiền công" để đưa vào bảng.`;
   };
 
   const loadLaborCatalogForBooking = async (booking) => {
@@ -691,8 +714,8 @@ export function createPricingModalController({
 
     laborCatalogState.items = [];
     updateLaborCatalogPicker();
-    laborCatalogStatus.textContent = '?ang t?i danh m?c tri?u ch?ng, nguy�n nh�n v� h??ng x? l�...';
-    laborResolutionPrice.textContent = 'H? th?ng ?ang chu?n b? dropdown ti?n c�ng cho ??n n�y.';
+    laborCatalogStatus.textContent = 'Đang tải danh mục triệu chứng, nguyên nhân và hướng xử lý...';
+    laborResolutionPrice.textContent = 'Hệ thống đang chuẩn bị dropdown tiền công cho đơn này.';
 
     try {
       const params = new URLSearchParams();
@@ -704,7 +727,7 @@ export function createPricingModalController({
       }
 
       if (!response.ok) {
-        throw new Error(response.data?.message || 'Kh�ng th? t?i danh m?c ti?n c�ng.');
+        throw new Error(response.data?.message || 'Không thể tải danh mục tiền công.');
       }
 
       laborCatalogState.items = Array.isArray(response.data) ? response.data : [];
@@ -717,7 +740,7 @@ export function createPricingModalController({
 
       laborCatalogState.items = [];
       updateLaborCatalogPicker();
-      showToast(error.message || 'L?i khi t?i h??ng x? l� theo d?ch v?.', 'error');
+      showToast(error.message || 'Lỗi khi tải hướng xử lý theo dịch vụ.', 'error');
     }
   };
 
@@ -725,18 +748,18 @@ export function createPricingModalController({
     const selectedResolution = getSelectedLaborResolution();
 
     if (!selectedResolution) {
-      showToast('Vui l�ng ch?n ??y ?? tri?u ch?ng, nguy�n nh�n v� h??ng x? l�.', 'error');
+      showToast('Vui lòng chọn đầy đủ triệu chứng, nguyên nhân và hướng xử lý.', 'error');
       return;
     }
 
     const resolutionId = getNumeric(selectedResolution.id);
     if (resolutionId <= 0 || getNumeric(selectedResolution.gia_tham_khao) <= 0) {
-      showToast('H??ng x? l� n�y ch?a c� gi� tham kh?o ?? th�m v�o ti?n c�ng.', 'error');
+      showToast('Hướng xử lý này chưa có giá tham khảo để thêm vào tiền công.', 'error');
       return;
     }
 
     if (getDraftLaborIds().has(resolutionId)) {
-      showToast('H??ng x? l� n�y ?� c� trong b?ng ti?n c�ng.', 'error');
+      showToast('Hướng xử lý này đã có trong bảng tiền công.', 'error');
       updateLaborCatalogPicker();
       return;
     }
@@ -752,7 +775,7 @@ export function createPricingModalController({
       mo_ta_cong_viec: selectedResolution.mo_ta_cong_viec || '',
       ten_trieu_chung: selectedSymptom?.ten_trieu_chung || '',
       ten_nguyen_nhan: selectedResolution?.nguyen_nhan?.ten_nguyen_nhan || '',
-      noi_dung: selectedResolution.ten_huong_xu_ly || 'H??ng x? l�',
+      noi_dung: selectedResolution.ten_huong_xu_ly || 'Hướng xử lý',
       so_tien: getNumeric(selectedResolution.gia_tham_khao),
     });
 
@@ -771,13 +794,13 @@ export function createPricingModalController({
     addSelectedPartsButton.disabled = selectedCount === 0;
     addSelectedPartsButton.innerHTML = `
       <span class="material-symbols-outlined">playlist_add</span>
-      ${selectedCount > 0 ? `Th�m ${selectedCount} linh ki?n` : 'Th�m linh ki?n ?� ch?n'}
+      ${selectedCount > 0 ? `Thêm ${selectedCount} linh kiện` : 'Thêm linh kiện đã chọn'}
     `;
   };
 
   const getPartCatalogKeyword = () => String(partCatalogSearch?.value || '').trim().toLocaleLowerCase('vi-VN');
   const getPartCatalogItemName = (item) => String(item?.ten_linh_kien || '').trim();
-  const getPartCatalogServiceName = (item) => item?.dich_vu?.ten_dich_vu || (currentCostBooking ? getBookingServiceNames(currentCostBooking) : 'D?ch v?');
+  const getPartCatalogServiceName = (item) => item?.dich_vu?.ten_dich_vu || (currentCostBooking ? getBookingServiceNames(currentCostBooking) : 'Dịch vụ');
 
   const getVisiblePartCatalogItems = () => {
     const keyword = getPartCatalogKeyword();
@@ -869,7 +892,7 @@ export function createPricingModalController({
     }
 
     if (!visibleItems.length) {
-      partCatalogSuggestions.innerHTML = '<div class="dispatch-part-suggestion-empty">Kh�ng t�m th?y linh ki?n ph� h?p v?i t? kh�a ?ang nh?p.</div>';
+      partCatalogSuggestions.innerHTML = '<div class="dispatch-part-suggestion-empty">Không tìm thấy linh kiện phù hợp với từ khóa đang nhập.</div>';
       setPartCatalogSuggestionsVisible(true);
       return;
     }
@@ -895,16 +918,16 @@ export function createPricingModalController({
         >
           <span class="dispatch-part-suggestion__thumb">
             ${item?.hinh_anh
-              ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(getPartCatalogItemName(item) || 'Linh ki?n')}">`
+              ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(getPartCatalogItemName(item) || 'Linh kiện')}">`
               : '<span class="material-symbols-outlined">image_not_supported</span>'}
           </span>
           <span class="dispatch-part-suggestion__body">
-            <span class="dispatch-part-suggestion__title">${escapeHtml(getPartCatalogItemName(item) || 'Linh ki?n')}</span>
+            <span class="dispatch-part-suggestion__title">${escapeHtml(getPartCatalogItemName(item) || 'Linh kiện')}</span>
             <span class="dispatch-part-suggestion__meta">${escapeHtml(serviceName)}</span>
           </span>
           <span class="dispatch-part-suggestion__aside">
-            <strong class="dispatch-part-suggestion__price">${hasPrice ? formatMoney(item?.gia) : 'Ch?a c� gi�'}</strong>
-            ${isSelected ? '<span class="dispatch-part-suggestion__badge">?� ch?n</span>' : ''}
+            <strong class="dispatch-part-suggestion__price">${hasPrice ? formatMoney(item?.gia) : 'Chưa có giá'}</strong>
+            ${isSelected ? '<span class="dispatch-part-suggestion__badge">Đã chọn</span>' : ''}
           </span>
         </button>
       `;
@@ -925,15 +948,15 @@ export function createPricingModalController({
 
     if (!partCatalogState.items.length) {
       if (!currentCostBooking) {
-        partCatalogStatus.textContent = 'M? ??n ?? t?i danh m?c linh ki?n ?�ng theo d?ch v? c?a ??n.';
+        partCatalogStatus.textContent = 'Mở đơn để tải danh mục linh kiện đúng theo dịch vụ của đơn.';
       } else if (isShowingFallback) {
-        partCatalogStatus.textContent = `D?ch v? c?a ??n n�y ch?a c� linh ki?n m?u. ?ang g?i � ${suggestionItems.length} linh ki?n t? to�n b? kho theo t? kh�a "${rawKeyword}".`;
+        partCatalogStatus.textContent = `Dịch vụ của đơn này chưa có linh kiện mẫu. Đang gợi ý ${suggestionItems.length} linh kiện từ toàn bộ kho theo từ khóa "${rawKeyword}".`;
       } else if (rawKeyword && hasLoadedFallbackSuggestionsForKeyword(rawKeyword)) {
-        partCatalogStatus.textContent = `Kh�ng t�m th?y linh ki?n n�o trong to�n b? kho theo t? kh�a "${rawKeyword}".`;
+        partCatalogStatus.textContent = `Không tìm thấy linh kiện nào trong toàn bộ kho theo từ khóa "${rawKeyword}".`;
       } else if (rawKeyword) {
-        partCatalogStatus.textContent = 'D?ch v? c?a ??n n�y ch?a c� linh ki?n m?u. Ti?p t?c nh?p ?? t�m tr�n to�n b? kho linh ki?n.';
+        partCatalogStatus.textContent = 'Dịch vụ của đơn này chưa có linh kiện mẫu. Tiếp tục nhập để tìm trên toàn bộ kho linh kiện.';
       } else {
-        partCatalogStatus.textContent = 'D?ch v? c?a ??n n�y ch?a c� linh ki?n m?u ho?c ch?a ??ng b? danh m?c.';
+        partCatalogStatus.textContent = 'Dịch vụ của đơn này chưa có linh kiện mẫu hoặc chưa đồng bộ danh mục.';
       }
 
       partCatalogResults.innerHTML = '';
@@ -943,12 +966,12 @@ export function createPricingModalController({
     }
 
     partCatalogStatus.textContent = visibleItems.length
-      ? `?ang hi?n th? ${visibleItems.length}/${partCatalogState.items.length} linh ki?n ph� h?p v?i d?ch v? c?a ??n.`
+      ? `Đang hiển thị ${visibleItems.length}/${partCatalogState.items.length} linh kiện phù hợp với dịch vụ của đơn.`
       : isShowingFallback
-        ? `Kh�ng th?y linh ki?n kh?p trong d?ch v? c?a ??n. ?ang g?i � ${suggestionItems.length} linh ki?n t? to�n b? kho theo t? kh�a "${rawKeyword}".`
+        ? `Không thấy linh kiện khớp trong dịch vụ của đơn. Đang gợi ý ${suggestionItems.length} linh kiện từ toàn bộ kho theo từ khóa "${rawKeyword}".`
         : hasLoadedFallbackSuggestionsForKeyword(rawKeyword)
-          ? `Kh�ng t�m th?y linh ki?n kh?p v?i t? kh�a "${rawKeyword}" trong d?ch v? c?a ??n ho?c to�n b? kho.`
-          : `Kh�ng t�m th?y linh ki?n kh?p v?i t? kh�a "${partCatalogSearch?.value || ''}".`;
+          ? `Không tìm thấy linh kiện khớp với từ khóa "${rawKeyword}" trong dịch vụ của đơn hoặc toàn bộ kho.`
+          : `Không tìm thấy linh kiện khớp với từ khóa "${partCatalogSearch?.value || ''}".`;
 
     partCatalogResults.innerHTML = visibleItems.map((item) => {
       const partId = getNumeric(item?.id);
@@ -961,14 +984,14 @@ export function createPricingModalController({
           <input type="checkbox" class="dispatch-part-option__check js-part-catalog-check" value="${partId}" ${isSelected ? 'checked' : ''} ${hasPrice ? '' : 'disabled'}>
           <div class="dispatch-part-option__thumb">
             ${item?.hinh_anh
-              ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(item?.ten_linh_kien || 'Linh ki?n')}">`
+              ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(item?.ten_linh_kien || 'Linh kiện')}">`
               : '<span class="material-symbols-outlined">image_not_supported</span>'}
           </div>
           <div class="dispatch-part-option__body">
-            <div class="dispatch-part-option__title">${escapeHtml(item?.ten_linh_kien || 'Linh ki?n')}</div>
+            <div class="dispatch-part-option__title">${escapeHtml(item?.ten_linh_kien || 'Linh kiện')}</div>
             <div class="dispatch-part-option__meta">${escapeHtml(serviceName)}</div>
           </div>
-          <div class="dispatch-part-option__price">${hasPrice ? formatMoney(item?.gia) : 'Ch?a c� gi�'}</div>
+          <div class="dispatch-part-option__price">${hasPrice ? formatMoney(item?.gia) : 'Chưa có giá'}</div>
         </label>
       `;
     }).join('');
@@ -1005,7 +1028,7 @@ export function createPricingModalController({
       }
 
       if (!response.ok) {
-        throw new Error(response.data?.message || 'Kh�ng th? t�m linh ki?n.');
+        throw new Error(response.data?.message || 'Không thể tìm linh kiện.');
       }
 
       const items = Array.isArray(response.data) ? response.data : [];
@@ -1094,7 +1117,7 @@ export function createPricingModalController({
     }
 
     if (partCatalogStatus) {
-      partCatalogStatus.textContent = '?ang t?i danh m?c linh ki?n theo d?ch v? c?a ??n...';
+      partCatalogStatus.textContent = 'Đang tải danh mục linh kiện theo dịch vụ của đơn...';
     }
 
     try {
@@ -1107,7 +1130,7 @@ export function createPricingModalController({
       }
 
       if (!response.ok) {
-        throw new Error(response.data?.message || 'Kh�ng th? t?i danh m?c linh ki?n.');
+        throw new Error(response.data?.message || 'Không thể tải danh mục linh kiện.');
       }
 
       const items = Array.isArray(response.data) ? response.data : [];
@@ -1121,7 +1144,7 @@ export function createPricingModalController({
 
       partCatalogState.items = [];
       renderPartCatalogResults();
-      showToast(error.message || 'L?i khi t?i linh ki?n theo d?ch v?.', 'error');
+      showToast(error.message || 'Lỗi khi tải linh kiện theo dịch vụ.', 'error');
     }
   };
 
@@ -1129,7 +1152,7 @@ export function createPricingModalController({
     const selectedParts = getKnownPartCatalogItems().filter((item) => partCatalogState.selectedIds.has(getNumeric(item?.id)));
 
     if (!selectedParts.length) {
-      showToast('Vui l�ng ch?n �t nh?t 1 linh ki?n trong danh m?c.', 'error');
+      showToast('Vui lòng chọn ít nhất 1 linh kiện trong danh mục.', 'error');
       return;
     }
 
@@ -1151,7 +1174,7 @@ export function createPricingModalController({
         linh_kien_id: partId,
         dich_vu_id: getNumeric(item?.dich_vu_id),
         hinh_anh: item?.hinh_anh || '',
-        noi_dung: item?.ten_linh_kien || 'Linh ki?n',
+        noi_dung: item?.ten_linh_kien || 'Linh kiện',
         don_gia: partPrice,
         so_luong: 1,
         so_tien: partPrice,
@@ -1163,7 +1186,7 @@ export function createPricingModalController({
     });
 
     if (addedCount === 0) {
-      showToast('C�c linh ki?n ?� ch?n ?� c� s?n trong b?ng chi ph� ho?c ch?a c� gi� ni�m y?t.', 'error');
+      showToast('Các linh kiện đã chọn đã có sẵn trong bảng chi phí hoặc chưa có giá niêm yết.', 'error');
       return;
     }
 
@@ -1180,42 +1203,42 @@ export function createPricingModalController({
       partsSubtotal.textContent = formatMoney(0);
       travelSubtotal.textContent = formatMoney(0);
       truckSubtotal.textContent = formatMoney(0);
-      laborCountBadge.textContent = '0 d�ng';
-      partCountBadge.textContent = '0 d�ng';
-      costDraftState.textContent = 'C?n nh?p ti?n c�ng';
+      laborCountBadge.textContent = '0 dòng';
+      partCountBadge.textContent = '0 dòng';
+      costDraftState.textContent = 'Cần nhập tiền công';
       costDraftState.dataset.state = 'attention';
-      costSummaryHint.textContent = '?� c?ng ti?n c�ng, linh ki?n, ph� ?i l?i v� ph� xe ch? n?u c�.';
+      costSummaryHint.textContent = 'Đã cộng tiền công, linh kiện, phí đi lại và phí xe chở nếu có.';
       return;
     }
 
     const laborTotal = sumDraftLineAmounts(laborItemsContainer);
-    const partTotal = sumDraftLineAmounts(partItemsContainer);
+    const partTotal = getNumeric(booking?.phi_linh_kien);
     const travelTotal = getNumeric(booking?.phi_di_lai);
     const hasTruckLine = truckFeeContainer.style.display !== 'none';
     const truckTotal = hasTruckLine ? getNumeric(inputTienThueXe.value) : 0;
     const total = travelTotal + laborTotal + partTotal + truckTotal;
     const laborRows = countDraftLineRows(laborItemsContainer);
-    const partRows = countDraftLineRows(partItemsContainer);
+    const partRows = getBookingPartItems(booking).length;
 
     laborSubtotal.textContent = formatMoney(laborTotal);
     partsSubtotal.textContent = formatMoney(partTotal);
     travelSubtotal.textContent = formatMoney(travelTotal);
     truckSubtotal.textContent = formatMoney(truckTotal);
     costEstimateTotal.textContent = formatMoney(total);
-    laborCountBadge.textContent = `${laborRows} d�ng`;
-    partCountBadge.textContent = `${partRows} d�ng`;
+    laborCountBadge.textContent = `${laborRows} dòng`;
+    partCountBadge.textContent = `${partRows} dòng`;
 
     if (laborTotal <= 0) {
-      costDraftState.textContent = 'C?n nh?p ti?n c�ng';
+      costDraftState.textContent = 'Cần nhập tiền công';
       costDraftState.dataset.state = 'attention';
     } else {
-      costDraftState.textContent = 'S?n s�ng l?u';
+      costDraftState.textContent = 'Sẵn sàng lưu';
       costDraftState.dataset.state = 'ready';
     }
 
     costSummaryHint.textContent = hasTruckLine
-      ? '?� c?ng ti?n c�ng, linh ki?n, ph� ?i l?i v� ph� xe ch? c?a ??n n�y.'
-      : '?� c?ng ti?n c�ng, linh ki?n v� ph� ?i l?i c? ??nh c?a ??n n�y.';
+      ? 'Đã cộng tiền công, linh kiện, phí đi lại và phí xe chở của đơn này.'
+      : 'Đã cộng tiền công, linh kiện và phí đi lại cố định của đơn này.';
   };
 
   const syncCostWizardUi = () => {
@@ -1270,7 +1293,12 @@ export function createPricingModalController({
       return;
     }
 
-    partCatalogSearch?.focus();
+    if (truckFeeContainer && truckFeeContainer.style.display !== 'none') {
+      inputTienThueXe?.focus();
+      return;
+    }
+
+    btnSubmitCostUpdate?.focus();
   };
 
   const validateCostWizardStep = (step) => {
@@ -1281,13 +1309,13 @@ export function createPricingModalController({
     const laborState = collectCostItems(laborItemsContainer, 'labor');
 
     if (!laborState.items.length) {
-      showToast('Vui l�ng ch?n �t nh?t 1 h??ng x? l� ?? th�m ti?n c�ng tr??c khi ti?p t?c.', 'error');
+      showToast('Vui lòng chọn ít nhất 1 hướng xử lý để thêm tiền công trước khi tiếp tục.', 'error');
       laborSymptomTrigger?.focus();
       return false;
     }
 
     if (laborState.hasIncomplete) {
-      showToast('Danh m?c ti?n c�ng ?ang c� d�ng ch?a h?p l?, vui l�ng ki?m tra l?i.', 'error');
+      showToast('Danh mục tiền công đang có dòng chưa hợp lệ, vui lòng kiểm tra lại.', 'error');
       laborSymptomTrigger?.focus();
       return false;
     }
@@ -1341,21 +1369,20 @@ export function createPricingModalController({
       partCatalogSearch.value = '';
     }
 
-    costBookingReference.textContent = `??n #${String(booking.id).padStart(4, '0')}`;
+    costBookingReference.textContent = `Đơn #${String(booking.id).padStart(4, '0')}`;
     costCustomerName.textContent = getCustomerName(booking);
     costServiceName.textContent = getBookingServiceNames(booking);
-    costServiceModeBadge.textContent = booking.loai_dat_lich === 'at_home' ? 'S?a t?i nh�' : 'S?a t?i c?a h�ng';
-    costTruckBadge.textContent = booking.thue_xe_cho ? 'C� thu� xe ch?' : 'Kh�ng thu� xe ch?';
+    costServiceModeBadge.textContent = booking.loai_dat_lich === 'at_home' ? 'Sửa tại nhà' : 'Sửa tại cửa hàng';
+    costTruckBadge.textContent = booking.thue_xe_cho ? 'Có thuê xe chở' : 'Không thuê xe chở';
     costDistanceBadge.textContent = booking.loai_dat_lich === 'at_home'
-      ? `${getNumeric(booking.khoang_cach).toFixed(1)} km ph?c v?`
-      : 'Kh�ng ph�t sinh ph� ?i l?i';
+      ? `${getNumeric(booking.khoang_cach).toFixed(1)} km phục vụ`
+      : 'Không phát sinh phí đi lại';
     displayPhiDiLai.textContent = formatMoney(getNumeric(booking.phi_di_lai));
     costDistanceHint.textContent = booking.loai_dat_lich === 'at_home'
-      ? `H? th?ng ?� ch?t ph� ?i l?i theo qu�ng ???ng ${getNumeric(booking.khoang_cach).toFixed(1)} km.`
-      : 'Kh�ch t? mang thi?t b? ??n c?a h�ng n�n kh�ng ph�t sinh kho?ng c�ch ph?c v?.';
+      ? `Hệ thống đã chốt phí đi lại theo quãng đường ${getNumeric(booking.khoang_cach).toFixed(1)} km.`
+      : 'Khách tự mang thiết bị đến cửa hàng nên không phát sinh khoảng cách phục vụ.';
 
     populateCostItemRows(laborItemsContainer, 'labor', getBookingLaborItems(booking));
-    populateCostItemRows(partItemsContainer, 'part', getBookingPartItems(booking));
 
     if (booking.thue_xe_cho) {
       truckFeeContainer.style.display = '';
@@ -1371,7 +1398,6 @@ export function createPricingModalController({
     updateCostEstimate();
     syncCostWizardUi();
     void loadLaborCatalogForBooking(booking);
-    void loadPartCatalogForBooking(booking);
   };
 
   const reset = () => {
@@ -1406,7 +1432,7 @@ export function createPricingModalController({
     const booking = getAllBookings().find((item) => getNumeric(item?.id) === getNumeric(id));
 
     if (!booking) {
-      showToast('Kh�ng t�m th?y ??n ?? c?p nh?t gi�.', 'error');
+      showToast('Không tìm thấy đơn để cập nhật giá.', 'error');
       return;
     }
 
@@ -1426,24 +1452,20 @@ export function createPricingModalController({
     const submitButton = form?.querySelector('button[type="submit"]');
     const originalLabel = submitButton?.innerHTML || '';
     const laborState = collectCostItems(laborItemsContainer, 'labor');
-    const partState = collectCostItems(partItemsContainer, 'part');
 
     if (!laborState.items.length) {
-      showToast('Vui l�ng nh?p �t nh?t 1 d�ng ti?n c�ng.', 'error');
+      showToast('Vui lòng nhập ít nhất 1 dòng tiền công.', 'error');
       return;
     }
 
-    if (laborState.hasIncomplete || partState.hasIncomplete) {
-      showToast('Vui l�ng ?i?n ?? n?i dung v� s? ti?n cho c�c d�ng chi ph� ?ang nh?p.', 'error');
+    if (laborState.hasIncomplete) {
+      showToast('Vui lòng điền đủ nội dung và số tiền cho các dòng chi phí đang nhập.', 'error');
       return;
     }
 
     const payload = {
       tien_cong: laborState.items.reduce((total, item) => total + getNumeric(item.so_tien), 0),
-      phi_linh_kien: partState.items.reduce((total, item) => total + getNumeric(item.so_tien), 0),
       chi_tiet_tien_cong: laborState.items,
-      chi_tiet_linh_kien: partState.items,
-      ghi_chu_linh_kien: inputGhiChuLinhKien?.value || '',
     };
 
     if (truckFeeContainer.style.display !== 'none') {
@@ -1452,7 +1474,7 @@ export function createPricingModalController({
 
     if (submitButton) {
       submitButton.disabled = true;
-      submitButton.innerHTML = '<span class="material-symbols-outlined">progress_activity</span>?ang l?u';
+      submitButton.innerHTML = '<span class="material-symbols-outlined">progress_activity</span>Đang lưu';
     }
 
     try {
@@ -1462,14 +1484,14 @@ export function createPricingModalController({
         const firstValidationError = response.data?.errors
           ? Object.values(response.data.errors).flat()[0]
           : null;
-        throw new Error(firstValidationError || response.data?.message || 'Kh�ng th? c?p nh?t chi ph�.');
+        throw new Error(firstValidationError || response.data?.message || 'Không thể cập nhật chi phí.');
       }
 
-      showToast('?� c?p nh?t chi ph� th�nh c�ng.');
+      showToast('Đã cập nhật chi phí thành công.');
       modalInstance?.hide();
       await afterSubmit?.({ bookingId, payload, booking: currentCostBooking });
     } catch (error) {
-      showToast(error.message || 'L?i k?t n?i khi c?p nh?t gi�.', 'error');
+      showToast(error.message || 'Lỗi kết nối khi cập nhật giá.', 'error');
     } finally {
       if (submitButton) {
         submitButton.disabled = false;

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\DonDatLich;
 
+use App\Services\TravelFeeConfigService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class RescheduleBookingRequest extends FormRequest
 {
@@ -14,10 +16,11 @@ class RescheduleBookingRequest extends FormRequest
     public function rules(): array
     {
         $latestBookingDate = now()->addDays(6)->toDateString();
+        $timeSlots = app(TravelFeeConfigService::class)->resolveBookingTimeSlots();
 
         return [
             'ngay_hen' => ['required', 'date_format:Y-m-d', 'after_or_equal:today', "before_or_equal:{$latestBookingDate}"],
-            'khung_gio_hen' => ['required', 'in:08:00-10:00,10:00-12:00,12:00-14:00,14:00-17:00'],
+            'khung_gio_hen' => ['required', Rule::in($timeSlots)],
         ];
     }
 

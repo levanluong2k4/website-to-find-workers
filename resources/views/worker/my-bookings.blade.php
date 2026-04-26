@@ -202,8 +202,8 @@
                 <div class="dispatch-pricing-v2-wizard-head">
                   <div>
                     <div class="dispatch-pricing-v2-wizard-kicker" id="costWizardKicker">Bước 1 trên 2</div>
-                    <h3 class="dispatch-pricing-v2-wizard-title" id="costWizardTitle">Nhập tiền công</h3>
-                    <p class="dispatch-pricing-v2-wizard-copy" id="costWizardCopy">Điền tiền công trước để khách nhìn rõ phần công thợ, sau đó chuyển sang bước linh kiện.</p>
+                    <h3 class="dispatch-pricing-v2-wizard-title" id="costWizardTitle">Cập nhật tiền công</h3>
+                    <p class="dispatch-pricing-v2-wizard-copy" id="costWizardCopy">Chọn triệu chứng, nguyên nhân và hướng xử lý để thêm đúng các dòng tiền công cho đơn đang sửa.</p>
                   </div>
                   <div class="dispatch-pricing-v2-wizard-badge" id="costWizardStepBadge">1 / 2</div>
                 </div>
@@ -220,7 +220,7 @@
                     <div class="dispatch-pricing-v2-flow-divider"></div>
                     <button type="button" class="dispatch-pricing-v2-flow-step" data-cost-step-trigger="2">
                       <span class="dispatch-pricing-v2-flow-step__index">2</span>
-                      <span class="dispatch-pricing-v2-flow-step__label">Linh kiện</span>
+                      <span class="dispatch-pricing-v2-flow-step__label">Phụ phí</span>
                     </button>
                   </div>
                 </div>
@@ -301,38 +301,28 @@
                 </div>
 
                 <div class="dispatch-pricing-v2-step-panel" data-cost-step-panel="2" hidden>
-                  <section class="dispatch-pricing-v2-section dispatch-pricing-v2-section--parts">
+                  <section class="dispatch-pricing-v2-section dispatch-pricing-v2-section--handoff">
                     <div class="dispatch-pricing-v2-section-head">
                       <div class="dispatch-pricing-v2-section-copy">
                         <div class="dispatch-pricing-v2-section-ordinal">
                           <span class="dispatch-pricing-v2-section-number">02</span>
                           <div class="dispatch-pricing-v2-section-heading-group">
-                            <div class="dispatch-pricing-v2-section-kicker">Linh kiện</div>
+                            <div class="dispatch-pricing-v2-section-kicker">Linh kiện do admin xử lý</div>
                             <span class="dispatch-pricing-v2-section-count" id="partCountBadge">0 dòng</span>
                           </div>
                         </div>
                       </div>
-                      <button type="button" class="dispatch-pricing-v2-inline-add dispatch-pricing-v2-inline-add--primary" id="addPartItem">
-                        <span class="material-symbols-outlined">add</span>
-                        Thêm dòng thủ công
-                      </button>
                     </div>
 
-                    <div class="dispatch-pricing-v2-search-row">
-                      <div class="dispatch-pricing-v2-searchbox">
-                        <span class="material-symbols-outlined dispatch-pricing-v2-search-icon">search</span>
-                        <input type="search" class="dispatch-pricing-v2-search-input" id="partCatalogSearch" placeholder="Ví dụ: bo nóng Samsung..." autocomplete="off">
-                        <div class="dispatch-part-catalog__suggestions" id="partCatalogSuggestions" hidden></div>
+                    <div class="dispatch-pricing-v2-handoff-card">
+                      <div class="dispatch-pricing-v2-handoff-card__icon">
+                        <span class="material-symbols-outlined">inventory_2</span>
                       </div>
-                      <button type="button" class="dispatch-pricing-v2-search-action" id="addSelectedParts">Thêm linh kiện đã chọn</button>
+                      <div class="dispatch-pricing-v2-handoff-card__copy">
+                        <h3>Thợ không cập nhật linh kiện ở màn hình này</h3>
+                        <p>Admin sẽ thêm hoặc chỉnh sửa linh kiện tại trang chi tiết đơn trong khu vực quản trị. Phần tổng linh kiện ở cột bên phải vẫn hiển thị theo dữ liệu hiện có của đơn.</p>
+                      </div>
                     </div>
-
-                    <div class="dispatch-pricing-v2-inline-status">
-                      <span class="dispatch-part-catalog__status" id="partCatalogStatus">Mở đơn để tải danh mục linh kiện.</span>
-                    </div>
-
-                    <div class="dispatch-part-catalog__results" id="partCatalogResults"></div>
-                    <div class="dispatch-pricing-v2-parts-list" id="partItemsContainer"></div>
                   </section>
 
                   <section class="dispatch-pricing-v2-section dispatch-pricing-v2-section--fees">

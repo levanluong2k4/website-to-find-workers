@@ -2,6 +2,8 @@ import { callApi, getCurrentUser, showToast } from '../api.js';
 import { createReviewMediaController } from './review-media.js';
 import { setupReviewLightbox } from '../review-lightbox.js';
 import {
+    getBookingServices,
+    getBookingServiceTitle,
     selectOnlineGateway as selectSharedOnlineGateway,
     showCashPaymentInstructions as showSharedCashPaymentInstructions,
 } from './booking-actions-shared.js';
@@ -80,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatMoney = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`;
     const formatOrderCode = (id) => `#ORD-${String(id || 0).padStart(4, '0')}`;
     const getBookingRebookPayload = (booking) => {
-        const services = Array.isArray(booking?.dich_vus) ? booking.dich_vus : [];
+        const services = getBookingServices(booking);
         const serviceIds = services
             .map((service) => Number(service?.id || 0))
             .filter((serviceId) => Number.isInteger(serviceId) && serviceId > 0);
@@ -184,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'sua tivi': 'Sửa tivi',
         'dien nuoc dan dung': 'Điện nước dân dụng',
     }[normalizeLookupKey(value)] || value || 'Dịch vụ sửa chữa');
-    const getServiceNames = (booking) => (Array.isArray(booking?.dich_vus) ? booking.dich_vus : []).map((service) => beautifyServiceName(service?.ten_dich_vu)).filter(Boolean);
+    const getServiceNames = (booking) => getBookingServices(booking).map((service) => beautifyServiceName(service?.ten_dich_vu)).filter(Boolean);
     const getPrimaryServiceName = (booking) => getServiceNames(booking)[0] || 'Dịch vụ sửa chữa';
     const getStoredCostItems = (booking, key) => Array.isArray(booking?.[key]) ? booking[key].filter(Boolean) : [];
     const getBookingTotal = (booking) => {
@@ -539,7 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (booking?.trang_thai === 'da_huy') return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="rebook">Đặt lịch mới</button></div>';
         return '<div class="detail-summary-note"><strong>Cập nhật mới nhất</strong>Hệ thống sẽ tiếp tục cập nhật tiến độ xử lý tại các thẻ thông tin bên dưới.</div>';
     };
-    const buildSummaryCard = (booking) => `<section class="detail-card detail-summary-card"><div class="detail-summary-top"><span class="${getStatusPillClass(booking?.trang_thai)}">${escapeHtml(getStatusMeta(booking?.trang_thai).label)}</span><div class="detail-summary-order"><span>Mã đơn hàng</span><strong>${escapeHtml(formatOrderCode(booking?.id))}</strong></div></div><h1 class="detail-service-title">${escapeHtml(getPrimaryServiceName(booking))}</h1><div class="detail-summary-meta"><span class="material-symbols-outlined" style="font-size:1.15rem;">calendar_month</span><span>${escapeHtml(getSummarySchedule(booking))}</span></div><div class="detail-estimate-box"><span>Tổng phí dự kiến</span><strong>${escapeHtml(formatMoney(getBookingTotal(booking)))}</strong></div>${buildSummaryPrimaryActionV2(booking)}</section>`;
+    const buildSummaryCard = (booking) => `<section class="detail-card detail-summary-card"><div class="detail-summary-top"><span class="${getStatusPillClass(booking?.trang_thai)}">${escapeHtml(getStatusMeta(booking?.trang_thai).label)}</span><div class="detail-summary-order"><span>Mã đơn hàng</span><strong>${escapeHtml(formatOrderCode(booking?.id))}</strong></div></div><h1 class="detail-service-title">${escapeHtml(getBookingServiceTitle(booking))}</h1><div class="detail-summary-meta"><span class="material-symbols-outlined" style="font-size:1.15rem;">calendar_month</span><span>${escapeHtml(getSummarySchedule(booking))}</span></div><div class="detail-estimate-box"><span>Tổng phí dự kiến</span><strong>${escapeHtml(formatMoney(getBookingTotal(booking)))}</strong></div>${buildSummaryPrimaryActionV2(booking)}</section>`;
     const buildInitialMediaCard = (booking) => `<section class="detail-card"><div class="detail-card-head"><h2>Tình trạng ban đầu</h2><span>${countFiles(booking?.hinh_anh_mo_ta, booking?.video_mo_ta)} FILE</span></div>${buildGalleryGrid(booking?.hinh_anh_mo_ta, booking?.video_mo_ta, 'Chưa có thêm file', 'Tình trạng ban đầu')}</section>`;
     const buildWorkerCard = (booking) => {
         const worker = booking?.tho;

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppSetting;
+use App\Models\DonDatLich;
 use App\Models\User;
 
 class TravelFeeConfigService
@@ -26,6 +27,13 @@ class TravelFeeConfigService
     private const DEFAULT_STORE_HOTLINE = '0905 123 456';
 
     private const DEFAULT_STORE_OPENING_HOURS = 'Thứ 2 - CN: 07:00 - 20:00';
+
+    private const DEFAULT_BOOKING_TIME_SLOTS = [
+        '08:00-10:00',
+        '10:00-12:00',
+        '12:00-14:00',
+        '14:00-17:00',
+    ];
 
     private const DEFAULT_COMPLAINT_WINDOW_DAYS = 3;
 
@@ -119,6 +127,9 @@ class TravelFeeConfigService
             'store_opening_hours' => array_key_exists('store_opening_hours', $config)
                 ? $config['store_opening_hours']
                 : ($currentConfig['store_opening_hours'] ?? self::DEFAULT_STORE_OPENING_HOURS),
+            'booking_time_slots' => array_key_exists('booking_time_slots', $config)
+                ? $config['booking_time_slots']
+                : ($currentConfig['booking_time_slots'] ?? self::DEFAULT_BOOKING_TIME_SLOTS),
             'complaint_window_days' => array_key_exists('complaint_window_days', $config)
                 ? $config['complaint_window_days']
                 : ($currentConfig['complaint_window_days'] ?? self::DEFAULT_COMPLAINT_WINDOW_DAYS),
@@ -219,6 +230,18 @@ class TravelFeeConfigService
         return (string) ($this->getConfig()['store_opening_hours'] ?? self::DEFAULT_STORE_OPENING_HOURS);
     }
 
+    /**
+     * @return array<int, string>
+     */
+    public function resolveBookingTimeSlots(): array
+    {
+        $slots = $this->getConfig()['booking_time_slots'] ?? self::DEFAULT_BOOKING_TIME_SLOTS;
+
+        return is_array($slots) && $slots !== []
+            ? $slots
+            : self::DEFAULT_BOOKING_TIME_SLOTS;
+    }
+
     public function resolveStoreMapUrl(): string
     {
         $address = trim($this->resolveStoreAddress());
@@ -241,9 +264,11 @@ class TravelFeeConfigService
     public function resolveTier(float $distanceKm): ?array
     {
         $distance = round(max(0, $distanceKm), 2);
+        $tiers = array_values($this->getConfig()['tiers'] ?? []);
+        $lastTierIndex = count($tiers) - 1;
 
-        foreach ($this->getConfig()['tiers'] as $tier) {
-            if ($this->matchesTier($distance, $tier)) {
+        foreach ($tiers as $index => $tier) {
+            if ($this->matchesTier($distance, $tier, $index === $lastTierIndex)) {
                 return $tier;
             }
         }
@@ -297,6 +322,7 @@ class TravelFeeConfigService
         $rawStoreTransportFee = round(max(0, (float) ($config['store_transport_fee'] ?? self::DEFAULT_STORE_TRANSPORT_FEE)));
         $storeHotline = trim((string) ($config['store_hotline'] ?? self::DEFAULT_STORE_HOTLINE));
         $storeOpeningHours = trim((string) ($config['store_opening_hours'] ?? self::DEFAULT_STORE_OPENING_HOURS));
+        $bookingTimeSlots = $this->normalizeBookingTimeSlots($config['booking_time_slots'] ?? self::DEFAULT_BOOKING_TIME_SLOTS);
         $tiers = collect($config['tiers'] ?? [])
             ->filter(static fn ($tier) => is_array($tier))
             ->map(function (array $tier) use ($rawStoreTransportFee): array {
@@ -344,6 +370,7 @@ class TravelFeeConfigService
             'store_transport_fee' => $storeTransportFee,
             'store_hotline' => $storeHotline !== '' ? $storeHotline : self::DEFAULT_STORE_HOTLINE,
             'store_opening_hours' => $storeOpeningHours !== '' ? $storeOpeningHours : self::DEFAULT_STORE_OPENING_HOURS,
+            'booking_time_slots' => $bookingTimeSlots,
             'complaint_window_days' => $complaintWindowDays,
             'tiers' => $tiers,
         ];
@@ -365,14 +392,27 @@ class TravelFeeConfigService
                 'transport_fee' => $config['store_transport_fee'],
                 'hotline' => $config['store_hotline'],
                 'opening_hours' => $config['store_opening_hours'],
+                'booking_time_slots' => array_map(function (string $slot): array {
+                    return [
+                        'value' => $slot,
+                        'label' => str_replace('-', ' - ', $slot),
+                    ];
+                }, $config['booking_time_slots']),
                 'map_url' => $this->resolveStoreMapUrl(),
             ],
             'free_distance_km' => $config['free_distance_km'],
             'max_service_distance_km' => $config['max_service_distance_km'],
             'default_per_km' => $config['default_per_km'],
             'complaint_window_days' => $config['complaint_window_days'],
-            'tiers' => array_map(function (array $tier): array {
+            'booking_time_slots' => array_map(function (string $slot): array {
+                return [
+                    'value' => $slot,
+                    'label' => str_replace('-', ' - ', $slot),
+                ];
+            }, $config['booking_time_slots']),
+            'tiers' => array_map(function (array $tier, int $index) use ($config): array {
                 $travelFee = $this->resolveTierTravelFee($tier);
+                $isLastTier = $index === (count($config['tiers']) - 1);
 
                 return [
                     'from_km' => $tier['from_km'],
@@ -380,19 +420,23 @@ class TravelFeeConfigService
                     'transport_fee' => $this->resolveTierTransportFee($tier),
                     'travel_fee' => $travelFee,
                     'fee' => $travelFee,
-                    'label' => $this->formatTierLabel($tier),
+                    'label' => $this->formatTierLabel($tier, $isLastTier),
                 ];
-            }, $config['tiers']),
+            }, $config['tiers'], array_keys($config['tiers'])),
             'samples' => array_map(function (float $distanceKm): array {
                 $tier = $this->resolveTier($distanceKm);
                 $travelFee = $this->resolveFee($distanceKm);
+                $tierIndex = $tier === null
+                    ? null
+                    : collect($this->getConfig()['tiers'])->search(static fn (array $configuredTier): bool => $configuredTier === $tier);
+                $isLastTier = $tierIndex !== false && $tierIndex === (count($this->getConfig()['tiers']) - 1);
 
                 return [
                     'distance_km' => $distanceKm,
                     'transport_fee' => $tier ? $this->resolveTierTransportFee($tier) : 0,
                     'travel_fee' => $travelFee,
                     'fee' => $travelFee,
-                    'label' => $tier ? $this->formatTierLabel($tier) : null,
+                    'label' => $tier ? $this->formatTierLabel($tier, $isLastTier) : null,
                 ];
             }, $samples),
         ];
@@ -401,21 +445,44 @@ class TravelFeeConfigService
     /**
      * @param  array<string, mixed>  $tier
      */
-    private function matchesTier(float $distanceKm, array $tier): bool
+    private function matchesTier(float $distanceKm, array $tier, bool $isLastTier = false): bool
     {
         return $distanceKm >= (float) $tier['from_km']
-            && $distanceKm <= (float) $tier['to_km'];
+            && (
+                $distanceKm < (float) $tier['to_km']
+                || ($isLastTier && $distanceKm <= (float) $tier['to_km'])
+            );
     }
 
     /**
      * @param  array<string, mixed>  $tier
      */
-    private function formatTierLabel(array $tier): string
+    private function formatTierLabel(array $tier, bool $isLastTier = false): string
     {
-        return rtrim(rtrim(number_format((float) $tier['from_km'], 2, '.', ''), '0'), '.')
+        return $this->formatDistanceValue((float) $tier['from_km'])
             . ' - '
-            . rtrim(rtrim(number_format((float) $tier['to_km'], 2, '.', ''), '0'), '.')
+            . $this->formatDistanceValue($this->resolveTierDisplayUpperBound($tier, $isLastTier))
             . ' km';
+    }
+
+    /**
+     * @param  array<string, mixed>  $tier
+     */
+    private function resolveTierDisplayUpperBound(array $tier, bool $isLastTier = false): float
+    {
+        $fromKm = round(max(0, (float) ($tier['from_km'] ?? 0)), 2);
+        $toKm = round(max(0, (float) ($tier['to_km'] ?? 0)), 2);
+
+        if ($isLastTier) {
+            return $toKm;
+        }
+
+        return round(max($fromKm, $toKm - 0.01), 2);
+    }
+
+    private function formatDistanceValue(float $distanceKm): string
+    {
+        return rtrim(rtrim(number_format($distanceKm, 2, '.', ''), '0'), '.');
     }
 
     /**
@@ -477,5 +544,51 @@ class TravelFeeConfigService
         $numeric = min($max, max($min, $numeric));
 
         return round($numeric, 6);
+    }
+
+    /**
+     * @param  mixed  $slots
+     * @return array<int, string>
+     */
+    private function normalizeBookingTimeSlots(mixed $slots): array
+    {
+        $normalizedSlots = collect(is_array($slots) ? $slots : [])
+            ->map(fn ($slot) => DonDatLich::normalizeTimeSlot((string) $slot))
+            ->filter(fn (string $slot) => $slot !== '' && $this->isValidBookingTimeSlot($slot))
+            ->unique()
+            ->sortBy(fn (string $slot) => $this->timeToMinutes(explode('-', $slot, 2)[0] ?? '00:00'))
+            ->values()
+            ->all();
+
+        return $normalizedSlots !== [] ? $normalizedSlots : self::DEFAULT_BOOKING_TIME_SLOTS;
+    }
+
+    private function isValidBookingTimeSlot(string $slot): bool
+    {
+        if (!preg_match('/^(?<start>\d{2}:\d{2})-(?<end>\d{2}:\d{2})$/', $slot, $matches)) {
+            return false;
+        }
+
+        $startMinutes = $this->timeToMinutes($matches['start']);
+        $endMinutes = $this->timeToMinutes($matches['end']);
+
+        return $startMinutes !== null && $endMinutes !== null && $endMinutes > $startMinutes;
+    }
+
+    private function timeToMinutes(?string $value): ?int
+    {
+        $value = trim((string) $value);
+        if (!preg_match('/^(?<hour>\d{2}):(?<minute>\d{2})$/', $value, $matches)) {
+            return null;
+        }
+
+        $hour = (int) $matches['hour'];
+        $minute = (int) $matches['minute'];
+
+        if ($hour < 0 || $hour > 23 || $minute < 0 || $minute > 59) {
+            return null;
+        }
+
+        return ($hour * 60) + $minute;
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\TravelFeeConfigService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -205,6 +206,7 @@ class AdminManagementTest extends TestCase
                 'store_longitude' => 109.1967,
                 'max_service_distance_km' => 8,
                 'default_per_km' => 5000,
+                'booking_time_slots' => ['08:00-10:00', '10:00-12:00'],
                 'tiers' => [
                     ['from_km' => 0, 'to_km' => 2, 'transport_fee' => 0, 'travel_fee' => 15000],
                     ['from_km' => 2.01, 'to_km' => 5, 'transport_fee' => 0, 'travel_fee' => 30000],
@@ -232,6 +234,37 @@ class AdminManagementTest extends TestCase
             ->assertJsonPath('data.config.max_service_distance_km', 8)
             ->assertJsonPath('data.config.tiers.0.from_km', 0)
             ->assertJsonPath('data.preview.samples.2.fee', 30000);
+    }
+
+    public function test_travel_fee_tiers_allow_touching_boundaries_and_apply_next_tier_at_exact_boundary(): void
+    {
+        $admin = $this->createAdmin();
+        $token = $admin->createToken('admin-tier-boundary-test')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson('/api/admin/travel-fee-config', [
+                'store_address' => '25 Nguyen Thi Minh Khai, Nha Trang',
+                'store_latitude' => 12.2388,
+                'store_longitude' => 109.1967,
+                'max_service_distance_km' => 8,
+                'default_per_km' => 5000,
+                'booking_time_slots' => ['08:00-10:00', '10:00-12:00'],
+                'tiers' => [
+                    ['from_km' => 0, 'to_km' => 1, 'transport_fee' => 0, 'travel_fee' => 10000],
+                    ['from_km' => 1, 'to_km' => 5, 'transport_fee' => 0, 'travel_fee' => 20000],
+                ],
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.config.tiers.0.to_km', 1)
+            ->assertJsonPath('data.config.tiers.1.from_km', 1)
+            ->assertJsonPath('data.preview.tiers.0.label', '0 - 0.99 km')
+            ->assertJsonPath('data.preview.tiers.1.label', '1 - 5 km');
+
+        $service = app(TravelFeeConfigService::class);
+
+        $this->assertSame(10000.0, $service->resolveFee(0.99));
+        $this->assertSame(20000.0, $service->resolveFee(1.0));
     }
 
     public function test_admin_can_use_customer_and_worker_booking_permissions(): void

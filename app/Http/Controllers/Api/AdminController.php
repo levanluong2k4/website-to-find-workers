@@ -1859,7 +1859,7 @@ class AdminController extends Controller
             ->with([
                 'customer:id,name,phone',
                 'worker:id,name,phone',
-                'booking:id,khach_hang_id,tho_id,loai_dat_lich,dia_chi,trang_thai,created_at,updated_at',
+                'booking:id,khach_hang_id,tho_id,loai_dat_lich,dia_chi,trang_thai,tong_tien,hinh_anh_mo_ta,video_mo_ta,hinh_anh_ket_qua,video_ket_qua,created_at,updated_at',
                 'booking.dichVus:id,ten_dich_vu',
                 'assignedAdmin:id,name',
             ])
@@ -1957,49 +1957,15 @@ class AdminController extends Controller
 
     public function claimCustomerFeedbackCase(Request $request, string $caseKey)
     {
-        $source = $this->resolveCustomerFeedbackSourceCase($caseKey);
-        $user = $request->user();
-        $now = Carbon::now();
-
-        $caseState = CustomerFeedbackCase::query()->firstOrNew([
-            'source_type' => $source['source_type'],
-            'source_id' => $source['source_id'],
-        ]);
-
-        $caseState->fill([
-            'customer_id' => $source['customer_id'],
-            'booking_id' => $source['booking_id'],
-            'worker_id' => $source['worker_id'],
-            'priority' => $source['priority'],
-            'status' => 'in_progress',
-            'assigned_admin_id' => $user?->id,
-            'assigned_at' => $caseState->assigned_at ?: $now,
-            'resolved_at' => null,
-            'resolution_note' => null,
-            'last_snapshot' => $source,
-        ]);
-        $caseState->save();
-        $caseState->load('assignedAdmin:id,name');
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Case da duoc nhan xu ly.',
-            'data' => [
-                'case' => $this->applyCustomerFeedbackCaseState($source, $caseState),
-            ],
-        ]);
-    }
-
-    public function resolveCustomerFeedbackCase(Request $request, string $caseKey)
-    {
         $validator = Validator::make($request->all(), [
-            'resolution_note' => 'nullable|string|max:1000',
+            'assignment_note' => 'nullable|string|max:1000',
+            'resolution_action' => 'nullable|in:refund,compensation,free_repair,reject',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Du lieu xu ly khong hop le.',
+                'message' => 'Dữ liệu lưu nháp không hợp lệ.',
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -2012,6 +1978,70 @@ class AdminController extends Controller
             'source_type' => $source['source_type'],
             'source_id' => $source['source_id'],
         ]);
+        $existingSnapshot = is_array($caseState->last_snapshot) ? $caseState->last_snapshot : [];
+        $assignmentNote = $request->has('assignment_note')
+            ? (trim((string) $request->input('assignment_note', '')) ?: null)
+            : $caseState->assignment_note;
+        $resolutionAction = $request->has('resolution_action')
+            ? trim((string) $request->input('resolution_action', ''))
+            : trim((string) ($existingSnapshot['resolution_action'] ?? ''));
+
+        $caseState->fill([
+            'customer_id' => $source['customer_id'],
+            'booking_id' => $source['booking_id'],
+            'worker_id' => $source['worker_id'],
+            'priority' => $source['priority'],
+            'status' => 'in_progress',
+            'assigned_admin_id' => $user?->id,
+            'assigned_at' => $caseState->assigned_at ?: $now,
+            'resolved_at' => null,
+            'assignment_note' => $assignmentNote,
+            'resolution_note' => null,
+            'last_snapshot' => $this->mergeCustomerFeedbackSnapshot(
+                $source,
+                $existingSnapshot,
+                $resolutionAction !== '' ? $resolutionAction : null
+            ),
+        ]);
+        $caseState->save();
+        $caseState->load('assignedAdmin:id,name');
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Case đã được nhận xử lý.',
+            'data' => [
+                'case' => $this->applyCustomerFeedbackCaseState($source, $caseState),
+            ],
+        ]);
+    }
+
+    public function resolveCustomerFeedbackCase(Request $request, string $caseKey)
+    {
+        $validator = Validator::make($request->all(), [
+            'resolution_note' => 'nullable|string|max:1000',
+            'resolution_action' => 'nullable|in:refund,compensation,free_repair,reject',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu xử lý không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $source = $this->resolveCustomerFeedbackSourceCase($caseKey);
+        $user = $request->user();
+        $now = Carbon::now();
+
+        $caseState = CustomerFeedbackCase::query()->firstOrNew([
+            'source_type' => $source['source_type'],
+            'source_id' => $source['source_id'],
+        ]);
+        $existingSnapshot = is_array($caseState->last_snapshot) ? $caseState->last_snapshot : [];
+        $resolutionAction = $request->has('resolution_action')
+            ? trim((string) $request->input('resolution_action', ''))
+            : trim((string) ($existingSnapshot['resolution_action'] ?? ''));
 
         $caseState->fill([
             'customer_id' => $source['customer_id'],
@@ -2022,15 +2052,20 @@ class AdminController extends Controller
             'assigned_admin_id' => $caseState->assigned_admin_id ?: $user?->id,
             'assigned_at' => $caseState->assigned_at ?: $now,
             'resolved_at' => $now,
+            'assignment_note' => $caseState->assignment_note,
             'resolution_note' => trim((string) $request->input('resolution_note', '')) ?: null,
-            'last_snapshot' => $source,
+            'last_snapshot' => $this->mergeCustomerFeedbackSnapshot(
+                $source,
+                $existingSnapshot,
+                $resolutionAction !== '' ? $resolutionAction : null
+            ),
         ]);
         $caseState->save();
         $caseState->load('assignedAdmin:id,name');
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Case da duoc danh dau da xu ly.',
+            'message' => 'Case đã được đánh dấu đã xử lý.',
             'data' => [
                 'case' => $this->applyCustomerFeedbackCaseState($source, $caseState),
             ],
@@ -2161,12 +2196,34 @@ class AdminController extends Controller
 
     private function buildCustomerServiceLabel(DonDatLich $booking): string
     {
-        return $booking->dichVus->pluck('ten_dich_vu')->filter()->implode(', ') ?: 'Chua gan dich vu';
+        return $booking->dichVus->pluck('ten_dich_vu')->filter()->implode(', ') ?: 'Chưa gán dịch vụ';
     }
 
     private function formatCustomerBookingCode(int|string $id): string
     {
         return 'DD-' . str_pad((string) $id, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function buildAdminBookingUrl(?DonDatLich $booking): ?string
+    {
+        if (!$booking) {
+            return null;
+        }
+
+        return '/admin/bookings?search=' . urlencode($this->formatCustomerBookingCode($booking->id));
+    }
+
+    private function mergeCustomerFeedbackSnapshot(array $source, array $existingSnapshot = [], ?string $resolutionAction = null): array
+    {
+        $snapshot = array_merge($existingSnapshot, $source);
+
+        if ($resolutionAction !== null && $resolutionAction !== '') {
+            $snapshot['resolution_action'] = $resolutionAction;
+        } elseif (empty($snapshot['resolution_action'])) {
+            unset($snapshot['resolution_action']);
+        }
+
+        return $snapshot;
     }
 
     private function formatCustomerBookingStatusLabel(?string $status): string
@@ -2465,9 +2522,9 @@ class AdminController extends Controller
     private function formatCustomerFeedbackPriorityLabel(string $priority): string
     {
         return match ($priority) {
-            'high' => 'Uu tien cao',
-            'medium' => 'Can xu ly',
-            default => 'Theo doi',
+            'high' => 'Ưu tiên cao',
+            'medium' => 'Cần xử lý',
+            default => 'Theo dõi',
         };
     }
 
@@ -2488,9 +2545,9 @@ class AdminController extends Controller
     private function formatCustomerFeedbackStatusLabel(string $status): string
     {
         return match ($status) {
-            'in_progress' => 'Dang xu ly',
-            'resolved' => 'Da xu ly',
-            default => 'Moi',
+            'in_progress' => 'Đang xử lý',
+            'resolved' => 'Đã xử lý',
+            default => 'Mới',
         };
     }
 
@@ -2527,11 +2584,11 @@ class AdminController extends Controller
     private function formatCustomerFeedbackDueStateLabel(string $dueState): string
     {
         return match ($dueState) {
-            'overdue' => 'Qua han',
-            'due_today' => 'Den han hom nay',
-            'upcoming' => 'Sap den han',
-            'resolved' => 'Da dong',
-            default => 'Chua dat han',
+            'overdue' => 'Quá hạn',
+            'due_today' => 'Đến hạn hôm nay',
+            'upcoming' => 'Sắp đến hạn',
+            'resolved' => 'Đã đóng',
+            default => 'Chưa đặt hạn',
         };
     }
 
@@ -2542,36 +2599,36 @@ class AdminController extends Controller
         $worker = $booking?->tho ?? $review->nguoiBiDanhGia;
         $rating = (float) ($review->so_sao ?? 0);
         $priority = $this->resolveCustomerFeedbackPriority('low_rating', ['rating' => $rating]);
-        $content = trim((string) ($review->nhan_xet ?: 'Khach hang de lai danh gia thap cho don nay.'));
+        $content = trim((string) ($review->nhan_xet ?: 'Khách hàng để lại đánh giá thấp cho đơn này.'));
         $locationLabel = $booking
             ? ($booking->loai_dat_lich === 'at_home'
-                ? ($booking->dia_chi ?: 'Chua cap nhat dia chi xu ly')
-                : 'Khach mang thiet bi den cua hang')
-            : 'Chua co dia diem xu ly';
+                ? ($booking->dia_chi ?: 'Chưa cập nhật địa chỉ xử lý')
+                : 'Khách mang thiết bị đến cửa hàng')
+            : 'Chưa có địa điểm xử lý';
 
         return [
             'id' => $this->formatCustomerFeedbackSourceKey('low_rating', $review->id),
             'source_type' => 'low_rating',
             'source_id' => (int) $review->id,
             'type' => 'low_rating',
-            'type_label' => 'Danh gia thap',
+            'type_label' => 'Đánh giá thấp',
             'priority' => $priority,
             'priority_label' => $this->formatCustomerFeedbackPriorityLabel($priority),
             'priority_tone' => $this->resolveCustomerFeedbackPriorityTone($priority),
             'customer_id' => $customer?->id,
-            'customer_name' => $customer?->name ?: 'Khach hang',
+            'customer_name' => $customer?->name ?: 'Khách hàng',
             'customer_phone' => $customer?->phone ?: null,
             'customer_url' => $customer ? '/admin/customers/' . $customer->id : null,
             'booking_id' => $booking?->id,
             'booking_code' => $booking
                 ? $this->formatCustomerBookingCode($booking->id)
                 : 'DG-' . str_pad((string) $review->id, 4, '0', STR_PAD_LEFT),
-            'booking_url' => $booking ? '/customer/my-bookings/' . $booking->id : null,
+            'booking_url' => $this->buildAdminBookingUrl($booking),
             'worker_id' => $worker?->id,
-            'worker_name' => $worker?->name ?: 'Chua gan tho',
-            'service_label' => $booking ? $this->buildCustomerServiceLabel($booking) : 'Chua ro dich vu',
+            'worker_name' => $worker?->name ?: 'Chưa gán thợ',
+            'service_label' => $booking ? $this->buildCustomerServiceLabel($booking) : 'Chưa rõ dịch vụ',
             'created_at' => optional($review->created_at)->toDateTimeString(),
-            'created_label' => optional($review->created_at)->format('d/m/Y H:i') ?: 'Khong ro thoi diem',
+            'created_label' => optional($review->created_at)->format('d/m/Y H:i') ?: 'Không rõ thời điểm',
             'summary' => $this->truncateDashboardText($content, 120),
             'content' => $content,
             'rating' => $rating,
@@ -2585,33 +2642,33 @@ class AdminController extends Controller
         $worker = $booking->tho;
         $reasonCode = (string) ($booking->ma_ly_do_huy ?? '');
         $priority = $this->resolveCustomerFeedbackPriority('cancellation', ['reason_code' => $reasonCode]);
-        $content = trim((string) ($booking->ly_do_huy ?: 'Don da huy va can admin ra soat nguyen nhan.'));
+        $content = trim((string) ($booking->ly_do_huy ?: 'Đơn đã hủy và cần admin rà soát nguyên nhân.'));
         $locationLabel = $booking->loai_dat_lich === 'at_home'
-            ? ($booking->dia_chi ?: 'Chua cap nhat dia chi xu ly')
-            : 'Khach mang thiet bi den cua hang';
+            ? ($booking->dia_chi ?: 'Chưa cập nhật địa chỉ xử lý')
+            : 'Khách mang thiết bị đến cửa hàng';
 
         return [
             'id' => $this->formatCustomerFeedbackSourceKey('cancellation', $booking->id),
             'source_type' => 'cancellation',
             'source_id' => (int) $booking->id,
             'type' => 'cancellation',
-            'type_label' => 'Huy don',
+            'type_label' => 'Hủy đơn',
             'priority' => $priority,
             'priority_label' => $this->formatCustomerFeedbackPriorityLabel($priority),
             'priority_tone' => $this->resolveCustomerFeedbackPriorityTone($priority),
             'customer_id' => $customer?->id,
-            'customer_name' => $customer?->name ?: 'Khach hang',
+            'customer_name' => $customer?->name ?: 'Khách hàng',
             'customer_phone' => $customer?->phone ?: null,
             'customer_url' => $customer ? '/admin/customers/' . $customer->id : null,
             'booking_id' => $booking->id,
             'booking_code' => $this->formatCustomerBookingCode($booking->id),
-            'booking_url' => '/customer/my-bookings/' . $booking->id,
+            'booking_url' => $this->buildAdminBookingUrl($booking),
             'worker_id' => $worker?->id,
-            'worker_name' => $worker?->name ?: 'Chua co tho nhan',
+            'worker_name' => $worker?->name ?: 'Chưa có thợ nhận',
             'service_label' => $this->buildCustomerServiceLabel($booking),
             'created_at' => optional($booking->updated_at)->toDateTimeString() ?: optional($booking->created_at)->toDateTimeString(),
             'created_label' => optional($booking->updated_at)->format('d/m/Y H:i')
-                ?: (optional($booking->created_at)->format('d/m/Y H:i') ?: 'Khong ro thoi diem'),
+                ?: (optional($booking->created_at)->format('d/m/Y H:i') ?: 'Không rõ thời điểm'),
             'summary' => $this->truncateDashboardText($content, 120),
             'content' => $content,
             'rating' => null,
@@ -2627,21 +2684,27 @@ class AdminController extends Controller
         $snapshot = is_array($caseState->last_snapshot) ? $caseState->last_snapshot : [];
         $reasonCode = (string) ($snapshot['reason_code'] ?? '');
         $reasonLabel = (string) ($snapshot['reason_label'] ?? match ($reasonCode) {
-            'loi_tai_phat' => 'Loi tai phat',
-            'linh_kien_kem_chat_luong' => 'Linh kien thay the kem chat luong',
-            default => 'Khieu nai khac',
+            'loi_tai_phat' => 'Lỗi tái phát',
+            'linh_kien_kem_chat_luong' => 'Linh kiện thay thế kém chất lượng',
+            default => 'Khiếu nại khác',
         });
         $note = trim((string) ($snapshot['note'] ?? ''));
+        $complaintImages = array_values(array_filter((array) ($snapshot['images'] ?? [])));
+        $complaintVideo = trim((string) ($snapshot['video'] ?? ''));
+        $bookingBeforeImages = $booking ? $this->normalizeMediaList($booking->hinh_anh_mo_ta) : [];
+        $bookingBeforeVideos = $booking ? $this->normalizeMediaList($booking->video_mo_ta) : [];
+        $bookingAfterImages = $booking ? $this->normalizeMediaList($booking->hinh_anh_ket_qua) : [];
+        $bookingAfterVideos = $booking ? $this->normalizeMediaList($booking->video_ket_qua) : [];
         $content = trim($reasonLabel . ($note !== '' ? '. ' . $note : ''));
         if ($content === '') {
-            $content = 'Khach hang gui khieu nai cho don nay.';
+            $content = 'Khách hàng gửi khiếu nại cho đơn này.';
         }
 
         $locationLabel = $booking
             ? ($booking->loai_dat_lich === 'at_home'
-                ? ($booking->dia_chi ?: 'Chua cap nhat dia chi xu ly')
-                : 'Khach mang thiet bi den cua hang')
-            : 'Chua co dia diem xu ly';
+                ? ($booking->dia_chi ?: 'Chưa cập nhật địa chỉ xử lý')
+                : 'Khách mang thiết bị đến cửa hàng')
+            : 'Chưa có địa điểm xử lý';
         $priority = (string) ($caseState->priority ?: ($reasonCode === 'linh_kien_kem_chat_luong' ? 'high' : 'medium'));
 
         $case = [
@@ -2649,28 +2712,39 @@ class AdminController extends Controller
             'source_type' => 'customer_complaint',
             'source_id' => (int) $caseState->source_id,
             'type' => 'customer_complaint',
-            'type_label' => 'Khieu nai',
+            'type_label' => 'Khiếu nại',
             'priority' => $priority,
             'priority_label' => $this->formatCustomerFeedbackPriorityLabel($priority),
             'priority_tone' => $this->resolveCustomerFeedbackPriorityTone($priority),
             'customer_id' => $customer?->id,
-            'customer_name' => $customer?->name ?: 'Khach hang',
+            'customer_name' => $customer?->name ?: 'Khách hàng',
             'customer_phone' => $customer?->phone ?: null,
             'customer_url' => $customer ? '/admin/customers/' . $customer->id : null,
             'booking_id' => $booking?->id ?: (int) $caseState->source_id,
             'booking_code' => $booking
                 ? $this->formatCustomerBookingCode($booking->id)
                 : ('KN-' . str_pad((string) $caseState->source_id, 4, '0', STR_PAD_LEFT)),
-            'booking_url' => $booking ? '/customer/my-bookings/' . $booking->id : null,
+            'booking_url' => $this->buildAdminBookingUrl($booking),
             'worker_id' => $worker?->id,
-            'worker_name' => $worker?->name ?: 'Chua gan tho',
-            'service_label' => $booking ? $this->buildCustomerServiceLabel($booking) : 'Chua ro dich vu',
+            'worker_name' => $worker?->name ?: 'Chưa gán thợ',
+            'worker_phone' => $worker?->phone ?: null,
+            'service_label' => $booking ? $this->buildCustomerServiceLabel($booking) : 'Chưa rõ dịch vụ',
             'created_at' => optional($caseState->created_at)->toDateTimeString(),
-            'created_label' => optional($caseState->created_at)->format('d/m/Y H:i') ?: 'Khong ro thoi diem',
+            'created_label' => optional($caseState->created_at)->format('d/m/Y H:i') ?: 'Không rõ thời điểm',
             'summary' => $this->truncateDashboardText($content, 120),
             'content' => $content,
             'rating' => null,
             'location_label' => $locationLabel,
+            'complaint_reason_code' => $reasonCode,
+            'complaint_reason_label' => $reasonLabel,
+            'complaint_note' => $note,
+            'complaint_images' => $complaintImages,
+            'complaint_video' => $complaintVideo !== '' ? $complaintVideo : null,
+            'booking_total' => (float) ($booking?->tong_tien ?? 0),
+            'booking_before_images' => $bookingBeforeImages,
+            'booking_before_videos' => $bookingBeforeVideos,
+            'booking_after_images' => $bookingAfterImages,
+            'booking_after_videos' => $bookingAfterVideos,
         ];
 
         return $this->applyCustomerFeedbackCaseState($case, $caseState);
@@ -2682,6 +2756,7 @@ class AdminController extends Controller
         $priority = $caseState?->priority ?: $case['priority'];
         $assignedAdminName = $caseState?->assignedAdmin?->name;
         $deadlineAt = $caseState?->deadline_at;
+        $snapshot = is_array($caseState?->last_snapshot) ? $caseState->last_snapshot : [];
         $dueState = $this->resolveCustomerFeedbackDueState($deadlineAt, $status, Carbon::now());
 
         $case['id'] = $this->formatCustomerFeedbackSourceKey($case['source_type'], $case['source_id']);
@@ -2695,7 +2770,7 @@ class AdminController extends Controller
         $case['assigned_admin_name'] = $assignedAdminName;
         $case['assigned_label'] = $caseState?->assigned_at
             ? optional($caseState->assigned_at)->format('d/m/Y H:i')
-            : 'Chua nhan xu ly';
+            : 'Chưa nhận xử lý';
         $case['deadline_at'] = $deadlineAt?->toIso8601String();
         $case['deadline_label'] = $deadlineAt?->format('d/m/Y H:i');
         $case['due_state'] = $dueState;
@@ -2705,6 +2780,7 @@ class AdminController extends Controller
             ? optional($caseState->resolved_at)->format('d/m/Y H:i')
             : null;
         $case['resolution_note'] = $caseState?->resolution_note;
+        $case['resolution_action'] = trim((string) ($snapshot['resolution_action'] ?? ($case['resolution_action'] ?? '')));
 
         return $case;
     }
@@ -2712,7 +2788,7 @@ class AdminController extends Controller
     private function resolveCustomerFeedbackSourceCase(string $caseKey): array
     {
         if (!preg_match('/^([a-z_]+)-(\d+)$/', $caseKey, $matches)) {
-            abort(404, 'Khong tim thay case phu hop.');
+            abort(404, 'Không tìm thấy case phù hợp.');
         }
 
         $sourceType = $matches[1];
@@ -2735,7 +2811,7 @@ class AdminController extends Controller
                     ->with([
                         'customer:id,name,phone',
                         'worker:id,name,phone',
-                        'booking:id,khach_hang_id,tho_id,loai_dat_lich,dia_chi,trang_thai,created_at,updated_at',
+                        'booking:id,khach_hang_id,tho_id,loai_dat_lich,dia_chi,trang_thai,tong_tien,hinh_anh_mo_ta,video_mo_ta,hinh_anh_ket_qua,video_ket_qua,created_at,updated_at',
                         'booking.dichVus:id,ten_dich_vu',
                         'assignedAdmin:id,name',
                     ])
@@ -2752,7 +2828,7 @@ class AdminController extends Controller
                     ])
                     ->findOrFail($sourceId)
             ),
-            default => abort(404, 'Khong tim thay case phu hop.'),
+            default => abort(404, 'Không tìm thấy case phù hợp.'),
         };
     }
 
@@ -3486,7 +3562,7 @@ class AdminController extends Controller
             ], 404);
         }
 
-        if (in_array((string) $booking->trang_thai, ['da_huy', 'da_xong', 'hoan_thanh'], true)) {
+        if ((string) $booking->trang_thai === 'da_huy' || DonDatLich::isCompletedStatus((string) $booking->trang_thai)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Don da dong, khong the doi tho',
@@ -3577,6 +3653,10 @@ class AdminController extends Controller
             'chi_tiet_tien_cong.*.noi_dung' => 'required_with:chi_tiet_tien_cong|string|max:255',
             'chi_tiet_tien_cong.*.so_tien' => 'required_with:chi_tiet_tien_cong|numeric|min:0',
             'chi_tiet_linh_kien' => 'nullable|array',
+            'chi_tiet_linh_kien.*.linh_kien_id' => 'nullable|integer|exists:linh_kien,id',
+            'chi_tiet_linh_kien.*.dich_vu_id' => 'nullable|integer|min:1',
+            'chi_tiet_linh_kien.*.service_name' => 'nullable|string|max:255',
+            'chi_tiet_linh_kien.*.hinh_anh' => 'nullable|string|max:2048',
             'chi_tiet_linh_kien.*.noi_dung' => 'required_with:chi_tiet_linh_kien|string|max:255',
             'chi_tiet_linh_kien.*.so_tien' => 'required_with:chi_tiet_linh_kien|numeric|min:0',
             'chi_tiet_linh_kien.*.don_gia' => 'nullable|numeric|min:0',
@@ -3605,6 +3685,13 @@ class AdminController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Don da huy, khong the cap nhat chi phi',
+            ], 422);
+        }
+
+        if (DonDatLich::isCompletedStatus((string) $booking->trang_thai)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Don da hoan thanh, khong the chinh sua nua.',
             ], 422);
         }
 
@@ -3654,6 +3741,14 @@ class AdminController extends Controller
                 $unitPrice = array_key_exists('don_gia', $item) && $item['don_gia'] !== null
                     ? max(0, (float) $item['don_gia'])
                     : ($quantity > 0 ? $lineTotal / $quantity : $lineTotal);
+                $catalogPartId = isset($item['linh_kien_id']) && $item['linh_kien_id'] !== ''
+                    ? max(1, (int) $item['linh_kien_id'])
+                    : null;
+                $serviceId = isset($item['dich_vu_id']) && $item['dich_vu_id'] !== ''
+                    ? max(1, (int) $item['dich_vu_id'])
+                    : null;
+                $serviceName = trim((string) ($item['service_name'] ?? ''));
+                $imageUrl = trim((string) ($item['hinh_anh'] ?? ''));
                 $warrantyMonths = array_key_exists('bao_hanh_thang', $item) && $item['bao_hanh_thang'] !== null && $item['bao_hanh_thang'] !== ''
                     ? max(0, (int) $item['bao_hanh_thang'])
                     : null;
@@ -3663,6 +3758,10 @@ class AdminController extends Controller
                 }
 
                 return [
+                    'linh_kien_id' => $catalogPartId,
+                    'dich_vu_id' => $serviceId,
+                    'service_name' => $serviceName !== '' ? $serviceName : null,
+                    'hinh_anh' => $imageUrl !== '' ? $imageUrl : null,
                     'noi_dung' => $description !== '' ? $description : 'Linh kien thay the',
                     'don_gia' => $unitPrice,
                     'so_luong' => $quantity,
@@ -3674,6 +3773,10 @@ class AdminController extends Controller
 
         if ($parts > 0 && $partItems === []) {
             $partItems = [[
+                'linh_kien_id' => null,
+                'dich_vu_id' => null,
+                'service_name' => null,
+                'hinh_anh' => null,
                 'noi_dung' => 'Linh kien thay the',
                 'don_gia' => $parts,
                 'so_luong' => 1,
@@ -4282,12 +4385,7 @@ class AdminController extends Controller
 
     private function adminBookingTimeSlots(): array
     {
-        return [
-            '08:00-10:00',
-            '10:00-12:00',
-            '12:00-14:00',
-            '14:00-17:00',
-        ];
+        return DonDatLich::fixedTimeSlots();
     }
 
     private function serializeAdminBookingContactIssue(DonDatLich $booking): ?array
@@ -4405,6 +4503,7 @@ class AdminController extends Controller
                 'phone' => (string) ($booking->khachHang?->phone ?: ''),
                 'address' => $address,
             ],
+            'service_ids' => $booking->resolveServiceIds(),
             'service_label' => $serviceLabel,
             'service_names' => $serviceNames->values()->all(),
             'service_count' => $serviceNames->count(),

@@ -603,6 +603,66 @@
         border: 4px solid rgba(255, 255, 255, 0.22);
     }
 
+    .booking-service-visual {
+        position: relative;
+        z-index: 1;
+        width: 7rem;
+        height: 7rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .booking-service-visual.has-stack {
+        width: 8.3rem;
+        justify-content: flex-start;
+    }
+
+    .booking-service-stack-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 7rem;
+        height: 7rem;
+        border-radius: 1.5rem;
+        background: rgba(255, 255, 255, 0.2);
+        border: 3px solid rgba(255, 255, 255, 0.18);
+        box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+        pointer-events: none;
+    }
+
+    .booking-service-stack-layer--back {
+        transform: translate(1.05rem, -0.1rem) scale(0.98);
+        opacity: 0.42;
+    }
+
+    .booking-service-stack-layer--mid {
+        transform: translate(0.55rem, 0.18rem) scale(0.99);
+        opacity: 0.68;
+    }
+
+    .booking-service-stack-badge {
+        position: absolute;
+        top: 0.1rem;
+        right: 0.1rem;
+        z-index: 3;
+        min-width: 2.1rem;
+        height: 2.1rem;
+        padding: 0 0.6rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.9);
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        box-shadow: 0 14px 26px rgba(15, 23, 42, 0.22);
+        border: 3px solid rgba(255, 255, 255, 0.9);
+        pointer-events: none;
+    }
+
     .booking-service-icon {
         position: relative;
         z-index: 1;

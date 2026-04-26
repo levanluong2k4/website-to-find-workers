@@ -404,10 +404,6 @@
                             <label class="form-label fw-bold" style="font-size: 0.9rem; color: #334155;">Khung giờ <span class="text-danger">*</span></label>
                             <select class="form-select border-0 shadow-sm" id="booking_khung_gio_hen" name="khung_gio_hen" style="border-radius: 0.5rem; background-color: #f8fafc;" required>
                                 <option value="">Chọn khung giờ</option>
-                                <option value="08:00-10:00">08:00 - 10:00</option>
-                                <option value="10:00-12:00">10:00 - 12:00</option>
-                                <option value="12:00-14:00">12:00 - 14:00</option>
-                                <option value="14:00-17:00">14:00 - 17:00</option>
                             </select>
                         </div>
 

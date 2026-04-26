@@ -565,6 +565,62 @@ class PaymentWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_admin_cannot_change_status_of_completed_booking(): void
+    {
+        $admin = $this->createUser('admin', 'immutable-status-admin@example.com');
+        $token = $admin->createToken('immutable-status-admin')->plainTextToken;
+
+        $bookingId = $this->createBooking([
+            'trang_thai' => 'da_xong',
+            'trang_thai_thanh_toan' => true,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson("/api/don-dat-lich/{$bookingId}/status", [
+                'trang_thai' => 'dang_lam',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Don da hoan thanh, khong the chinh sua nua.');
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'trang_thai' => 'da_xong',
+            'trang_thai_thanh_toan' => 1,
+        ]);
+    }
+
+    public function test_admin_cannot_update_financials_of_completed_booking(): void
+    {
+        $admin = $this->createUser('admin', 'immutable-financial-admin@example.com');
+        $token = $admin->createToken('immutable-financial-admin')->plainTextToken;
+
+        $bookingId = $this->createBooking([
+            'trang_thai' => 'da_xong',
+            'trang_thai_thanh_toan' => true,
+            'gia_da_cap_nhat' => true,
+            'tien_cong' => 150000,
+            'tong_tien' => 150000,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson("/api/admin/bookings/{$bookingId}/financials", [
+                'tien_cong' => 280000,
+                'phi_di_lai' => 10000,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Don da hoan thanh, khong the chinh sua nua.');
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'trang_thai' => 'da_xong',
+            'tien_cong' => 150000,
+            'phi_di_lai' => 0,
+            'tong_tien' => 150000,
+        ]);
+    }
+
     private function createUser(string $role, string $email): \App\Models\User
     {
         return \App\Models\User::query()->create([

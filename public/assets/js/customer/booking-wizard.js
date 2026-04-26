@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         store_transport_fee: DEFAULT_STORE_TRANSPORT_FEE,
         tiers: [],
     };
-    const TIME_SLOTS = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'];
+    const DEFAULT_BOOKING_TIME_SLOTS = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'];
+    let bookingTimeSlots = [...DEFAULT_BOOKING_TIME_SLOTS];
     const BOOKING_WINDOW_DAYS = 7;
     const STEP_META = {
         1: ['Bước 1 trên 5', 'ĐẶT LỊCH SỬA CHỮA', 'Chọn một hoặc nhiều dịch vụ phù hợp để bắt đầu lịch hẹn với Thợ Tốt NTU.'],
@@ -59,7 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
         repairMode: null, tinh: '', huyen: '', xa: '', soNha: '', lat: '', lng: '', travelFee: 0, distanceKm: null,
         travelMessage: 'Sẽ tính sau khi bạn chọn vị trí.', date: '', timeSlot: '', description: '', images: [], video: null,
         transportRequested: false, isOutOfRange: false, isOpen: false, locationSource: '',
-        symptomCatalog: [], symptomCatalogKey: '', symptomCatalogPromise: null, selectedSymptomId: null, busySlotsByDate: {},
+        symptomCatalog: [], symptomCatalogKey: '', symptomCatalogPromise: null, selectedSymptomId: null, selectedSymptomIds: {},
+        serviceProblemInputs: {}, activeProblemServiceId: null, busySlotsByDate: {},
     };
     const $ = (id) => document.getElementById(id);
     const refs = {
@@ -72,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         storeAddress: $('bookingWizardStoreAddress'), storeTransportNote: $('bookingWizardStoreTransportNote'),
         transportToggle: $('bookingWizardTransportToggle'), getLocation: $('bookingWizardGetLocation'), locationStatus: $('bookingWizardLocationStatus'),
         tinh: $('bookingWizardTinh'), huyen: $('bookingWizardHuyen'), xa: $('bookingWizardXa'), soNha: $('bookingWizardSoNha'),
-        dateCards: $('bookingWizardDateCards'), timeSlots: $('bookingWizardTimeSlots'), description: $('bookingWizardDescription'),
+        dateCards: $('bookingWizardDateCards'), timeSlots: $('bookingWizardTimeSlots'), description: $('bookingWizardDescription'), problemFields: $('bookingWizardProblemFields'),
         problemSuggest: $('bookingWizardProblemSuggest'), problemSuggestCopy: $('bookingWizardProblemSuggestCopy'), problemSuggestList: $('bookingWizardProblemSuggestList'),
         problemPriceCard: $('bookingWizardProblemPriceCard'), problemPriceValue: $('bookingWizardProblemPriceValue'), problemPriceMeta: $('bookingWizardProblemPriceMeta'),
         uploadZone: $('bookingWizardUploadZone'), mediaPicker: $('bookingWizardMediaPicker'), imagesInput: $('bookingWizardImages'),
@@ -91,6 +93,10 @@ document.addEventListener('DOMContentLoaded', () => {
         sumTravelFee: $('bookingSummaryTravelFee'), sumTravelMeta: $('bookingSummaryTravelMeta'),
         sumReferencePrice: $('bookingSummaryReferencePrice'), sumReferenceMeta: $('bookingSummaryReferenceMeta'),
     };
+    const legacyDescriptionField = refs.description?.closest('.booking-field') || null;
+    if (legacyDescriptionField) {
+        legacyDescriptionField.hidden = true;
+    }
     const panels = Array.from(root.querySelectorAll('[data-step-panel]'));
     const stepButtons = Array.from(root.querySelectorAll('[data-step-target]'));
     const repairCards = Array.from(root.querySelectorAll('[data-repair-mode]'));
@@ -101,6 +107,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const heavyService = () => selectedServices().some((service) => ['may giat', 'tu lanh', 'tivi', 'may lanh', 'dieu hoa'].some((k) => norm(service.ten_dich_vu).includes(k)));
     const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const normalizeTimeSlotValue = (value) => String(value || '').replace(/\s+/g, '');
+    const timeToMinutes = (value) => {
+        const matched = String(value || '').trim().match(/^(\d{2}):(\d{2})$/);
+        if (!matched) {
+            return null;
+        }
+
+        const hour = Number(matched[1]);
+        const minute = Number(matched[2]);
+        if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+            return null;
+        }
+
+        return (hour * 60) + minute;
+    };
+    const parseBookingTimeSlot = (value) => {
+        const normalized = normalizeTimeSlotValue(value);
+        const matched = normalized.match(/^(\d{2}:\d{2})-(\d{2}:\d{2})$/);
+        if (!matched) {
+            return null;
+        }
+
+        const startMinutes = timeToMinutes(matched[1]);
+        const endMinutes = timeToMinutes(matched[2]);
+        if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+            return null;
+        }
+
+        return {
+            value: normalized,
+            startMinutes,
+            endMinutes,
+        };
+    };
+    const getBookingTimeSlots = () => (
+        Array.isArray(bookingTimeSlots) && bookingTimeSlots.length
+            ? bookingTimeSlots
+            : DEFAULT_BOOKING_TIME_SLOTS
+    );
+    const getBookingTimeSlotDefinitions = () => {
+        const parsedSlots = getBookingTimeSlots()
+            .map((slot) => parseBookingTimeSlot(slot))
+            .filter(Boolean)
+            .sort((left, right) => left.startMinutes - right.startMinutes || left.endMinutes - right.endMinutes);
+
+        return parsedSlots.length
+            ? parsedSlots
+            : DEFAULT_BOOKING_TIME_SLOTS
+                .map((slot) => parseBookingTimeSlot(slot))
+                .filter(Boolean);
+    };
     const hasWorkerReferenceCoordinates = () => {
         const rawLat = state.worker?.vi_do;
         const rawLng = state.worker?.kinh_do;
@@ -141,21 +197,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     Number.isFinite(workerMaxDistance) ? workerMaxDistance : configuredMaxDistance,
                     configuredMaxDistance
                 ),
-                label: state.worker?.user?.name || 'tho da chon',
+                label: state.worker?.user?.name || 'thợ đã chọn',
             };
         }
 
         return {
             ...STORE_REFERENCE,
             maxDistance: configuredMaxDistance,
-            label: 'cua hang',
+            label: 'cửa hàng',
         };
     };
     const formatServiceDistanceKm = (value) => Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
     const buildOutOfRangeValidationMessage = () => {
         const refPoint = getHomeReferencePoint();
 
-        return `Dia chi cua ban vuot qua ${formatServiceDistanceKm(refPoint.maxDistance)} km. Vui long chon dia chi gan hon hoac mang thiet bi den cua hang.`;
+        return `Địa chỉ của bạn vượt quá ${formatServiceDistanceKm(refPoint.maxDistance)} km. Vui lòng chọn địa chỉ gần hơn hoặc mang thiết bị đến cửa hàng.`;
     };
     const relativeDateLabel = (offset) => {
         if (offset === 0) return 'Hôm nay';
@@ -185,9 +241,31 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const ensureAuth = () => { try { const user = getCurrentUser(); if (user && ['customer', 'admin'].includes(user.role)) return true; } catch (error) {} window.location.href = '/login'; return false; };
     const distKm = (a, b, c, d) => { const r = 6371, dLat = ((c - a) * Math.PI) / 180, dLng = ((d - b) * Math.PI) / 180; const x = Math.sin(dLat / 2) ** 2 + Math.cos((a * Math.PI) / 180) * Math.cos((c * Math.PI) / 180) * Math.sin(dLng / 2) ** 2; return r * (2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))); };
-    const findTravelFeeTier = (distanceKm) => (travelFeeConfig.tiers || []).find((tier) => distanceKm >= Number(tier.from_km || 0) && distanceKm <= Number(tier.to_km || 0)) || null;
+    const findTravelFeeTier = (distanceKm) => (travelFeeConfig.tiers || []).find((tier, index, tiers) => (
+        distanceKm >= Number(tier.from_km || 0)
+        && (
+            distanceKm < Number(tier.to_km || 0)
+            || (index === tiers.length - 1 && distanceKm <= Number(tier.to_km || 0))
+        )
+    )) || null;
     const getTierTravelFee = (tier) => Number(tier?.travel_fee ?? tier?.fee ?? 0);
     const getTierTransportFee = (tier) => Number(tier?.transport_fee ?? 0);
+    const getTierDisplayUpperBound = (tier, isLastTier = false) => {
+        const fromKm = Number(tier?.from_km || 0);
+        const toKm = Number(tier?.to_km || 0);
+
+        if (isLastTier) {
+            return toKm;
+        }
+
+        return Math.max(fromKm, Number((toKm - 0.01).toFixed(2)));
+    };
+    const formatTierRangeLabel = (tier) => {
+        const tierIndex = (travelFeeConfig.tiers || []).indexOf(tier);
+        const isLastTier = tierIndex === (travelFeeConfig.tiers || []).length - 1;
+
+        return `${formatServiceDistanceKm(tier?.from_km || 0)} - ${formatServiceDistanceKm(getTierDisplayUpperBound(tier, isLastTier))} km`;
+    };
     const normalizeTravelFeeTiers = (tiers) => (Array.isArray(tiers) ? tiers : []).map((tier) => ({
         ...tier,
         travel_fee: getTierTravelFee(tier),
@@ -259,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tier = findTravelFeeTier(normalizedDistanceKm);
         if (tier) {
-            return `Tạm tính ${roundedDistance} km từ ${refLabel}${manualSuffix}: áp dụng ${money(getTierTravelFee(tier))} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
+            return `Tạm tính ${roundedDistance} km từ ${refLabel}${manualSuffix}: áp dụng ${money(getTierTravelFee(tier))} cho khoảng ${formatTierRangeLabel(tier)}.`;
         }
 
         return `Tạm tính ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km từ ${refLabel}${manualSuffix}.`;
@@ -299,10 +377,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     store_transport_fee: storeTransportFee,
                     tiers,
                 };
+                bookingTimeSlots = (Array.isArray(config.booking_time_slots) ? config.booking_time_slots : [])
+                    .map((slot) => normalizeTimeSlotValue(slot))
+                    .filter(Boolean);
                 STORE_REFERENCE.lat = travelFeeConfig.store_latitude;
                 STORE_REFERENCE.lng = travelFeeConfig.store_longitude;
                 STORE_REFERENCE.maxDistance = travelFeeConfig.max_service_distance_km;
                 applyStoreConfigToView();
+                renderTimeSlots();
                 if (state.repairMode === 'at_home' && state.lat && state.lng) {
                     updateTravelEstimate();
                 } else {
@@ -311,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (error) {
-            console.warn('Khong tai duoc cau hinh phi di lai', error);
+            console.warn('Không tải được cấu hình phí đi lại', error);
         }
     };
     const homeAddressLabel = () => [state.soNha.trim(), state.xa, state.huyen, state.tinh].filter(Boolean).join(', ');
@@ -330,12 +412,223 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, '&#039;');
     }
 
+    function getServiceProblemText(serviceId) {
+        return String(state.serviceProblemInputs?.[String(serviceId)] || '');
+    }
+
+    function setServiceProblemText(serviceId, value) {
+        if (!serviceId) return;
+        if (!state.serviceProblemInputs || typeof state.serviceProblemInputs !== 'object') {
+            state.serviceProblemInputs = {};
+        }
+
+        state.serviceProblemInputs[String(serviceId)] = String(value || '');
+    }
+
+    function getActiveProblemService() {
+        const activeServiceId = Number(state.activeProblemServiceId || 0);
+        return selectedServices().find((service) => Number(service.id) === activeServiceId) || selectedServices()[0] || null;
+    }
+
+    function syncActiveProblemContext() {
+        const activeService = getActiveProblemService();
+        state.activeProblemServiceId = activeService ? Number(activeService.id) : null;
+        state.description = activeService ? getServiceProblemText(activeService.id) : '';
+        state.selectedSymptomId = activeService
+            ? (Number(state.selectedSymptomIds?.[String(activeService.id)] || 0) || null)
+            : null;
+
+        if (refs.description) {
+            refs.description.value = state.description;
+        }
+    }
+
+    function syncProblemInputsWithSelectedServices() {
+        const selectedIds = selectedServices().map((service) => String(service.id));
+        const nextProblems = {};
+        const nextSymptoms = {};
+
+        selectedIds.forEach((serviceId) => {
+            nextProblems[serviceId] = String(state.serviceProblemInputs?.[serviceId] || '');
+            if (Number(state.selectedSymptomIds?.[serviceId] || 0) > 0) {
+                nextSymptoms[serviceId] = Number(state.selectedSymptomIds[serviceId]);
+            }
+        });
+
+        state.serviceProblemInputs = nextProblems;
+        state.selectedSymptomIds = nextSymptoms;
+
+        if (!selectedIds.includes(String(state.activeProblemServiceId || ''))) {
+            state.activeProblemServiceId = selectedIds[0] ? Number(selectedIds[0]) : null;
+        }
+
+        syncActiveProblemContext();
+    }
+
+    function getCombinedProblemDescription() {
+        const problems = selectedServices()
+            .map((service) => ({
+                serviceName: String(service.ten_dich_vu || 'Dịch vụ').trim(),
+                description: getServiceProblemText(service.id).trim(),
+            }))
+            .filter((item) => item.description !== '');
+
+        if (!problems.length) {
+            return '';
+        }
+
+        if (problems.length === 1 && selectedServices().length === 1) {
+            return problems[0].description;
+        }
+
+        return problems
+            .map((item) => `${item.serviceName}: ${item.description}`)
+            .join('\n');
+    }
+
+    function syncRenderedProblemFieldState() {
+        if (!refs.problemFields) return;
+
+        refs.problemFields.querySelectorAll('[data-problem-service-card]').forEach((card) => {
+            const serviceId = Number(card.getAttribute('data-problem-service-card') || 0);
+            const isActive = Number(state.activeProblemServiceId || 0) === serviceId;
+            const badge = card.querySelector('[data-problem-active-badge]');
+
+            card.classList.toggle('is-active', isActive);
+            if (badge) {
+                badge.classList.toggle('d-none', !isActive);
+            }
+        });
+    }
+
+    function getProblemAssistRefs(serviceId = state.activeProblemServiceId) {
+        const targetServiceId = Number(serviceId || 0);
+        if (!refs.problemFields || targetServiceId <= 0) {
+            return null;
+        }
+
+        const card = refs.problemFields.querySelector(`[data-problem-service-card="${targetServiceId}"]`);
+        if (!card) {
+            return null;
+        }
+
+        return {
+            card,
+            suggest: card.querySelector('[data-problem-suggest]'),
+            suggestCopy: card.querySelector('[data-problem-suggest-copy]'),
+            suggestList: card.querySelector('[data-problem-suggest-list]'),
+            priceCard: card.querySelector('[data-problem-price-card]'),
+            priceValue: card.querySelector('[data-problem-price-value]'),
+            priceMeta: card.querySelector('[data-problem-price-meta]'),
+        };
+    }
+
+    function clearProblemAssistDisplays() {
+        if (!refs.problemFields) {
+            return;
+        }
+
+        refs.problemFields.querySelectorAll('[data-problem-suggest]').forEach((element) => {
+            element.classList.add('d-none');
+        });
+        refs.problemFields.querySelectorAll('[data-problem-suggest-list]').forEach((element) => {
+            element.innerHTML = '';
+        });
+        refs.problemFields.querySelectorAll('[data-problem-price-card]').forEach((element) => {
+            element.classList.add('d-none');
+        });
+    }
+
+    function renderProblemFields() {
+        if (!refs.problemFields) return;
+
+        const services = selectedServices();
+        if (!services.length) {
+            refs.problemFields.innerHTML = '';
+            refs.problemFields.classList.add('d-none');
+            syncActiveProblemContext();
+            renderProblemSuggestions([]);
+            renderProblemReferencePrice(null);
+            queueViewportFit();
+            return;
+        }
+
+        refs.problemFields.classList.remove('d-none');
+        refs.problemFields.innerHTML = services.map((service, index) => {
+            const serviceId = Number(service.id);
+            const isActive = Number(state.activeProblemServiceId || 0) === serviceId;
+            const serviceDescription = escapeHtml(getServiceProblemText(serviceId));
+            const serviceName = escapeHtml(service.ten_dich_vu || `Dịch vụ ${index + 1}`);
+
+            return `
+                <div class="booking-problem-card ${isActive ? 'is-active' : ''}" data-problem-service-card="${serviceId}">
+                    <div class="booking-problem-card-head">
+                        <div>
+                            <div class="booking-problem-card-kicker">Dịch vụ ${index + 1}</div>
+                            <div class="booking-problem-card-title">${serviceName}</div>
+                            <div class="booking-problem-card-copy">Mô tả riêng sự cố của dịch vụ này để thợ chuẩn bị đúng hướng xử lý.</div>
+                        </div>
+                        <div class="booking-problem-card-badge ${isActive ? '' : 'd-none'}" data-problem-active-badge>Đang nhập</div>
+                    </div>
+                    <label class="booking-field">
+                        <span>Mô tả sự cố</span>
+                        <textarea rows="5" data-problem-service-input="${serviceId}" placeholder="Ví dụ: thiết bị hoạt động yếu, phát ra tiếng ồn lạ hoặc không lên nguồn.">${serviceDescription}</textarea>
+                    </label>
+                    <div class="booking-problem-assist" data-problem-assist>
+                        <div class="booking-problem-suggest d-none" data-problem-suggest>
+                            <div class="booking-problem-suggest-head">
+                                <div class="booking-problem-suggest-title">Triệu chứng gợi ý</div>
+                                <div class="booking-problem-suggest-copy" data-problem-suggest-copy>Bấm vào gợi ý để điền nhanh mô tả cho dịch vụ này.</div>
+                            </div>
+                            <div class="booking-problem-chip-list" data-problem-suggest-list></div>
+                        </div>
+                        <div class="booking-problem-price d-none" data-problem-price-card>
+                            <div class="booking-problem-price-label">Giá tham khảo</div>
+                            <div class="booking-problem-price-value" data-problem-price-value>Liên hệ báo giá</div>
+                            <div class="booking-problem-price-meta" data-problem-price-meta>Khoảng giá sẽ hiện khi bạn chọn một triệu chứng phù hợp.</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        refs.problemFields.querySelectorAll('[data-problem-service-input]').forEach((input) => {
+            const serviceId = Number(input.getAttribute('data-problem-service-input') || 0);
+
+            input.addEventListener('focus', () => {
+                state.activeProblemServiceId = serviceId;
+                syncActiveProblemContext();
+                syncRenderedProblemFieldState();
+                renderProblemReferencePrice(getSelectedSymptomSuggestion());
+                refreshProblemAssist();
+            });
+
+            input.addEventListener('input', () => {
+                state.activeProblemServiceId = serviceId;
+                setServiceProblemText(serviceId, input.value);
+                syncActiveProblemContext();
+                syncRenderedProblemFieldState();
+
+                const selected = getSelectedSymptomSuggestion();
+                const queryText = getSymptomQueryText(input.value);
+                const isExactSelected = selected && getSymptomQueryText(selected.ten_trieu_chung) === queryText;
+
+                if (!isExactSelected) {
+                    delete state.selectedSymptomIds[String(serviceId)];
+                    state.selectedSymptomId = null;
+                    renderProblemReferencePrice(null);
+                }
+
+                scheduleProblemAssist();
+            });
+        });
+
+        queueViewportFit();
+    }
+
     function getSymptomCatalogServiceKey() {
-        return [...state.serviceIds]
-            .map((id) => Number(id))
-            .filter((id) => Number.isFinite(id) && id > 0)
-            .sort((a, b) => a - b)
-            .join(',');
+        const activeServiceId = Number(state.activeProblemServiceId || 0);
+        return activeServiceId > 0 ? String(activeServiceId) : '';
     }
 
     function getSymptomQueryText(value = refs.description?.value || '') {
@@ -348,7 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (normalizedMin > 0 && normalizedMax > 0) {
             return normalizedMin === normalizedMax ? money(normalizedMin) : `${money(normalizedMin)} - ${money(normalizedMax)}`;
         }
-        return 'Lien he bao gia';
+        return 'Liên hệ báo giá';
     }
 
     function getSelectedSymptomSuggestion() {
@@ -366,14 +659,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasAnyPrice = priceMin > 0 || priceMax > 0;
         const priceLabel = formatReferencePriceRange(priceMin, priceMax);
         const metaText = !hasSymptom
-            ? 'Khoang gia se hien khi ban chon mot trieu chung phu hop.'
+            ? 'Khoảng giá sẽ hiện khi bạn chọn một triệu chứng phù hợp.'
             : hasAnyPrice
-                ? `Theo ${resolutionCount || 0} huong xu ly${causeCount ? ` va ${causeCount} nguyen nhan lien quan` : ''}.${causePreview ? ` Thuong gap: ${causePreview}.` : ''}`
-                : 'Trieu chung nay da co trong danh muc nhung chua duoc khai bao gia tham khao.';
+                ? `Theo ${resolutionCount || 0} hướng xử lý${causeCount ? ` và ${causeCount} nguyên nhân liên quan` : ''}.${causePreview ? ` Thường gặp: ${causePreview}.` : ''}`
+                : 'Triệu chứng này đã có trong danh mục nhưng chưa được khai báo giá tham khảo.';
 
-        if (refs.problemPriceCard) refs.problemPriceCard.classList.toggle('d-none', !hasSymptom);
-        if (refs.problemPriceValue) refs.problemPriceValue.textContent = priceLabel;
-        if (refs.problemPriceMeta) refs.problemPriceMeta.textContent = metaText;
+        if (refs.problemFields) {
+            refs.problemFields.querySelectorAll('[data-problem-price-card]').forEach((element) => {
+                element.classList.add('d-none');
+            });
+        }
+        const assistRefs = getProblemAssistRefs();
+        if (assistRefs?.priceCard) assistRefs.priceCard.classList.toggle('d-none', !hasSymptom);
+        if (assistRefs?.priceValue) assistRefs.priceValue.textContent = priceLabel;
+        if (assistRefs?.priceMeta) assistRefs.priceMeta.textContent = metaText;
         if (refs.sumReferencePriceCard) refs.sumReferencePriceCard.classList.toggle('d-none', !hasSymptom);
         if (refs.sumReferencePrice) refs.sumReferencePrice.textContent = priceLabel;
         if (refs.sumReferenceMeta) refs.sumReferenceMeta.textContent = metaText;
@@ -412,51 +711,72 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderProblemSuggestions(items, options = {}) {
-        if (!refs.problemSuggest || !refs.problemSuggestList || !refs.problemSuggestCopy) return;
-
         const queryText = getSymptomQueryText(refs.description?.value);
         const loading = Boolean(options.loading);
-        refs.problemSuggest.classList.toggle('d-none', queryText === '');
+        const activeService = getActiveProblemService();
+        const assistRefs = getProblemAssistRefs(activeService?.id);
+        if (!assistRefs?.suggest || !assistRefs?.suggestList || !assistRefs?.suggestCopy) return;
+
+        if (refs.problemFields) {
+            refs.problemFields.querySelectorAll('[data-problem-suggest]').forEach((element) => {
+                element.classList.add('d-none');
+            });
+            refs.problemFields.querySelectorAll('[data-problem-suggest-list]').forEach((element) => {
+                if (element !== assistRefs.suggestList) {
+                    element.innerHTML = '';
+                }
+            });
+        }
+
+        assistRefs.suggest.classList.toggle('d-none', queryText === '');
 
         if (queryText === '') {
-            refs.problemSuggestList.innerHTML = '';
+            assistRefs.suggestList.innerHTML = '';
             return;
         }
 
         if (loading) {
-            refs.problemSuggestCopy.textContent = 'Dang doi chieu mo ta voi trieu chung co san...';
-            refs.problemSuggestList.innerHTML = '<div class="booking-problem-chip-empty">Dang tim goi y phu hop...</div>';
+            assistRefs.suggestCopy.textContent = 'Đang đối chiếu mô tả với triệu chứng có sẵn...';
+            assistRefs.suggestList.innerHTML = '<div class="booking-problem-chip-empty">Đang tìm gợi ý phù hợp...</div>';
             return;
         }
 
-        refs.problemSuggestCopy.textContent = items.length
-            ? 'Bam vao goi y de dien nhanh mo ta va xem khoang gia tham khao.'
-            : 'Khong tim thay trieu chung khop voi noi dung ban vua nhap.';
+        assistRefs.suggestCopy.textContent = items.length
+            ? `Gợi ý cho ${activeService?.ten_dich_vu || 'dịch vụ đang chọn'}. Bấm vào để điền nhanh mô tả và xem khoảng giá tham khảo.`
+            : `Không tìm thấy triệu chứng khớp với ${activeService?.ten_dich_vu || 'dịch vụ đang chọn'}.`;
 
-        refs.problemSuggestList.innerHTML = items.length
+        assistRefs.suggestList.innerHTML = items.length
             ? items.map((item) => {
                 const isActive = Number(item?.id || 0) === Number(state.selectedSymptomId || 0);
                 const serviceMeta = state.serviceIds.length > 1 && item?.dich_vu_name
                     ? `<small>${escapeHtml(item.dich_vu_name)}</small>`
                     : '';
-                return `<button type="button" class="booking-problem-chip ${isActive ? 'is-active' : ''}" data-problem-symptom-id="${Number(item?.id || 0)}">${escapeHtml(item?.ten_trieu_chung || 'Trieu chung')}${serviceMeta}</button>`;
+                return `<button type="button" class="booking-problem-chip ${isActive ? 'is-active' : ''}" data-problem-symptom-id="${Number(item?.id || 0)}">${escapeHtml(item?.ten_trieu_chung || 'Triệu chứng')}${serviceMeta}</button>`;
             }).join('')
-            : '<div class="booking-problem-chip-empty">Thu mo ta ngan gon hon hoac chon dich vu cu the de he thong goi y chinh xac hon.</div>';
+            : '<div class="booking-problem-chip-empty">Thử mô tả ngắn gọn hơn hoặc chọn dịch vụ cụ thể để hệ thống gợi ý chính xác hơn.</div>';
 
-        refs.problemSuggestList.querySelectorAll('[data-problem-symptom-id]').forEach((button) => {
+        assistRefs.suggestList.querySelectorAll('[data-problem-symptom-id]').forEach((button) => {
             button.addEventListener('click', () => {
                 const symptomId = Number(button.getAttribute('data-problem-symptom-id') || 0);
                 const symptom = (Array.isArray(state.symptomCatalog) ? state.symptomCatalog : [])
                     .find((item) => Number(item?.id || 0) === symptomId);
                 if (!symptom) return;
 
+                const currentService = getActiveProblemService();
+                if (!currentService) return;
+
+                state.activeProblemServiceId = Number(currentService.id);
                 state.selectedSymptomId = symptomId;
-                state.description = symptom.ten_trieu_chung || '';
-                if (refs.description) {
-                    refs.description.value = state.description;
-                    refs.description.focus();
-                    const textLength = refs.description.value.length;
-                    refs.description.setSelectionRange(textLength, textLength);
+                state.selectedSymptomIds[String(currentService.id)] = symptomId;
+                setServiceProblemText(currentService.id, symptom.ten_trieu_chung || '');
+                syncActiveProblemContext();
+                renderProblemFields();
+
+                const activeInput = refs.problemFields?.querySelector(`[data-problem-service-input="${Number(currentService.id)}"]`);
+                if (activeInput) {
+                    activeInput.focus();
+                    const textLength = activeInput.value.length;
+                    activeInput.setSelectionRange(textLength, textLength);
                 }
 
                 renderProblemSuggestions(findMatchingSymptomSuggestions(state.description));
@@ -475,6 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.clearTimeout(symptomSuggestTimer);
             symptomSuggestTimer = null;
         }
+        clearProblemAssistDisplays();
         renderProblemSuggestions([]);
         renderProblemReferencePrice(null);
     }
@@ -500,7 +821,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.symptomCatalogPromise = (async () => {
             const response = await callApi(`/huong-xu-ly?group_by_symptom=1&dich_vu_ids=${encodeURIComponent(serviceKey)}`, 'GET');
             if (!response.ok) {
-                throw new Error(response.data?.message || 'Khong tai duoc danh muc trieu chung.');
+                throw new Error(response.data?.message || 'Không tải được danh mục triệu chứng.');
             }
 
             const payload = Array.isArray(response.data) ? response.data : [];
@@ -554,9 +875,10 @@ document.addEventListener('DOMContentLoaded', () => {
             renderProblemReferencePrice(activeSymptom);
         } catch (error) {
             state.selectedSymptomId = null;
-            if (refs.problemSuggest) refs.problemSuggest.classList.remove('d-none');
-            if (refs.problemSuggestCopy) refs.problemSuggestCopy.textContent = error.message || 'Khong tai duoc goi y trieu chung.';
-            if (refs.problemSuggestList) refs.problemSuggestList.innerHTML = '<div class="booking-problem-chip-empty">Tam thoi khong tai duoc goi y. Vui long thu lai sau.</div>';
+            const assistRefs = getProblemAssistRefs();
+            if (assistRefs?.suggest) assistRefs.suggest.classList.remove('d-none');
+            if (assistRefs?.suggestCopy) assistRefs.suggestCopy.textContent = error.message || 'Không tải được gợi ý triệu chứng.';
+            if (assistRefs?.suggestList) assistRefs.suggestList.innerHTML = '<div class="booking-problem-chip-empty">Tạm thời không tải được gợi ý. Vui lòng thử lại sau.</div>';
             renderProblemReferencePrice(null);
         } finally {
             queueViewportFit();
@@ -599,7 +921,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addressData, currentStep: 1, workerId: prefill.workerId ? Number(prefill.workerId) : null, worker: null,
             prefillServiceName: String(prefill.serviceName || ''), prefillServiceIds: normalizePrefillServiceIds(prefill.serviceIds), services: [], serviceIds: [], repairMode: null,
             tinh: '', huyen: '', xa: '', soNha: '', lat: '', lng: '', travelFee: 0, distanceKm: null, travelMessage: 'Sẽ tính sau khi bạn chọn vị trí.',
-            date: '', timeSlot: '', description: '', images: [], video: null, transportRequested: false, isOutOfRange: false, locationSource: '', busySlotsByDate: {},
+            date: '', timeSlot: '', description: '', images: [], video: null, transportRequested: false, isOutOfRange: false, locationSource: '',
+            selectedSymptomIds: {}, serviceProblemInputs: {}, activeProblemServiceId: null, busySlotsByDate: {},
         });
         refs.form.reset();
         refs.success.classList.add('d-none');
@@ -607,6 +930,10 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.sumWorkerCard.classList.add('d-none');
         refs.locationStatus.textContent = 'Vui lòng lấy vị trí hiện tại hoặc nhập địa chỉ thủ công.';
         refs.preview.innerHTML = '';
+        if (refs.problemFields) {
+            refs.problemFields.innerHTML = '';
+            refs.problemFields.classList.add('d-none');
+        }
         if (addressLookupTimer) {
             window.clearTimeout(addressLookupTimer);
             addressLookupTimer = null;
@@ -905,7 +1232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await callApi(`/ho-so-tho/${state.workerId}/busy-slots?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`, 'GET');
 
         if (!result.ok) {
-            throw new Error(result.data?.message || 'Khong tai duoc lich ban cua tho.');
+            throw new Error(result.data?.message || 'Không tải được lịch bận của thợ.');
         }
 
         state.busySlotsByDate = Object.fromEntries(Object.entries(result.data?.busy_slots || {}).map(([date, slots]) => [
@@ -918,22 +1245,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const busySlots = Array.isArray(state.busySlotsByDate?.[state.date]) ? state.busySlotsByDate[state.date] : [];
 
         if (busySlots.includes(slot)) {
-            return 'Tho da co lich vao thoi diem nay';
+            return 'Thợ đã có lịch vào thời điểm này';
         }
 
         if (index < targetIndex) {
-            return 'Khung gio nay da qua';
+            return 'Khung giờ này đã qua';
         }
 
         return '';
     }
 
     function availableTimeSlots() {
-        const slots = TIME_SLOTS.map((slot) => ({ value: slot, disabled: false, reason: '' }));
+        const slots = getBookingTimeSlotDefinitions().map((slot) => ({ value: slot.value, disabled: false, reason: '' }));
         if (!state.date) return slots;
         const now = new Date();
         const mins = now.getHours() * 60 + now.getMinutes();
-        let target = mins < 480 ? 0 : mins < 600 ? 1 : mins < 720 ? 2 : mins < 840 ? 3 : 4;
+        let target = slots.reduce((count, slot) => {
+            const parsedSlot = parseBookingTimeSlot(slot.value);
+            return parsedSlot && parsedSlot.startMinutes <= mins ? count + 1 : count;
+        }, 0);
         if (state.repairMode === 'at_home') target += 1;
 
         return slots.map((slot, index) => {
@@ -963,7 +1293,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
         refs.timeSlots.querySelectorAll('[data-time-slot]').forEach((button) => button.addEventListener('click', () => {
             if (button.dataset.disabled === '1') {
-                showToast(button.dataset.disabledReason || 'Khung gio nay khong con kha dung.', 'error');
+                showToast(button.dataset.disabledReason || 'Khung giờ này không còn khả dụng.', 'error');
                 return;
             }
             state.timeSlot = button.dataset.timeSlot;
@@ -993,9 +1323,11 @@ document.addEventListener('DOMContentLoaded', () => {
             state.symptomCatalogKey = '';
             state.symptomCatalogPromise = null;
             state.selectedSymptomId = null;
+            syncProblemInputsWithSelectedServices();
             refs.transportToggle.checked = false;
             renderProblemReferencePrice(null);
             renderServices();
+            renderProblemFields();
             syncHidden();
             updateAddressPanels();
             updateTravelEstimate();
@@ -1140,17 +1472,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (matched) state.serviceIds = [Number(matched.id)];
             }
             if (!state.serviceIds.length && state.services.length === 1) state.serviceIds = [Number(state.services[0].id)];
+            syncProblemInputsWithSelectedServices();
             if (state.workerId) {
                 try {
                     await fetchWorkerBusySlots();
                 } catch (busySlotsError) {
                     state.busySlotsByDate = {};
-                    showToast(busySlotsError.message || 'Khong tai duoc lich ban cua tho.', 'error');
+                    showToast(busySlotsError.message || 'Không tải được lịch bận của thợ.', 'error');
                 }
                 clearDisabledTimeSlot();
                 renderTimeSlots();
             }
             renderServices();
+            renderProblemFields();
             syncHidden();
             updateAddressPanels();
             updateTravelEstimate();
@@ -1197,7 +1531,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.set('loai_dat_lich', state.repairMode);
         formData.set('ngay_hen', state.date);
         formData.set('khung_gio_hen', normalizeTimeSlotValue(state.timeSlot));
-        formData.set('mo_ta_van_de', state.description || '');
+        formData.set('mo_ta_van_de', getCombinedProblemDescription());
         formData.set('thue_xe_cho', state.transportRequested ? '1' : '0');
         if (state.repairMode === 'at_home') formData.set('dia_chi', `${state.soNha}, ${refs.hiddenDiaChi.value}`);
         else {
@@ -1355,16 +1689,28 @@ document.addEventListener('DOMContentLoaded', () => {
     refs.xa.addEventListener('change', () => { state.xa = refs.xa.value; syncHidden(); updateSummary(); queueAddressRecalculation(); });
     refs.soNha.addEventListener('input', () => { state.soNha = refs.soNha.value; syncHidden(); updateSummary(); queueAddressRecalculation(); });
     refs.description.addEventListener('input', () => {
+        const activeService = getActiveProblemService();
         state.description = refs.description.value;
+        if (activeService) {
+            setServiceProblemText(activeService.id, refs.description.value);
+            const activeInput = refs.problemFields?.querySelector(`[data-problem-service-input="${Number(activeService.id)}"]`);
+            if (activeInput && activeInput.value !== refs.description.value) {
+                activeInput.value = refs.description.value;
+            }
+        }
         const selected = getSelectedSymptomSuggestion();
         const queryText = getSymptomQueryText(state.description);
         const isExactSelected = selected && getSymptomQueryText(selected.ten_trieu_chung) === queryText;
 
         if (!isExactSelected) {
             state.selectedSymptomId = null;
+            if (activeService) {
+                delete state.selectedSymptomIds[String(activeService.id)];
+            }
             renderProblemReferencePrice(null);
         }
 
+        syncRenderedProblemFieldState();
         scheduleProblemAssist();
     });
     refs.getLocation.addEventListener('click', () => {
@@ -1475,7 +1821,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lng: '',
             travelFee: 0,
             distanceKm: null,
-            travelMessage: 'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
+            travelMessage: 'Sẽ tính sau khi bạn chọn vị trí hoặc nhập đủ địa chỉ.',
             date: '',
             timeSlot: '',
             description: '',
@@ -1489,14 +1835,21 @@ document.addEventListener('DOMContentLoaded', () => {
             symptomCatalogKey: '',
             symptomCatalogPromise: null,
             selectedSymptomId: null,
+            selectedSymptomIds: {},
+            serviceProblemInputs: {},
+            activeProblemServiceId: null,
             busySlotsByDate: {},
         });
         refs.form.reset();
         refs.success.classList.add('d-none');
         refs.workerBanner.classList.add('d-none');
         refs.sumWorkerCard.classList.add('d-none');
-        refs.locationStatus.textContent = 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.';
+        refs.locationStatus.textContent = 'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.';
         refs.preview.innerHTML = '';
+        if (refs.problemFields) {
+            refs.problemFields.innerHTML = '';
+            refs.problemFields.classList.add('d-none');
+        }
         resetProblemAssistState();
         if (addressLookupTimer) {
             window.clearTimeout(addressLookupTimer);
@@ -1526,7 +1879,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.travelFee = 0;
             state.distanceKm = null;
             state.isOutOfRange = false;
-            state.travelMessage = 'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.';
+            state.travelMessage = 'Sẽ tính sau khi bạn chọn vị trí hoặc nhập đủ địa chỉ.';
             syncHidden();
             updateSummary();
             return;
@@ -1540,7 +1893,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.distanceKm = rounded;
         state.isOutOfRange = rounded > Number(refPoint.maxDistance || getConfiguredMaxServiceDistanceKm());
         state.travelMessage = state.isOutOfRange
-            ? `Dia chi dang vuot qua pham vi phuc vu ${refPoint.maxDistance} km tu ${refPoint.label}.`
+            ? `Địa chỉ đang vượt quá phạm vi phục vụ ${refPoint.maxDistance} km từ ${refPoint.label}.`
             : buildTravelTierMessage({
                 distanceKm,
                 roundedDistance: rounded,
@@ -1571,8 +1924,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!hasCompleteHomeAddress()) {
             resetTravelEstimate(
-                'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
-                'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.'
+                'Sẽ tính sau khi bạn chọn vị trí hoặc nhập đủ địa chỉ.',
+                'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.'
             );
             return;
         }
@@ -1584,10 +1937,10 @@ document.addEventListener('DOMContentLoaded', () => {
         state.travelFee = 0;
         state.distanceKm = null;
         state.isOutOfRange = false;
-        state.travelMessage = 'Dang cap nhat phi di lai theo dia chi ban chon...';
+        state.travelMessage = 'Đang cập nhật phí đi lại theo địa chỉ bạn chọn...';
         syncHidden();
         updateSummary();
-        refs.locationStatus.textContent = 'Dang xac dinh toa do theo dia chi ban chon...';
+        refs.locationStatus.textContent = 'Đang xác định tọa độ theo địa chỉ bạn chọn...';
 
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q=${encodeURIComponent(homeAddressLabel())}`);
@@ -1598,8 +1951,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const location = Array.isArray(data) ? data[0] : null;
             if (!location?.lat || !location?.lon) {
                 resetTravelEstimate(
-                    'Chua the tinh phi di lai vi khong tim thay toa do phu hop cho dia chi nay.',
-                    'Khong tim thay toa do phu hop cho dia chi ban nhap. Vui long kiem tra lai hoac dung GPS.'
+                    'Chưa thể tính phí đi lại vì không tìm thấy tọa độ phù hợp cho địa chỉ này.',
+                    'Không tìm thấy tọa độ phù hợp cho địa chỉ bạn nhập. Vui lòng kiểm tra lại hoặc dùng GPS.'
                 );
                 return;
             }
@@ -1610,14 +1963,14 @@ document.addEventListener('DOMContentLoaded', () => {
             syncHidden();
             updateTravelEstimate();
             refs.locationStatus.textContent = state.isOutOfRange
-                ? `Dia chi dang vuot qua ${formatServiceDistanceKm(getHomeReferencePoint().maxDistance)} km nen he thong khong cho phep tiep tuc.`
-                : 'Da cap nhat phi di lai theo dia chi ban nhap.';
+                ? `Địa chỉ đang vượt quá ${formatServiceDistanceKm(getHomeReferencePoint().maxDistance)} km nên hệ thống không cho phép tiếp tục.`
+                : 'Đã cập nhật phí đi lại theo địa chỉ bạn nhập.';
         } catch (error) {
             if (lookupId !== addressLookupRequestId) return;
 
             resetTravelEstimate(
-                'Chua the tinh phi di lai vi khong xac dinh duoc toa do dia chi.',
-                'Chua the xac dinh toa do tu dia chi nay. Vui long thu lai hoac dung GPS.'
+                'Chưa thể tính phí đi lại vì không xác định được tọa độ địa chỉ.',
+                'Chưa thể xác định tọa độ từ địa chỉ này. Vui lòng thử lại hoặc dùng GPS.'
             );
         }
     }
@@ -1634,8 +1987,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!hasCompleteHomeAddress()) {
             resetTravelEstimate(
-                'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
-                'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.'
+                'Sẽ tính sau khi bạn chọn vị trí hoặc nhập đủ địa chỉ.',
+                'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.'
             );
             return;
         }
@@ -1758,18 +2111,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function validateStep(step) {
-        if (step === 1 && !state.serviceIds.length) return { valid: false, message: 'Vui long chon it nhat mot dich vu de tiep tuc.' };
-        if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui long chon hinh thuc sua chua.' };
+        if (step === 1 && !state.serviceIds.length) return { valid: false, message: 'Vui lòng chọn ít nhất một dịch vụ để tiếp tục.' };
+        if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui lòng chọn hình thức sửa chữa.' };
         if (step === 3 && state.repairMode === 'at_home') {
-            if (!state.lat || !state.lng) return { valid: false, message: 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.' };
+            if (!state.lat || !state.lng) return { valid: false, message: 'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.' };
             if (state.isOutOfRange) return { valid: false, message: buildOutOfRangeValidationMessage() };
-            if (!state.tinh || !state.huyen || !state.xa) return { valid: false, message: 'Vui long chon day du Tinh / Huyen / Xa.' };
-            if (!state.soNha.trim()) return { valid: false, message: 'Vui long nhap dia chi chi tiet.' };
+            if (!state.tinh || !state.huyen || !state.xa) return { valid: false, message: 'Vui lòng chọn đầy đủ Tỉnh / Huyện / Xã.' };
+            if (!state.soNha.trim()) return { valid: false, message: 'Vui lòng nhập địa chỉ chi tiết.' };
         }
-        if (step === 4 && !state.date) return { valid: false, message: 'Vui long chon ngay hen.' };
-        if (step === 4 && !state.timeSlot) return { valid: false, message: 'Vui long chon khung gio.' };
+        if (step === 4 && !state.date) return { valid: false, message: 'Vui lòng chọn ngày hẹn.' };
+        if (step === 4 && !state.timeSlot) return { valid: false, message: 'Vui lòng chọn khung giờ.' };
         if (step === 4 && availableTimeSlots().find((slot) => slot.value === state.timeSlot && slot.disabled)) {
-            return { valid: false, message: 'Khung gio da chon khong con kha dung, vui long chon lai.' };
+            return { valid: false, message: 'Khung giờ đã chọn không còn khả dụng, vui lòng chọn lại.' };
         }
         return { valid: true };
     }
@@ -1874,11 +2227,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderProvinceOptions() {
-        refs.tinh.innerHTML = '<option value="">Chon tinh / thanh pho</option>' + state.addressData.map((tinh) => `<option value="${tinh.name}" data-code="${tinh.code}">${tinh.name}</option>`).join('');
+        refs.tinh.innerHTML = '<option value="">Chọn tỉnh / thành phố</option>' + state.addressData.map((tinh) => `<option value="${tinh.name}" data-code="${tinh.code}">${tinh.name}</option>`).join('');
         refs.huyen.innerHTML = isMergedAddressMode()
-            ? '<option value="">Khong ap dung sau sap nhap</option>'
-            : '<option value="">Chon quan / huyen</option>';
-        refs.xa.innerHTML = '<option value="">Chon phuong / xa</option>';
+            ? '<option value="">Không áp dụng sau sáp nhập</option>'
+            : '<option value="">Chọn quận / huyện</option>';
+        refs.xa.innerHTML = '<option value="">Chọn phường / xã</option>';
         refs.huyen.disabled = isMergedAddressMode();
         refs.xa.disabled = true;
         setDistrictFieldVisibility();
@@ -1913,13 +2266,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         refs.sumServiceCard.classList.toggle('d-none', !hasService);
         refs.sumServiceValue.textContent = hasService ? `${names}${extra ? ` +${extra}` : ''}` : '';
-        refs.sumServiceMeta.textContent = services.length > 1 ? `${services.length} dich vu trong cung mot lich hen.` : (services[0]?.mo_ta || '');
+        refs.sumServiceMeta.textContent = services.length > 1 ? `${services.length} dịch vụ trong cùng một lịch hẹn.` : (services[0]?.mo_ta || '');
         refs.sumServiceThumb.src = services[0]?.hinh_anh || '/assets/images/logontu.png';
 
         refs.sumWorkerCard.classList.toggle('d-none', !hasWorker);
         if (hasWorker) {
             refs.sumWorkerThumb.src = state.worker?.user?.avatar || '/assets/images/user-default.png';
-            refs.sumWorkerValue.textContent = state.worker?.user?.name || 'Tho sua chua';
+            refs.sumWorkerValue.textContent = state.worker?.user?.name || 'Thợ sửa chữa';
             refs.sumWorkerMeta.textContent = state.worker?.user?.dich_vus?.map((service) => service.ten_dich_vu).join(', ')
                 || state.worker?.user?.dichVus?.map((service) => service.ten_dich_vu).join(', ')
                 || refs.sumWorkerMeta.textContent
@@ -1927,21 +2280,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         refs.sumModeCard.classList.toggle('d-none', !hasMode);
-        refs.sumModeValue.textContent = state.repairMode === 'at_home' ? 'Sua tai nha' : 'Mang den cua hang';
+        refs.sumModeValue.textContent = state.repairMode === 'at_home' ? 'Sửa tại nhà' : 'Mang đến cửa hàng';
         refs.sumModeMeta.textContent = state.repairMode === 'at_home'
-            ? 'Ky thuat vien den tan noi.'
-            : (state.transportRequested ? 'Co thue xe cho thiet bi hai chieu.' : 'Ban tu mang thiet bi den cua hang.');
+            ? 'Kỹ thuật viên đến tận nơi.'
+            : (state.transportRequested ? 'Có thuê xe chở thiết bị hai chiều.' : 'Bạn tự mang thiết bị đến cửa hàng.');
         refs.sumModeMark.textContent = state.repairMode === 'at_home' ? 'NHA' : 'SHOP';
 
         refs.sumTimeCard.classList.toggle('d-none', !hasTime);
         refs.sumTimeValue.textContent = hasTime ? `${humanDate(state.date)} • ${state.timeSlot.replace('-', ' - ')}` : '';
-        refs.sumTimeMeta.textContent = hasTime ? 'Khung gio ban da chon.' : '';
+        refs.sumTimeMeta.textContent = hasTime ? 'Khung giờ bạn đã chọn.' : '';
 
         refs.sumAddressCard.classList.toggle('d-none', !hasAddress);
         refs.sumAddressValue.textContent = state.repairMode === 'at_store' ? storeAddress : composeFullHomeAddress();
         refs.sumAddressMeta.textContent = state.repairMode === 'at_store'
-            ? 'Dia chi tiep nhan thiet bi.'
-            : (state.lat && state.lng ? 'Dia chi da gan GPS.' : 'Dia chi nhap thu cong.');
+            ? 'Địa chỉ tiếp nhận thiết bị.'
+            : (state.lat && state.lng ? 'Địa chỉ đã gắn GPS.' : 'Địa chỉ nhập thủ công.');
 
         refs.sumTravelFee.textContent = money(state.travelFee);
         refs.sumTravelMeta.textContent = state.travelMessage;
@@ -1969,7 +2322,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lng: '',
             travelFee: 0,
             distanceKm: null,
-            travelMessage: 'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
+            travelMessage: 'Sẽ tính sau khi bạn chọn vị trí hoặc nhập đủ địa chỉ.',
             date: '',
             timeSlot: '',
             description: '',
@@ -1983,14 +2336,21 @@ document.addEventListener('DOMContentLoaded', () => {
             symptomCatalogKey: '',
             symptomCatalogPromise: null,
             selectedSymptomId: null,
+            selectedSymptomIds: {},
+            serviceProblemInputs: {},
+            activeProblemServiceId: null,
             busySlotsByDate: {},
         });
         refs.form.reset();
         refs.success.classList.add('d-none');
         refs.workerBanner.classList.add('d-none');
         refs.sumWorkerCard.classList.add('d-none');
-        refs.locationStatus.textContent = 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.';
+        refs.locationStatus.textContent = 'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.';
         refs.preview.innerHTML = '';
+        if (refs.problemFields) {
+            refs.problemFields.innerHTML = '';
+            refs.problemFields.classList.add('d-none');
+        }
         resetProblemAssistState();
         if (addressLookupTimer) {
             window.clearTimeout(addressLookupTimer);
@@ -2006,8 +2366,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!hasRequiredHomeAddressSelection()) {
             resetTravelEstimate(
-                'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
-                'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.'
+                'Sẽ tính sau khi bạn chọn vị trí hoặc nhập đủ địa chỉ.',
+                'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.'
             );
             return;
         }
@@ -2019,10 +2379,10 @@ document.addEventListener('DOMContentLoaded', () => {
         state.travelFee = 0;
         state.distanceKm = null;
         state.isOutOfRange = false;
-        state.travelMessage = 'Dang cap nhat phi di lai theo dia chi ban chon...';
+        state.travelMessage = 'Đang cập nhật phí đi lại theo địa chỉ bạn chọn...';
         syncHidden();
         updateSummary();
-        refs.locationStatus.textContent = 'Dang xac dinh toa do theo dia chi ban chon...';
+        refs.locationStatus.textContent = 'Đang xác định tọa độ theo địa chỉ bạn chọn...';
 
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q=${encodeURIComponent(composeFullHomeAddress())}`);
@@ -2033,8 +2393,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const location = Array.isArray(data) ? data[0] : null;
             if (!location?.lat || !location?.lon) {
                 resetTravelEstimate(
-                    'Chua the tinh phi di lai vi khong tim thay toa do phu hop cho dia chi nay.',
-                    'Khong tim thay toa do phu hop cho dia chi ban nhap. Vui long kiem tra lai hoac dung GPS.'
+                    'Chưa thể tính phí đi lại vì không tìm thấy tọa độ phù hợp cho địa chỉ này.',
+                    'Không tìm thấy tọa độ phù hợp cho địa chỉ bạn nhập. Vui lòng kiểm tra lại hoặc dùng GPS.'
                 );
                 return;
             }
@@ -2045,14 +2405,14 @@ document.addEventListener('DOMContentLoaded', () => {
             syncHidden();
             updateTravelEstimate();
             refs.locationStatus.textContent = state.isOutOfRange
-                ? `Dia chi dang vuot qua ${formatServiceDistanceKm(getHomeReferencePoint().maxDistance)} km nen he thong khong cho phep tiep tuc.`
-                : 'Da cap nhat phi di lai theo dia chi ban nhap.';
+                ? `Địa chỉ đang vượt quá ${formatServiceDistanceKm(getHomeReferencePoint().maxDistance)} km nên hệ thống không cho phép tiếp tục.`
+                : 'Đã cập nhật phí đi lại theo địa chỉ bạn nhập.';
         } catch (error) {
             if (lookupId !== addressLookupRequestId) return;
 
             resetTravelEstimate(
-                'Chua the tinh phi di lai vi khong xac dinh duoc toa do dia chi.',
-                'Chua the xac dinh toa do tu dia chi nay. Vui long thu lai hoac dung GPS.'
+                'Chưa thể tính phí đi lại vì không xác định được tọa độ địa chỉ.',
+                'Chưa thể xác định tọa độ từ địa chỉ này. Vui lòng thử lại hoặc dùng GPS.'
             );
         }
     }
@@ -2069,8 +2429,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!hasRequiredHomeAddressSelection()) {
             resetTravelEstimate(
-                'Se tinh sau khi ban chon vi tri hoac nhap du dia chi.',
-                'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.'
+                'Sẽ tính sau khi bạn chọn vị trí hoặc nhập đủ địa chỉ.',
+                'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.'
             );
             return;
         }
@@ -2093,7 +2453,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.addressApiVersion = state.addressData.some((item) => Array.isArray(item?.wards)) ? 'v2' : 'v1';
             renderProvinceOptions();
         } catch (error) {
-            refs.locationStatus.textContent = 'Loi khi tai du lieu dia chi. Vui long thu lai sau.';
+            refs.locationStatus.textContent = 'Lỗi khi tải dữ liệu địa chỉ. Vui lòng thử lại sau.';
         }
     }
 
@@ -2165,22 +2525,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function validateStep(step) {
-        if (step === 1 && !state.serviceIds.length) return { valid: false, message: 'Vui long chon it nhat mot dich vu de tiep tuc.' };
-        if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui long chon hinh thuc sua chua.' };
+        if (step === 1 && !state.serviceIds.length) return { valid: false, message: 'Vui lòng chọn ít nhất một dịch vụ để tiếp tục.' };
+        if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui lòng chọn hình thức sửa chữa.' };
         if (step === 3 && state.repairMode === 'at_home') {
-            if (!state.lat || !state.lng) return { valid: false, message: 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.' };
+            if (!state.lat || !state.lng) return { valid: false, message: 'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.' };
             if (state.isOutOfRange) return { valid: false, message: buildOutOfRangeValidationMessage() };
             if (isMergedAddressMode()) {
-                if (!state.tinh || !state.xa) return { valid: false, message: 'Vui long chon day du Tinh / Thanh pho va Phuong / Xa.' };
+                if (!state.tinh || !state.xa) return { valid: false, message: 'Vui lòng chọn đầy đủ Tỉnh / Thành phố và Phường / Xã.' };
             } else if (!state.tinh || !state.huyen || !state.xa) {
-                return { valid: false, message: 'Vui long chon day du Tinh / Huyen / Xa.' };
+                return { valid: false, message: 'Vui lòng chọn đầy đủ Tỉnh / Huyện / Xã.' };
             }
-            if (!state.soNha.trim()) return { valid: false, message: 'Vui long nhap dia chi chi tiet.' };
+            if (!state.soNha.trim()) return { valid: false, message: 'Vui lòng nhập địa chỉ chi tiết.' };
         }
-        if (step === 4 && !state.date) return { valid: false, message: 'Vui long chon ngay hen.' };
-        if (step === 4 && !state.timeSlot) return { valid: false, message: 'Vui long chon khung gio.' };
+        if (step === 4 && !state.date) return { valid: false, message: 'Vui lòng chọn ngày hẹn.' };
+        if (step === 4 && !state.timeSlot) return { valid: false, message: 'Vui lòng chọn khung giờ.' };
         if (step === 4 && availableTimeSlots().find((slot) => slot.value === state.timeSlot && slot.disabled)) {
-            return { valid: false, message: 'Khung gio da chon khong con kha dung, vui long chon lai.' };
+            return { valid: false, message: 'Khung giờ đã chọn không còn khả dụng, vui lòng chọn lại.' };
         }
         return { valid: true };
     }
@@ -2189,12 +2549,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isMergedAddressMode()) return;
 
         state.huyen = '';
-        refs.huyen.innerHTML = '<option value="">Khong ap dung sau sap nhap</option>';
+        refs.huyen.innerHTML = '<option value="">Không áp dụng sau sáp nhập</option>';
         refs.huyen.disabled = true;
 
         const province = getSelectedProvinceData();
         const wards = Array.isArray(province?.wards) ? province.wards : [];
-        refs.xa.innerHTML = '<option value="">Chon phuong / xa</option>' + wards.map((xa) => `<option value="${xa.name}">${xa.name}</option>`).join('');
+        refs.xa.innerHTML = '<option value="">Chọn phường / xã</option>' + wards.map((xa) => `<option value="${xa.name}">${xa.name}</option>`).join('');
         refs.xa.disabled = wards.length === 0;
 
         syncHidden();
@@ -2204,13 +2564,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     repairCards.forEach((card) => card.addEventListener('click', () => {
         if (state.repairMode === 'at_store') {
-            refs.locationStatus.textContent = 'Khong can lay vi tri khi mang thiet bi den cua hang.';
+            refs.locationStatus.textContent = 'Không cần lấy vị trí khi mang thiết bị đến cửa hàng.';
             return;
         }
 
         refs.locationStatus.textContent = hasRequiredHomeAddressSelection()
-            ? 'He thong se tu cap nhat phi di chuyen khi ban thay doi dia chi.'
-            : 'Vui long lay vi tri hien tai hoac nhap du dia chi de he thong tinh phi di chuyen.';
+            ? 'Hệ thống sẽ tự cập nhật phí di chuyển khi bạn thay đổi địa chỉ.'
+            : 'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.';
     }));
 
     renderDateCards();

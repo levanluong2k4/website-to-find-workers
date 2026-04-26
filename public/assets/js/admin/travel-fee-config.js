@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         store_longitude: 109.1995,
         store_hotline: '0905 123 456',
         store_opening_hours: 'Th\u1ee9 2 - CN: 07:00 - 20:00',
+        booking_time_slots: ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'],
         max_service_distance_km: 8,
         tiers: [
             { from_km: 0, to_km: 1, transport_fee: 0, travel_fee: 0 },
@@ -46,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
         storeLongitudeInput: document.getElementById('travelFeeStoreLongitude'),
         storeHotlineInput: document.getElementById('travelFeeStoreHotline'),
         storeOpeningHoursInput: document.getElementById('travelFeeStoreOpeningHours'),
+        bookingSlotList: document.getElementById('travelFeeBookingSlotList'),
+        addBookingSlotButton: document.getElementById('btnAddBookingTimeSlot'),
         maxServiceDistanceInput: document.getElementById('travelFeeMaxServiceDistance'),
         complaintWindowInput: document.getElementById('travelFeeComplaintWindowDays'),
         addTierButton: document.getElementById('btnAddTravelTier'),
@@ -145,11 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
             placeholder: 'VD: 0905 123 456',
             helper: 'Chatbot v\u00e0 trang kh\u00e1ch s\u1ebd d\u00f9ng s\u1ed1 n\u00e0y khi h\u1ecfi hotline.',
         });
-        syncFieldCopy(refs.storeOpeningHoursInput, {
-            label: 'Khung gi\u1edd m\u1edf c\u1eeda',
-            placeholder: 'VD: Th\u1ee9 2 - CN: 07:00 - 20:00',
-            helper: 'D\u00f9ng cho chatbot v\u00e0 c\u00e1c th\u00f4ng b\u00e1o gi\u1edd nh\u1eadn \u0111\u01a1n t\u1ea1i c\u1eeda h\u00e0ng.',
-        });
         syncFieldCopy(refs.maxServiceDistanceInput, {
             label: 'Pham vi phuc vu toi da (km)',
             placeholder: 'VD: 8',
@@ -184,6 +182,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
     const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} đ`;
     const km = (value) => `${Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km`;
+    const tierDisplayUpperBound = (tier, isLastTier = false) => {
+        const fromKm = Number(tier?.from_km || 0);
+        const toKm = Number(tier?.to_km || 0);
+
+        if (isLastTier) {
+            return toKm;
+        }
+
+        return Math.max(fromKm, Number((toKm - 0.01).toFixed(2)));
+    };
+    const formatTierRange = (tier, isLastTier = false) => `${km(tier?.from_km)} - ${km(tierDisplayUpperBound(tier, isLastTier))}`;
     const formatCoordinate = (value) => Number(value || 0).toLocaleString('vi-VN', {
         minimumFractionDigits: 5,
         maximumFractionDigits: 5,
@@ -364,15 +373,45 @@ document.addEventListener('DOMContentLoaded', () => {
         travel_fee: row.querySelector('[data-tier-travel-fee]')?.value ?? '',
     }));
 
+    const readBookingSlots = () => Array.from(refs.bookingSlotList?.querySelectorAll('[data-booking-slot-row]') || []).map((row, index) => ({
+        index,
+        start: row.querySelector('[data-booking-slot-start]')?.value ?? '',
+        end: row.querySelector('[data-booking-slot-end]')?.value ?? '',
+    }));
+
     const isEmptyRow = (row) => [row.from_km, row.to_km, row.transport_fee, row.travel_fee]
         .every((value) => String(value ?? '').trim() === '');
+
+    const isEmptyBookingSlotRow = (row) => [row.start, row.end]
+        .every((value) => String(value ?? '').trim() === '');
+
+    const timeToMinutes = (value) => {
+        const matched = String(value || '').trim().match(/^(\d{2}):(\d{2})$/);
+        if (!matched) {
+            return null;
+        }
+
+        const hour = Number(matched[1]);
+        const minute = Number(matched[2]);
+        if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+            return null;
+        }
+
+        return (hour * 60) + minute;
+    };
+
+    const normalizeBookingSlotValue = (start, end) => {
+        const normalizedStart = String(start || '').trim();
+        const normalizedEnd = String(end || '').trim();
+        return normalizedStart && normalizedEnd ? `${normalizedStart}-${normalizedEnd}` : '';
+    };
 
     const getFormState = () => ({
         store_address: String(refs.storeAddressInput.value || '').trim(),
         store_latitude: refs.storeLatitudeInput?.value ?? '',
         store_longitude: refs.storeLongitudeInput?.value ?? '',
         store_hotline: String(refs.storeHotlineInput?.value || '').trim(),
-        store_opening_hours: String(refs.storeOpeningHoursInput?.value || '').trim(),
+        booking_time_slots: readBookingSlots(),
         max_service_distance_km: refs.maxServiceDistanceInput?.value ?? '',
         complaint_window_days: refs.complaintWindowInput?.value ?? '',
         tiers: readRows(),
@@ -383,7 +422,9 @@ document.addEventListener('DOMContentLoaded', () => {
         store_latitude: parseNumber(rawState.store_latitude) ?? state.legacyConfig.store_latitude,
         store_longitude: parseNumber(rawState.store_longitude) ?? state.legacyConfig.store_longitude,
         store_hotline: rawState.store_hotline || DEFAULT_VISIBLE_CONFIG.store_hotline,
-        store_opening_hours: rawState.store_opening_hours || DEFAULT_VISIBLE_CONFIG.store_opening_hours,
+        booking_time_slots: rawState.booking_time_slots
+            .map((row) => normalizeBookingSlotValue(row.start, row.end))
+            .filter(Boolean),
         max_service_distance_km: parseNumber(rawState.max_service_distance_km) ?? state.legacyConfig.max_service_distance_km,
         tiers: rawState.tiers
             .map((row) => ({
@@ -465,9 +506,64 @@ document.addEventListener('DOMContentLoaded', () => {
             addError('store_hotline', 'Hotline kh\u00f4ng \u0111\u01b0\u1ee3c v\u01b0\u1ee3t qu\u00e1 50 k\u00fd t\u1ef1.');
         }
 
-        if (String(rawState.store_opening_hours ?? '').trim().length > 100) {
-            addError('store_opening_hours', 'Khung gi\u1edd m\u1edf c\u1eeda kh\u00f4ng \u0111\u01b0\u1ee3c v\u01b0\u1ee3t qu\u00e1 100 k\u00fd t\u1ef1.');
+        const bookingSlotRows = rawState.booking_time_slots.map((row) => ({
+            ...row,
+            startMinutes: timeToMinutes(row.start),
+            endMinutes: timeToMinutes(row.end),
+            value: normalizeBookingSlotValue(row.start, row.end),
+        }));
+        const validBookingSlots = [];
+
+        bookingSlotRows.forEach((row) => {
+            if (isEmptyBookingSlotRow(row)) {
+                return;
+            }
+
+            if (!String(row.start || '').trim()) {
+                addError(`booking_time_slots.${row.index}.start`, 'Chọn giờ bắt đầu.');
+            } else if (row.startMinutes === null) {
+                addError(`booking_time_slots.${row.index}.start`, 'Giờ bắt đầu không hợp lệ.');
+            }
+
+            if (!String(row.end || '').trim()) {
+                addError(`booking_time_slots.${row.index}.end`, 'Chọn giờ kết thúc.');
+            } else if (row.endMinutes === null) {
+                addError(`booking_time_slots.${row.index}.end`, 'Giờ kết thúc không hợp lệ.');
+            }
+
+            if (row.startMinutes !== null && row.endMinutes !== null && row.endMinutes <= row.startMinutes) {
+                addError(`booking_time_slots.${row.index}.end`, 'Giờ kết thúc phải lớn hơn giờ bắt đầu.');
+            }
+
+            if (!errors[`booking_time_slots.${row.index}.start`] && !errors[`booking_time_slots.${row.index}.end`]) {
+                validBookingSlots.push(row);
+            }
+        });
+
+        if (!validBookingSlots.length) {
+            addError('booking_time_slots', 'Vui lòng cấu hình ít nhất 1 khung giờ khách có thể đặt.');
         }
+
+        const seenBookingSlots = new Set();
+        [...validBookingSlots]
+            .sort((left, right) => left.startMinutes - right.startMinutes || left.endMinutes - right.endMinutes)
+            .forEach((row, sortedIndex, rows) => {
+                if (seenBookingSlots.has(row.value)) {
+                    addError(`booking_time_slots.${row.index}.start`, 'Khung giờ này đang bị trùng.');
+                    return;
+                }
+
+                seenBookingSlots.add(row.value);
+
+                if (sortedIndex === 0) {
+                    return;
+                }
+
+                const previous = rows[sortedIndex - 1];
+                if (row.startMinutes < previous.endMinutes) {
+                    addError(`booking_time_slots.${row.index}.start`, 'Khung giờ này đang chồng lấn với khung trước.');
+                }
+            });
 
         if (String(rawState.max_service_distance_km ?? '').trim() === '') {
             addError('max_service_distance_km', 'Vui long nhap pham vi phuc vu toi da.');
@@ -551,8 +647,8 @@ document.addEventListener('DOMContentLoaded', () => {
         [...validRows]
             .sort((left, right) => left.from - right.from || left.to - right.to)
             .forEach((row) => {
-                if (previous && row.from <= previous.to) {
-                    addError(`tiers.${row.index}.from_km`, 'Khoảng này đang chồng lên hoặc chạm điểm cuối của dòng trước.');
+                if (previous && row.from < previous.to) {
+                    addError(`tiers.${row.index}.from_km`, 'Khoảng này đang chồng lên khoảng trước.');
                 }
 
                 previous = row;
@@ -569,7 +665,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 store_latitude: Number(storeLatitude ?? state.legacyConfig.store_latitude),
                 store_longitude: Number(storeLongitude ?? state.legacyConfig.store_longitude),
                 store_hotline: rawState.store_hotline,
-                store_opening_hours: rawState.store_opening_hours,
+                booking_time_slots: validBookingSlots
+                    .filter((row) => !errors[`booking_time_slots.${row.index}.start`] && !errors[`booking_time_slots.${row.index}.end`])
+                    .map((row) => row.value),
                 max_service_distance_km: Number(maxServiceDistanceKm ?? state.legacyConfig.max_service_distance_km),
                 free_distance_km: legacyConfig.free_distance_km,
                 default_per_km: state.legacyConfig.default_per_km,
@@ -618,12 +716,23 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleInvalid(refs.storeLongitudeInput, Boolean(errors.store_longitude));
         setFieldError('store_hotline', errors.store_hotline || '');
         toggleInvalid(refs.storeHotlineInput, Boolean(errors.store_hotline));
-        setFieldError('store_opening_hours', errors.store_opening_hours || '');
-        toggleInvalid(refs.storeOpeningHoursInput, Boolean(errors.store_opening_hours));
+        setFieldError('booking_time_slots', errors.booking_time_slots || '');
         setFieldError('max_service_distance_km', errors.max_service_distance_km || '');
         toggleInvalid(refs.maxServiceDistanceInput, Boolean(errors.max_service_distance_km));
         setFieldError('complaint_window_days', errors.complaint_window_days || '');
         toggleInvalid(refs.complaintWindowInput, Boolean(errors.complaint_window_days));
+
+        refs.bookingSlotList?.querySelectorAll('[data-booking-slot-row]').forEach((row) => {
+            const index = Number(row.dataset.bookingSlotIndex);
+            [
+                ['start', '[data-booking-slot-start]'],
+                ['end', '[data-booking-slot-end]'],
+            ].forEach(([field, selector]) => {
+                const key = `booking_time_slots.${index}.${field}`;
+                setFieldError(key, errors[key] || '');
+                toggleInvalid(row.querySelector(selector), Boolean(errors[key]));
+            });
+        });
 
         refs.tierList.querySelectorAll('[data-tier-row]').forEach((row) => {
             const index = Number(row.dataset.tierIndex);
@@ -638,6 +747,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleInvalid(row.querySelector(selector), Boolean(errors[key]));
             });
         });
+    };
+
+    const createBookingSlotRowMarkup = (slot = {}, index = 0) => `
+        <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-[1fr_1fr_auto] tw-gap-3 tw-items-start tw-p-4 tw-rounded-2xl tw-bg-surface-container-low tw-border tw-border-outline-variant/60" data-booking-slot-row data-booking-slot-index="${index}">
+            <div class="tw-space-y-1">
+                <label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Bắt đầu</label>
+                <input
+                    type="time"
+                    value="${escapeHtml(slot.start ?? '')}"
+                    data-booking-slot-start
+                    class="tw-w-full tw-bg-surface-container-lowest tw-border tw-border-outline-variant tw-rounded-xl tw-px-3 tw-py-3 tw-text-sm focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-primary/30"
+                />
+                <div class="tfc-field-error" data-error-for="booking_time_slots.${index}.start"></div>
+            </div>
+            <div class="tw-space-y-1">
+                <label class="tw-text-[10px] tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-500">Kết thúc</label>
+                <input
+                    type="time"
+                    value="${escapeHtml(slot.end ?? '')}"
+                    data-booking-slot-end
+                    class="tw-w-full tw-bg-surface-container-lowest tw-border tw-border-outline-variant tw-rounded-xl tw-px-3 tw-py-3 tw-text-sm focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-primary/30"
+                />
+                <div class="tfc-field-error" data-error-for="booking_time_slots.${index}.end"></div>
+            </div>
+            <div class="tw-flex md:tw-pt-6">
+                <button type="button" data-remove-booking-slot aria-label="Xóa khung giờ"
+                    class="tw-inline-flex tw-items-center tw-justify-center tw-h-[48px] tw-w-[48px] tw-rounded-full tw-text-error/70 hover:tw-text-error hover:tw-bg-error-container/20 tw-transition-colors">
+                    <span class="material-symbols-outlined">delete</span>
+                </button>
+            </div>
+        </div>
+    `;
+
+    const renderBookingSlotRows = (slots = []) => {
+        const normalizedSlots = (slots.length ? slots : DEFAULT_VISIBLE_CONFIG.booking_time_slots)
+            .map((slot) => {
+                if (typeof slot === 'string') {
+                    const [start = '', end = ''] = String(slot).split('-', 2);
+                    return { start, end };
+                }
+
+                return {
+                    start: slot.start ?? '',
+                    end: slot.end ?? '',
+                };
+            });
+
+        refs.bookingSlotList.innerHTML = normalizedSlots
+            .map((slot, index) => createBookingSlotRowMarkup(slot, index))
+            .join('');
     };
 
     const createTierRowMarkup = (tier = {}, index = 0) => `
@@ -701,22 +860,28 @@ document.addEventListener('DOMContentLoaded', () => {
             .join('');
     };
 
-    const matchTier = (distanceKm, config) => config.tiers.find((tier) => (
-        distanceKm >= tier.from_km && distanceKm <= tier.to_km
+    const matchTier = (distanceKm, config) => config.tiers.find((tier, index, tiers) => (
+        distanceKm >= tier.from_km
+        && (
+            distanceKm < tier.to_km
+            || (index === tiers.length - 1 && distanceKm <= tier.to_km)
+        )
     )) || null;
 
     const resolveActivePricing = (distanceKm, config) => {
         const normalizedDistance = Math.max(0, roundDistance(distanceKm));
         const tier = matchTier(normalizedDistance, config);
+        const tierIndex = tier ? config.tiers.indexOf(tier) : -1;
+        const isLastTier = tierIndex === config.tiers.length - 1;
 
         if (tier) {
             return {
                 kind: 'tier',
-                label: `${km(tier.from_km)} - ${km(tier.to_km)}`,
+                label: formatTierRange(tier, isLastTier),
                 travelFee: tier.travel_fee,
                 transportFee: tier.transport_fee,
-                tierIndex: tier.index,
-                copy: `${km(normalizedDistance)} nằm trong khoảng ${km(tier.from_km)} - ${km(tier.to_km)}, áp dụng phí đi lại ${money(tier.travel_fee)} và phí thuê xe ${money(tier.transport_fee)}.`,
+                tierIndex,
+                copy: `${km(normalizedDistance)} nằm trong khoảng ${formatTierRange(tier, isLastTier)}, áp dụng phí đi lại ${money(tier.travel_fee)} và phí thuê xe ${money(tier.transport_fee)}.`,
             };
         }
 
@@ -774,19 +939,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const buildRuleItems = (config, activePricing) => config.tiers.map((tier) => ({
-        title: `${km(tier.from_km)} - ${km(tier.to_km)}`,
+    const buildRuleItems = (config, activePricing) => config.tiers.map((tier, index, tiers) => ({
+        title: formatTierRange(tier, index === tiers.length - 1),
         meta: `Phí thuê xe ${money(tier.transport_fee)} · Phí đi lại ${money(tier.travel_fee)}`,
         transportFee: tier.transport_fee,
         travelFee: tier.travel_fee,
-        distance: roundDistance((tier.from_km + tier.to_km) / 2),
-        isActive: activePricing.kind === 'tier' && activePricing.tierIndex === tier.index,
+        distance: roundDistance((Number(tier.from_km || 0) + tierDisplayUpperBound(tier, index === tiers.length - 1)) / 2),
+        isActive: activePricing.kind === 'tier' && activePricing.tierIndex === index,
     }));
 
     const getSampleDistances = (config) => {
-        const distances = config.tiers.flatMap((tier) => ([
+        const distances = config.tiers.flatMap((tier, index, tiers) => ([
             roundDistance(Math.max(tier.from_km, 0)),
-            roundDistance((tier.from_km + tier.to_km) / 2),
+            roundDistance((Number(tier.from_km || 0) + tierDisplayUpperBound(tier, index === tiers.length - 1)) / 2),
         ]));
 
         if (!distances.length) {
@@ -873,7 +1038,9 @@ document.addEventListener('DOMContentLoaded', () => {
             store_latitude: Number(config.store_latitude ?? DEFAULT_VISIBLE_CONFIG.store_latitude),
             store_longitude: Number(config.store_longitude ?? DEFAULT_VISIBLE_CONFIG.store_longitude),
             store_hotline: config.store_hotline ?? DEFAULT_VISIBLE_CONFIG.store_hotline,
-            store_opening_hours: config.store_opening_hours ?? DEFAULT_VISIBLE_CONFIG.store_opening_hours,
+            booking_time_slots: Array.isArray(config.booking_time_slots) && config.booking_time_slots.length
+                ? config.booking_time_slots
+                : DEFAULT_VISIBLE_CONFIG.booking_time_slots,
             max_service_distance_km: Number(config.max_service_distance_km ?? DEFAULT_VISIBLE_CONFIG.max_service_distance_km),
             tiers: Array.isArray(config.tiers) && config.tiers.length
                 ? config.tiers.map((tier) => ({
@@ -895,15 +1062,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (refs.storeHotlineInput) {
             refs.storeHotlineInput.value = String(visibleConfig.store_hotline ?? '');
         }
-        if (refs.storeOpeningHoursInput) {
-            refs.storeOpeningHoursInput.value = String(visibleConfig.store_opening_hours ?? '');
-        }
         if (refs.maxServiceDistanceInput) {
             refs.maxServiceDistanceInput.value = String(visibleConfig.max_service_distance_km);
         }
         if (refs.complaintWindowInput) {
             refs.complaintWindowInput.value = String(config.complaint_window_days ?? DEFAULT_LEGACY_CONFIG.complaint_window_days);
         }
+        renderBookingSlotRows(visibleConfig.booking_time_slots);
         renderRows(visibleConfig.tiers);
 
         state.legacyConfig = {
@@ -928,6 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const setSaving = (isSaving) => {
         if (refs.saveButton) refs.saveButton.disabled = isSaving;
         if (refs.addTierButton) refs.addTierButton.disabled = isSaving;
+        if (refs.addBookingSlotButton) refs.addBookingSlotButton.disabled = isSaving;
         if (refs.resetButton) refs.resetButton.disabled = isSaving;
         if (refs.saveButton) {
             refs.saveButton.innerHTML = isSaving
@@ -970,6 +1136,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }));
         rows.push({ from_km: '', to_km: '', transport_fee: '', travel_fee: '' });
         renderRows(rows);
+        refresh();
+    });
+
+    refs.addBookingSlotButton?.addEventListener('click', () => {
+        const slots = readBookingSlots().map(({ start, end }) => ({ start, end }));
+        slots.push({ start: '', end: '' });
+        renderBookingSlotRows(slots);
         refresh();
     });
 
@@ -1017,6 +1190,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const index = Number(removeButton.closest('[data-tier-row]')?.dataset.tierIndex ?? -1);
         rows.splice(index, 1);
         renderRows(rows.length ? rows : DEFAULT_VISIBLE_CONFIG.tiers);
+        refresh();
+    });
+
+    refs.bookingSlotList?.addEventListener('click', (event) => {
+        const removeButton = event.target.closest('[data-remove-booking-slot]');
+        if (!removeButton) {
+            return;
+        }
+
+        const slots = readBookingSlots().map(({ start, end }) => ({ start, end }));
+        const index = Number(removeButton.closest('[data-booking-slot-row]')?.dataset.bookingSlotIndex ?? -1);
+        slots.splice(index, 1);
+        renderBookingSlotRows(slots.length ? slots : [{ start: '', end: '' }]);
         refresh();
     });
 

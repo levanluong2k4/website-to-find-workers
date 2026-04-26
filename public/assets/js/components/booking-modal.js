@@ -41,9 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_STORE_LONGITUDE = 109.1995;
     const DEFAULT_MAX_SERVICE_DISTANCE_KM = 8;
     const DEFAULT_STORE_ADDRESS = '2 Đường Nguyễn Đình Chiểu, Vĩnh Thọ, Nha Trang, Khánh Hòa';
+    const DEFAULT_BOOKING_TIME_SLOTS = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'];
     const TRAVEL_FEE_PER_KM = DEFAULT_TRAVEL_FEE_PER_KM;
     let storeAddress = DEFAULT_STORE_ADDRESS;
     let storeTransportFee = DEFAULT_STORE_TRANSPORT_FEE;
+    let bookingTimeSlots = [...DEFAULT_BOOKING_TIME_SLOTS];
     let travelFeeConfig = {
         free_distance_km: DEFAULT_FREE_DISTANCE_KM,
         default_per_km: DEFAULT_TRAVEL_FEE_PER_KM,
@@ -71,6 +73,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatCurrency(amount) {
         return `${Math.round(Number(amount) || 0).toLocaleString('vi-VN')} ₫`;
+    }
+
+    function normalizeTimeSlotValue(value) {
+        return String(value || '').replace(/\s+/g, '');
+    }
+
+    function timeToMinutes(value) {
+        const matched = String(value || '').trim().match(/^(\d{2}):(\d{2})$/);
+        if (!matched) return null;
+
+        const hour = Number(matched[1]);
+        const minute = Number(matched[2]);
+        if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+            return null;
+        }
+
+        return (hour * 60) + minute;
+    }
+
+    function parseBookingTimeSlot(value) {
+        const normalized = normalizeTimeSlotValue(value);
+        const matched = normalized.match(/^(\d{2}:\d{2})-(\d{2}:\d{2})$/);
+        if (!matched) {
+            return null;
+        }
+
+        const startMinutes = timeToMinutes(matched[1]);
+        const endMinutes = timeToMinutes(matched[2]);
+        if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+            return null;
+        }
+
+        return {
+            value: normalized,
+            startMinutes,
+            endMinutes,
+        };
+    }
+
+    function getBookingTimeSlotDefinitions() {
+        const rawSlots = Array.isArray(bookingTimeSlots) && bookingTimeSlots.length
+            ? bookingTimeSlots
+            : DEFAULT_BOOKING_TIME_SLOTS;
+
+        const parsedSlots = rawSlots
+            .map((slot) => parseBookingTimeSlot(slot))
+            .filter(Boolean)
+            .sort((left, right) => left.startMinutes - right.startMinutes || left.endMinutes - right.endMinutes);
+
+        return parsedSlots.length
+            ? parsedSlots
+            : DEFAULT_BOOKING_TIME_SLOTS
+                .map((slot) => parseBookingTimeSlot(slot))
+                .filter(Boolean);
+    }
+
+    function renderBookingTimeSlotOptions() {
+        const khungGioSelect = document.getElementById('booking_khung_gio_hen');
+        if (!khungGioSelect) return;
+
+        const currentValue = normalizeTimeSlotValue(khungGioSelect.value);
+        const slots = getBookingTimeSlotDefinitions().map((slot) => slot.value);
+
+        khungGioSelect.innerHTML = [
+            '<option value="">Chọn khung giờ</option>',
+            ...slots.map((slot) => `<option value="${slot}">${slot.replace('-', ' - ')}</option>`),
+        ].join('');
+
+        if (slots.includes(currentValue)) {
+            khungGioSelect.value = currentValue;
+        }
+
+        updateAvailableTimeSlots();
     }
 
     function getConfiguredMaxServiceDistanceKm() {
@@ -113,7 +188,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function findTravelFeeTier(distanceKm) {
-        return (travelFeeConfig.tiers || []).find((tier) => distanceKm >= Number(tier.from_km || 0) && distanceKm <= Number(tier.to_km || 0)) || null;
+        return (travelFeeConfig.tiers || []).find((tier, index, tiers) => (
+            distanceKm >= Number(tier.from_km || 0)
+            && (
+                distanceKm < Number(tier.to_km || 0)
+                || (index === tiers.length - 1 && distanceKm <= Number(tier.to_km || 0))
+            )
+        )) || null;
     }
 
     function getTierTravelFee(tier) {
@@ -122,6 +203,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getTierTransportFee(tier) {
         return Number(tier?.transport_fee ?? 0);
+    }
+
+    function getTierDisplayUpperBound(tier, isLastTier = false) {
+        const fromKm = Number(tier?.from_km || 0);
+        const toKm = Number(tier?.to_km || 0);
+
+        if (isLastTier) {
+            return toKm;
+        }
+
+        return Math.max(fromKm, Number((toKm - 0.01).toFixed(2)));
+    }
+
+    function formatTierRangeLabel(tier) {
+        const tierIndex = (travelFeeConfig.tiers || []).indexOf(tier);
+        const isLastTier = tierIndex === (travelFeeConfig.tiers || []).length - 1;
+
+        return `${Number(tier?.from_km || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} - ${getTierDisplayUpperBound(tier, isLastTier).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km`;
     }
 
     function normalizeTravelFeeTiers(tiers) {
@@ -166,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tier = findTravelFeeTier(distanceKm);
 
         if (tier) {
-            return `Tạm tính theo bảng khoảng cách từ ${referenceLabel}: ${roundedDistance} km áp dụng mức ${formatCurrency(fee)} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
+            return `Tạm tính theo bảng khoảng cách từ ${referenceLabel}: ${roundedDistance} km áp dụng mức ${formatCurrency(fee)} cho khoảng ${formatTierRangeLabel(tier)}.`;
         }
 
         return `Tạm tính theo khoảng cách từ ${referenceLabel}: ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km.`;
@@ -202,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tier = findTravelFeeTier(distanceKm);
         if (tier) {
-            return `Tạm tính theo bảng khoảng cách từ ${referenceLabel}: ${roundedDistance} km áp dụng mức ${formatCurrency(getTierTravelFee(tier))} cho khoảng ${tier.from_km} - ${tier.to_km} km.`;
+            return `Tạm tính theo bảng khoảng cách từ ${referenceLabel}: ${roundedDistance} km áp dụng mức ${formatCurrency(getTierTravelFee(tier))} cho khoảng ${formatTierRangeLabel(tier)}.`;
         }
 
         return `Tạm tính theo khoảng cách từ ${referenceLabel}: ${roundedDistance} km × ${Number(travelFeeConfig.default_per_km || DEFAULT_TRAVEL_FEE_PER_KM).toLocaleString('vi-VN')} ₫/km.`;
@@ -253,9 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     store_transport_fee: storeTransportFee,
                     tiers,
                 };
+                bookingTimeSlots = (Array.isArray(config.booking_time_slots) ? config.booking_time_slots : [])
+                    .map((slot) => normalizeTimeSlotValue(slot))
+                    .filter(Boolean);
                 DEFAULT_REFERENCE_POINT.lat = travelFeeConfig.store_latitude;
                 DEFAULT_REFERENCE_POINT.lng = travelFeeConfig.store_longitude;
                 DEFAULT_REFERENCE_POINT.maxDistance = travelFeeConfig.max_service_distance_km;
+                renderBookingTimeSlotOptions();
                 updateStoreTransportSummary();
                 updateTravelFeeEstimate();
             }
@@ -774,11 +877,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const isAtHome = document.getElementById('loai_hom')?.checked;
         if (!bookingNgayHen || !khungGioSelect) return;
 
-        Array.from(khungGioSelect.options).forEach((opt, idx) => {
-            if (idx > 0) {
-                opt.disabled = false;
-                opt.hidden = false;
-            }
+        const slotOptions = Array.from(khungGioSelect.options)
+            .slice(1)
+            .map((option) => ({
+                option,
+                slot: parseBookingTimeSlot(option.value),
+            }));
+
+        slotOptions.forEach(({ option }) => {
+            option.disabled = false;
+            option.hidden = false;
         });
 
         const dateVal = bookingNgayHen.value;
@@ -791,33 +899,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        let targetIndex = 0;
-        if (currentMinutes < 480) targetIndex = 0;
-        else if (currentMinutes < 600) targetIndex = 1;
-        else if (currentMinutes < 720) targetIndex = 2;
-        else if (currentMinutes < 840) targetIndex = 3;
-        else targetIndex = 4;
+        let targetIndex = slotOptions.reduce((count, { slot }) => (
+            slot && slot.startMinutes <= currentMinutes ? count + 1 : count
+        ), 0);
 
         if (isAtHome) {
             targetIndex += 1;
         }
 
         let firstEnableValue = '';
-        Array.from(khungGioSelect.options).forEach((opt, idx) => {
-            if (idx > 0) {
-                const actualIndex = idx - 1;
-                if (actualIndex < targetIndex) {
-                    opt.disabled = true;
-                    opt.hidden = true;
-                } else if (!firstEnableValue) {
-                    firstEnableValue = opt.value;
-                }
+        slotOptions.forEach(({ option }, index) => {
+            if (index < targetIndex) {
+                option.disabled = true;
+                option.hidden = true;
+            } else if (!firstEnableValue) {
+                firstEnableValue = option.value;
             }
         });
 
         if (khungGioSelect.selectedIndex > 0 && khungGioSelect.options[khungGioSelect.selectedIndex].disabled) {
             khungGioSelect.value = firstEnableValue;
-            if (!firstEnableValue && targetIndex >= 4) {
+            if (!firstEnableValue && targetIndex >= slotOptions.length) {
                 khungGioSelect.value = '';
             }
         }
@@ -1034,6 +1136,8 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         });
     }
+
+    renderBookingTimeSlotOptions();
 
     if (bookingModal) {
         loadTravelFeeConfig();

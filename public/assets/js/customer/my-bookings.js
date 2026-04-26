@@ -3,6 +3,8 @@ import { createReviewMediaController } from './review-media.js';
 import { setupReviewLightbox } from '../review-lightbox.js';
 import {
     getBookingPaymentMethod,
+    getBookingServiceNames,
+    getBookingServiceTitle,
     getBookingServices,
     isCashPaymentBooking,
     openRebookBooking,
@@ -356,6 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getServiceVisual = (booking, services) => {
         const firstService = services[0] || {};
+        const extraServiceCount = Math.max(0, services.length - 1);
         const serviceName = String(firstService.ten_dich_vu || '').toLowerCase();
         let theme = booking.loai_dat_lich === 'at_store' ? 'theme-store' : 'theme-generic';
         let icon = 'build_circle';
@@ -377,16 +380,38 @@ document.addEventListener('DOMContentLoaded', () => {
             icon = 'kitchen';
         }
 
+        const stackBadge = extraServiceCount > 0
+            ? `<span class="booking-service-stack-badge" aria-label="Thêm ${extraServiceCount} dịch vụ">+${extraServiceCount}</span>`
+            : '';
+        const stackBackdrop = extraServiceCount > 0
+            ? `
+                <span class="booking-service-stack-layer booking-service-stack-layer--back"></span>
+                <span class="booking-service-stack-layer booking-service-stack-layer--mid"></span>
+            `
+            : '';
+
         if (firstService.hinh_anh) {
             return {
                 theme,
-                html: `<img src="${escapeHtml(firstService.hinh_anh)}" alt="${escapeHtml(firstService.ten_dich_vu || 'Dá»‹ch vá»¥')}" class="booking-service-image">`,
+                html: `
+                    <div class="booking-service-visual${extraServiceCount > 0 ? ' has-stack' : ''}">
+                        ${stackBackdrop}
+                        <img src="${escapeHtml(firstService.hinh_anh)}" alt="${escapeHtml(firstService.ten_dich_vu || 'Dá»‹ch vá»¥')}" class="booking-service-image">
+                        ${stackBadge}
+                    </div>
+                `,
             };
         }
 
         return {
             theme,
-            html: `<div class="booking-service-icon"><span class="material-symbols-outlined">${icon}</span></div>`,
+            html: `
+                <div class="booking-service-visual${extraServiceCount > 0 ? ' has-stack' : ''}">
+                    ${stackBackdrop}
+                    <div class="booking-service-icon"><span class="material-symbols-outlined">${icon}</span></div>
+                    ${stackBadge}
+                </div>
+            `,
         };
     };
 
@@ -596,15 +621,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         bookingsContainer.innerHTML = paginatedBookings.map((booking) => {
             const services = getBookingServices(booking);
-            const firstServiceName = services[0]?.ten_dich_vu || 'Dá»‹ch vá»¥ sá»­a chá»¯a';
+            const serviceNames = getBookingServiceNames(booking);
+            const serviceTitle = getBookingServiceTitle(booking);
             const statusMeta = getStatusMeta(booking.trang_thai);
             const visual = getServiceVisual(booking, services);
             const locationText = booking.loai_dat_lich === 'at_home' ? (booking.dia_chi || 'Chưa cập nhật địa chỉ') : (booking.dia_chi || storeAddress);
-            const visibleTags = services.slice(0, 2).map((service) => `<span class="service-tag">${escapeHtml(service.ten_dich_vu)}</span>`);
-            if (services.length > 2) {
-                visibleTags.push(`<span class="service-tag service-tag--muted">+${services.length - 2}</span>`);
-            }
-            const serviceTags = services.length > 1 ? `<div class="service-tags">${visibleTags.join('')}</div>` : '';
+            const visibleTags = serviceNames.map((serviceName) => `<span class="service-tag">${escapeHtml(serviceName)}</span>`);
+            const serviceTags = serviceNames.length > 1 ? `<div class="service-tags">${visibleTags.join('')}</div>` : '';
             const totalAmount = getBookingTotal(booking);
 
             return `
@@ -614,14 +637,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         data-booking-detail-url="/customer/my-bookings/${booking.id}"
                         tabindex="0"
                         role="link"
-                        aria-label="Xem chi tiet don #${escapeHtml(booking.id)}"
+                        aria-label="Xem chi tiết đơn #${escapeHtml(booking.id)} - ${escapeHtml(serviceTitle)}"
                     >
                         <div class="booking-card-media ${visual.theme}">
                             <span class="booking-code-chip">#${escapeHtml(booking.id)}</span>
                             ${visual.html}
                         </div>
                         <div class="booking-card-body booking-card-body--compact">
-                            <h3 class="booking-card-title">${escapeHtml(firstServiceName)}</h3>
+                            <h3 class="booking-card-title">${escapeHtml(serviceTitle)}</h3>
                             <div class="booking-card-meta">
                                 <span class="material-symbols-outlined">tag</span>Mã đơn #${escapeHtml(booking.id)}
                             </div>
