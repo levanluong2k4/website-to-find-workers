@@ -241,6 +241,86 @@ class TravelFeeConfigController extends Controller
         ]);
     }
 
+    public function getWageConfig()
+    {
+        $taxRate = (float) (\App\Models\AppSetting::where('key', 'ty_le_thue_nha_nuoc')->value('value') ?? 10);
+        $feeRate = (float) (\App\Models\AppSetting::where('key', 'ty_le_phi_nen_tang')->value('value') ?? 20);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'tax_rate' => $taxRate,
+                'fee_rate' => $feeRate,
+                'net_rate' => max(0, 100 - $taxRate - $feeRate),
+            ]
+        ]);
+    }
+
+    public function updateWageConfig(Request $request)
+    {
+        $validated = $request->validate([
+            'tax_rate' => 'required|numeric|min:0|max:50',
+            'fee_rate' => 'required|numeric|min:0|max:50',
+            'notify_workers' => 'boolean',
+        ]);
+
+        $taxRate = (float) $validated['tax_rate'];
+        $feeRate = (float) $validated['fee_rate'];
+        $notifyWorkers = (bool) ($validated['notify_workers'] ?? true);
+
+        if ($taxRate + $feeRate >= 100) {
+            return response()->json(['status' => 'error', 'message' => 'Tổng thuế + phí không được ≥ 100%.'], 422);
+        }
+
+        $user = $request->user();
+
+        \App\Models\AppSetting::updateOrCreate(
+            ['key' => 'ty_le_thue_nha_nuoc'],
+            ['value' => $taxRate, 'updated_by' => $user?->id]
+        );
+        \App\Models\AppSetting::updateOrCreate(
+            ['key' => 'ty_le_phi_nen_tang'],
+            ['value' => $feeRate, 'updated_by' => $user?->id]
+        );
+
+        $netRate = max(0, 100 - $taxRate - $feeRate);
+        $notifiedCount = 0;
+
+        if ($notifyWorkers) {
+            $workers = \App\Models\User::where('role', 'worker')->get();
+            foreach ($workers as $worker) {
+                \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                    'id' => \Illuminate\Support\Str::uuid()->toString(),
+                    'type' => 'wage_config_update',
+                    'notifiable_type' => \App\Models\User::class,
+                    'notifiable_id' => $worker->id,
+                    'data' => json_encode([
+                        'title' => 'Cập nhật công thức lương',
+                        'message' => "Hệ thống vừa cập nhật tỷ lệ lương mới: Thuế {$taxRate}% + Phí ứng dụng {$feeRate}% = Bạn thực nhận {$netRate}% tiền công.",
+                        'tax_rate' => $taxRate,
+                        'fee_rate' => $feeRate,
+                        'net_rate' => $netRate,
+                    ]),
+                    'read_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $notifiedCount++;
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Cập nhật thành công. Đã gửi thông báo đến {$notifiedCount} thợ.",
+            'data' => [
+                'tax_rate' => $taxRate,
+                'fee_rate' => $feeRate,
+                'net_rate' => $netRate,
+                'notified_workers' => $notifiedCount,
+            ]
+        ]);
+    }
+
     private function slotTimeToMinutes(string $value): ?int
     {
         if (!preg_match('/^(?<hour>\d{2}):(?<minute>\d{2})$/', trim($value), $matches)) {

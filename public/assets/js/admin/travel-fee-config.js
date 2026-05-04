@@ -1286,4 +1286,99 @@ document.addEventListener('DOMContentLoaded', () => {
 
     reset();
     load();
+
+    // ── Wage Config Section ──────────────────────────────────────
+    const taxInput = document.getElementById('taxRateInput');
+    const taxSlider = document.getElementById('taxRateSlider');
+    const feeInput = document.getElementById('feeRateInput');
+    const feeSlider = document.getElementById('feeRateSlider');
+    const btnSaveWage = document.getElementById('btnSaveWageConfig');
+
+    const SAMPLE_AMOUNT = 500000;
+
+    const fmt = (n) => Math.round(n).toLocaleString('vi-VN') + '\u0111';
+
+    function updateWagePreview() {
+        const tax = parseFloat(taxInput?.value || 0);
+        const fee = parseFloat(feeInput?.value || 0);
+        const net = Math.max(0, 100 - tax - fee);
+
+        const taxAmt = SAMPLE_AMOUNT * tax / 100;
+        const feeAmt = SAMPLE_AMOUNT * fee / 100;
+        const netAmt = SAMPLE_AMOUNT * net / 100;
+
+        // Formula banner
+        document.getElementById('wageFormulaTax')?.replaceChildren(document.createTextNode(tax));
+        document.getElementById('wageFormulaFee')?.replaceChildren(document.createTextNode(fee));
+        document.getElementById('wageFormulaNet')?.replaceChildren(document.createTextNode(net.toFixed(1)));
+
+        // Sidebar example amounts
+        const taxEx = document.getElementById('taxExampleAmount');
+        if (taxEx) taxEx.textContent = fmt(taxAmt);
+        const feeEx = document.getElementById('feeExampleAmount');
+        if (feeEx) feeEx.textContent = fmt(feeAmt);
+
+        // Live preview
+        document.getElementById('previewTaxPct')?.replaceChildren(document.createTextNode(tax));
+        document.getElementById('previewFeePct')?.replaceChildren(document.createTextNode(fee));
+        const pTax = document.getElementById('previewTaxAmount');
+        if (pTax) pTax.textContent = fmt(taxAmt);
+        const pFee = document.getElementById('previewFeeAmount');
+        if (pFee) pFee.textContent = fmt(feeAmt);
+        const pNet = document.getElementById('previewNetAmount');
+        if (pNet) pNet.textContent = fmt(netAmt);
+    }
+
+    // Sync sliders <-> inputs
+    taxInput?.addEventListener('input', () => { if (taxSlider) taxSlider.value = taxInput.value; updateWagePreview(); });
+    taxSlider?.addEventListener('input', () => { if (taxInput) taxInput.value = taxSlider.value; updateWagePreview(); });
+    feeInput?.addEventListener('input', () => { if (feeSlider) feeSlider.value = feeInput.value; updateWagePreview(); });
+    feeSlider?.addEventListener('input', () => { if (feeInput) feeInput.value = feeSlider.value; updateWagePreview(); });
+
+    // Load current wage config
+    (async () => {
+        try {
+            const res = await callApi('/admin/wage-config');
+            if (res.ok && res.data?.data) {
+                const { tax_rate, fee_rate } = res.data.data;
+                if (taxInput) { taxInput.value = tax_rate; if (taxSlider) taxSlider.value = tax_rate; }
+                if (feeInput) { feeInput.value = fee_rate; if (feeSlider) feeSlider.value = fee_rate; }
+                updateWagePreview();
+            }
+        } catch (e) { /* use defaults */ }
+        updateWagePreview();
+    })();
+
+    btnSaveWage?.addEventListener('click', async () => {
+        const tax = parseFloat(taxInput?.value || 0);
+        const fee = parseFloat(feeInput?.value || 0);
+
+        if (tax + fee >= 100) {
+            showToast('T\u1ed5ng thu\u1ebf + ph\u00ed kh\u00f4ng \u0111\u01b0\u1ee3c \u2265 100%.', 'error');
+            return;
+        }
+
+        const notify = document.getElementById('notifyWorkersOnSave')?.checked ?? true;
+        btnSaveWage.disabled = true;
+        btnSaveWage.innerHTML = '<span class="material-symbols-outlined tw-text-base tw-animate-spin">sync</span> \u0110ang l\u01b0u...';
+
+        try {
+            const res = await callApi('/admin/wage-config', 'PUT', {
+                tax_rate: tax,
+                fee_rate: fee,
+                notify_workers: notify,
+            });
+            if (res.ok) {
+                showToast(res.data?.message || '\u0110\u00e3 c\u1eadp nh\u1eadt c\u1ea5u h\u00ecnh l\u01b0\u01a1ng th\u1ee3.', 'success');
+            } else {
+                showToast(res.data?.message || 'L\u1ed7i khi l\u01b0u.', 'error');
+            }
+        } catch (e) {
+            showToast('L\u1ed7i k\u1ebft n\u1ed1i.', 'error');
+        } finally {
+            btnSaveWage.disabled = false;
+            btnSaveWage.innerHTML = '<span class="material-symbols-outlined tw-text-base">save</span> L\u01b0u &amp; Th\u00f4ng b\u00e1o th\u1ee3';
+        }
+    });
+    // ── End Wage Config ──────────────────────────────────────────
 });

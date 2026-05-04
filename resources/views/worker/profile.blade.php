@@ -159,6 +159,28 @@
           </div>
         </div>
 
+        <!-- Wallet Section -->
+        <div class="profile-section">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+            <h6><span class="material-symbols-outlined" style="color:#10b981;">account_balance_wallet</span> Ví điện tử</h6>
+            <div style="font-family:'DM Sans',sans-serif; font-size:1.5rem; font-weight:800; color:#0f172a;"><span id="walletBalance">0</span>đ</div>
+          </div>
+          
+          <div style="display:flex; gap:.75rem; margin-bottom:1.5rem;">
+            <button type="button" onclick="document.getElementById('depositModal').classList.remove('d-none')" style="flex:1; background:#BAF2E9; color:#0f172a; border:none; border-radius:.75rem; padding:.75rem; font-weight:700; cursor:pointer; display:flex; justify-content:center; align-items:center; gap:.5rem; transition:all .2s;" onmouseover="this.style.background='#99f6e4'" onmouseout="this.style.background='#BAF2E9'">
+              <span class="material-symbols-outlined">add_circle</span> Nạp tiền
+            </button>
+            <button type="button" onclick="document.getElementById('withdrawModal').classList.remove('d-none')" style="flex:1; background:#f8fafc; border:1px solid #e2e8f0; color:#0f172a; border-radius:.75rem; padding:.75rem; font-weight:700; cursor:pointer; display:flex; justify-content:center; align-items:center; gap:.5rem; transition:all .2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+              <span class="material-symbols-outlined">payments</span> Rút tiền
+            </button>
+          </div>
+
+          <h6 style="font-size:.85rem; margin-bottom:.75rem;">Lịch sử giao dịch</h6>
+          <div id="transactionHistory" style="max-height:250px; overflow-y:auto; font-size:.8rem; border:1px solid #f1f5f9; border-radius:.5rem; padding:.5rem;">
+            <div style="text-align:center; padding:1.5rem 0; color:#94a3b8;">Chưa có giao dịch nào</div>
+          </div>
+        </div>
+
         <!-- Experience -->
         <div class="profile-section">
           <h6><span class="material-symbols-outlined" style="color:#0EA5E9;">workspace_premium</span> Kinh nghiệm & Chuyên môn</h6>
@@ -203,6 +225,59 @@
     </div>
   </div>
 </div>
+
+<!-- Deposit Modal -->
+<div id="depositModal" class="worker-service-modal d-none">
+  <div class="worker-service-modal-card" style="width:min(400px, 100%);">
+    <div class="worker-service-modal-head">
+      <h6 style="margin:0; font-family:'DM Sans',sans-serif; font-size:1rem; font-weight:700; display:flex; align-items:center; gap:.5rem;"><span class="material-symbols-outlined" style="color:#0ea5e9;">account_balance</span> Nạp tiền vào ví</h6>
+      <button type="button" onclick="document.getElementById('depositModal').classList.add('d-none')" style="border:none; background:transparent; cursor:pointer;"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="worker-service-modal-body">
+      <div style="margin-bottom:1.25rem;">
+        <label style="font-size:.8rem; font-weight:700; color:#0f172a; display:block; margin-bottom:.5rem;">Số tiền muốn nạp (VNĐ)</label>
+        <input type="number" id="depositAmount" class="form-control" placeholder="VD: 500000" style="width:100%; font-size:1rem; padding:1rem; font-weight:700;">
+      </div>
+      <div>
+        <label style="font-size:.8rem; font-weight:700; color:#0f172a; display:block; margin-bottom:.5rem;">Phương thức thanh toán</label>
+        <select id="depositMethod" class="form-select" style="width:100%; padding:1rem;">
+          <option value="test">Test (Thanh toán Sandbox)</option>
+          <option value="momo">Ví MoMo</option>
+          <option value="vnpay">VNPay</option>
+          <option value="zalopay">ZaloPay</option>
+        </select>
+      </div>
+    </div>
+    <div class="worker-service-modal-foot">
+      <button type="button" class="worker-service-modal-btn is-secondary" onclick="document.getElementById('depositModal').classList.add('d-none')">Hủy</button>
+      <button type="button" class="worker-service-modal-btn is-primary" id="btnConfirmDeposit">Xác nhận nạp</button>
+    </div>
+  </div>
+</div>
+
+<!-- Withdraw Modal -->
+<div id="withdrawModal" class="worker-service-modal d-none">
+  <div class="worker-service-modal-card" style="width:min(400px, 100%);">
+    <div class="worker-service-modal-head">
+      <h6 style="margin:0; font-family:'DM Sans',sans-serif; font-size:1rem; font-weight:700; display:flex; align-items:center; gap:.5rem;"><span class="material-symbols-outlined" style="color:#f59e0b;">payments</span> Yêu cầu rút tiền</h6>
+      <button type="button" onclick="document.getElementById('withdrawModal').classList.add('d-none')" style="border:none; background:transparent; cursor:pointer;"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="worker-service-modal-body">
+      <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:.5rem; padding:.875rem; margin-bottom:1.25rem;">
+        <p style="margin:0; font-size:.8rem; color:#9a3412; line-height:1.5;">Số dư duy trì tối thiểu là <strong>500,000đ</strong>.<br>Bạn chỉ có thể rút số tiền vượt quá mức này.</p>
+      </div>
+      <div>
+        <label style="font-size:.8rem; font-weight:700; color:#0f172a; display:block; margin-bottom:.5rem;">Số tiền muốn rút (VNĐ)</label>
+        <input type="number" id="withdrawAmount" class="form-control" placeholder="Nhập số tiền..." style="width:100%; font-size:1rem; padding:1rem; font-weight:700;">
+      </div>
+    </div>
+    <div class="worker-service-modal-foot">
+      <button type="button" class="worker-service-modal-btn is-secondary" onclick="document.getElementById('withdrawModal').classList.add('d-none')">Hủy</button>
+      <button type="button" class="worker-service-modal-btn is-primary" id="btnConfirmWithdraw" style="background:#f59e0b;">Gửi yêu cầu</button>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @push('scripts')

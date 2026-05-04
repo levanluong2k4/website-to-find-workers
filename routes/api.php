@@ -78,6 +78,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Payment actions
         Route::post('/payment/create', [PaymentController::class, 'createPaymentUrl']);
+        Route::post('/payment/wallet/deposit', [PaymentController::class, 'createWalletDepositUrl']);
+        Route::post('/payment/wallet/withdraw', [PaymentController::class, 'requestWithdraw']);
+        Route::post('/payment/wallet/withdraw/{id}/simulate-success', [PaymentController::class, 'simulateWithdrawSuccess']);
 
         // Service category CRUD
         Route::post('/danh-muc-dich-vu', [DanhMucDichVuController::class, 'store']);
@@ -165,6 +168,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/assistant-soul', [\App\Http\Controllers\Api\AdminController::class, 'resetAssistantSoulConfig']);
             Route::get('/travel-fee-config', [TravelFeeConfigController::class, 'show']);
             Route::put('/travel-fee-config', [TravelFeeConfigController::class, 'update']);
+            Route::get('/wage-config', [TravelFeeConfigController::class, 'getWageConfig']);
+            Route::put('/wage-config', [TravelFeeConfigController::class, 'updateWageConfig']);
         });
     });
 });

@@ -492,7 +492,132 @@ Thêm khung giờ
 </table>
 </div>
 </div>
+<!-- Section 2.5: Worker Wage Configuration -->
+<div class="tw-bg-surface-container-lowest tw-p-8 tw-rounded-3xl tw-shadow-sm" id="wageConfigSection">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-6">
+    <div>
+      <h3 class="tw-text-lg tw-font-bold tw-font-headline tw-flex tw-items-center tw-gap-2">
+        <span class="material-symbols-outlined tw-text-primary">account_balance_wallet</span>
+        Cấu hình lương thợ
+      </h3>
+      <p class="tw-text-xs tw-text-slate-500 tw-mt-1">Thiết lập tỷ lệ thuế và phí ứng dụng. Điều này ảnh hưởng trực tiếp đến thu nhập thực nhận của thợ.</p>
+    </div>
+    <button type="button" id="btnSaveWageConfig" class="tw-px-6 tw-py-2 tw-rounded-full tw-bg-primary tw-text-white tw-text-sm tw-font-bold hover:tw-bg-primary-container tw-transition-all active:tw-scale-95 tw-shadow-lg tw-shadow-primary/20 tw-flex tw-items-center tw-gap-2">
+      <span class="material-symbols-outlined tw-text-base">save</span>
+      Lưu & Thông báo thợ
+    </button>
+  </div>
+
+  <!-- Formula banner -->
+  <div class="tw-bg-gradient-to-r tw-from-blue-50 tw-to-indigo-50 tw-border tw-border-blue-100 tw-rounded-2xl tw-p-5 tw-mb-6">
+    <p class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-widest tw-text-blue-600 tw-mb-3">Công thức tính lương thợ</p>
+    <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-text-sm tw-font-semibold">
+      <span class="tw-bg-white tw-px-3 tw-py-1.5 tw-rounded-lg tw-border tw-border-blue-200 tw-text-blue-800">Tiền công khách trả</span>
+      <span class="tw-text-slate-400">-</span>
+      <span class="tw-bg-red-50 tw-px-3 tw-py-1.5 tw-rounded-lg tw-border tw-border-red-200 tw-text-red-700">Thuế nhà nước (<span id="wageFormulaTax">10</span>%)</span>
+      <span class="tw-text-slate-400">-</span>
+      <span class="tw-bg-orange-50 tw-px-3 tw-py-1.5 tw-rounded-lg tw-border tw-border-orange-200 tw-text-orange-700">Phí ứng dụng (<span id="wageFormulaFee">20</span>%)</span>
+      <span class="tw-text-slate-400">=</span>
+      <span class="tw-bg-green-50 tw-px-3 tw-py-1.5 tw-rounded-lg tw-border tw-border-green-200 tw-text-green-700 tw-font-extrabold">Lương thực nhận của thợ (<span id="wageFormulaNet">70</span>%)</span>
+    </div>
+  </div>
+
+  <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-6 tw-mb-6">
+    <!-- Tax Rate -->
+    <div class="tw-bg-red-50 tw-border tw-border-red-100 tw-rounded-2xl tw-p-6">
+      <div class="tw-flex tw-items-center tw-gap-3 tw-mb-4">
+        <div class="tw-w-10 tw-h-10 tw-rounded-xl tw-bg-red-100 tw-flex tw-items-center tw-justify-center">
+          <span class="material-symbols-outlined tw-text-red-600">account_balance</span>
+        </div>
+        <div>
+          <p class="tw-font-bold tw-text-sm">Thuế Nhà Nước (Tạm thu)</p>
+          <p class="tw-text-xs tw-text-slate-500">Theo quy định luật thuế TNCN tạm tính</p>
+        </div>
+      </div>
+      <div class="tw-flex tw-items-center tw-gap-3">
+        <div class="tw-relative tw-flex-1">
+          <input type="number" id="taxRateInput" min="0" max="50" step="0.1" value="10"
+            class="tw-w-full tw-py-3 tw-pl-4 tw-pr-10 tw-rounded-xl tw-border-2 tw-border-red-200 focus:tw-border-red-400 tw-bg-white tw-text-on-background tw-font-bold tw-text-lg focus:tw-outline-none tw-transition-colors"/>
+          <span class="tw-absolute tw-right-3 tw-top-1/2 tw--translate-y-1/2 tw-text-red-500 tw-font-bold">%</span>
+        </div>
+        <div class="tw-text-center">
+          <p class="tw-text-xs tw-text-slate-400 tw-mb-0.5">Trên 1 đơn 500k</p>
+          <p class="tw-font-bold tw-text-red-600" id="taxExampleAmount">50,000đ</p>
+        </div>
+      </div>
+      <input type="range" id="taxRateSlider" min="0" max="50" step="0.1" value="10" class="tw-w-full tw-mt-3 tw-h-2 tw-accent-red-500"/>
+    </div>
+
+    <!-- Platform Fee -->
+    <div class="tw-bg-orange-50 tw-border tw-border-orange-100 tw-rounded-2xl tw-p-6">
+      <div class="tw-flex tw-items-center tw-gap-3 tw-mb-4">
+        <div class="tw-w-10 tw-h-10 tw-rounded-xl tw-bg-orange-100 tw-flex tw-items-center tw-justify-center">
+          <span class="material-symbols-outlined tw-text-orange-600">storefront</span>
+        </div>
+        <div>
+          <p class="tw-font-bold tw-text-sm">Phí Dịch vụ / Ứng dụng</p>
+          <p class="tw-text-xs tw-text-slate-500">Chi phí duy trì hậ thống và hỗ trợ thợ</p>
+        </div>
+      </div>
+      <div class="tw-flex tw-items-center tw-gap-3">
+        <div class="tw-relative tw-flex-1">
+          <input type="number" id="feeRateInput" min="0" max="50" step="0.1" value="20"
+            class="tw-w-full tw-py-3 tw-pl-4 tw-pr-10 tw-rounded-xl tw-border-2 tw-border-orange-200 focus:tw-border-orange-400 tw-bg-white tw-text-on-background tw-font-bold tw-text-lg focus:tw-outline-none tw-transition-colors"/>
+          <span class="tw-absolute tw-right-3 tw-top-1/2 tw--translate-y-1/2 tw-text-orange-500 tw-font-bold">%</span>
+        </div>
+        <div class="tw-text-center">
+          <p class="tw-text-xs tw-text-slate-400 tw-mb-0.5">Trên 1 đơn 500k</p>
+          <p class="tw-font-bold tw-text-orange-600" id="feeExampleAmount">100,000đ</p>
+        </div>
+      </div>
+      <input type="range" id="feeRateSlider" min="0" max="50" step="0.1" value="20" class="tw-w-full tw-mt-3 tw-h-2 tw-accent-orange-500"/>
+    </div>
+  </div>
+
+  <!-- Live preview card -->
+  <div class="tw-bg-gradient-to-br tw-from-slate-800 tw-to-slate-900 tw-rounded-2xl tw-p-6 tw-text-white">
+    <p class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-widest tw-text-slate-400 tw-mb-4">Mô phỏng đơn 500,000đ</p>
+    <div class="tw-space-y-3">
+      <div class="tw-flex tw-justify-between tw-items-center tw-py-2 tw-border-b tw-border-white/10">
+        <span class="tw-text-sm tw-text-slate-300">Tiền công khách trả</span>
+        <span class="tw-font-bold">500,000đ</span>
+      </div>
+      <div class="tw-flex tw-justify-between tw-items-center tw-py-2 tw-border-b tw-border-white/10">
+        <span class="tw-text-sm tw-text-red-300 tw-flex tw-items-center tw-gap-2">
+          <span class="material-symbols-outlined tw-text-sm">remove</span>
+          Thuế nhà nước (<span id="previewTaxPct">10</span>%)
+        </span>
+        <span class="tw-font-bold tw-text-red-400" id="previewTaxAmount">50,000đ</span>
+      </div>
+      <div class="tw-flex tw-justify-between tw-items-center tw-py-2 tw-border-b tw-border-white/10">
+        <span class="tw-text-sm tw-text-orange-300 tw-flex tw-items-center tw-gap-2">
+          <span class="material-symbols-outlined tw-text-sm">remove</span>
+          Phí ứng dụng (<span id="previewFeePct">20</span>%)
+        </span>
+        <span class="tw-font-bold tw-text-orange-400" id="previewFeeAmount">100,000đ</span>
+      </div>
+      <div class="tw-flex tw-justify-between tw-items-center tw-pt-3">
+        <span class="tw-font-extrabold tw-text-green-300 tw-flex tw-items-center tw-gap-2">
+          <span class="material-symbols-outlined tw-text-sm">wallet</span>
+          Thợ thực nhận vào ví
+        </span>
+        <span class="tw-font-extrabold tw-text-xl tw-text-green-300" id="previewNetAmount">350,000đ</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Worker notification checkbox -->
+  <div class="tw-mt-5 tw-bg-blue-50 tw-border tw-border-blue-200 tw-rounded-2xl tw-p-4 tw-flex tw-items-start tw-gap-3">
+    <input type="checkbox" id="notifyWorkersOnSave" checked class="tw-mt-0.5 tw-w-4 tw-h-4 tw-accent-primary">
+    <div>
+      <label for="notifyWorkersOnSave" class="tw-font-bold tw-text-sm tw-cursor-pointer">Gửi thông báo cho tất cả thợ khi lưu</label>
+      <p class="tw-text-xs tw-text-slate-500 tw-mt-0.5">Thợ sẽ nhận được thông báo trong dashboard về việc tỷ lệ thuế/phí đã thay đổi và công thức lương mới.</p>
+    </div>
+  </div>
+</div>
+<!-- END Section 2.5 -->
 <!-- Configuration Tips -->
+
 <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-6">
 <div class="tw-bg-surface-container-low tw-p-6 tw-rounded-3xl tw-border tw-border-white/50">
 <h4 class="tw-font-bold tw-text-sm tw-mb-3 tw-flex tw-items-center tw-gap-2">

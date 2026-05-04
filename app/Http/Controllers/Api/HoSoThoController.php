@@ -260,12 +260,34 @@ class HoSoThoController extends Controller
             ];
         }
 
+        $wallet = \App\Models\ViDienTu::where('ma_tho', $user->id)->first();
+        $daRutTrongKy = 0;
+        if ($wallet) {
+            $daRutTrongKy = \App\Models\LichSuGiaoDich::where('ma_vi', $wallet->id)
+                ->where('loai_giao_dich', 'rut_tien')
+                ->whereMonth('created_at', $thisMonth)
+                ->whereYear('created_at', $thisYear)
+                ->sum('so_tien');
+        }
+
+        $taxRate = \App\Models\AppSetting::where('key', 'ty_le_thue_nha_nuoc')->value('value') ?? 10;
+        $feeRate = \App\Models\AppSetting::where('key', 'ty_le_phi_nen_tang')->value('value') ?? 20;
+
         return response()->json([
             'tong_doanh_thu' => $tongDoanhThu,
             'doanh_thu_thang_nay' => $doanhThuThangNay,
             'don_hoan_thanh_thang_nay' => $soDonHoanThanhThangNay,
             'don_huy_thang_nay' => $soDonHuyThangNay,
             'chart_data' => $chartData,
+            'wallet' => [
+                'so_du' => $wallet ? (float) $wallet->so_du : 0,
+                'da_rut_trong_ky' => abs((float) $daRutTrongKy),
+                'history' => $wallet ? \App\Models\LichSuGiaoDich::where('ma_vi', $wallet->id)->orderBy('created_at', 'desc')->take(10)->get() : []
+            ],
+            'settings' => [
+                'tax_rate' => (float) $taxRate,
+                'fee_rate' => (float) $feeRate
+            ]
         ]);
     }
 }

@@ -1,18 +1,18 @@
 import { callApi, getCurrentUser, showToast } from '../api.js';
 
 const LOGIN_URL = `${window.location.origin}/login?role=worker`;
-const PERIODS = ['7d', '30d', 'month', 'prev-month', 'all', 'custom'];
+const PERIODS = ['today', '7d', '30d', 'month', 'prev-month', 'all', 'custom'];
 const state = {
   bookings: [],
   visibleBookings: [],
+  wallet: { so_du: 0, da_rut_trong_ky: 0 },
+  settings: { tax_rate: 10, fee_rate: 20 },
   period: '30d',
   customStart: '',
   customEnd: '',
   filters: {
     search: '',
     status: 'all',
-    payment: 'all',
-    mode: 'all',
   },
   chart: null,
 };
@@ -21,7 +21,6 @@ const dom = {};
 
 document.addEventListener('DOMContentLoaded', () => {
   const user = getCurrentUser();
-
   if (!user || !['worker', 'admin'].includes(user.role)) {
     window.location.href = LOGIN_URL;
     return;
@@ -31,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   loadRevenueWorkspace().catch((error) => {
     console.error('Revenue workspace load failed:', error);
-    renderWorkspaceError(error.message || 'Không thể tải dữ liệu doanh thu.');
+    renderWorkspaceError(error.message || 'Không thể tải dữ liệu thu nhập.');
   });
 });
 
@@ -43,33 +42,29 @@ function cacheDom() {
   dom.applyCustomRangeButton = document.getElementById('applyCustomRangeButton');
   dom.exportRevenueCsvButton = document.getElementById('exportRevenueCsvButton');
   dom.periodSummaryPill = document.getElementById('periodSummaryPill');
+  
   dom.heroCollectedAmount = document.getElementById('heroCollectedAmount');
   dom.heroPendingAmount = document.getElementById('heroPendingAmount');
   dom.heroGrossAmount = document.getElementById('heroGrossAmount');
   dom.heroCancelledAmount = document.getElementById('heroCancelledAmount');
   dom.heroInsight = document.getElementById('heroInsight');
-  dom.summaryCollectionRate = document.getElementById('summaryCollectionRate');
-  dom.summaryAverageTicket = document.getElementById('summaryAverageTicket');
-  dom.summaryCompletionRate = document.getElementById('summaryCompletionRate');
-  dom.summaryTopServiceLabel = document.getElementById('summaryTopServiceLabel');
-  dom.summaryTopServiceAmount = document.getElementById('summaryTopServiceAmount');
-  dom.breakdownBookingCount = document.getElementById('breakdownBookingCount');
-  dom.kickerAverageRating = document.getElementById('kickerAverageRating');
-  dom.kickerBookingCount = document.getElementById('kickerBookingCount');
-  dom.sourceList = document.getElementById('sourceList');
-  dom.modeSplitRows = document.getElementById('modeSplitRows');
-  dom.paymentSplitRows = document.getElementById('paymentSplitRows');
-  dom.pendingCountBadge = document.getElementById('pendingCountBadge');
-  dom.cancelledCountBadge = document.getElementById('cancelledCountBadge');
-  dom.pendingQueue = document.getElementById('pendingQueue');
-  dom.cancelledQueue = document.getElementById('cancelledQueue');
+  
+  dom.summaryTotalTax = document.getElementById('summaryTotalTax');
+  dom.summaryTotalFee = document.getElementById('summaryTotalFee');
+  dom.summaryNetRatio = document.getElementById('summaryNetRatio');
+  dom.summaryWalletBalance = document.getElementById('summaryWalletBalance');
+  
   dom.revenueTrendChart = document.getElementById('revenueTrendChart');
   dom.revenueTrendEmpty = document.getElementById('revenueTrendEmpty');
+  
+  dom.kickerAverageNet = document.getElementById('kickerAverageNet');
+  dom.kickerBookingCount = document.getElementById('kickerBookingCount');
+  dom.incomeSplitRows = document.getElementById('incomeSplitRows');
+  
   dom.revenueSearchInput = document.getElementById('revenueSearchInput');
   dom.statusFilter = document.getElementById('statusFilter');
-  dom.paymentFilter = document.getElementById('paymentFilter');
-  dom.modeFilter = document.getElementById('modeFilter');
   dom.revenueTableBody = document.getElementById('revenueTableBody');
+  
   dom.revenueDrawer = document.getElementById('revenueDrawer');
   dom.revenueDrawerOverlay = document.getElementById('revenueDrawerOverlay');
   dom.revenueDrawerClose = document.getElementById('revenueDrawerClose');
@@ -91,35 +86,36 @@ function bindEvents() {
     renderWorkspace();
   });
 
-  dom.exportRevenueCsvButton?.addEventListener('click', exportVisibleBookingsAsCsv);
   dom.revenueSearchInput?.addEventListener('input', (event) => {
     state.filters.search = event.target.value || '';
     renderWorkspace();
   });
+  
   dom.statusFilter?.addEventListener('change', (event) => {
     state.filters.status = event.target.value || 'all';
     renderWorkspace();
   });
-  dom.paymentFilter?.addEventListener('change', (event) => {
-    state.filters.payment = event.target.value || 'all';
-    renderWorkspace();
-  });
-  dom.modeFilter?.addEventListener('change', (event) => {
-    state.filters.mode = event.target.value || 'all';
-    renderWorkspace();
-  });
+  
   dom.revenueDrawerClose?.addEventListener('click', closeDrawer);
   dom.revenueDrawerOverlay?.addEventListener('click', closeDrawer);
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      closeDrawer();
-    }
+    if (event.key === 'Escape') closeDrawer();
   });
 }
 
 async function loadRevenueWorkspace() {
   renderLoadingState();
-  state.bookings = await fetchAllBookings();
+  const [bookings, statsResponse] = await Promise.all([
+    fetchAllBookings(),
+    callApi('/worker/stats', 'GET')
+  ]);
+  
+  state.bookings = bookings;
+  if (statsResponse.ok && statsResponse.data) {
+      if (statsResponse.data.wallet) state.wallet = statsResponse.data.wallet;
+      if (statsResponse.data.settings) state.settings = statsResponse.data.settings;
+  }
+  
   seedCustomRangeInputs();
   renderWorkspace();
 }
@@ -131,11 +127,8 @@ async function fetchAllBookings() {
 
   do {
     const response = await callApi(`/don-dat-lich?per_page=100&page=${page}`, 'GET');
-
-    if (!response.ok) {
-      throw new Error(response.data?.message || 'Không thể tải danh sách đơn của thợ.');
-    }
-
+    if (!response.ok) throw new Error(response.data?.message || 'Không thể tải danh sách đơn.');
+    
     const payload = response.data || {};
     const items = Array.isArray(payload.data) ? payload.data : [];
     collected.push(...items);
@@ -146,110 +139,13 @@ async function fetchAllBookings() {
   return collected;
 }
 
-function seedCustomRangeInputs() {
-  const dates = state.bookings
-    .map((booking) => getBookingDate(booking))
-    .filter(Boolean)
-    .sort((a, b) => a.getTime() - b.getTime());
-
-  if (!dates.length) {
-    return;
-  }
-
-  const min = toDateInputValue(dates[0]);
-  const max = toDateInputValue(dates[dates.length - 1]);
-
-  if (dom.customStartDate) {
-    dom.customStartDate.min = min;
-    dom.customStartDate.max = max;
-  }
-
-  if (dom.customEndDate) {
-    dom.customEndDate.min = min;
-    dom.customEndDate.max = max;
-  }
-
-  if (!state.customStart) {
-    state.customStart = min;
-  }
-
-  if (!state.customEnd) {
-    state.customEnd = max;
-  }
-
-  if (dom.customStartDate && !dom.customStartDate.value) {
-    dom.customStartDate.value = state.customStart;
-  }
-
-  if (dom.customEndDate && !dom.customEndDate.value) {
-    dom.customEndDate.value = state.customEnd;
-  }
-}
-
-function setActivePeriod(period) {
-  state.period = PERIODS.includes(period) ? period : '30d';
-  syncPeriodButtons();
-  renderWorkspace();
-}
-
-function syncPeriodButtons() {
-  dom.periodButtons.forEach((button) => {
-    button.classList.toggle('is-active', button.dataset.range === state.period);
-  });
-  dom.customRange?.classList.toggle('is-visible', state.period === 'custom');
-}
-
-function renderLoadingState() {
-  if (dom.revenueTableBody) {
-    dom.revenueTableBody.innerHTML = `
-      <tr>
-        <td colspan="10">
-          <div class="revenue-state">
-            <strong>Đang tải dữ liệu</strong>
-            Vui lòng chờ trong giây lát để hệ thống tổng hợp doanh thu từ các đơn của bạn.
-          </div>
-        </td>
-      </tr>
-    `;
-  }
-}
-
-function renderWorkspaceError(message) {
-  const content = `
-    <tr>
-      <td colspan="10">
-        <div class="revenue-state">
-          <strong>Không thể tải doanh thu</strong>
-          ${escapeHtml(message)}
-        </div>
-      </td>
-    </tr>
-  `;
-
-  if (dom.revenueTableBody) {
-    dom.revenueTableBody.innerHTML = content;
-  }
-
-  if (dom.pendingQueue) {
-    dom.pendingQueue.innerHTML = `<div class="revenue-empty">${escapeHtml(message)}</div>`;
-  }
-
-  if (dom.cancelledQueue) {
-    dom.cancelledQueue.innerHTML = `<div class="revenue-empty">${escapeHtml(message)}</div>`;
-  }
-}
-
 function getNumeric(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function formatMoney(value) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(getNumeric(value));
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(getNumeric(value));
 }
 
 function formatPercent(value) {
@@ -257,21 +153,12 @@ function formatPercent(value) {
 }
 
 function toDateInputValue(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function parseDate(value) {
-  if (!value) {
-    return null;
-  }
-
+  if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -293,209 +180,132 @@ function daysBetween(start, end) {
   return Math.max(1, Math.round(distance / 86400000) + 1);
 }
 
-function getStoredCostItems(booking, key) {
-  return Array.isArray(booking?.[key]) ? booking[key].filter(Boolean) : [];
-}
-
-function getBookingTotal(booking) {
-  const explicitTotal = getNumeric(booking?.tong_tien);
-
-  if (explicitTotal > 0) {
-    return explicitTotal;
-  }
-
-  const laborItems = getStoredCostItems(booking, 'chi_tiet_tien_cong');
-  const partItems = getStoredCostItems(booking, 'chi_tiet_linh_kien');
-  const laborTotal = laborItems.length
-    ? laborItems.reduce((total, item) => total + getNumeric(item?.so_tien), 0)
-    : getNumeric(booking?.tien_cong);
-  const partTotal = partItems.length
-    ? partItems.reduce((total, item) => total + getNumeric(item?.so_tien), 0)
-    : getNumeric(booking?.phi_linh_kien);
-
-  return getNumeric(booking?.phi_di_lai) + laborTotal + partTotal + getNumeric(booking?.tien_thue_xe);
-}
-
 function getBookingDate(booking) {
   return parseDate(booking?.thoi_gian_hoan_thanh || booking?.ngay_hen || booking?.created_at);
 }
 
 function formatDateLabel(booking) {
   const date = getBookingDate(booking);
-
-  if (!date) {
-    return 'Chưa xác định';
-  }
-
-  return date.toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
-
-function formatDateTimeLabel(value) {
-  const date = parseDate(value);
-
-  if (!date) {
-    return 'Chưa cập nhật';
-  }
-
-  return date.toLocaleString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  if (!date) return 'Chưa xác định';
+  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function getCustomerName(booking) {
   return booking?.khach_hang?.name || 'Khách hàng';
 }
 
-function getCustomerPhone(booking) {
-  return booking?.khach_hang?.phone || '';
-}
-
 function getServiceNames(booking) {
-  const names = Array.isArray(booking?.dich_vus)
-    ? booking.dich_vus.map((service) => service?.ten_dich_vu).filter(Boolean)
-    : [];
-
-  return names.length ? names : ['Dịch vụ sửa chữa'];
+  const names = Array.isArray(booking?.dich_vus) ? booking.dich_vus.map((service) => service?.ten_dich_vu).filter(Boolean) : [];
+  return names.length ? names : ['Dịch vụ'];
 }
 
 function getServiceLabel(booking) {
   return getServiceNames(booking).join(', ');
 }
 
-function getLocationLabel(booking) {
-  return booking?.loai_dat_lich === 'at_home' ? 'Sửa tại nhà' : 'Sửa tại cửa hàng';
-}
-
-function getPaymentMethodCode(booking) {
-  return booking?.phuong_thuc_thanh_toan === 'transfer' ? 'transfer' : 'cod';
-}
-
-function getPaymentMethodLabel(booking) {
-  return getPaymentMethodCode(booking) === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt';
-}
-
-function isCancelled(booking) {
-  return booking?.trang_thai === 'da_huy';
-}
-
-function isPaid(booking) {
-  return Boolean(booking?.trang_thai_thanh_toan);
-}
-
-function isPendingPayment(booking) {
-  return ['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking?.trang_thai)
-    || (booking?.trang_thai === 'da_xong' && !isPaid(booking));
-}
-
-function isRevenueBooking(booking) {
-  return !isCancelled(booking) && getBookingTotal(booking) > 0;
-}
-
-function getStatusMeta(booking) {
-  if (isCancelled(booking)) {
+// Income calculations
+function calculateIncome(booking) {
+    const isCompleted = booking?.trang_thai === 'da_xong';
+    const isCancelled = booking?.trang_thai === 'da_huy';
+    
+    // Tiền công gộp
+    const explicitLabor = getNumeric(booking?.tien_cong);
+    const laborItems = Array.isArray(booking?.chi_tiet_tien_cong) ? booking.chi_tiet_tien_cong.filter(Boolean) : [];
+    let grossWage = explicitLabor;
+    if (laborItems.length) {
+        grossWage = laborItems.reduce((total, item) => total + getNumeric(item?.so_tien), 0);
+    }
+    
+    // Nếu chưa có tiền công và chưa hủy, ước tính dựa trên dịch vụ hoặc 0
+    if (grossWage === 0 && !isCancelled && booking?.dich_vus?.length) {
+        // Có thể để 0 cho đến khi cập nhật chi phí
+    }
+    
+    const taxRate = state.settings.tax_rate / 100;
+    const feeRate = state.settings.fee_rate / 100;
+    
+    const tax = grossWage * taxRate;
+    const fee = grossWage * feeRate;
+    const net = grossWage - tax - fee;
+    
+    const isPaid = Boolean(booking?.trang_thai_thanh_toan) && isCompleted;
+    const isPending = !isCancelled && (!isCompleted || !isPaid) && grossWage > 0;
+    
     return {
-      label: 'Đã hủy',
-      tone: 'cancelled',
+        gross: grossWage,
+        tax: tax,
+        fee: fee,
+        net: net,
+        isCompleted,
+        isCancelled,
+        isPaid,
+        isPending
     };
-  }
-
-  if (isPendingPayment(booking)) {
-    return {
-      label: 'Chờ thanh toán',
-      tone: 'pending',
-    };
-  }
-
-  return {
-    label: 'Đã thu',
-    tone: 'paid',
-  };
 }
 
-function getRating(booking) {
-  const rating = booking?.danh_gias?.[0]?.so_sao;
-  return Math.max(0, Math.min(5, getNumeric(rating)));
-}
-
-function renderStars(rating) {
-  if (rating <= 0) {
-    return '<span class="table-subtle">Chưa có</span>';
-  }
-
-  return `<span class="revenue-rating">${[1, 2, 3, 4, 5].map((index) => `
-    <span class="material-symbols-outlined" style="font-size:0.95rem;color:${index <= rating ? '#f59e0b' : '#cbd5e1'};font-variation-settings:'FILL' 1;">star</span>
-  `).join('')}</span>`;
+function getStatusMeta(income) {
+  if (income.isCancelled) return { label: 'Đã hủy', tone: 'cancelled' };
+  if (income.isPaid) return { label: 'Đã cộng ví', tone: 'paid' };
+  return { label: 'Chờ cộng ví', tone: 'pending' };
 }
 
 function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function getPeriodRange() {
   const now = new Date();
   const today = endOfDay(now);
 
-  if (state.period === '7d') {
-    const start = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6));
-    return { key: '7d', start, end: today, label: '7 ngày gần đây' };
-  }
-
-  if (state.period === 'month') {
-    return {
-      key: 'month',
-      start: startOfDay(new Date(now.getFullYear(), now.getMonth(), 1)),
-      end: today,
-      label: 'Tháng này',
-    };
-  }
-
-  if (state.period === 'prev-month') {
-    const start = startOfDay(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-    const end = endOfDay(new Date(now.getFullYear(), now.getMonth(), 0));
-    return { key: 'prev-month', start, end, label: 'Tháng trước' };
-  }
-
-  if (state.period === 'all') {
-    return { key: 'all', start: null, end: null, label: 'Toàn bộ dữ liệu' };
-  }
-
+  if (state.period === 'today') return { key: 'today', start: startOfDay(now), end: today, label: 'Hôm nay' };
+  if (state.period === '7d') return { key: '7d', start: startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)), end: today, label: '7 ngày gần đây' };
+  if (state.period === 'month') return { key: 'month', start: startOfDay(new Date(now.getFullYear(), now.getMonth(), 1)), end: today, label: 'Tháng này' };
+  if (state.period === 'prev-month') return { key: 'prev-month', start: startOfDay(new Date(now.getFullYear(), now.getMonth() - 1, 1)), end: endOfDay(new Date(now.getFullYear(), now.getMonth(), 0)), label: 'Tháng trước' };
+  if (state.period === 'all') return { key: 'all', start: null, end: null, label: 'Toàn bộ dữ liệu' };
   if (state.period === 'custom') {
     const customStart = parseDate(state.customStart);
     const customEnd = parseDate(state.customEnd);
-    return {
-      key: 'custom',
-      start: customStart ? startOfDay(customStart) : null,
-      end: customEnd ? endOfDay(customEnd) : null,
-      label: customStart && customEnd
-        ? `${formatDateLabel({ ngay_hen: state.customStart })} - ${formatDateLabel({ ngay_hen: state.customEnd })}`
-        : 'Khoảng tùy chọn',
-    };
+    return { key: 'custom', start: customStart ? startOfDay(customStart) : null, end: customEnd ? endOfDay(customEnd) : null, label: 'Khoảng tùy chọn' };
   }
+  return { key: '30d', start: startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)), end: today, label: '30 ngày gần đây' };
+}
 
-  const defaultStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29));
-  return { key: '30d', start: defaultStart, end: today, label: '30 ngày gần đây' };
+function seedCustomRangeInputs() {
+    const dates = state.bookings.map(getBookingDate).filter(Boolean).sort((a, b) => a.getTime() - b.getTime());
+    if (!dates.length) return;
+    const min = toDateInputValue(dates[0]);
+    const max = toDateInputValue(dates[dates.length - 1]);
+    if (dom.customStartDate) { dom.customStartDate.min = min; dom.customStartDate.max = max; }
+    if (dom.customEndDate) { dom.customEndDate.min = min; dom.customEndDate.max = max; }
+    if (!state.customStart) state.customStart = min;
+    if (!state.customEnd) state.customEnd = max;
+    if (dom.customStartDate && !dom.customStartDate.value) dom.customStartDate.value = state.customStart;
+    if (dom.customEndDate && !dom.customEndDate.value) dom.customEndDate.value = state.customEnd;
+}
+
+function setActivePeriod(period) {
+  state.period = PERIODS.includes(period) ? period : '30d';
+  syncPeriodButtons();
+  renderWorkspace();
+}
+
+function syncPeriodButtons() {
+  dom.periodButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.range === state.period));
+  dom.customRange?.classList.toggle('is-visible', state.period === 'custom');
+}
+
+function renderLoadingState() {
+  if (dom.revenueTableBody) dom.revenueTableBody.innerHTML = `<tr><td colspan="10"><div class="revenue-state"><strong>Đang tải dữ liệu</strong> Vui lòng chờ trong giây lát...</div></td></tr>`;
+}
+
+function renderWorkspaceError(message) {
+  const content = `<tr><td colspan="10"><div class="revenue-state"><strong>Lỗi dữ liệu</strong> ${escapeHtml(message)}</div></td></tr>`;
+  if (dom.revenueTableBody) dom.revenueTableBody.innerHTML = content;
 }
 
 function filterBookingsByPeriod(bookings) {
   const range = getPeriodRange();
-
-  if (!range.start || !range.end) {
-    return bookings.slice();
-  }
-
+  if (!range.start || !range.end) return bookings.slice();
   return bookings.filter((booking) => {
     const date = getBookingDate(booking);
     return date && date.getTime() >= range.start.getTime() && date.getTime() <= range.end.getTime();
@@ -504,50 +314,15 @@ function filterBookingsByPeriod(bookings) {
 
 function applyTableFilters(bookings) {
   const search = state.filters.search.trim().toLowerCase();
-
   return bookings.filter((booking) => {
-    const haystack = [
-      `#${booking?.id || ''}`,
-      getCustomerName(booking),
-      getServiceLabel(booking),
-    ].join(' ').toLowerCase();
-
-    if (search && !haystack.includes(search)) {
-      return false;
-    }
-
-    if (state.filters.status === 'paid' && getStatusMeta(booking).tone !== 'paid') {
-      return false;
-    }
-
-    if (state.filters.status === 'pending' && getStatusMeta(booking).tone !== 'pending') {
-      return false;
-    }
-
-    if (state.filters.status === 'cancelled' && getStatusMeta(booking).tone !== 'cancelled') {
-      return false;
-    }
-
-    if (state.filters.payment === 'cod' && getPaymentMethodCode(booking) !== 'cod') {
-      return false;
-    }
-
-    if (state.filters.payment === 'transfer' && getPaymentMethodCode(booking) !== 'transfer') {
-      return false;
-    }
-
-    if (state.filters.payment === 'paid' && !isPaid(booking)) {
-      return false;
-    }
-
-    if (state.filters.payment === 'unpaid' && isPaid(booking)) {
-      return false;
-    }
-
-    if (state.filters.mode !== 'all' && booking?.loai_dat_lich !== state.filters.mode) {
-      return false;
-    }
-
+    const income = calculateIncome(booking);
+    const haystack = [`#${booking?.id || ''}`, getCustomerName(booking), getServiceLabel(booking)].join(' ').toLowerCase();
+    
+    if (search && !haystack.includes(search)) return false;
+    if (state.filters.status === 'paid' && !income.isPaid) return false;
+    if (state.filters.status === 'pending' && (!income.isPending || income.isPaid)) return false;
+    if (state.filters.status === 'cancelled' && !income.isCancelled) return false;
+    
     return true;
   }).sort((left, right) => {
     const leftTime = getBookingDate(left)?.getTime() || 0;
@@ -557,137 +332,67 @@ function applyTableFilters(bookings) {
 }
 
 function buildMetrics(bookings) {
-  const revenueBookings = bookings.filter(isRevenueBooking);
-  const paidBookings = revenueBookings.filter((booking) => !isPendingPayment(booking) && isPaid(booking));
-  const pendingBookings = bookings.filter(isPendingPayment);
-  const cancelledBookings = bookings.filter(isCancelled);
-
-  const paidAmount = paidBookings.reduce((total, booking) => total + getBookingTotal(booking), 0);
-  const pendingAmount = pendingBookings.reduce((total, booking) => total + getBookingTotal(booking), 0);
-  const grossAmount = paidAmount + pendingAmount;
-  const cancelledAmount = cancelledBookings.reduce((total, booking) => total + getBookingTotal(booking), 0);
-  const averageTicket = revenueBookings.length ? grossAmount / revenueBookings.length : 0;
-  const collectionRate = grossAmount > 0 ? (paidAmount / grossAmount) * 100 : 0;
-  const completedCount = paidBookings.length + pendingBookings.length;
-  const completionRate = completedCount + cancelledBookings.length > 0
-    ? (completedCount / (completedCount + cancelledBookings.length)) * 100
-    : 0;
-
-  const serviceMap = new Map();
-  const modeMap = new Map([
-    ['at_home', { label: 'Sửa tại nhà', amount: 0, count: 0 }],
-    ['at_store', { label: 'Sửa tại cửa hàng', amount: 0, count: 0 }],
-  ]);
-  const paymentMap = new Map([
-    ['cod', { label: 'Tiền mặt', amount: 0, count: 0 }],
-    ['transfer', { label: 'Chuyển khoản', amount: 0, count: 0 }],
-  ]);
-  const ratings = [];
-
-  revenueBookings.forEach((booking) => {
-    const total = getBookingTotal(booking);
-    const services = getServiceNames(booking);
-    const share = services.length ? total / services.length : total;
-
-    services.forEach((serviceName) => {
-      const existing = serviceMap.get(serviceName) || { name: serviceName, amount: 0, count: 0 };
-      existing.amount += share;
-      existing.count += 1;
-      serviceMap.set(serviceName, existing);
+    let paidNet = 0;
+    let pendingNet = 0;
+    let totalGross = 0;
+    let totalTax = 0;
+    let totalFee = 0;
+    let totalNet = 0;
+    let paidCount = 0;
+    let incomeCount = 0;
+    
+    bookings.forEach(booking => {
+        const income = calculateIncome(booking);
+        if (income.isCancelled || income.gross <= 0) return;
+        
+        incomeCount++;
+        totalGross += income.gross;
+        totalTax += income.tax;
+        totalFee += income.fee;
+        totalNet += income.net;
+        
+        if (income.isPaid) {
+            paidNet += income.net;
+            paidCount++;
+        } else if (income.isPending) {
+            pendingNet += income.net;
+        }
     });
+    
+    const netRatio = totalGross > 0 ? (totalNet / totalGross) * 100 : 0;
+    const averageNet = paidCount > 0 ? paidNet / paidCount : 0;
 
-    const modeKey = booking?.loai_dat_lich === 'at_home' ? 'at_home' : 'at_store';
-    const modeBucket = modeMap.get(modeKey);
-    modeBucket.amount += total;
-    modeBucket.count += 1;
-
-    const paymentBucket = paymentMap.get(getPaymentMethodCode(booking));
-    paymentBucket.amount += total;
-    paymentBucket.count += 1;
-
-    const rating = getRating(booking);
-    if (rating > 0) {
-      ratings.push(rating);
-    }
-  });
-
-  const serviceLeaderboard = Array.from(serviceMap.values()).sort((left, right) => right.amount - left.amount);
-  const topService = serviceLeaderboard[0] || null;
-  const averageRating = ratings.length
-    ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length
-    : 0;
-
-  return {
-    bookings,
-    revenueBookings,
-    paidBookings,
-    pendingBookings,
-    cancelledBookings,
-    paidAmount,
-    pendingAmount,
-    grossAmount,
-    cancelledAmount,
-    averageTicket,
-    collectionRate,
-    completionRate,
-    serviceLeaderboard,
-    topService,
-    modeSplit: Array.from(modeMap.values()),
-    paymentSplit: Array.from(paymentMap.values()),
-    averageRating,
-  };
+    return {
+        paidNet,
+        pendingNet,
+        totalGross,
+        totalTax,
+        totalFee,
+        totalNet,
+        netRatio,
+        averageNet,
+        incomeCount,
+        bookings
+    };
 }
 
 function buildChartSeries(bookings) {
   const range = getPeriodRange();
-  const monetized = bookings.filter((booking) => isRevenueBooking(booking) || isPendingPayment(booking));
-  const useMonthlyBuckets = range.key === 'all' || (range.start && range.end && daysBetween(range.start, range.end) > 45);
-
-  if (!monetized.length) {
-    return { labels: [], paid: [], pending: [] };
-  }
-
-  if (useMonthlyBuckets) {
-    const monthKeys = [];
-    const totals = new Map();
-
-    monetized.forEach((booking) => {
-      const date = getBookingDate(booking);
-      if (!date) {
-        return;
-      }
-
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      if (!totals.has(key)) {
-        monthKeys.push(key);
-        totals.set(key, { paid: 0, pending: 0, date });
-      }
-
-      const bucket = totals.get(key);
-      if (isPendingPayment(booking)) {
-        bucket.pending += getBookingTotal(booking);
-      } else {
-        bucket.paid += getBookingTotal(booking);
-      }
-    });
-
-    const ordered = monthKeys.sort();
-    return {
-      labels: ordered.map((key) => {
-        const [year, month] = key.split('-');
-        return `${month}/${year}`;
-      }),
-      paid: ordered.map((key) => totals.get(key)?.paid || 0),
-      pending: ordered.map((key) => totals.get(key)?.pending || 0),
-    };
-  }
+  const monetized = bookings.filter(b => {
+      const inc = calculateIncome(b);
+      return !inc.isCancelled && inc.gross > 0;
+  });
+  
+  if (!monetized.length) return { labels: [], gross: [], net: [], deduct: [] };
 
   const start = range.start || startOfDay(getBookingDate(monetized[0]) || new Date());
   const end = range.end || endOfDay(getBookingDate(monetized[monetized.length - 1]) || new Date());
   const totalDays = daysBetween(start, end);
+  
   const labels = [];
-  const paid = [];
-  const pending = [];
+  const gross = [];
+  const net = [];
+  const deduct = [];
 
   for (let offset = 0; offset < totalDays; offset += 1) {
     const cursor = startOfDay(new Date(start.getFullYear(), start.getMonth(), start.getDate() + offset));
@@ -695,23 +400,32 @@ function buildChartSeries(bookings) {
     labels.push(cursor.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }));
 
     const dayBookings = monetized.filter((booking) => toDateInputValue(getBookingDate(booking)) === key);
-    paid.push(dayBookings.filter((booking) => !isPendingPayment(booking)).reduce((sum, booking) => sum + getBookingTotal(booking), 0));
-    pending.push(dayBookings.filter(isPendingPayment).reduce((sum, booking) => sum + getBookingTotal(booking), 0));
+    
+    let dGross = 0, dNet = 0, dDeduct = 0;
+    dayBookings.forEach(b => {
+        const inc = calculateIncome(b);
+        dGross += inc.gross;
+        if (inc.isPaid) {
+            dNet += inc.net;
+            dDeduct += (inc.tax + inc.fee);
+        }
+    });
+    
+    gross.push(dGross);
+    net.push(dNet);
+    deduct.push(dDeduct);
   }
 
-  return { labels, paid, pending };
+  return { labels, gross, net, deduct };
 }
 
 function renderWorkspace() {
   syncPeriodButtons();
-
   const scopedBookings = filterBookingsByPeriod(state.bookings);
   const metrics = buildMetrics(scopedBookings);
   state.visibleBookings = applyTableFilters(scopedBookings);
 
   renderHero(metrics);
-  renderBreakdowns(metrics);
-  renderQueues(metrics);
   renderChart(scopedBookings);
   renderTable(state.visibleBookings);
 }
@@ -719,386 +433,162 @@ function renderWorkspace() {
 function renderHero(metrics) {
   const range = getPeriodRange();
   if (dom.periodSummaryPill) {
-    dom.periodSummaryPill.innerHTML = `
-      <span class="material-symbols-outlined">date_range</span>
-      <span>${escapeHtml(range.label)}</span>
-    `;
+    dom.periodSummaryPill.innerHTML = `<span class="material-symbols-outlined">date_range</span><span>${escapeHtml(range.label)}</span>`;
   }
 
-  if (dom.heroCollectedAmount) dom.heroCollectedAmount.textContent = formatMoney(metrics.paidAmount);
-  if (dom.heroPendingAmount) dom.heroPendingAmount.textContent = formatMoney(metrics.pendingAmount);
-  if (dom.heroGrossAmount) dom.heroGrossAmount.textContent = formatMoney(metrics.grossAmount);
-  if (dom.heroCancelledAmount) dom.heroCancelledAmount.textContent = formatMoney(metrics.cancelledAmount);
+  if (dom.heroCollectedAmount) dom.heroCollectedAmount.textContent = formatMoney(metrics.paidNet);
+  if (dom.heroPendingAmount) dom.heroPendingAmount.textContent = formatMoney(metrics.pendingNet);
+  if (dom.heroGrossAmount) dom.heroGrossAmount.textContent = formatMoney(metrics.totalGross);
+  if (dom.heroCancelledAmount) dom.heroCancelledAmount.textContent = formatMoney(state.wallet.da_rut_trong_ky);
 
   if (dom.heroInsight) {
-    const pendingCount = metrics.pendingBookings.length;
-    const topServiceText = metrics.topService
-      ? `${metrics.topService.name} đang dẫn đầu với ${formatMoney(metrics.topService.amount)}.`
-      : 'Chưa có dịch vụ nào đủ dữ liệu để xếp hạng.';
-    dom.heroInsight.textContent = `${metrics.paidBookings.length} đơn đã thu, ${pendingCount} đơn còn chờ thanh toán. ${topServiceText}`;
+    dom.heroInsight.textContent = `Tháng này bạn đã thực nhận ${formatMoney(metrics.paidNet)} từ ${metrics.incomeCount} đơn hoàn thành.`;
   }
 
-  if (dom.summaryCollectionRate) dom.summaryCollectionRate.textContent = formatPercent(metrics.collectionRate);
-  if (dom.summaryAverageTicket) dom.summaryAverageTicket.textContent = formatMoney(metrics.averageTicket);
-  if (dom.summaryCompletionRate) dom.summaryCompletionRate.textContent = formatPercent(metrics.completionRate);
-  if (dom.summaryTopServiceLabel) dom.summaryTopServiceLabel.textContent = metrics.topService?.name || 'Chưa có dữ liệu';
-  if (dom.summaryTopServiceAmount) dom.summaryTopServiceAmount.textContent = formatMoney(metrics.topService?.amount || 0);
-  if (dom.breakdownBookingCount) dom.breakdownBookingCount.textContent = `${metrics.revenueBookings.length} đơn có chi phí`;
-  if (dom.kickerAverageRating) dom.kickerAverageRating.textContent = metrics.averageRating > 0 ? `${metrics.averageRating.toFixed(1)}/5` : 'Chưa có';
+  if (dom.summaryTotalTax) dom.summaryTotalTax.textContent = formatMoney(metrics.totalTax);
+  if (dom.summaryTotalFee) dom.summaryTotalFee.textContent = formatMoney(metrics.totalFee);
+  if (dom.summaryNetRatio) dom.summaryNetRatio.textContent = formatPercent(metrics.netRatio);
+  if (dom.summaryWalletBalance) dom.summaryWalletBalance.textContent = formatMoney(state.wallet.so_du);
+
+  if (dom.kickerAverageNet) dom.kickerAverageNet.textContent = formatMoney(metrics.averageNet);
   if (dom.kickerBookingCount) dom.kickerBookingCount.textContent = `${metrics.bookings.length} đơn`;
-}
-
-function renderBreakdowns(metrics) {
-  renderSourceList(metrics);
-  renderSplitRows(dom.modeSplitRows, metrics.modeSplit, metrics.grossAmount || 1, 'indigo');
-  renderSplitRows(dom.paymentSplitRows, metrics.paymentSplit, metrics.grossAmount || 1, 'amber');
-}
-
-function renderSourceList(metrics) {
-  if (!dom.sourceList) {
-    return;
-  }
-
-  const topSources = metrics.serviceLeaderboard.slice(0, 4);
-  if (!topSources.length) {
-    dom.sourceList.innerHTML = `<div class="revenue-empty">Chưa có đủ dữ liệu để phân tích nguồn doanh thu.</div>`;
-    return;
-  }
-
-  dom.sourceList.innerHTML = topSources.map((item) => {
-    const percent = metrics.grossAmount > 0 ? Math.min(100, (item.amount / metrics.grossAmount) * 100) : 0;
-    return `
-      <article class="source-item">
-        <div class="source-item__label">Nguồn tạo tiền</div>
-        <div class="source-item__top">
-          <div class="source-item__name">${escapeHtml(item.name)}</div>
-          <div class="source-item__value">${formatMoney(item.amount)}</div>
+  
+  if (dom.incomeSplitRows) {
+      dom.incomeSplitRows.innerHTML = `
+        <div class="split-row">
+            <div class="split-row__top"><span>Thực nhận</span><span>${formatMoney(metrics.totalNet)}</span></div>
+            <div class="split-row__meta">${formatPercent(metrics.netRatio)}</div>
+            <div class="split-row__bar"><div class="split-row__fill split-row__fill--indigo" style="width:${metrics.netRatio}%"></div></div>
         </div>
-        <div class="source-item__bar">
-          <div class="source-item__fill" style="width:${percent}%"></div>
+        <div class="split-row">
+            <div class="split-row__top"><span>Thuế & Phí</span><span>${formatMoney(metrics.totalTax + metrics.totalFee)}</span></div>
+            <div class="split-row__meta">${formatPercent(100 - metrics.netRatio)}</div>
+            <div class="split-row__bar"><div class="split-row__fill split-row__fill--amber" style="width:${100 - metrics.netRatio}%"></div></div>
         </div>
-      </article>
-    `;
-  }).join('');
-}
-
-function renderSplitRows(container, rows, total, tone) {
-  if (!container) {
-    return;
+      `;
   }
-
-  container.innerHTML = rows.map((row) => {
-    const percent = total > 0 ? Math.min(100, (row.amount / total) * 100) : 0;
-    const toneClass = tone === 'amber' ? 'split-row__fill--amber' : 'split-row__fill--indigo';
-    return `
-      <div class="split-row">
-        <div class="split-row__top">
-          <span>${escapeHtml(row.label)}</span>
-          <span>${formatMoney(row.amount)}</span>
-        </div>
-        <div class="split-row__meta">${row.count} đơn • ${formatPercent(percent)}</div>
-        <div class="split-row__bar">
-          <div class="split-row__fill ${toneClass}" style="width:${percent}%"></div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderQueues(metrics) {
-  renderQueue(dom.pendingQueue, metrics.pendingBookings, 'pending');
-  renderQueue(dom.cancelledQueue, metrics.cancelledBookings, 'cancelled');
-  if (dom.pendingCountBadge) dom.pendingCountBadge.textContent = `${metrics.pendingBookings.length} đơn`;
-  if (dom.cancelledCountBadge) dom.cancelledCountBadge.textContent = `${metrics.cancelledBookings.length} đơn`;
-}
-
-function renderQueue(container, bookings, tone) {
-  if (!container) {
-    return;
-  }
-
-  const shortlist = bookings.slice().sort((left, right) => {
-    const leftTime = getBookingDate(left)?.getTime() || 0;
-    const rightTime = getBookingDate(right)?.getTime() || 0;
-    return rightTime - leftTime;
-  }).slice(0, 5);
-
-  if (!shortlist.length) {
-    container.innerHTML = `<div class="revenue-empty">${tone === 'pending' ? 'Không có đơn nào đang chờ thanh toán.' : 'Không có đơn hủy nào trong giai đoạn đang xem.'}</div>`;
-    return;
-  }
-
-  container.innerHTML = shortlist.map((booking) => `
-    <article class="queue-item">
-      <div class="queue-item__top">
-        <div>
-          <span class="queue-item__eyebrow">Đơn #${booking.id}</span>
-          <h3 class="queue-item__name">${escapeHtml(getCustomerName(booking))}</h3>
-          <p class="queue-item__meta">${escapeHtml(getServiceLabel(booking))}<br>${escapeHtml(formatDateLabel(booking))} • ${escapeHtml(getLocationLabel(booking))}</p>
-        </div>
-        <div class="queue-item__amount">${formatMoney(getBookingTotal(booking))}</div>
-      </div>
-      <div class="queue-item__footer">
-        <span class="queue-item__status queue-item__status--${tone}">${tone === 'pending' ? 'Chờ thanh toán' : 'Đã hủy'}</span>
-        <button type="button" class="revenue-row-button" data-booking-id="${booking.id}">Xem chi tiết</button>
-      </div>
-    </article>
-  `).join('');
-
-  container.querySelectorAll('[data-booking-id]').forEach((button) => {
-    button.addEventListener('click', () => openDrawer(Number(button.dataset.bookingId)));
-  });
 }
 
 function renderChart(bookings) {
-  const chartSeries = buildChartSeries(bookings);
-  const hasData = chartSeries.labels.length > 0 && [...chartSeries.paid, ...chartSeries.pending].some((value) => value > 0);
-
-  dom.revenueTrendEmpty?.classList.toggle('is-visible', !hasData);
-
-  if (state.chart) {
-    state.chart.destroy();
-    state.chart = null;
-  }
-
-  if (!hasData || !dom.revenueTrendChart || typeof ApexCharts === 'undefined') {
+  if (!dom.revenueTrendChart || !dom.revenueTrendEmpty) return;
+  const series = buildChartSeries(bookings);
+  
+  if (!series.labels.length) {
+    dom.revenueTrendChart.style.display = 'none';
+    dom.revenueTrendEmpty.style.display = 'flex';
+    if (state.chart) { state.chart.destroy(); state.chart = null; }
     return;
   }
 
-  state.chart = new ApexCharts(dom.revenueTrendChart, {
-    chart: {
-      type: 'area',
-      height: 320,
-      toolbar: { show: false },
-      fontFamily: 'Inter, sans-serif',
-    },
-    series: [
-      { name: 'Đã thu', data: chartSeries.paid },
-      { name: 'Chờ thanh toán', data: chartSeries.pending },
-    ],
-    colors: ['#0ea5e9', '#f59e0b'],
-    stroke: {
-      curve: 'smooth',
-      width: [3, 2],
-    },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.32,
-        opacityTo: 0.04,
-      },
-    },
-    dataLabels: { enabled: false },
-    xaxis: {
-      categories: chartSeries.labels,
-      labels: {
-        style: {
-          colors: '#64748b',
-          fontSize: '11px',
-        },
-      },
-    },
-    yaxis: {
-      labels: {
-        formatter: (value) => `${Math.round(value / 1000)}k`,
-        style: {
-          colors: '#64748b',
-          fontSize: '11px',
-        },
-      },
-    },
-    grid: {
-      borderColor: '#e2e8f0',
-      strokeDashArray: 4,
-    },
-    legend: {
-      position: 'top',
-      horizontalAlign: 'left',
-      labels: {
-        colors: '#475569',
-      },
-    },
-    tooltip: {
-      y: {
-        formatter: (value) => formatMoney(value),
-      },
-    },
-  });
+  dom.revenueTrendChart.style.display = 'block';
+  dom.revenueTrendEmpty.style.display = 'none';
 
-  state.chart.render();
+  const options = {
+    chart: { type: 'area', height: 320, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+    colors: ['#cbd5e1', '#10b981', '#ef4444'],
+    series: [
+      { name: 'Công gộp', data: series.gross },
+      { name: 'Thực nhận (cộng ví)', data: series.net },
+      { name: 'Thuế & Phí', data: series.deduct },
+    ],
+    xaxis: { categories: series.labels, tooltip: { enabled: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { formatter: (value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : `${value / 1000}k` } },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.2, opacityTo: 0.05, stops: [0, 100] } },
+    legend: { show: false },
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4, yaxis: { lines: { show: true } } },
+    tooltip: { y: { formatter: (value) => formatMoney(value) } },
+  };
+
+  if (state.chart) {
+    state.chart.updateOptions(options);
+  } else {
+    state.chart = new window.ApexCharts(dom.revenueTrendChart, options);
+    state.chart.render();
+  }
 }
 
 function renderTable(bookings) {
-  if (!dom.revenueTableBody) {
-    return;
-  }
-
+  if (!dom.revenueTableBody) return;
   if (!bookings.length) {
-    dom.revenueTableBody.innerHTML = `
-      <tr>
-        <td colspan="10">
-          <div class="revenue-state">
-            <strong>Không có đơn phù hợp</strong>
-            Hãy đổi bộ lọc thời gian hoặc trạng thái để xem dữ liệu doanh thu khác.
-          </div>
-        </td>
-      </tr>
-    `;
+    dom.revenueTableBody.innerHTML = `<tr><td colspan="10"><div class="revenue-state"><strong>Không có đơn hàng</strong> Không tìm thấy đơn nào khớp với bộ lọc hiện tại.</div></td></tr>`;
     return;
   }
 
-  dom.revenueTableBody.innerHTML = bookings.map((booking) => {
-    const status = getStatusMeta(booking);
-    const paymentLabel = isPaid(booking) ? 'Đã thanh toán' : 'Chưa thanh toán';
-    const paymentTone = isPaid(booking) ? 'paid' : 'pending';
+  const html = bookings.map((booking) => {
+    const income = calculateIncome(booking);
+    const meta = getStatusMeta(income);
+
     return `
       <tr>
-        <td><strong>#${booking.id}</strong></td>
+        <td class="table-id">#${booking.id}</td>
+        <td>${formatDateLabel(booking)}</td>
+        <td>${escapeHtml(getServiceLabel(booking))}</td>
         <td>
-          <div>${escapeHtml(formatDateLabel(booking))}</div>
-          <div class="table-subtle">${escapeHtml(formatDateTimeLabel(booking?.thoi_gian_hoan_thanh || booking?.created_at))}</div>
+            <div style="font-weight: 500;">${escapeHtml(getCustomerName(booking))}</div>
         </td>
-        <td>
-          <div class="table-customer">
-            <strong>${escapeHtml(getCustomerName(booking))}</strong>
-            <span>${escapeHtml(getCustomerPhone(booking) || 'Chưa có số điện thoại')}</span>
-          </div>
-        </td>
-        <td>
-          <div>${escapeHtml(getServiceLabel(booking))}</div>
-          <div class="table-subtle">${escapeHtml(booking?.dia_chi || 'Không có địa chỉ')}</div>
-        </td>
-        <td><span class="revenue-badge revenue-badge--${booking?.loai_dat_lich === 'at_home' ? 'home' : 'store'}">${escapeHtml(getLocationLabel(booking))}</span></td>
-        <td>
-          <div>${escapeHtml(getPaymentMethodLabel(booking))}</div>
-          <div class="table-subtle"><span class="revenue-badge revenue-badge--${paymentTone}">${escapeHtml(paymentLabel)}</span></div>
-        </td>
-        <td><strong>${formatMoney(getBookingTotal(booking))}</strong></td>
-        <td><span class="revenue-badge revenue-badge--${status.tone}">${escapeHtml(status.label)}</span></td>
-        <td>${renderStars(getRating(booking))}</td>
-        <td><button type="button" class="revenue-row-button" data-booking-id="${booking.id}">Chi tiết</button></td>
+        <td style="font-weight: 500;">${formatMoney(income.gross)}</td>
+        <td style="color: #ef4444;">${formatMoney(income.tax)}</td>
+        <td style="color: #ef4444;">${formatMoney(income.fee)}</td>
+        <td style="font-weight: 700; color: #10b981;">${formatMoney(income.net)}</td>
+        <td><span class="revenue-status revenue-status--${meta.tone}">${escapeHtml(meta.label)}</span></td>
+        <td><button type="button" class="action-btn" data-id="${booking.id}">Chi tiết</button></td>
       </tr>
     `;
   }).join('');
 
-  dom.revenueTableBody.querySelectorAll('[data-booking-id]').forEach((button) => {
-    button.addEventListener('click', () => openDrawer(Number(button.dataset.bookingId)));
+  dom.revenueTableBody.innerHTML = html;
+  
+  dom.revenueTableBody.querySelectorAll('.action-btn').forEach((button) => {
+    button.addEventListener('click', () => openDrawer(button.dataset.id));
   });
 }
 
 function openDrawer(bookingId) {
-  const booking = state.bookings.find((item) => Number(item.id) === Number(bookingId));
+  const booking = state.visibleBookings.find((b) => String(b.id) === String(bookingId));
+  if (!booking) return;
 
-  if (!booking || !dom.revenueDrawer || !dom.revenueDrawerBody) {
-    return;
+  const income = calculateIncome(booking);
+  const meta = getStatusMeta(income);
+
+  if (dom.drawerTitle) dom.drawerTitle.textContent = `Phiếu lương đơn #${booking.id}`;
+  if (dom.drawerSubtitle) dom.drawerSubtitle.textContent = escapeHtml(getServiceLabel(booking));
+
+  if (dom.revenueDrawerBody) {
+    dom.revenueDrawerBody.innerHTML = `
+      <div class="drawer-section">
+        <div class="drawer-kv"><span>Trạng thái lương</span><span class="revenue-status revenue-status--${meta.tone}">${escapeHtml(meta.label)}</span></div>
+        <div class="drawer-kv"><span>Khách hàng</span><strong>${escapeHtml(getCustomerName(booking))}</strong></div>
+        <div class="drawer-kv"><span>Hoàn thành</span><strong>${formatDateLabel(booking)}</strong></div>
+      </div>
+      
+      <div class="drawer-section">
+        <h4 style="margin-bottom: 0.75rem; font-weight: 600;">Chi tiết tính lương</h4>
+        <div class="drawer-kv"><span>Tiền công gộp</span><strong>${formatMoney(income.gross)}</strong></div>
+        <div class="drawer-kv"><span>Thuế nhà nước (${state.settings.tax_rate}%)</span><strong style="color:#ef4444;">-${formatMoney(income.tax)}</strong></div>
+        <div class="drawer-kv"><span>Phí nền tảng (${state.settings.fee_rate}%)</span><strong style="color:#ef4444;">-${formatMoney(income.fee)}</strong></div>
+        <div class="drawer-divider" style="height: 1px; background: #e2e8f0; margin: 0.75rem 0;"></div>
+        <div class="drawer-kv" style="font-size: 1.1rem;"><span>Thực nhận</span><strong style="color:#10b981;">${formatMoney(income.net)}</strong></div>
+      </div>
+      
+      <div class="drawer-section" style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
+        <p style="font-size: 0.85rem; color: #64748b; margin: 0; line-height: 1.4;">
+            ${income.isPaid ? 'Khoản thực nhận này đã được cộng vào số dư ví thợ của bạn.' : (income.isPending ? 'Đơn này đang chờ khách thanh toán hoặc hệ thống xử lý để cộng ví.' : 'Đơn chưa phát sinh doanh thu công.')}
+        </p>
+      </div>
+    `;
   }
 
-  const status = getStatusMeta(booking);
-  const laborItems = getStoredCostItems(booking, 'chi_tiet_tien_cong');
-  const partItems = getStoredCostItems(booking, 'chi_tiet_linh_kien');
-  const laborTotal = laborItems.length ? laborItems.reduce((sum, item) => sum + getNumeric(item?.so_tien), 0) : getNumeric(booking?.tien_cong);
-  const partTotal = partItems.length ? partItems.reduce((sum, item) => sum + getNumeric(item?.so_tien), 0) : getNumeric(booking?.phi_linh_kien);
-
-  if (dom.drawerTitle) {
-    dom.drawerTitle.textContent = `Đơn #${booking.id} • ${getCustomerName(booking)}`;
-  }
-
-  if (dom.drawerSubtitle) {
-    dom.drawerSubtitle.textContent = `${status.label} • ${getPaymentMethodLabel(booking)} • ${formatDateLabel(booking)}`;
-  }
-
-  dom.revenueDrawerBody.innerHTML = `
-    <section class="drawer-card">
-      <h4>Thông tin chính</h4>
-      <div class="drawer-grid">
-        <div class="drawer-row"><span>Khách hàng</span><strong>${escapeHtml(getCustomerName(booking))}</strong></div>
-        <div class="drawer-row"><span>Điện thoại</span><strong>${escapeHtml(getCustomerPhone(booking) || 'Chưa có')}</strong></div>
-        <div class="drawer-row"><span>Dịch vụ</span><strong>${escapeHtml(getServiceLabel(booking))}</strong></div>
-        <div class="drawer-row"><span>Hình thức</span><strong>${escapeHtml(getLocationLabel(booking))}</strong></div>
-        <div class="drawer-row"><span>Lịch hẹn</span><strong>${escapeHtml(formatDateLabel(booking))}${booking?.khung_gio_hen ? ` • ${escapeHtml(booking.khung_gio_hen)}` : ''}</strong></div>
-        <div class="drawer-row"><span>Hoàn thành</span><strong>${escapeHtml(formatDateTimeLabel(booking?.thoi_gian_hoan_thanh))}</strong></div>
-      </div>
-    </section>
-
-    <section class="drawer-card">
-      <h4>Breakdown chi phí</h4>
-      <div class="drawer-grid">
-        <div class="drawer-row"><span>Phí đi lại</span><strong>${formatMoney(booking?.phi_di_lai)}</strong></div>
-        <div class="drawer-row"><span>Tiền công</span><strong>${formatMoney(laborTotal)}</strong></div>
-        <div class="drawer-row"><span>Linh kiện</span><strong>${formatMoney(partTotal)}</strong></div>
-        <div class="drawer-row"><span>Thuê xe chở</span><strong>${formatMoney(booking?.tien_thue_xe)}</strong></div>
-        <div class="drawer-row"><span>Tổng cộng</span><strong>${formatMoney(getBookingTotal(booking))}</strong></div>
-      </div>
-    </section>
-
-    <section class="drawer-card">
-      <h4>Chi tiết tiền công</h4>
-      <div class="drawer-breakdown">
-        ${laborItems.length ? laborItems.map((item) => `
-          <div class="drawer-item">
-            <div class="drawer-item__name">${escapeHtml(item?.noi_dung || 'Hạng mục công việc')}</div>
-            <div class="drawer-item__meta">${formatMoney(item?.so_tien)}</div>
-          </div>
-        `).join('') : '<div class="revenue-empty">Chưa có danh sách hạng mục tiền công.</div>'}
-      </div>
-    </section>
-
-    <section class="drawer-card">
-      <h4>Chi tiết linh kiện</h4>
-      <div class="drawer-breakdown">
-        ${partItems.length ? partItems.map((item) => `
-          <div class="drawer-item">
-            <div class="drawer-item__name">${escapeHtml(item?.noi_dung || 'Linh kiện phát sinh')}</div>
-            <div class="drawer-item__meta">${formatMoney(item?.so_tien)}${item?.bao_hanh_thang ? ` • Bảo hành ${escapeHtml(item.bao_hanh_thang)} tháng` : ''}</div>
-          </div>
-        `).join('') : '<div class="revenue-empty">Chưa có linh kiện phát sinh.</div>'}
-      </div>
-    </section>
-  `;
-
-  dom.revenueDrawer.classList.add('is-open');
-  dom.revenueDrawer.setAttribute('aria-hidden', 'false');
-  dom.revenueDrawerOverlay?.classList.add('is-open');
+  dom.revenueDrawerOverlay?.classList.add('is-visible');
+  dom.revenueDrawer?.classList.add('is-visible');
+  dom.revenueDrawer?.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeDrawer() {
-  dom.revenueDrawer?.classList.remove('is-open');
+  dom.revenueDrawerOverlay?.classList.remove('is-visible');
+  dom.revenueDrawer?.classList.remove('is-visible');
   dom.revenueDrawer?.setAttribute('aria-hidden', 'true');
-  dom.revenueDrawerOverlay?.classList.remove('is-open');
-}
-
-function exportVisibleBookingsAsCsv() {
-  if (!state.visibleBookings.length) {
-    showToast('Không có dữ liệu để xuất.', 'error');
-    return;
-  }
-
-  const rows = [
-    ['Ma don', 'Ngay', 'Khach hang', 'Dich vu', 'Hinh thuc', 'Thanh toan', 'Tong tien', 'Trang thai'],
-    ...state.visibleBookings.map((booking) => ([
-      `#${booking.id}`,
-      formatDateLabel(booking),
-      getCustomerName(booking),
-      getServiceLabel(booking),
-      getLocationLabel(booking),
-      getPaymentMethodLabel(booking),
-      getBookingTotal(booking),
-      getStatusMeta(booking).label,
-    ])),
-  ];
-
-  const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-
-  link.href = url;
-  link.download = `worker-revenue-${Date.now()}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-
-  showToast('Đã xuất CSV doanh thu.');
+  document.body.style.overflow = '';
 }

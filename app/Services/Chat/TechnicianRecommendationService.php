@@ -47,7 +47,7 @@ class TechnicianRecommendationService
 
         $maxCompleted = (int) max(1, (int) $completedJobsMap->max());
 
-        $ranked = $workers->map(function (HoSoTho $worker) use ($skillIntentTokens, $completedJobsMap, $maxCompleted): array {
+        $ranked = $workers->map(function (HoSoTho $worker) use ($skillIntentTokens, $completedJobsMap, $maxCompleted, $serviceId): array {
             $serviceNames = $worker->user?->dichVus?->pluck('ten_dich_vu')->all() ?? [];
             $skills = implode(', ', $serviceNames);
             $skillCorpus = trim($skills . ' ' . (string) $worker->kinh_nghiem);
@@ -59,6 +59,11 @@ class TechnicianRecommendationService
 
             $score = (0.45 * $skillScore) + (0.35 * $ratingNorm) + (0.20 * $completedNorm);
 
+            $bookingUrl = '/customer/booking?worker_id=' . $worker->user_id;
+            if ($serviceId !== null) {
+                $bookingUrl .= '&dich_vu_id=' . $serviceId;
+            }
+
             return [
                 'id' => $worker->user_id,
                 'name' => (string) ($worker->user?->name ?? 'Tho sua chua'),
@@ -68,7 +73,7 @@ class TechnicianRecommendationService
                 'avatar' => $worker->user?->avatar,
                 'reference_price' => (string) ($worker->bang_gia_tham_khao ?? ''),
                 'profile_url' => '/customer/worker-profile/' . $worker->user_id,
-                'booking_url' => '/customer/worker-profile/' . $worker->user_id,
+                'booking_url' => $bookingUrl,
                 'score' => round($score, 4),
             ];
         })->sortByDesc('score')->values();

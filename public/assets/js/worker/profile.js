@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadProfile(el),
         loadCompletedStats(el),
         loadReviews(el),
+        loadWalletStats(el),
     ]);
 });
 
@@ -645,3 +646,125 @@ function bindFormSubmit(el) {
         }
     });
 }
+
+// Wallet Handlers
+async function loadWalletStats(el) {
+    try {
+        const response = await callApi('/worker/stats', 'GET');
+        if (response.ok && response.data) {
+            const walletBalance = document.getElementById('walletBalance');
+            if (walletBalance) {
+                const balance = response.data.wallet?.so_du || 0;
+                walletBalance.textContent = Number(balance).toLocaleString('vi-VN');
+            }
+            
+            const transactionHistory = document.getElementById('transactionHistory');
+            if (transactionHistory && response.data.wallet?.history) {
+                const history = response.data.wallet.history;
+                if (history.length > 0) {
+                    transactionHistory.innerHTML = history.map(item => {
+                        const date = new Date(item.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+                        const isPlus = item.loai_giao_dich === 'nap_tien' || item.loai_giao_dich === 'nhan_doanh_thu_cong';
+                        const sign = isPlus ? '+' : '-';
+                        const color = isPlus ? '#10b981' : '#ef4444';
+                        
+                        let label = 'Giao dịch';
+                        if (item.loai_giao_dich === 'nap_tien') label = 'Nạp tiền vào ví';
+                        if (item.loai_giao_dich === 'rut_tien') label = 'Rút tiền';
+                        if (item.loai_giao_dich === 'tru_tien_linh_kien') label = 'Trừ tiền linh kiện (Đơn #' + (item.ma_don_hang||'') + ')';
+                        if (item.loai_giao_dich === 'tru_thue_nha_nuoc') label = 'Trừ thuế (Đơn #' + (item.ma_don_hang||'') + ')';
+                        if (item.loai_giao_dich === 'tru_phi_nen_tang') label = 'Trừ phí nền tảng (Đơn #' + (item.ma_don_hang||'') + ')';
+                        if (item.loai_giao_dich === 'nhan_doanh_thu_cong') label = 'Cộng tiền công (Đơn #' + (item.ma_don_hang||'') + ')';
+
+                        const statusBadge = item.trang_thai === 'dang_xu_ly' 
+                            ? '<span style="font-size: 0.6rem; background: #fef08a; color: #854d0e; padding: 0.1rem 0.4rem; border-radius: 99px; margin-left: 0.3rem; font-weight: bold;">Đang xử lý</span>' 
+                            : '';
+                        return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid #f1f5f9;">
+                            <div>
+                                <div style="font-weight:600; color:#0f172a; margin-bottom:.15rem;">${escapeHtml(label)}${statusBadge}</div>
+                                <div style="font-size:.7rem; color:#64748b;">${date}</div>
+                            </div>
+                            <div style="font-weight:700; color:${color}; font-family:'DM Sans',sans-serif;">
+                                ${sign}${Number(item.so_tien).toLocaleString('vi-VN')}đ
+                            </div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    transactionHistory.innerHTML = '<div style="text-align:center; padding:1.5rem 0; color:#94a3b8;">Chưa có giao dịch nào</div>';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Lỗi tải dữ liệu ví:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnDeposit = document.getElementById('btnConfirmDeposit');
+    if (btnDeposit) {
+        btnDeposit.addEventListener('click', async () => {
+            const amount = document.getElementById('depositAmount').value;
+            const method = document.getElementById('depositMethod').value;
+            if (!amount || amount < 10000) return showToast('So tien nap toi thieu la 10,000d', 'error');
+            
+            showToast('Dang tao giao dich nap tien...', 'success');
+            try {
+                const response = await callApi('/payment/wallet/deposit', 'POST', { amount: amount, phuong_thuc: method });
+                if (response.ok && response.data.url) {
+                    window.location.href = response.data.url;
+                } else if (response.ok && response.data.payment_status === 'success') {
+                    showToast('Nap tien test thanh cong!', 'success');
+                    document.getElementById('depositModal').classList.add('d-none');
+                } else {
+                    showToast(response.data?.message || 'Khong the khoi tao thanh toan', 'error');
+                }
+            } catch (err) {
+                showToast('Loi ket noi: ' + err.message, 'error');
+            }
+        });
+    }
+
+    const btnWithdraw = document.getElementById('btnConfirmWithdraw');
+    if (btnWithdraw) {
+        btnWithdraw.addEventListener('click', async () => {
+            const amount = document.getElementById('withdrawAmount').value;
+            if (!amount || amount < 50000) return showToast('Vui lòng nhập số tiền từ 50,000đ trở lên.', 'error');
+            
+            showToast('Đang gửi yêu cầu rút tiền...', 'success');
+            btnWithdraw.disabled = true;
+
+            try {
+                const response = await callApi('/payment/wallet/withdraw', 'POST', { amount: amount });
+                if (response.ok) {
+                    showToast(response.data.message || 'Đã gửi yêu cầu rút tiền.', 'success');
+                    document.getElementById('withdrawModal').classList.add('d-none');
+                    document.getElementById('withdrawAmount').value = '';
+                    loadWalletStats(); // Reload to show pending status
+                    
+                    // Simulate processing delay (3 seconds)
+                    const transactionId = response.data.transaction_id;
+                    if (transactionId) {
+                        setTimeout(async () => {
+                            try {
+                                const simRes = await callApi(`/payment/wallet/withdraw/${transactionId}/simulate-success`, 'POST');
+                                if (simRes.ok) {
+                                    showToast('Rút tiền đã được xử lý thành công!', 'success');
+                                    loadWalletStats(); // Reload to update status to success
+                                }
+                            } catch (err) {
+                                console.error('Lỗi khi giả lập thành công:', err);
+                            }
+                        }, 3000);
+                    }
+                } else {
+                    showToast(response.data?.message || 'Không thể gửi yêu cầu rút tiền.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối: ' + err.message, 'error');
+            } finally {
+                btnWithdraw.disabled = false;
+            }
+        });
+    }
+});

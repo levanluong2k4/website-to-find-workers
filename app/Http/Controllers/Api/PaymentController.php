@@ -9,6 +9,7 @@ use App\Support\HttpClientTlsConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class PaymentController extends Controller
 {
@@ -67,7 +68,237 @@ class PaymentController extends Controller
         };
     }
 
+    public function createWalletDepositUrl(Request $request)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:10000',
+            'phuong_thuc' => 'required|in:test,vnpay,momo,zalopay',
+        ]);
+
+        $user = $request->user();
+        if (!$user || $user->role !== 'worker') {
+            return response()->json(['success' => false, 'message' => 'Chi tho moi co the nap tien vao vi.'], 403);
+        }
+
+        $totalAmount = (float) $validated['amount'];
+        $txnRef = 'WALLET_' . $user->id . '_' . time();
+        $orderInfo = 'Nap ' . number_format($totalAmount) . ' VND vao vi tho ' . $user->id;
+
+        return match ($validated['phuong_thuc']) {
+            'vnpay' => $this->buildGenericVnpayUrl($request, $txnRef, $totalAmount, $orderInfo),
+            'momo' => $this->buildGenericMomoUrl($request, $txnRef, $totalAmount, $orderInfo, 'payWithATM'),
+            'zalopay' => $this->buildGenericZalopayUrl($request, $txnRef, $totalAmount, $orderInfo, $user->id),
+            default => $this->processTestWalletDeposit($user->id, $totalAmount, $txnRef),
+        };
+    }
+
+    public function requestWithdraw(Request $request)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:50000',
+        ]);
+
+        $user = $request->user();
+        if (!$user || $user->role !== 'worker') {
+            return response()->json(['success' => false, 'message' => 'Chỉ thợ mới có thể rút tiền.'], 403);
+        }
+
+        $amount = (float) $validated['amount'];
+
+        $vi = \App\Models\ViDienTu::firstOrCreate(
+            ['ma_tho' => $user->id],
+            ['so_du' => 0, 'trang_thai' => 'hoat_dong']
+        );
+
+        if ($vi->so_du - $amount < 500000) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Số dư không đủ. Bạn phải duy trì tối thiểu 500.000đ trong ví.'
+            ], 400);
+        }
+
+        // Deduct balance and create pending transaction
+        $vi->so_du -= $amount;
+        $vi->save();
+
+        $giaoDich = \App\Models\LichSuGiaoDich::create([
+            'ma_vi' => $vi->id,
+            'so_tien' => $amount,
+            'loai_giao_dich' => 'rut_tien',
+            'trang_thai' => 'dang_xu_ly',
+            'ma_don_hang' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Yêu cầu rút tiền đang được xử lý.',
+            'transaction_id' => $giaoDich->id
+        ]);
+    }
+
+    public function simulateWithdrawSuccess($id, Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'worker') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $giaoDich = \App\Models\LichSuGiaoDich::where('id', $id)
+            ->whereHas('viDienTu', function ($query) use ($user) {
+                $query->where('ma_tho', $user->id);
+            })
+            ->where('loai_giao_dich', 'rut_tien')
+            ->where('trang_thai', 'dang_xu_ly')
+            ->first();
+
+        if (!$giaoDich) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy giao dịch hoặc đã được xử lý.'], 404);
+        }
+
+        $giaoDich->trang_thai = 'thanh_cong';
+        $giaoDich->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rút tiền thành công.',
+        ]);
+    }
+
+    private function processTestWalletDeposit($userId, $totalAmount, $txnRef)
+    {
+        // Mock success deposit directly
+        $vi = \App\Models\ViDienTu::firstOrCreate(['ma_tho' => $userId], ['so_du' => 0, 'trang_thai' => 'hoat_dong']);
+        $vi->so_du += $totalAmount;
+        $vi->save();
+
+        \App\Models\LichSuGiaoDich::create([
+            'ma_vi' => $vi->id,
+            'so_tien' => $totalAmount,
+            'loai_giao_dich' => 'nap_tien',
+            'ma_don_hang' => null
+        ]);
+
+        return response()->json(['success' => true, 'payment_status' => 'success', 'message' => 'Nap tien test thanh cong.']);
+    }
+
+    private function processSuccessWalletDeposit(string $txnRef, float $amount): void
+    {
+        $parts = explode('_', $txnRef);
+        // For VNPay/MoMo: WALLET_{userId}_{timestamp}
+        $userId = isset($parts[1]) ? (int) $parts[1] : 0;
+
+        if ($userId <= 0) {
+            return;
+        }
+
+        $lockKey = 'wallet_deposit_' . $txnRef;
+        if (Cache::has($lockKey)) {
+            return;
+        }
+
+        $vi = \App\Models\ViDienTu::firstOrCreate(
+            ['ma_tho' => $userId],
+            ['so_du' => 0, 'trang_thai' => 'hoat_dong']
+        );
+        $vi->so_du += $amount;
+        $vi->save();
+
+        \App\Models\LichSuGiaoDich::create([
+            'ma_vi' => $vi->id,
+            'so_tien' => $amount,
+            'loai_giao_dich' => 'nap_tien',
+            'ma_don_hang' => null,
+        ]);
+
+        Cache::put($lockKey, true, now()->addDays(1));
+    }
+
+    private function buildGenericVnpayUrl(Request $request, $txnRef, $totalAmount, $orderInfo)
+    {
+        $tmnCode = (string) env('VNP_TMN_CODE', '');
+        $hashSecret = (string) env('VNP_HASH_SECRET', '');
+        $gatewayUrl = (string) env('VNP_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
+        if ($tmnCode === '' || $hashSecret === '') return response()->json(['success' => false, 'message' => 'VNPay chua duoc cau hinh.'], 500);
+
+        $createDate = now()->setTimezone(env('VNP_TIMEZONE', 'Asia/Ho_Chi_Minh'));
+        $params = [
+            'vnp_Version' => '2.1.0',
+            'vnp_TmnCode' => $tmnCode,
+            'vnp_Amount' => (int) round($totalAmount * 100),
+            'vnp_Command' => 'pay',
+            'vnp_CreateDate' => $createDate->format('YmdHis'),
+            'vnp_CurrCode' => 'VND',
+            'vnp_ExpireDate' => $createDate->copy()->addMinutes(15)->format('YmdHis'),
+            'vnp_IpAddr' => $request->ip(),
+            'vnp_Locale' => 'vn',
+            'vnp_OrderInfo' => $orderInfo,
+            'vnp_OrderType' => 'other',
+            'vnp_ReturnUrl' => $this->buildCallbackUrl($request, 'vnpay-return'),
+            'vnp_TxnRef' => $txnRef,
+        ];
+        $query = $this->buildVnpayQuery($params);
+        $secureHash = $this->buildVnpaySecureHash($params, $hashSecret);
+        return response()->json(['success' => true, 'url' => $gatewayUrl . '?' . $query . '&vnp_SecureHash=' . $secureHash]);
+    }
+
+    private function buildGenericMomoUrl(Request $request, $txnRef, $totalAmount, $orderInfo, $requestType)
+    {
+        $partnerCode = (string) env('MOMO_PARTNER_CODE', '');
+        $accessKey = (string) env('MOMO_ACCESS_KEY', '');
+        $secretKey = (string) env('MOMO_SECRET_KEY', '');
+        if ($partnerCode === '' || $accessKey === '' || $secretKey === '') return response()->json(['success' => false, 'message' => 'MoMo chua cau hinh.'], 500);
+
+        $payload = [
+            'partnerCode' => $partnerCode,
+            'partnerName' => 'ThoTotNTU',
+            'storeId' => 'ThoTotNTUStore',
+            'requestId' => (string) time(),
+            'amount' => (string) round($totalAmount),
+            'orderId' => $txnRef,
+            'orderInfo' => $orderInfo,
+            'redirectUrl' => $this->buildCallbackUrl($request, 'momo-return'),
+            'ipnUrl' => $this->buildCallbackUrl($request, 'momo-ipn'),
+            'lang' => 'vi',
+            'extraData' => '',
+            'requestType' => $requestType,
+        ];
+        $rawHash = "accessKey={$accessKey}&amount={$payload['amount']}&extraData={$payload['extraData']}&ipnUrl={$payload['ipnUrl']}&orderId={$payload['orderId']}&orderInfo={$payload['orderInfo']}&partnerCode={$payload['partnerCode']}&redirectUrl={$payload['redirectUrl']}&requestId={$payload['requestId']}&requestType={$payload['requestType']}";
+        $payload['signature'] = hash_hmac('sha256', $rawHash, $secretKey);
+
+        $response = Http::withOptions(HttpClientTlsConfig::options())->acceptJson()->post(env('MOMO_ENDPOINT', 'https://test-payment.momo.vn/v2/gateway/api/create'), $payload);
+        if ($response->successful() && !empty($response->json('payUrl'))) return response()->json(['success' => true, 'url' => $response->json('payUrl')]);
+        return response()->json(['success' => false, 'message' => 'Loi MoMo.'], 500);
+    }
+
+    private function buildGenericZalopayUrl(Request $request, $txnRef, $totalAmount, $orderInfo, $userId)
+    {
+        $appId = (string) env('ZALOPAY_APP_ID', '');
+        $key1 = (string) env('ZALOPAY_KEY1', '');
+        if ($appId === '' || $key1 === '') return response()->json(['success' => false, 'message' => 'ZaloPay chua cau hinh.'], 500);
+
+        $createdAt = now()->setTimezone(env('ZALOPAY_TIMEZONE', 'Asia/Ho_Chi_Minh'));
+        $appTransId = $createdAt->format('ymd') . '_' . $txnRef;
+        $order = [
+            'app_id' => $appId,
+            'app_time' => (string) $createdAt->valueOf(),
+            'app_trans_id' => $appTransId,
+            'app_user' => 'user_' . $userId,
+            'item' => '[]',
+            'embed_data' => json_encode(['redirecturl' => $this->buildCallbackUrl($request, 'zalopay-return')], JSON_UNESCAPED_SLASHES),
+            'amount' => (string) round($totalAmount),
+            'description' => $orderInfo,
+            'bank_code' => '',
+            'callback_url' => $this->buildCallbackUrl($request, 'zalopay-ipn'),
+        ];
+        $order['mac'] = $this->buildZalopayCreateOrderMac($order, $key1);
+
+        $response = Http::withOptions(HttpClientTlsConfig::options())->asForm()->post(env('ZALOPAY_ENDPOINT', 'https://sb-openapi.zalopay.vn/v2/create'), $order);
+        if ($response->successful() && !empty($response->json('order_url'))) return response()->json(['success' => true, 'url' => $response->json('order_url')]);
+        return response()->json(['success' => false, 'message' => 'Loi ZaloPay.'], 500);
+    }
+
     public function vnpayReturn(Request $request)
+
     {
         $inputData = $this->extractPrefixedFields($request, 'vnp_');
         $receivedHash = (string) $request->input('vnp_SecureHash', '');
@@ -76,15 +307,21 @@ class PaymentController extends Controller
         $calculatedHash = $this->buildVnpaySecureHash($inputData, $secret);
 
         $txnRef = (string) $request->input('vnp_TxnRef', '');
-        $bookingId = (int) explode('_', $txnRef)[0];
 
         if (!hash_equals($calculatedHash, $receivedHash)) {
-            return redirect('/customer/my-bookings?payment=invalid_signature');
+            return str_starts_with($txnRef, 'WALLET_') ? redirect('/worker/profile?payment=invalid_signature') : redirect('/customer/my-bookings?payment=invalid_signature');
         }
 
         if ($request->input('vnp_ResponseCode') !== '00') {
-            return redirect('/customer/my-bookings?payment=failed');
+            return str_starts_with($txnRef, 'WALLET_') ? redirect('/worker/profile?payment=failed') : redirect('/customer/my-bookings?payment=failed');
         }
+
+        if (str_starts_with($txnRef, 'WALLET_')) {
+            $this->processSuccessWalletDeposit($txnRef, ((float) $request->input('vnp_Amount', 0)) / 100);
+            return redirect('/worker/profile?payment=success');
+        }
+
+        $bookingId = (int) explode('_', $txnRef)[0];
 
         $this->processSuccessPayment(
             $bookingId,
@@ -110,14 +347,20 @@ class PaymentController extends Controller
         }
 
         $txnRef = (string) $request->input('vnp_TxnRef', '');
-        $bookingId = (int) explode('_', $txnRef)[0];
-        $booking = DonDatLich::find($bookingId);
-
-        if (!$booking) {
-            return response()->json(['RspCode' => '01', 'Message' => 'Order not found']);
-        }
 
         if ($request->input('vnp_ResponseCode') === '00') {
+            if (str_starts_with($txnRef, 'WALLET_')) {
+                $this->processSuccessWalletDeposit($txnRef, ((float) $request->input('vnp_Amount', 0)) / 100);
+                return response()->json(['RspCode' => '00', 'Message' => 'Confirm Success']);
+            }
+
+            $bookingId = (int) explode('_', $txnRef)[0];
+            $booking = DonDatLich::find($bookingId);
+
+            if (!$booking) {
+                return response()->json(['RspCode' => '01', 'Message' => 'Order not found']);
+            }
+
             $this->processSuccessPayment(
                 $bookingId,
                 ((float) $request->input('vnp_Amount', 0)) / 100,
@@ -135,15 +378,21 @@ class PaymentController extends Controller
         $signature = $this->buildMomoReturnSignature($request);
         $receivedSignature = (string) $request->input('signature', '');
         $orderId = (string) $request->input('orderId', '');
-        $bookingId = (int) explode('_', $orderId)[0];
 
         if (!hash_equals($signature, $receivedSignature)) {
-            return redirect('/customer/my-bookings?payment=invalid_signature');
+            return str_starts_with($orderId, 'WALLET_') ? redirect('/worker/profile?payment=invalid_signature') : redirect('/customer/my-bookings?payment=invalid_signature');
         }
 
         if ((string) $request->input('resultCode') !== '0') {
-            return redirect('/customer/my-bookings?payment=failed');
+            return str_starts_with($orderId, 'WALLET_') ? redirect('/worker/profile?payment=failed') : redirect('/customer/my-bookings?payment=failed');
         }
+
+        if (str_starts_with($orderId, 'WALLET_')) {
+            $this->processSuccessWalletDeposit($orderId, (float) $request->input('amount', 0));
+            return redirect('/worker/profile?payment=success');
+        }
+
+        $bookingId = (int) explode('_', $orderId)[0];
 
         $this->processSuccessPayment(
             $bookingId,
@@ -166,14 +415,20 @@ class PaymentController extends Controller
         }
 
         $orderId = (string) $request->input('orderId', '');
-        $bookingId = (int) explode('_', $orderId)[0];
-        $booking = DonDatLich::find($bookingId);
-
-        if (!$booking) {
-            return response()->json(['message' => 'Order not found'], 404);
-        }
 
         if ((string) $request->input('resultCode') === '0') {
+            if (str_starts_with($orderId, 'WALLET_')) {
+                $this->processSuccessWalletDeposit($orderId, (float) $request->input('amount', 0));
+                return response()->json([], 204);
+            }
+
+            $bookingId = (int) explode('_', $orderId)[0];
+            $booking = DonDatLich::find($bookingId);
+
+            if (!$booking) {
+                return response()->json(['message' => 'Order not found'], 404);
+            }
+
             $this->processSuccessPayment(
                 $bookingId,
                 (float) $request->input('amount', 0),
@@ -199,33 +454,45 @@ class PaymentController extends Controller
         ];
         $receivedChecksum = (string) $request->input('checksum', '');
         $key2 = trim((string) env('ZALOPAY_KEY2', ''));
+        $apptransid = (string) $request->input('apptransid', '');
+        $isWallet = str_contains($apptransid, '_WALLET_');
 
         if ($receivedChecksum === '' || $key2 === '' || !hash_equals($this->buildZalopayRedirectChecksum($query, $key2), $receivedChecksum)) {
-            return redirect('/customer/my-bookings?payment=invalid_signature');
+            return $isWallet ? redirect('/worker/profile?payment=invalid_signature') : redirect('/customer/my-bookings?payment=invalid_signature');
         }
 
         if ($query['status'] !== '1') {
-            return redirect('/customer/my-bookings?payment=failed');
+            return $isWallet ? redirect('/worker/profile?payment=failed') : redirect('/customer/my-bookings?payment=failed');
         }
 
-        $parts = explode('_', $query['apptransid']);
+        $queryResult = $this->queryZalopayOrderStatus($apptransid);
+        if (($queryResult['success'] ?? false) !== true) {
+            $status = ($queryResult['processing'] ?? false) ? 'processing' : 'failed';
+            return $isWallet ? redirect('/worker/profile?payment=' . $status) : redirect('/customer/my-bookings?payment=' . $status);
+        }
+
+        $fallbackAmount = (float) ($query['amount'] !== '' ? $query['amount'] : '0');
+        $amount = (float) ($queryResult['amount'] ?? $fallbackAmount);
+
+        if ($isWallet) {
+            $parts = explode('_', $apptransid);
+            $userId = isset($parts[2]) ? (int) $parts[2] : 0;
+            $txnRef = 'WALLET_' . $userId . '_' . (isset($parts[3]) ? $parts[3] : time());
+            $this->processSuccessWalletDeposit($txnRef, $amount);
+            return redirect('/worker/profile?payment=success');
+        }
+
+        $parts = explode('_', $apptransid);
         $bookingId = isset($parts[1]) ? (int) $parts[1] : 0;
         if ($bookingId <= 0) {
             return redirect('/customer/my-bookings?payment=failed');
         }
 
-        $queryResult = $this->queryZalopayOrderStatus($query['apptransid']);
-        if (($queryResult['success'] ?? false) !== true) {
-            return redirect('/customer/my-bookings?payment=' . (($queryResult['processing'] ?? false) ? 'processing' : 'failed'));
-        }
-
-        $fallbackAmount = (float) ($query['amount'] !== '' ? $query['amount'] : '0');
-
         $this->processSuccessPayment(
             $bookingId,
-            (float) ($queryResult['amount'] ?? $fallbackAmount),
+            $amount,
             'zalopay',
-            (string) ($queryResult['zp_trans_id'] ?? $query['apptransid']),
+            (string) ($queryResult['zp_trans_id'] ?? $apptransid),
             $queryResult['raw'] ?? $request->query()
         );
 
@@ -247,7 +514,18 @@ class PaymentController extends Controller
         }
 
         $data = json_decode($payload['data'], true);
-        $parts = explode('_', (string) ($data['app_trans_id'] ?? ''));
+        $apptransid = (string) ($data['app_trans_id'] ?? '');
+        $isWallet = str_contains($apptransid, '_WALLET_');
+
+        if ($isWallet) {
+            $parts = explode('_', $apptransid);
+            $userId = isset($parts[2]) ? (int) $parts[2] : 0;
+            $txnRef = 'WALLET_' . $userId . '_' . (isset($parts[3]) ? $parts[3] : time());
+            $this->processSuccessWalletDeposit($txnRef, (float) ($data['amount'] ?? 0));
+            return response()->json(['return_code' => 1, 'return_message' => 'success']);
+        }
+
+        $parts = explode('_', $apptransid);
         $bookingId = isset($parts[1]) ? (int) $parts[1] : 0;
 
         if ($bookingId > 0) {

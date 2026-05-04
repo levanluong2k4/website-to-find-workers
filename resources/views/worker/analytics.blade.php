@@ -1,5 +1,6 @@
+
 @extends('layouts.app')
-@section('title', 'Doanh thu - Thợ Tốt NTU')
+@section('title', 'Báo cáo thu nhập - Thợ Tốt NTU')
 
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -15,100 +16,29 @@
     <header class="worker-revenue__header">
       <div>
         <div class="worker-revenue__eyebrow">
-          <span class="material-symbols-outlined">monitoring</span>
-          <span>Worker Revenue Workspace</span>
+          <span class="material-symbols-outlined">account_balance_wallet</span>
+          <span>Báo cáo lương thợ</span>
         </div>
-        <h1>Doanh thu</h1>
-        <p>Trang này tập trung vào các câu hỏi người thợ cần xem hằng ngày: đã thu được bao nhiêu, khoản nào còn chờ xác nhận và loại việc nào đang tạo tiền tốt nhất.</p>
+        <h1>Thu nhập thực nhận</h1>
+        <p>Báo cáo lương chi tiết: Tiền công tạo ra, khoản bị khấu trừ và thực nhận cộng vào ví của bạn.</p>
       </div>
 
       <div class="worker-revenue__header-actions">
-        <a href="/worker/my-bookings" class="revenue-button revenue-button--ghost">
-          <span class="material-symbols-outlined">calendar_month</span>
-          <span>Đơn của tôi</span>
+        <a href="/worker/profile" class="revenue-button revenue-button--ghost">
+          <span class="material-symbols-outlined">account_balance</span>
+          <span>Ví của tôi</span>
         </a>
         <button type="button" id="exportRevenueCsvButton" class="revenue-button revenue-button--primary">
           <span class="material-symbols-outlined">download</span>
-          <span>Xuất CSV</span>
+          <span>Xuất bảng lương</span>
         </button>
       </div>
     </header>
 
     <div class="worker-revenue__body">
-      <section class="revenue-overview">
-        <article class="revenue-hero revenue-surface">
-          <div class="revenue-pill revenue-pill--light" id="periodSummaryPill">
-            <span class="material-symbols-outlined">date_range</span>
-            <span>30 ngày gần đây</span>
-          </div>
-          <p class="revenue-hero__label">Đã thu trong kỳ</p>
-          <h2 class="revenue-hero__amount" id="heroCollectedAmount">0 đ</h2>
-          <p class="revenue-hero__insight" id="heroInsight">Đang tải dữ liệu doanh thu từ các đơn đã phát sinh chi phí.</p>
-
-          <div class="revenue-hero__stats">
-            <div class="revenue-hero__stat">
-              <span>Đang chờ thu</span>
-              <strong id="heroPendingAmount">0 đ</strong>
-            </div>
-            <div class="revenue-hero__stat">
-              <span>Giá trị công việc</span>
-              <strong id="heroGrossAmount">0 đ</strong>
-            </div>
-            <div class="revenue-hero__stat">
-              <span>Mất vì hủy</span>
-              <strong id="heroCancelledAmount">0 đ</strong>
-            </div>
-          </div>
-        </article>
-
-        <aside class="revenue-summary revenue-surface">
-          <div class="revenue-summary__head">
-            <div class="revenue-pill revenue-pill--soft">
-              <span class="material-symbols-outlined">insights</span>
-              <span>Tóm tắt điều hành</span>
-            </div>
-            <h2>Chỉ số cần nhìn trước</h2>
-            <p>Những chỉ số này cho biết bạn đang giữ tiền tốt hay chỉ mới tạo việc mà chưa chốt được thu nhập.</p>
-          </div>
-
-          <div class="revenue-summary__metrics">
-            <article class="summary-metric">
-              <div class="summary-metric__copy">
-                <span>Tỷ lệ thu tiền</span>
-                <strong>Tiền đã thu trên tổng giá trị công việc</strong>
-              </div>
-              <div class="summary-metric__value" id="summaryCollectionRate">0%</div>
-            </article>
-
-            <article class="summary-metric">
-              <div class="summary-metric__copy">
-                <span>Giá trị trung bình / đơn</span>
-                <strong>Giá trị các đơn có phát sinh chi phí</strong>
-              </div>
-              <div class="summary-metric__value" id="summaryAverageTicket">0 đ</div>
-            </article>
-
-            <article class="summary-metric">
-              <div class="summary-metric__copy">
-                <span>Tỷ lệ hoàn tất</span>
-                <strong>So với các đơn đã kết thúc trong kỳ</strong>
-              </div>
-              <div class="summary-metric__value" id="summaryCompletionRate">0%</div>
-            </article>
-
-            <article class="summary-metric">
-              <div class="summary-metric__copy">
-                <span>Dịch vụ mang tiền tốt nhất</span>
-                <strong id="summaryTopServiceLabel">Chưa có dữ liệu</strong>
-              </div>
-              <div class="summary-metric__value" id="summaryTopServiceAmount">0 đ</div>
-            </article>
-          </div>
-        </aside>
-      </section>
-
-      <section class="revenue-controls revenue-surface">
+      <section class="revenue-controls revenue-surface" style="margin-bottom: 24px;">
         <div class="period-tabs" id="periodTabs">
+          <button type="button" class="period-tab" data-range="today">Hôm nay</button>
           <button type="button" class="period-tab" data-range="7d">7 ngày</button>
           <button type="button" class="period-tab is-active" data-range="30d">30 ngày</button>
           <button type="button" class="period-tab" data-range="month">Tháng này</button>
@@ -127,16 +57,93 @@
         </div>
       </section>
 
+      <!-- 1. Khối tổng quan thu nhập -->
+      <section class="revenue-overview">
+        <article class="revenue-hero revenue-surface">
+          <div class="revenue-pill revenue-pill--light" id="periodSummaryPill">
+            <span class="material-symbols-outlined">date_range</span>
+            <span>30 ngày gần đây</span>
+          </div>
+          <p class="revenue-hero__label">Thực nhận trong kỳ (Cộng ví)</p>
+          <h2 class="revenue-hero__amount" id="heroCollectedAmount">0 đ</h2>
+          <p class="revenue-hero__insight" id="heroInsight">Đang tải dữ liệu thu nhập...</p>
+
+          <div class="revenue-hero__stats">
+            <div class="revenue-hero__stat">
+              <span>Chờ cộng ví</span>
+              <strong id="heroPendingAmount" style="color: #f59e0b;">0 đ</strong>
+            </div>
+            <div class="revenue-hero__stat">
+              <span>Tổng tiền công gộp</span>
+              <strong id="heroGrossAmount">0 đ</strong>
+            </div>
+            <div class="revenue-hero__stat">
+              <span>Đã rút trong kỳ</span>
+              <strong id="heroCancelledAmount" style="color: #10b981;">0 đ</strong>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. Khối khấu trừ -->
+        <aside class="revenue-summary revenue-surface">
+          <div class="revenue-summary__head">
+            <div class="revenue-pill revenue-pill--soft">
+              <span class="material-symbols-outlined">calculate</span>
+              <span>Chi tiết khấu trừ</span>
+            </div>
+            <h2>Tại sao tiền vào ví ít hơn?</h2>
+            <p>Tiền công gộp - Thuế - Phí nền tảng = Tiền thực nhận</p>
+          </div>
+
+          <div class="revenue-summary__metrics">
+            <article class="summary-metric">
+              <div class="summary-metric__copy">
+                <span>Tổng thuế đã trừ</span>
+                <strong>Thuế nhà nước (Tạm thu)</strong>
+              </div>
+              <div class="summary-metric__value" id="summaryTotalTax" style="color: #ef4444;">0 đ</div>
+            </article>
+
+            <article class="summary-metric">
+              <div class="summary-metric__copy">
+                <span>Phí nền tảng</span>
+                <strong>Phí duy trì ứng dụng</strong>
+              </div>
+              <div class="summary-metric__value" id="summaryTotalFee" style="color: #ef4444;">0 đ</div>
+            </article>
+
+            <article class="summary-metric">
+              <div class="summary-metric__copy">
+                <span>Tỷ lệ thực nhận</span>
+                <strong>Thực nhận / Tiền công gộp</strong>
+              </div>
+              <div class="summary-metric__value" id="summaryNetRatio" style="color: #10b981;">0%</div>
+            </article>
+
+            <article class="summary-metric">
+              <div class="summary-metric__copy">
+                <span>Số dư ví hiện tại</span>
+                <strong>Sẵn sàng để rút</strong>
+              </div>
+              <div class="summary-metric__value" id="summaryWalletBalance" style="color: #3b82f6;">0 đ</div>
+            </article>
+          </div>
+        </aside>
+      </section>
+
+
+      <!-- 3. Biểu đồ dòng tiền -->
       <section class="revenue-grid">
         <article class="revenue-panel revenue-surface">
           <div class="revenue-panel__head">
             <div>
-              <h2>Dòng tiền theo thời gian</h2>
-              <p>Biểu đồ tách khoản đã thu và khoản còn chờ để người thợ biết tiền đang thực sự về ở đâu.</p>
+              <h2>Biểu đồ thu nhập thực nhận</h2>
+              <p>Tiền công bạn làm ra so với thực nhận sau khi trừ phí.</p>
             </div>
             <div class="revenue-panel__meta">
-              <span><span class="material-symbols-outlined">payments</span> Đã thu</span>
-              <span><span class="material-symbols-outlined">schedule</span> Chờ thanh toán</span>
+              <span><span class="material-symbols-outlined" style="color: #3b82f6">payments</span> Công gộp</span>
+              <span><span class="material-symbols-outlined" style="color: #10b981">wallet</span> Thực nhận</span>
+              <span><span class="material-symbols-outlined" style="color: #ef4444">money_off</span> Thuế & Phí</span>
             </div>
           </div>
 
@@ -147,8 +154,8 @@
         <article class="revenue-panel revenue-surface">
           <div class="revenue-panel__head">
             <div>
-              <h2>Cơ cấu doanh thu</h2>
-              <p>Nhìn nhanh phần nào đang mang tiền về: dịch vụ, hình thức sửa và cách khách đang thanh toán.</p>
+              <h2>Trạng thái thu nhập</h2>
+              <p>Tiền của bạn đang ở đâu?</p>
             </div>
             <div class="revenue-panel__meta">
               <span id="breakdownBookingCount">0 đơn có chi phí</span>
@@ -157,8 +164,8 @@
 
           <div class="revenue-kicker-list">
             <div class="revenue-kicker">
-              <span>Đánh giá trung bình</span>
-              <strong id="kickerAverageRating">Chưa có</strong>
+              <span>Thu nhập trung bình/đơn</span>
+              <strong id="kickerAverageNet">0 đ</strong>
             </div>
             <div class="revenue-kicker">
               <span>Tổng đơn trong kỳ</span>
@@ -166,87 +173,36 @@
             </div>
           </div>
 
-          <div class="source-list" id="sourceList"></div>
-
-          <div class="split-list">
-            <div class="split-card">
+          <div class="split-list" style="margin-top: 1.5rem;">
+            <div class="split-card" style="width: 100%;">
               <div class="split-card__title">
-                <span class="material-symbols-outlined">home_repair_service</span>
-                <span>Hình thức sửa</span>
+                <span class="material-symbols-outlined">monetization_on</span>
+                <span>Phân bổ dòng tiền công</span>
               </div>
-              <div class="split-card__rows" id="modeSplitRows"></div>
-            </div>
-
-            <div class="split-card">
-              <div class="split-card__title">
-                <span class="material-symbols-outlined">account_balance_wallet</span>
-                <span>Phương thức thanh toán</span>
-              </div>
-              <div class="split-card__rows" id="paymentSplitRows"></div>
+              <div class="split-card__rows" id="incomeSplitRows"></div>
             </div>
           </div>
         </article>
       </section>
 
-      <section class="revenue-grid revenue-grid--equal">
-        <article class="revenue-panel revenue-surface">
-          <div class="revenue-panel__head">
-            <div>
-              <h2>Đơn cần chốt tiền</h2>
-              <p>Các đơn đã xong việc hoặc đã báo hoàn thành nhưng tiền vẫn chưa xác nhận thành công.</p>
-            </div>
-            <div class="revenue-panel__meta">
-              <span id="pendingCountBadge">0 đơn</span>
-            </div>
-          </div>
-
-          <div class="queue-list" id="pendingQueue"></div>
-        </article>
-
-        <article class="revenue-panel revenue-surface">
-          <div class="revenue-panel__head">
-            <div>
-              <h2>Đơn bị hủy và khoản hụt</h2>
-              <p>Giữ góc nhìn thực tế về thất thoát để biết khi nào tỷ lệ hủy bắt đầu ảnh hưởng đến thu nhập.</p>
-            </div>
-            <div class="revenue-panel__meta">
-              <span id="cancelledCountBadge">0 đơn</span>
-            </div>
-          </div>
-
-          <div class="queue-list" id="cancelledQueue"></div>
-        </article>
-      </section>
-
+      <!-- 4. Bảng chi tiết đơn -->
       <section class="revenue-table-panel revenue-surface">
         <div class="revenue-table-toolbar">
           <div class="revenue-panel__head revenue-panel__head--compact">
             <div>
-              <h2>Lịch sử đơn tác động đến doanh thu</h2>
-              <p>Danh sách này gom cả đơn đã thu, đang chờ thanh toán và đơn bị hủy có giá trị phát sinh để tiện đối soát.</p>
+              <h2>Bảng lương theo đơn</h2>
+              <p>Chi tiết tiền công gộp, khấu trừ và thực nhận cho từng đơn hàng.</p>
             </div>
           </div>
         </div>
 
         <div class="revenue-table-filters">
-          <input type="search" id="revenueSearchInput" class="revenue-field revenue-field--search" placeholder="Tìm theo mã đơn, khách hàng hoặc dịch vụ" />
+          <input type="search" id="revenueSearchInput" class="revenue-field revenue-field--search" placeholder="Tìm theo mã đơn, khách hàng" />
           <select id="statusFilter" class="revenue-field">
             <option value="all">Tất cả trạng thái</option>
-            <option value="paid">Đã thu</option>
-            <option value="pending">Chờ thanh toán</option>
+            <option value="paid">Đã cộng ví</option>
+            <option value="pending">Chờ cộng ví</option>
             <option value="cancelled">Đã hủy</option>
-          </select>
-          <select id="paymentFilter" class="revenue-field">
-            <option value="all">Tất cả thanh toán</option>
-            <option value="cod">Tiền mặt</option>
-            <option value="transfer">Chuyển khoản</option>
-            <option value="paid">Đã thanh toán</option>
-            <option value="unpaid">Chưa thanh toán</option>
-          </select>
-          <select id="modeFilter" class="revenue-field">
-            <option value="all">Tất cả hình thức sửa</option>
-            <option value="at_home">Sửa tại nhà</option>
-            <option value="at_store">Sửa tại cửa hàng</option>
           </select>
         </div>
 
@@ -255,14 +211,14 @@
             <thead>
               <tr>
                 <th>Mã đơn</th>
-                <th>Thời điểm</th>
-                <th>Khách hàng</th>
+                <th>Hoàn thành</th>
                 <th>Dịch vụ</th>
-                <th>Hình thức</th>
-                <th>Thanh toán</th>
-                <th>Tổng tiền</th>
+                <th>Khách hàng</th>
+                <th>Công gộp</th>
+                <th>Thuế</th>
+                <th>Phí nền tảng</th>
+                <th>Thực nhận</th>
                 <th>Trạng thái</th>
-                <th>Đánh giá</th>
                 <th></th>
               </tr>
             </thead>
@@ -271,7 +227,7 @@
                 <td colspan="10">
                   <div class="revenue-state">
                     <strong>Đang tải dữ liệu</strong>
-                    Vui lòng chờ trong giây lát để hệ thống tổng hợp doanh thu từ các đơn của bạn.
+                    Vui lòng chờ trong giây lát...
                   </div>
                 </td>
               </tr>
@@ -283,12 +239,13 @@
   </main>
 </div>
 
+<!-- 5. Drawer -->
 <div id="revenueDrawerOverlay" class="revenue-drawer-overlay"></div>
 <aside id="revenueDrawer" class="revenue-drawer" aria-hidden="true">
   <div class="revenue-drawer__head">
     <div>
-      <h3 id="drawerTitle">Chi tiết đơn</h3>
-      <p id="drawerSubtitle">Theo dõi breakdown chi phí và trạng thái thu tiền.</p>
+      <h3 id="drawerTitle">Phiếu lương đơn hàng</h3>
+      <p id="drawerSubtitle">Chi tiết các khoản khấu trừ và thực nhận</p>
     </div>
     <button type="button" id="revenueDrawerClose" class="revenue-drawer__close" aria-label="Đóng">
       <span class="material-symbols-outlined">close</span>
