@@ -123,5 +123,14 @@ class User extends Authenticatable
         return $requiredServiceIds->diff($this->resolveServiceIds())->isEmpty();
     }
 
+    public function addresses()
+    {
+        return $this->hasMany(UserAddress::class);
+    }
+
+    public function defaultAddress()
+    {
+        return $this->hasOne(UserAddress::class)->where('la_mac_dinh', true);
+    }
 
 }

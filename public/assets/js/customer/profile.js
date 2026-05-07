@@ -1,22 +1,23 @@
-import { callApi, getCurrentUser, requireRole, showToast } from '../api.js';
+import { callApi, getCurrentUser, isAuthError, requireRole, showToast } from '../api.js';
 
 requireRole('customer');
 
 const SETTINGS_KEY = 'customer_profile_preferences';
-const ADDRESS_API_BASE = 'https://provinces.open-api.vn/api/v1';
+const PROVINCES_API = 'https://provinces.open-api.vn/api/v2/?depth=2';
 const ACTIVE_BOOKING_STATUSES = ['cho_xac_nhan', 'da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang', 'dang_lam', 'cho_thanh_toan', 'cho_hoan_thanh'];
+
 
 const state = {
     user: getCurrentUser(),
     bookings: [],
     preferences: loadPreferences(),
+    addressList: [],
     addressData: {
         provinces: [],
-        districts: [],
-        wards: [],
-        hydratedFromSavedAddress: false,
+        apiVersion: 'v1',
     },
 };
+
 
 const el = {
     topbarAvatarFallback: document.getElementById('topbarAvatarFallback'),
@@ -37,14 +38,23 @@ const el = {
     infoEmailInput: document.getElementById('infoEmailInput'),
     infoPhoneInput: document.getElementById('infoPhoneInput'),
     savePersonalInfoBtn: document.getElementById('savePersonalInfoBtn'),
-    addressForm: document.getElementById('addressForm'),
-    addressInput: document.getElementById('addressInput'),
-    provinceSelect: document.getElementById('provinceSelect'),
-    districtSelect: document.getElementById('districtSelect'),
-    wardSelect: document.getElementById('wardSelect'),
-    fullAddressPreview: document.getElementById('fullAddressPreview'),
-    addressSubmitBtn: document.getElementById('addressSubmitBtn'),
-    savedAddressText: document.getElementById('savedAddressText'),
+    addressListContainer: document.getElementById('addressListContainer'),
+    addressListEmpty: document.getElementById('addressListEmpty'),
+    // Modal
+    addressModalBackdrop: document.getElementById('addressModalBackdrop'),
+    addressModalTitle: document.getElementById('addressModalTitle'),
+    addressModalId: document.getElementById('addressModalId'),
+    addressModalForm: document.getElementById('addressModalForm'),
+    modalLabelInput: document.getElementById('modalLabelInput'),
+    modalProvinceSelect: document.getElementById('modalProvinceSelect'),
+    modalWardSelect: document.getElementById('modalWardSelect'),
+    modalSoNhaInput: document.getElementById('modalSoNhaInput'),
+    modalAddressPreview: document.getElementById('modalAddressPreview'),
+    saveAddressModalBtn: document.getElementById('saveAddressModalBtn'),
+    openAddAddressModalBtn: document.getElementById('openAddAddressModalBtn'),
+    closeAddressModalBtn: document.getElementById('closeAddressModalBtn'),
+    cancelAddressModalBtn: document.getElementById('cancelAddressModalBtn'),
+
     passwordForm: document.getElementById('passwordForm'),
     currentPassword: document.getElementById('currentPassword'),
     newPassword: document.getElementById('newPassword'),
@@ -55,8 +65,6 @@ const el = {
     avatarInput: document.getElementById('avatarInput'),
     triggerAvatarUploadBtn: document.getElementById('triggerAvatarUploadBtn'),
     focusPersonalInfoBtn: document.getElementById('focusPersonalInfoBtn'),
-    focusAddressBtn: document.getElementById('focusAddressBtn'),
-    editAddressBtn: document.getElementById('editAddressBtn'),
     emailUpdatesToggle: document.getElementById('emailUpdatesToggle'),
     pushUpdatesToggle: document.getElementById('pushUpdatesToggle'),
     promoUpdatesToggle: document.getElementById('promoUpdatesToggle'),
@@ -67,27 +75,33 @@ const el = {
 document.addEventListener('DOMContentLoaded', async () => {
     renderProfile(state.user);
     renderStats();
-    updateAddressPreview();
     applyPreferences();
     bindEvents();
 
     await Promise.allSettled([fetchProfile(), fetchBookings(), loadProvinces()]);
+    await fetchAddressList();
 });
 
 function bindEvents() {
     el.personalInfoForm?.addEventListener('submit', handlePersonalInfoSubmit);
-    el.addressForm?.addEventListener('submit', handleAddressSubmit);
     el.passwordForm?.addEventListener('submit', handlePasswordSubmit);
     el.newPassword?.addEventListener('input', updatePasswordStrength);
-    el.addressInput?.addEventListener('input', updateAddressPreview);
     el.triggerAvatarUploadBtn?.addEventListener('click', () => el.avatarInput?.click());
     el.avatarInput?.addEventListener('change', handleAvatarUpload);
     el.focusPersonalInfoBtn?.addEventListener('click', () => focusField(el.infoNameInput));
-    el.focusAddressBtn?.addEventListener('click', () => focusField(el.addressInput));
-    el.editAddressBtn?.addEventListener('click', () => focusField(el.addressInput));
-    el.provinceSelect?.addEventListener('change', handleProvinceChange);
-    el.districtSelect?.addEventListener('change', handleDistrictChange);
-    el.wardSelect?.addEventListener('change', updateAddressPreview);
+
+    // Address modal
+    el.openAddAddressModalBtn?.addEventListener('click', () => openAddressModal());
+    el.closeAddressModalBtn?.addEventListener('click', closeAddressModal);
+    el.cancelAddressModalBtn?.addEventListener('click', closeAddressModal);
+    el.addressModalBackdrop?.addEventListener('click', (e) => {
+        if (e.target === el.addressModalBackdrop) closeAddressModal();
+    });
+    el.addressModalForm?.addEventListener('submit', handleAddressModalSubmit);
+    el.modalProvinceSelect?.addEventListener('change', handleModalProvinceChange);
+    el.modalSoNhaInput?.addEventListener('input', updateModalPreview);
+    el.modalWardSelect?.addEventListener('change', updateModalPreview);
+
     el.dangerActionBtn?.addEventListener('click', () => {
         showToast('Chức năng xóa tài khoản chưa được hỗ trợ trên hệ thống hiện tại.', 'error');
     });
@@ -119,6 +133,10 @@ async function fetchProfile() {
         renderProfile(response.data);
         hydrateAddressFromSavedValue(response.data?.address || '');
     } catch (error) {
+        if (isAuthError(error)) {
+            return;
+        }
+
         console.error('Profile load failed:', error);
         showToast('Không tải được thông tin tài khoản.', 'error');
     }
@@ -161,96 +179,53 @@ async function fetchAllBookings() {
 
 async function loadProvinces() {
     try {
-        setSelectLoading(el.provinceSelect, 'Đang tải tỉnh / thành...');
-        const provinces = await fetchAddressJson(`${ADDRESS_API_BASE}/p`);
+        const provinces = await fetchAddressJson(PROVINCES_API);
         state.addressData.provinces = Array.isArray(provinces) ? provinces : [];
-
-        populateSelect(el.provinceSelect, state.addressData.provinces, 'Chọn tỉnh / thành phố');
-        hydrateAddressFromSavedValue(state.user?.address || '');
+        state.addressData.apiVersion = state.addressData.provinces.some((p) => Array.isArray(p.wards)) ? 'v2' : 'v1';
+        populateModalProvinceSelect(state.addressData.provinces);
     } catch (error) {
         console.error('Province API load failed:', error);
-        populateSelect(el.provinceSelect, [], 'Không tải được tỉnh / thành');
     }
 }
 
-async function handleProvinceChange() {
-    const provinceCode = Number(el.provinceSelect?.value || 0);
-
-    state.addressData.districts = [];
-    state.addressData.wards = [];
-    populateSelect(el.districtSelect, [], provinceCode ? 'Đang tải quận / huyện...' : 'Chọn tỉnh / thành trước', !provinceCode);
-    populateSelect(el.wardSelect, [], 'Chọn quận / huyện trước', true);
-    updateAddressPreview();
-
-    if (!provinceCode) {
-        return;
-    }
-
-    try {
-        const payload = await fetchAddressJson(`${ADDRESS_API_BASE}/p/${provinceCode}?depth=2`);
-        state.addressData.districts = Array.isArray(payload?.districts) ? payload.districts : [];
-        populateSelect(el.districtSelect, state.addressData.districts, 'Chọn quận / huyện');
-    } catch (error) {
-        console.error('District API load failed:', error);
-        populateSelect(el.districtSelect, [], 'Không tải được quận / huyện', true);
-    }
+function populateModalProvinceSelect(provinces) {
+    if (!el.modalProvinceSelect) return;
+    el.modalProvinceSelect.innerHTML = ['<option value="">Chọn tỉnh / thành phố</option>']
+        .concat(provinces.map((p) => `<option value="${p.code}">${escapeHtml(p.name)}</option>`))
+        .join('');
 }
 
-async function handleDistrictChange() {
-    const districtCode = Number(el.districtSelect?.value || 0);
+function handleModalProvinceChange() {
+    const code = Number(el.modalProvinceSelect?.value || 0);
+    if (!el.modalWardSelect) return;
 
-    state.addressData.wards = [];
-    populateSelect(el.wardSelect, [], districtCode ? 'Đang tải phường / xã...' : 'Chọn quận / huyện trước', !districtCode);
-    updateAddressPreview();
-
-    if (!districtCode) {
+    if (!code) {
+        el.modalWardSelect.innerHTML = '<option value="">Chọn tỉnh / thành trước</option>';
+        el.modalWardSelect.disabled = true;
+        updateModalPreview();
         return;
     }
 
-    try {
-        const payload = await fetchAddressJson(`${ADDRESS_API_BASE}/d/${districtCode}?depth=2`);
-        state.addressData.wards = Array.isArray(payload?.wards) ? payload.wards : [];
-        populateSelect(el.wardSelect, state.addressData.wards, 'Chọn phường / xã');
-    } catch (error) {
-        console.error('Ward API load failed:', error);
-        populateSelect(el.wardSelect, [], 'Không tải được phường / xã', true);
-    }
+    const province = state.addressData.provinces.find((p) => Number(p.code) === code);
+    const wards = state.addressData.apiVersion === 'v2'
+        ? (Array.isArray(province?.wards) ? province.wards : [])
+        : (province?.districts || []).flatMap((d) => d.wards || []);
+
+    el.modalWardSelect.innerHTML = ['<option value="">Chọn phường / xã</option>']
+        .concat(wards.map((w) => `<option value="${escapeHtml(w.name)}">${escapeHtml(w.name)}</option>`))
+        .join('');
+    el.modalWardSelect.disabled = wards.length === 0;
+    updateModalPreview();
 }
 
-async function hydrateAddressFromSavedValue(address) {
-    if (!address || !state.addressData.provinces.length || state.addressData.hydratedFromSavedAddress) {
-        updateAddressPreview(address);
-        return;
-    }
-
-    const province = findMatchingDivision(state.addressData.provinces, address);
-    if (!province) {
-        updateAddressPreview(address);
-        return;
-    }
-
-    state.addressData.hydratedFromSavedAddress = true;
-    el.provinceSelect.value = String(province.code);
-    await handleProvinceChange();
-
-    const district = findMatchingDivision(state.addressData.districts, address);
-    if (district) {
-        el.districtSelect.value = String(district.code);
-        await handleDistrictChange();
-    }
-
-    const ward = findMatchingDivision(state.addressData.wards, address);
-    if (ward) {
-        el.wardSelect.value = String(ward.code);
-    }
-
-    const detail = stripMatchedAddressParts(address, [ward?.name, district?.name, province?.name]);
-    if (el.addressInput && document.activeElement !== el.addressInput) {
-        el.addressInput.value = detail || address;
-    }
-
-    updateAddressPreview(address);
+function updateModalPreview() {
+    const tinh = el.modalProvinceSelect?.options[el.modalProvinceSelect.selectedIndex]?.text || '';
+    const xa = el.modalWardSelect?.value || '';
+    const soNha = (el.modalSoNhaInput?.value || '').trim();
+    const composed = [soNha, xa, tinh].filter((s) => s && s !== 'Chọn tỉnh / thành phố' && s !== 'Chọn phường / xã').join(', ');
+    if (el.modalAddressPreview) el.modalAddressPreview.textContent = composed || 'Chưa chọn đủ thông tin địa chỉ.';
 }
+
 
 async function handlePersonalInfoSubmit(event) {
     event.preventDefault();
@@ -284,45 +259,185 @@ async function handlePersonalInfoSubmit(event) {
     }
 }
 
-async function handleAddressSubmit(event) {
-    event.preventDefault();
+// ===== MULTI-ADDRESS CRUD =====
 
-    const detail = (el.addressInput?.value || '').trim();
-    const provinceName = getSelectedOptionText(el.provinceSelect);
-    const districtName = getSelectedOptionText(el.districtSelect);
-    const wardName = getSelectedOptionText(el.wardSelect);
-    const address = [detail, wardName, districtName, provinceName].filter(Boolean).join(', ');
-
-    if (!detail) {
-        showToast('Vui lòng nhập số nhà hoặc tên đường.', 'error');
-        focusField(el.addressInput);
-        return;
-    }
-
-    if (!provinceName || !districtName || !wardName) {
-        showToast('Vui lòng chọn đầy đủ tỉnh, quận/huyện và phường/xã.', 'error');
-        return;
-    }
-
-    setButtonLoading(el.addressSubmitBtn, true, 'Đang lưu địa chỉ...');
-
+async function fetchAddressList() {
     try {
-        const response = await callApi('/user/address', 'PUT', { address });
-        if (!response?.ok) {
-            throw new Error(getApiErrorMessage(response, 'Cập nhật địa chỉ thất bại.'));
-        }
-
-        const nextUser = response.data?.user || { ...state.user, address };
-        setUserState(nextUser);
-        renderProfile(nextUser);
-        updateAddressPreview(address);
-        showToast(response.data?.message || 'Cập nhật địa chỉ thành công');
-    } catch (error) {
-        showToast(error.message || 'Cập nhật địa chỉ thất bại.', 'error');
-    } finally {
-        setButtonLoading(el.addressSubmitBtn, false, 'Lưu địa chỉ');
+        const response = await callApi('/user/addresses', 'GET');
+        if (!response?.ok) throw new Error();
+        state.addressList = response.data?.data || [];
+        renderAddressList();
+    } catch {
+        console.error('Failed to load addresses');
     }
 }
+
+function renderAddressList() {
+    const container = el.addressListContainer;
+    const empty = el.addressListEmpty;
+    if (!container) return;
+
+    // Remove all addr-card elements, keep the empty state node
+    container.querySelectorAll('.addr-card').forEach((n) => n.remove());
+
+    if (state.addressList.length === 0) {
+        empty?.classList.remove('is-hidden');
+        return;
+    }
+
+    empty?.classList.add('is-hidden');
+    state.addressList.forEach((addr) => container.appendChild(buildAddressCard(addr)));
+}
+
+function buildAddressCard(addr) {
+    const card = document.createElement('article');
+    card.className = `addr-card${addr.la_mac_dinh ? ' addr-card--default' : ''}`;
+    card.dataset.id = addr.id;
+
+    const label = addr.label || (addr.la_mac_dinh ? 'Nhà riêng' : 'Địa chỉ');
+    const badge = addr.la_mac_dinh ? '<span class="addr-card__badge">Mặc định</span>' : '';
+    const starTitle = addr.la_mac_dinh ? 'Đang là mặc định' : 'Đặt làm mặc định';
+
+    card.innerHTML = `
+        <div class="addr-card__icon">
+            <span class="material-symbols-outlined">${addr.la_mac_dinh ? 'home' : 'location_on'}</span>
+        </div>
+        <div class="addr-card__body">
+            <div class="addr-card__head">
+                <span class="addr-card__label">${escapeHtml(label)}</span>
+                ${badge}
+            </div>
+            <p class="addr-card__text">${escapeHtml(addr.dia_chi_day_du)}</p>
+        </div>
+        <div class="addr-card__actions">
+            <button class="addr-card__btn addr-card__btn--star" title="${starTitle}" data-action="default" ${addr.la_mac_dinh ? 'disabled' : ''}>
+                <span class="material-symbols-outlined">${addr.la_mac_dinh ? 'star' : 'star_border'}</span>
+            </button>
+            <button class="addr-card__btn" title="Chỉnh sửa" data-action="edit">
+                <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="addr-card__btn addr-card__btn--danger" title="Xóa" data-action="delete">
+                <span class="material-symbols-outlined">delete</span>
+            </button>
+        </div>
+    `;
+
+    card.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        if (action === 'default') setDefaultAddress(addr.id);
+        else if (action === 'edit') openAddressModal(addr);
+        else if (action === 'delete') deleteAddress(addr.id);
+    });
+
+    return card;
+}
+
+function openAddressModal(addr = null) {
+    el.addressModalTitle.textContent = addr ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới';
+    el.addressModalId.value = addr?.id || '';
+    el.modalLabelInput.value = addr?.label || '';
+    el.modalSoNhaInput.value = addr?.so_nha || '';
+
+    // Reset province/ward
+    el.modalProvinceSelect.value = '';
+    el.modalWardSelect.innerHTML = '<option value="">Chọn tỉnh / thành trước</option>';
+    el.modalWardSelect.disabled = true;
+
+    if (addr?.tinh) {
+        const province = state.addressData.provinces.find((p) =>
+            normalizeText(p.name) === normalizeText(addr.tinh)
+        );
+        if (province) {
+            el.modalProvinceSelect.value = String(province.code);
+            handleModalProvinceChange();
+            // Restore ward after populating
+            if (addr.xa) {
+                setTimeout(() => {
+                    const opt = Array.from(el.modalWardSelect.options).find((o) =>
+                        normalizeText(o.value) === normalizeText(addr.xa)
+                    );
+                    if (opt) el.modalWardSelect.value = opt.value;
+                    updateModalPreview();
+                }, 0);
+            }
+        }
+    }
+
+    updateModalPreview();
+    el.addressModalBackdrop.classList.add('is-open');
+    el.addressModalBackdrop.setAttribute('aria-hidden', 'false');
+    setTimeout(() => el.modalLabelInput?.focus(), 100);
+}
+
+function closeAddressModal() {
+    el.addressModalBackdrop?.classList.remove('is-open');
+    el.addressModalBackdrop?.setAttribute('aria-hidden', 'true');
+    el.addressModalForm?.reset();
+}
+
+async function handleAddressModalSubmit(event) {
+    event.preventDefault();
+
+    const tinh = el.modalProvinceSelect?.options[el.modalProvinceSelect.selectedIndex]?.text || '';
+    const xa = el.modalWardSelect?.value || '';
+    const soNha = (el.modalSoNhaInput?.value || '').trim();
+    const label = (el.modalLabelInput?.value || '').trim();
+    const id = el.addressModalId?.value || '';
+
+    if (!tinh || tinh === 'Chọn tỉnh / thành phố') {
+        showToast('Vui lòng chọn tỉnh / thành phố.', 'error'); return;
+    }
+    if (!xa || xa === 'Chọn phường / xã') {
+        showToast('Vui lòng chọn phường / xã.', 'error'); return;
+    }
+    if (!soNha) {
+        showToast('Vui lòng nhập địa chỉ chi tiết.', 'error'); return;
+    }
+
+    const payload = { tinh, xa, so_nha: soNha, label };
+    const isEdit = Boolean(id);
+    const url = isEdit ? `/user/addresses/${id}` : '/user/addresses';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    setButtonLoading(el.saveAddressModalBtn, true, 'Đang lưu...');
+    try {
+        const response = await callApi(url, method, payload);
+        if (!response?.ok) throw new Error(getApiErrorMessage(response, 'Lưu địa chỉ thất bại.'));
+        showToast(response.data?.message || 'Lưu địa chỉ thành công');
+        closeAddressModal();
+        await fetchAddressList();
+    } catch (error) {
+        showToast(error.message || 'Lưu địa chỉ thất bại.', 'error');
+    } finally {
+        setButtonLoading(el.saveAddressModalBtn, false, '<span class="material-symbols-outlined">pin_drop</span> Lưu địa chỉ');
+    }
+}
+
+async function setDefaultAddress(id) {
+    try {
+        const response = await callApi(`/user/addresses/${id}/set-default`, 'POST');
+        if (!response?.ok) throw new Error();
+        showToast('Đã đặt địa chỉ mặc định.');
+        await fetchAddressList();
+    } catch {
+        showToast('Không thể đầt mặc định.', 'error');
+    }
+}
+
+async function deleteAddress(id) {
+    if (!confirm('Xóa địa chỉ này?')) return;
+    try {
+        const response = await callApi(`/user/addresses/${id}`, 'DELETE');
+        if (!response?.ok) throw new Error();
+        showToast('Đã xóa địa chỉ.');
+        await fetchAddressList();
+    } catch {
+        showToast('Xóa thất bại.', 'error');
+    }
+}
+
 
 async function handlePasswordSubmit(event) {
     event.preventDefault();
@@ -424,7 +539,6 @@ function renderProfile(user) {
     if (el.infoNameInput) el.infoNameInput.value = name;
     if (el.infoEmailInput) el.infoEmailInput.value = email;
     if (el.infoPhoneInput) el.infoPhoneInput.value = phone;
-    if (el.savedAddressText) el.savedAddressText.textContent = address;
 
     if (el.verificationBadge) {
         el.verificationBadge.textContent = isVerified ? 'Tài khoản xác thực' : 'Chưa xác thực email';
@@ -434,7 +548,6 @@ function renderProfile(user) {
 
     renderAvatar(el.profileAvatarImageWrap, el.profileAvatar, el.profileAvatarFallback, avatarUrl, initials);
     renderAvatar(null, el.topbarAvatarImage, el.topbarAvatarFallback, avatarUrl, initials);
-    updateAddressPreview(address);
 }
 
 function renderStats() {
@@ -447,18 +560,7 @@ function renderStats() {
     if (el.statReviews) el.statReviews.textContent = formatStatNumber(reviews);
 }
 
-function updateAddressPreview(fallbackAddress = '') {
-    const detail = (el.addressInput?.value || '').trim();
-    const provinceName = getSelectedOptionText(el.provinceSelect);
-    const districtName = getSelectedOptionText(el.districtSelect);
-    const wardName = getSelectedOptionText(el.wardSelect);
-    const composed = [detail, wardName, districtName, provinceName].filter(Boolean).join(', ');
-    const displayText = composed || fallbackAddress || 'Chưa chọn đủ thông tin địa chỉ.';
 
-    if (el.fullAddressPreview) {
-        el.fullAddressPreview.textContent = displayText;
-    }
-}
 
 function renderAvatar(wrapper, imageNode, fallbackNode, avatarUrl, initials) {
     if (avatarUrl && imageNode) {
@@ -528,29 +630,6 @@ function calculatePasswordScore(value) {
     return Math.min(score, 4);
 }
 
-function populateSelect(selectNode, items, placeholder, disabled = false) {
-    if (!selectNode) {
-        return;
-    }
-
-    const options = [`<option value="">${placeholder}</option>`]
-        .concat(
-            items.map((item) => `<option value="${item.code}">${escapeHtml(item.name)}</option>`)
-        )
-        .join('');
-
-    selectNode.innerHTML = options;
-    selectNode.disabled = disabled || !items.length;
-}
-
-function setSelectLoading(selectNode, placeholder) {
-    if (!selectNode) {
-        return;
-    }
-
-    selectNode.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>`;
-    selectNode.disabled = true;
-}
 
 async function fetchAddressJson(url) {
     const response = await fetch(url, {
@@ -562,6 +641,51 @@ async function fetchAddressJson(url) {
     }
 
     return response.json();
+}
+
+function hydrateAddressFromSavedValue(address) {
+    if (
+        !address
+        || !state.addressData.provinces.length
+        || !el.modalProvinceSelect
+        || !el.modalWardSelect
+        || !el.modalSoNhaInput
+    ) {
+        return;
+    }
+
+    const province = findMatchingDivision(state.addressData.provinces, address);
+    if (!province) {
+        updateModalPreview();
+        return;
+    }
+
+    if (!el.modalProvinceSelect.value) {
+        el.modalProvinceSelect.value = String(province.code);
+        handleModalProvinceChange();
+    }
+
+    const wards = state.addressData.apiVersion === 'v2'
+        ? (Array.isArray(province.wards) ? province.wards : [])
+        : (province.districts || []).flatMap((district) => district.wards || []);
+    const ward = findMatchingDivision(wards, address);
+
+    if (ward && !el.modalWardSelect.value) {
+        const matchingOption = Array.from(el.modalWardSelect.options).find((option) =>
+            normalizeText(option.value) === normalizeText(ward.name)
+        );
+
+        if (matchingOption) {
+            el.modalWardSelect.value = matchingOption.value;
+        }
+    }
+
+    if (!el.modalSoNhaInput.value) {
+        const detail = stripMatchedAddressParts(address, [ward?.name, province.name]);
+        el.modalSoNhaInput.value = detail || address;
+    }
+
+    updateModalPreview();
 }
 
 function findMatchingDivision(collection, address) {

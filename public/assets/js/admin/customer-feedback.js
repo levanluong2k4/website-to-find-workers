@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             value: 'reject',
             label: 'Từ chối',
-            hint: 'Giữ nguyên kết quả nếu khiếu nại không hợp lệ.',
+            hint: 'Giữ nguyên kết quả nếu bảo hành không hợp lệ.',
         },
     ];
 
@@ -181,8 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = mediaItems.length
             ? `<div class="feedback-case-media-list">
                 ${mediaItems.map((item) => {
-                    if (item.type === 'video') {
-                        return `
+                if (item.type === 'video') {
+                    return `
                             <figure class="feedback-case-media-thumb">
                                 <video controls preload="metadata" playsinline src="${escapeHtml(item.src)}"></video>
                                 <figcaption>
@@ -192,15 +192,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </figcaption>
                             </figure>
                         `;
-                    }
+                }
 
-                    return `
+                return `
                         <a class="feedback-case-media-thumb" href="${escapeHtml(item.src)}" target="_blank" rel="noopener">
                             <img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.caption)}" loading="lazy">
                             <figcaption>${escapeHtml(item.caption)} · Bấm để mở tệp gốc</figcaption>
                         </a>
                     `;
-                }).join('')}
+            }).join('')}
             </div>`
             : `<div class="feedback-case-media-empty">${escapeHtml(emptyText)}</div>`;
 
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderStats = (summary) => {
         const cards = [
             ['Tổng case', formatNumber(summary?.total_cases || 0), 'Tất cả feedback đang được hiển thị'],
-            ['Khiếu nại', formatNumber(summary?.complaint_cases || 0), 'Case cần đối soát bằng chứng và quyết định xử lý'],
+            ['bảo hành', formatNumber(summary?.complaint_cases || 0), 'Case cần đối soát bằng chứng và quyết định xử lý'],
             ['Đánh giá thấp', formatNumber(summary?.review_cases || 0), 'Review cần admin xem lại chất lượng dịch vụ'],
             ['Hủy đơn', formatNumber(summary?.cancellation_cases || 0), 'Đơn hủy có lý do từ khách hàng hoặc hệ thống'],
             ['Đang xử lý', formatNumber(summary?.in_progress_cases || 0), 'Case đã được admin tiếp nhận'],
@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="feedback-case-layout">
                 <header class="feedback-case-header">
                     <div class="feedback-case-header__copy">
-                        <span class="feedback-case-kicker">Chi tiết khiếu nại</span>
+                        <span class="feedback-case-kicker">Chi tiết bảo hành</span>
                         <h2 class="feedback-case-title">${escapeHtml(item.booking_code || 'Case')}</h2>
                         <p class="feedback-case-subtitle">
                             ${escapeHtml(item.service_label || 'Chưa rõ dịch vụ')} · ${escapeHtml(item.customer_name || 'Khách hàng')}
@@ -339,25 +339,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 </header>
 
                 <section class="feedback-case-card feedback-case-card--issue">
-                    <span class="feedback-case-card__eyebrow">Nội dung khiếu nại</span>
-                    <h3 class="feedback-case-card__headline">${escapeHtml(item.complaint_reason_label || item.summary || 'Khiếu nại khác')}</h3>
+                    <span class="feedback-case-card__eyebrow">Nội dung bảo hành</span>
+                    <h3 class="feedback-case-card__headline">${escapeHtml(item.complaint_reason_label || item.summary || 'bảo hành khác')}</h3>
                     <p class="feedback-case-card__copy">
-                        ${escapeHtml(item.complaint_note || item.content || 'Khách hàng gửi khiếu nại cho đơn này.')}
+                        ${escapeHtml(item.complaint_note || item.content || 'Khách hàng gửi bảo hành cho đơn này.')}
                     </p>
 
                     <div class="feedback-case-media-grid">
                         ${buildMediaSection(
-                            'Bằng chứng khách hàng cung cấp',
-                            item.complaint_images || [],
-                            item.complaint_video ? [item.complaint_video] : [],
-                            'Khách hàng chưa gửi ảnh hoặc video kèm theo.'
-                        )}
+            'Bằng chứng khách hàng cung cấp',
+            item.complaint_images || [],
+            item.complaint_video ? [item.complaint_video] : [],
+            'Khách hàng chưa gửi ảnh hoặc video kèm theo.'
+        )}
                         ${buildMediaSection(
-                            'Kết quả thợ bàn giao',
-                            item.booking_after_images || [],
-                            item.booking_after_videos || [],
-                            'Chưa có ảnh hoặc video kết quả sau sửa chữa.'
-                        )}
+            'Kết quả thợ bàn giao',
+            item.booking_after_images || [],
+            item.booking_after_videos || [],
+            'Chưa có ảnh hoặc video kết quả sau sửa chữa.'
+        )}
                     </div>
                 </section>
 

@@ -35,6 +35,8 @@ class DonDatLich extends Model
 
     protected $table = 'don_dat_lich';
 
+    protected $appends = ['complaint_policy'];
+
     protected $fillable = [
         'khach_hang_id',
         'tho_id',
@@ -248,6 +250,43 @@ class DonDatLich extends Model
         }
 
         return self::cancelReasonLabels()[$code] ?? null;
+    }
+
+    public function getComplaintPolicyAttribute(): array
+    {
+        $canComplain = false;
+        $reason = '';
+        
+        if ($this->isCompleted()) {
+            $completedAt = $this->thoi_gian_hoan_thanh;
+            $maxWarrantyMonths = 0;
+            
+            if (is_array($this->chi_tiet_linh_kien)) {
+                foreach ($this->chi_tiet_linh_kien as $part) {
+                    $months = (int) ($part['bao_hanh_thang'] ?? 0);
+                    if ($months > $maxWarrantyMonths) {
+                        $maxWarrantyMonths = $months;
+                    }
+                }
+            }
+            
+            if ($maxWarrantyMonths > 0 && $completedAt !== null) {
+                $expiredAt = $completedAt->copy()->addMonths($maxWarrantyMonths);
+                if (now()->lessThan($expiredAt)) {
+                    $canComplain = true;
+                } else {
+                    $reason = 'expired';
+                }
+            } else {
+                $reason = 'expired';
+            }
+        }
+
+        return [
+            'can_complain' => $canComplain,
+            'reason' => $reason,
+            'complaint_case' => $this->relationLoaded('customerComplaintCase') ? $this->customerComplaintCase : null,
+        ];
     }
 }
 

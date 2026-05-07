@@ -68,6 +68,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/user/address', [\App\Http\Controllers\Api\UserController::class, 'updateAddress']);
         Route::put('/user/password', [\App\Http\Controllers\Api\UserController::class, 'changePassword']);
 
+        // User saved addresses (multi-address)
+        Route::get('/user/addresses', [\App\Http\Controllers\Api\UserAddressController::class, 'index']);
+        Route::post('/user/addresses', [\App\Http\Controllers\Api\UserAddressController::class, 'store']);
+        Route::put('/user/addresses/{id}', [\App\Http\Controllers\Api\UserAddressController::class, 'update']);
+        Route::post('/user/addresses/{id}/set-default', [\App\Http\Controllers\Api\UserAddressController::class, 'setDefault']);
+        Route::delete('/user/addresses/{id}', [\App\Http\Controllers\Api\UserAddressController::class, 'destroy']);
+
+
         // Notifications
         Route::get('/notifications/unread', [NotificationController::class, 'getUnread']);
         Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
@@ -170,6 +178,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/travel-fee-config', [TravelFeeConfigController::class, 'update']);
             Route::get('/wage-config', [TravelFeeConfigController::class, 'getWageConfig']);
             Route::put('/wage-config', [TravelFeeConfigController::class, 'updateWageConfig']);
+            Route::get('/revenue', [\App\Http\Controllers\Api\AdminRevenueController::class, 'index']);
+            Route::get('/revenue/withdrawals', [\App\Http\Controllers\Api\AdminRevenueController::class, 'withdrawals']);
         });
     });
 });

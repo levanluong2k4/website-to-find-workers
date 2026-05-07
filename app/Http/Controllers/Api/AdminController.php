@@ -418,8 +418,8 @@ class AdminController extends Controller
 
         $center = $trackedWorkers->isNotEmpty()
             ? [
-                'lat' => round((float) $trackedWorkers->avg(fn (array $worker) => (float) data_get($worker, 'point.lat', 0)), 6),
-                'lng' => round((float) $trackedWorkers->avg(fn (array $worker) => (float) data_get($worker, 'point.lng', 0)), 6),
+                'lat' => round((float) $trackedWorkers->avg(fn(array $worker) => (float) data_get($worker, 'point.lat', 0)), 6),
+                'lng' => round((float) $trackedWorkers->avg(fn(array $worker) => (float) data_get($worker, 'point.lng', 0)), 6),
             ]
             : $defaultCenter;
 
@@ -912,23 +912,23 @@ class AdminController extends Controller
             ->get()
             ->map(function (User $customer) use ($openStatuses, $completedStatuses, $now) {
                 $bookings = $customer->donDatLichAsKhach;
-                $latestBooking = $bookings->sortByDesc(fn ($booking) => optional($booking->created_at)->timestamp ?? 0)->first();
-                $completedBookings = $bookings->filter(fn ($booking) => in_array($booking->trang_thai, $completedStatuses, true));
-                $openBookings = $bookings->filter(fn ($booking) => in_array($booking->trang_thai, $openStatuses, true));
+                $latestBooking = $bookings->sortByDesc(fn($booking) => optional($booking->created_at)->timestamp ?? 0)->first();
+                $completedBookings = $bookings->filter(fn($booking) => in_array($booking->trang_thai, $completedStatuses, true));
+                $openBookings = $bookings->filter(fn($booking) => in_array($booking->trang_thai, $openStatuses, true));
                 $ratings = $bookings
-                    ->flatMap(fn ($booking) => $booking->danhGias)
+                    ->flatMap(fn($booking) => $booking->danhGias)
                     ->pluck('so_sao')
-                    ->filter(fn ($value) => is_numeric($value))
-                    ->map(fn ($value) => (float) $value)
+                    ->filter(fn($value) => is_numeric($value))
+                    ->map(fn($value) => (float) $value)
                     ->values();
 
-                $totalSpent = (float) $completedBookings->sum(fn ($booking) => (float) ($booking->tong_tien ?? 0));
+                $totalSpent = (float) $completedBookings->sum(fn($booking) => (float) ($booking->tong_tien ?? 0));
                 $completedBookingCount = $completedBookings->count();
-                $lowFeedbackCount = $ratings->filter(fn ($value) => $value <= 2)->count();
+                $lowFeedbackCount = $ratings->filter(fn($value) => $value <= 2)->count();
                 $lastBookingAt = $latestBooking?->created_at;
                 $cancelWithReasonCount = $bookings
                     ->where('trang_thai', 'da_huy')
-                    ->filter(fn ($booking) => filled($booking->ly_do_huy ?? null))
+                    ->filter(fn($booking) => filled($booking->ly_do_huy ?? null))
                     ->count();
                 $daysSinceLastBooking = $lastBookingAt ? $lastBookingAt->diffInDays($now) : null;
                 $relationshipStatus = $this->resolveCustomerRelationshipStatus(
@@ -1098,27 +1098,27 @@ class AdminController extends Controller
         $customers = match ($sort) {
             'spent_desc' => $customers->sortByDesc('total_spent')->values(),
             'bookings_desc' => $customers->sortByDesc('order_count')->values(),
-            'name_asc' => $customers->sortBy(fn ($customer) => mb_strtolower((string) $customer['name']))->values(),
+            'name_asc' => $customers->sortBy(fn($customer) => mb_strtolower((string) $customer['name']))->values(),
             'follow_up_soon' => $customers->sortBy(function (array $customer) {
                 $overdueWeight = (($customer['follow_up_stats']['overdue_count'] ?? 0) > 0) ? 0 : 1;
                 $nextFollowUpSort = $customer['_next_follow_up_sort'] ?? PHP_INT_MAX;
 
                 return sprintf('%01d-%015d', $overdueWeight, $nextFollowUpSort);
             })->values(),
-            default => $customers->sortByDesc(fn ($customer) => max($customer['_last_booking_at_sort'], $customer['_created_at_sort']))->values(),
+            default => $customers->sortByDesc(fn($customer) => max($customer['_last_booking_at_sort'], $customer['_created_at_sort']))->values(),
         };
 
         $summary = [
             'total_customers' => $customers->count(),
-            'new_customers_7d' => $customers->filter(fn ($customer) => $customer['_created_at_sort'] >= $now->copy()->subDays(7)->timestamp)->count(),
-            'new_customers_30d' => $customers->filter(fn ($customer) => $customer['_created_at_sort'] >= $now->copy()->subDays(30)->timestamp)->count(),
-            'booked_customers' => $customers->filter(fn ($customer) => $customer['order_count'] > 0)->count(),
-            'active_booking_customers' => $customers->filter(fn ($customer) => $customer['active_booking_count'] > 0)->count(),
-            'needs_attention_customers' => $customers->filter(fn ($customer) => $customer['relationship_status'] === 'needs_attention')->count(),
-            'low_feedback_customers' => $customers->filter(fn ($customer) => $customer['low_feedback_count'] > 0)->count(),
-            'returning_customers' => $customers->filter(fn ($customer) => $customer['completed_booking_count'] >= 2)->count(),
-            'follow_up_due_today' => $customers->filter(fn ($customer) => ($customer['follow_up_stats']['due_today_count'] ?? 0) > 0)->count(),
-            'follow_up_overdue' => $customers->filter(fn ($customer) => ($customer['follow_up_stats']['overdue_count'] ?? 0) > 0)->count(),
+            'new_customers_7d' => $customers->filter(fn($customer) => $customer['_created_at_sort'] >= $now->copy()->subDays(7)->timestamp)->count(),
+            'new_customers_30d' => $customers->filter(fn($customer) => $customer['_created_at_sort'] >= $now->copy()->subDays(30)->timestamp)->count(),
+            'booked_customers' => $customers->filter(fn($customer) => $customer['order_count'] > 0)->count(),
+            'active_booking_customers' => $customers->filter(fn($customer) => $customer['active_booking_count'] > 0)->count(),
+            'needs_attention_customers' => $customers->filter(fn($customer) => $customer['relationship_status'] === 'needs_attention')->count(),
+            'low_feedback_customers' => $customers->filter(fn($customer) => $customer['low_feedback_count'] > 0)->count(),
+            'returning_customers' => $customers->filter(fn($customer) => $customer['completed_booking_count'] >= 2)->count(),
+            'follow_up_due_today' => $customers->filter(fn($customer) => ($customer['follow_up_stats']['due_today_count'] ?? 0) > 0)->count(),
+            'follow_up_overdue' => $customers->filter(fn($customer) => ($customer['follow_up_stats']['overdue_count'] ?? 0) > 0)->count(),
         ];
 
         return response()->json([
@@ -1150,7 +1150,7 @@ class AdminController extends Controller
                         'churn_risk',
                         'new_customer',
                         'standard',
-                    ])->map(fn (string $code) => [
+                    ])->map(fn(string $code) => [
                         'code' => $code,
                         'label' => $this->formatCustomerSegmentLabel($code),
                         'tone' => $this->resolveCustomerSegmentTone($code),
@@ -1248,18 +1248,18 @@ class AdminController extends Controller
             ->firstOrFail();
 
         $bookings = $customer->donDatLichAsKhach
-            ->sortByDesc(fn (DonDatLich $booking) => optional($booking->created_at)->timestamp ?? 0)
+            ->sortByDesc(fn(DonDatLich $booking) => optional($booking->created_at)->timestamp ?? 0)
             ->values();
 
         $latestBooking = $bookings->first();
         $completedBookings = $bookings
-            ->filter(fn (DonDatLich $booking) => in_array($booking->trang_thai, $completedStatuses, true))
+            ->filter(fn(DonDatLich $booking) => in_array($booking->trang_thai, $completedStatuses, true))
             ->values();
         $openBookings = $bookings
-            ->filter(fn (DonDatLich $booking) => in_array($booking->trang_thai, $openStatuses, true))
+            ->filter(fn(DonDatLich $booking) => in_array($booking->trang_thai, $openStatuses, true))
             ->values();
         $canceledBookings = $bookings
-            ->filter(fn (DonDatLich $booking) => $booking->trang_thai === 'da_huy')
+            ->filter(fn(DonDatLich $booking) => $booking->trang_thai === 'da_huy')
             ->values();
 
         $reviewEntries = $bookings
@@ -1274,14 +1274,14 @@ class AdminController extends Controller
             ->values();
 
         $ratingValues = $reviewEntries
-            ->map(fn (array $entry) => is_numeric($entry['review']->so_sao) ? (float) $entry['review']->so_sao : null)
-            ->filter(fn ($value) => $value !== null)
+            ->map(fn(array $entry) => is_numeric($entry['review']->so_sao) ? (float) $entry['review']->so_sao : null)
+            ->filter(fn($value) => $value !== null)
             ->values();
 
         $completedBookingCount = $completedBookings->count();
-        $totalSpent = (float) $completedBookings->sum(fn (DonDatLich $booking) => (float) ($booking->tong_tien ?? 0));
+        $totalSpent = (float) $completedBookings->sum(fn(DonDatLich $booking) => (float) ($booking->tong_tien ?? 0));
         $averageOrderValue = $completedBookingCount > 0 ? round($totalSpent / $completedBookingCount, 2) : 0;
-        $lowFeedbackCount = $ratingValues->filter(fn (float $value) => $value <= 2)->count();
+        $lowFeedbackCount = $ratingValues->filter(fn(float $value) => $value <= 2)->count();
         $pendingPaymentCount = $bookings
             ->filter(function (DonDatLich $booking) use ($completedStatuses) {
                 if ($booking->trang_thai === 'da_huy') {
@@ -1306,34 +1306,34 @@ class AdminController extends Controller
         );
 
         $topServices = $bookings
-            ->flatMap(fn (DonDatLich $booking) => $booking->dichVus->pluck('ten_dich_vu')->filter())
+            ->flatMap(fn(DonDatLich $booking) => $booking->dichVus->pluck('ten_dich_vu')->filter())
             ->countBy()
             ->sortDesc()
             ->take(4)
-            ->map(fn ($count, $label) => [
+            ->map(fn($count, $label) => [
                 'label' => $label,
                 'count' => $count,
             ])
             ->values();
 
         $topAreas = $bookings
-            ->map(fn (DonDatLich $booking) => $this->extractCustomerArea($booking->dia_chi))
+            ->map(fn(DonDatLich $booking) => $this->extractCustomerArea($booking->dia_chi))
             ->filter()
             ->countBy()
             ->sortDesc()
             ->take(4)
-            ->map(fn ($count, $label) => [
+            ->map(fn($count, $label) => [
                 'label' => $label,
                 'count' => $count,
             ])
             ->values();
 
         $topWorkers = $bookings
-            ->filter(fn (DonDatLich $booking) => $booking->tho !== null)
-            ->countBy(fn (DonDatLich $booking) => $booking->tho->name)
+            ->filter(fn(DonDatLich $booking) => $booking->tho !== null)
+            ->countBy(fn(DonDatLich $booking) => $booking->tho->name)
             ->sortDesc()
             ->take(4)
-            ->map(fn ($count, $label) => [
+            ->map(fn($count, $label) => [
                 'label' => $label,
                 'count' => $count,
             ])
@@ -1348,14 +1348,14 @@ class AdminController extends Controller
                 'label' => 'Tai cua hang',
                 'count' => $bookings->where('loai_dat_lich', 'at_store')->count(),
             ],
-        ])->filter(fn (array $item) => $item['count'] > 0)->values();
+        ])->filter(fn(array $item) => $item['count'] > 0)->values();
 
         $paymentMethods = $bookings
-            ->filter(fn (DonDatLich $booking) => filled($booking->phuong_thuc_thanh_toan))
-            ->countBy(fn (DonDatLich $booking) => $this->formatCustomerPaymentMethodLabel($booking->phuong_thuc_thanh_toan))
+            ->filter(fn(DonDatLich $booking) => filled($booking->phuong_thuc_thanh_toan))
+            ->countBy(fn(DonDatLich $booking) => $this->formatCustomerPaymentMethodLabel($booking->phuong_thuc_thanh_toan))
             ->sortDesc()
             ->take(4)
-            ->map(fn ($count, $label) => [
+            ->map(fn($count, $label) => [
                 'label' => $label,
                 'count' => $count,
             ])
@@ -1366,12 +1366,12 @@ class AdminController extends Controller
         $availableTags = [];
 
         $nextOpenBooking = $openBookings
-            ->sortBy(fn (DonDatLich $booking) => $this->resolveCustomerBookingSortTimestamp($booking))
+            ->sortBy(fn(DonDatLich $booking) => $this->resolveCustomerBookingSortTimestamp($booking))
             ->first();
 
         $daysSinceLastBooking = $lastBookingAt ? $lastBookingAt->diffInDays($now) : null;
         $cancelWithReasonCount = $canceledBookings
-            ->filter(fn (DonDatLich $booking) => filled($booking->ly_do_huy))
+            ->filter(fn(DonDatLich $booking) => filled($booking->ly_do_huy))
             ->count();
         $segments = $this->buildCustomerSegments([
             'created_days' => $customer->created_at ? $customer->created_at->diffInDays($now) : null,
@@ -1482,7 +1482,7 @@ class AdminController extends Controller
             ->values();
 
         $reviews = $reviewEntries
-            ->sortByDesc(fn (array $entry) => optional($entry['review']->created_at)->timestamp ?? 0)
+            ->sortByDesc(fn(array $entry) => optional($entry['review']->created_at)->timestamp ?? 0)
             ->take(6)
             ->map(function (array $entry) {
                 /** @var \App\Models\DanhGia $review */
@@ -1607,7 +1607,7 @@ class AdminController extends Controller
                 'admin_options' => $this->getAssignableAdmins(),
                 'booking_options' => $bookings
                     ->take(16)
-                    ->map(fn (DonDatLich $booking) => [
+                    ->map(fn(DonDatLich $booking) => [
                         'id' => $booking->id,
                         'code' => $this->formatCustomerBookingCode($booking->id),
                         'service_label' => $this->buildCustomerServiceLabel($booking),
@@ -1715,23 +1715,23 @@ class AdminController extends Controller
 
         $summary = [
             'order_count' => $bookings->count(),
-            'active_booking_count' => $bookings->filter(fn (DonDatLich $booking) => in_array($booking->trang_thai, $openStatuses, true))->count(),
-            'completed_booking_count' => $bookings->filter(fn (DonDatLich $booking) => in_array($booking->trang_thai, $completedStatuses, true))->count(),
+            'active_booking_count' => $bookings->filter(fn(DonDatLich $booking) => in_array($booking->trang_thai, $openStatuses, true))->count(),
+            'completed_booking_count' => $bookings->filter(fn(DonDatLich $booking) => in_array($booking->trang_thai, $completedStatuses, true))->count(),
             'canceled_booking_count' => $bookings->where('trang_thai', 'da_huy')->count(),
             'total_spent' => (float) $bookings
-                ->filter(fn (DonDatLich $booking) => in_array($booking->trang_thai, $completedStatuses, true))
-                ->sum(fn (DonDatLich $booking) => (float) ($booking->tong_tien ?? 0)),
+                ->filter(fn(DonDatLich $booking) => in_array($booking->trang_thai, $completedStatuses, true))
+                ->sum(fn(DonDatLich $booking) => (float) ($booking->tong_tien ?? 0)),
             'filtered_count' => $filteredBookings->count(),
         ];
 
         $availableServices = $bookings
-            ->flatMap(fn (DonDatLich $booking) => $booking->dichVus->pluck('ten_dich_vu')->filter())
+            ->flatMap(fn(DonDatLich $booking) => $booking->dichVus->pluck('ten_dich_vu')->filter())
             ->unique()
             ->sort()
             ->values();
         $availableWorkers = $bookings
-            ->filter(fn (DonDatLich $booking) => $booking->tho !== null)
-            ->map(fn (DonDatLich $booking) => [
+            ->filter(fn(DonDatLich $booking) => $booking->tho !== null)
+            ->map(fn(DonDatLich $booking) => [
                 'id' => $booking->tho?->id,
                 'name' => $booking->tho?->name,
             ])
@@ -1768,8 +1768,8 @@ class AdminController extends Controller
                 'bookings' => $filteredBookings->map(function (DonDatLich $booking) {
                     $ratings = $booking->danhGias
                         ->pluck('so_sao')
-                        ->filter(fn ($value) => is_numeric($value))
-                        ->map(fn ($value) => (float) $value)
+                        ->filter(fn($value) => is_numeric($value))
+                        ->map(fn($value) => (float) $value)
                         ->values();
 
                     return [
@@ -1813,7 +1813,7 @@ class AdminController extends Controller
         $caseStates = CustomerFeedbackCase::query()
             ->with('assignedAdmin:id,name')
             ->get()
-            ->keyBy(fn (CustomerFeedbackCase $case) => $this->formatCustomerFeedbackSourceKey($case->source_type, $case->source_id));
+            ->keyBy(fn(CustomerFeedbackCase $case) => $this->formatCustomerFeedbackSourceKey($case->source_type, $case->source_id));
 
         $reviewCases = DanhGia::query()
             ->with([
@@ -1916,7 +1916,7 @@ class AdminController extends Controller
 
                 return true;
             })
-            ->sortByDesc(fn (array $case) => strtotime((string) ($case['created_at'] ?? 'now')))
+            ->sortByDesc(fn(array $case) => strtotime((string) ($case['created_at'] ?? 'now')))
             ->values();
 
         $summary = [
@@ -1930,7 +1930,7 @@ class AdminController extends Controller
             'affected_customers' => $cases->pluck('customer_id')->filter()->unique()->count(),
             'overdue_cases' => $cases->where('due_state', 'overdue')->count(),
             'due_today_cases' => $cases->where('due_state', 'due_today')->count(),
-            'unassigned_cases' => $cases->filter(fn (array $case) => empty($case['assigned_admin_id']))->count(),
+            'unassigned_cases' => $cases->filter(fn(array $case) => empty($case['assigned_admin_id']))->count(),
         ];
 
         return response()->json([
@@ -2138,7 +2138,7 @@ class AdminController extends Controller
         }
 
         $parts = collect(explode(',', $address))
-            ->map(fn ($part) => trim((string) $part))
+            ->map(fn($part) => trim((string) $part))
             ->filter()
             ->values();
 
@@ -2410,7 +2410,7 @@ class AdminController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get()
-            ->map(fn (User $admin) => [
+            ->map(fn(User $admin) => [
                 'id' => $admin->id,
                 'name' => $admin->name,
                 'email' => $admin->email,
@@ -2483,7 +2483,7 @@ class AdminController extends Controller
         return $segments
             ->unique()
             ->take(4)
-            ->map(fn (string $segment) => [
+            ->map(fn(string $segment) => [
                 'code' => $segment,
                 'label' => $this->formatCustomerSegmentLabel($segment),
                 'tone' => $this->resolveCustomerSegmentTone($segment),
@@ -2494,7 +2494,7 @@ class AdminController extends Controller
 
     private function customerHasSegment(array $segments, string $segment): bool
     {
-        return collect($segments)->contains(fn (array $item) => ($item['code'] ?? null) === $segment);
+        return collect($segments)->contains(fn(array $item) => ($item['code'] ?? null) === $segment);
     }
 
 
@@ -2686,7 +2686,7 @@ class AdminController extends Controller
         $reasonLabel = (string) ($snapshot['reason_label'] ?? match ($reasonCode) {
             'loi_tai_phat' => 'Lỗi tái phát',
             'linh_kien_kem_chat_luong' => 'Linh kiện thay thế kém chất lượng',
-            default => 'Khiếu nại khác',
+            default => 'bảo hành khác',
         });
         $note = trim((string) ($snapshot['note'] ?? ''));
         $complaintImages = array_values(array_filter((array) ($snapshot['images'] ?? [])));
@@ -2697,7 +2697,7 @@ class AdminController extends Controller
         $bookingAfterVideos = $booking ? $this->normalizeMediaList($booking->video_ket_qua) : [];
         $content = trim($reasonLabel . ($note !== '' ? '. ' . $note : ''));
         if ($content === '') {
-            $content = 'Khách hàng gửi khiếu nại cho đơn này.';
+            $content = 'Khách hàng gửi bảo hành cho đơn này.';
         }
 
         $locationLabel = $booking
@@ -2712,7 +2712,7 @@ class AdminController extends Controller
             'source_type' => 'customer_complaint',
             'source_id' => (int) $caseState->source_id,
             'type' => 'customer_complaint',
-            'type_label' => 'Khiếu nại',
+            'type_label' => 'bảo hành',
             'priority' => $priority,
             'priority_label' => $this->formatCustomerFeedbackPriorityLabel($priority),
             'priority_tone' => $this->resolveCustomerFeedbackPriorityTone($priority),
@@ -2903,7 +2903,7 @@ class AdminController extends Controller
 
         $workerIds = $workerProfiles
             ->pluck('user_id')
-            ->map(fn ($workerId): int => (int) $workerId)
+            ->map(fn($workerId): int => (int) $workerId)
             ->filter()
             ->values();
 
@@ -2923,7 +2923,7 @@ class AdminController extends Controller
         if ($view === 'day' && $preserveDate) {
             $requestedDate = $anchorDate->toDateString();
             $hasRequestedDate = $availableDates->contains(
-                fn (array $option): bool => (string) ($option['date'] ?? '') === $requestedDate
+                fn(array $option): bool => (string) ($option['date'] ?? '') === $requestedDate
             );
 
             if (!$hasRequestedDate) {
@@ -2947,12 +2947,12 @@ class AdminController extends Controller
             ->whereNotNull('tho_id')
             ->when(
                 $workerIds->isNotEmpty(),
-                fn ($query) => $query->whereIn('tho_id', $workerIds->all()),
-                fn ($query) => $query->whereRaw('1 = 0')
+                fn($query) => $query->whereIn('tho_id', $workerIds->all()),
+                fn($query) => $query->whereRaw('1 = 0')
             )
             ->whereIn('trang_thai', $blockingStatuses)
             ->get()
-            ->groupBy(fn (DonDatLich $booking) => (int) $booking->tho_id);
+            ->groupBy(fn(DonDatLich $booking) => (int) $booking->tho_id);
 
         $rangeBookingsByWorker = DonDatLich::query()
             ->with([
@@ -2962,14 +2962,14 @@ class AdminController extends Controller
             ->whereNotNull('tho_id')
             ->when(
                 $workerIds->isNotEmpty(),
-                fn ($query) => $query->whereIn('tho_id', $workerIds->all()),
-                fn ($query) => $query->whereRaw('1 = 0')
+                fn($query) => $query->whereIn('tho_id', $workerIds->all()),
+                fn($query) => $query->whereRaw('1 = 0')
             )
             ->whereBetween('ngay_hen', [$range['date_from'], $range['date_to']])
             ->orderBy('ngay_hen')
             ->orderBy('khung_gio_hen')
             ->get()
-            ->groupBy(fn (DonDatLich $booking) => (int) $booking->tho_id);
+            ->groupBy(fn(DonDatLich $booking) => (int) $booking->tho_id);
 
         $workers = $workerProfiles
             ->map(function (HoSoTho $workerProfile) use ($activeBookingsByWorker, $rangeBookingsByWorker, $range, $timeSlots): array {
@@ -3014,7 +3014,7 @@ class AdminController extends Controller
                     'day_count' => count($range['dates']),
                     'slot_count' => count($timeSlots),
                     'available_dates' => $availableDates->all(),
-                    'time_slots' => collect($timeSlots)->map(fn (string $slot): array => [
+                    'time_slots' => collect($timeSlots)->map(fn(string $slot): array => [
                         'value' => $slot,
                         'label' => $this->formatAdminWorkerScheduleSlotLabel($slot),
                     ])->values()->all(),
@@ -3027,8 +3027,8 @@ class AdminController extends Controller
                     'scheduled_workers' => $workers->where('current_status.key', 'scheduled')->count(),
                     'repairing_workers' => $workers->where('current_status.key', 'repairing')->count(),
                     'offline_workers' => $workers->where('current_status.key', 'offline')->count(),
-                    'workers_with_free_slots' => $workers->filter(fn (array $worker): bool => (int) ($worker['free_slot_count'] ?? 0) > 0)->count(),
-                    'fully_booked_workers' => $workers->filter(fn (array $worker): bool => (int) ($worker['capacity_slot_count'] ?? 0) > 0 && (int) ($worker['free_slot_count'] ?? 0) === 0)->count(),
+                    'workers_with_free_slots' => $workers->filter(fn(array $worker): bool => (int) ($worker['free_slot_count'] ?? 0) > 0)->count(),
+                    'fully_booked_workers' => $workers->filter(fn(array $worker): bool => (int) ($worker['capacity_slot_count'] ?? 0) > 0 && (int) ($worker['free_slot_count'] ?? 0) === 0)->count(),
                     'total_busy_slots' => $totalBusySlots,
                     'total_free_slots' => $totalFreeSlots,
                     'utilization_percent' => $totalCapacitySlots > 0
@@ -3080,7 +3080,7 @@ class AdminController extends Controller
         }
 
         $upcomingOption = $availableDates->first(
-            fn (array $option): bool => (string) ($option['date'] ?? '') >= $requestedDate
+            fn(array $option): bool => (string) ($option['date'] ?? '') >= $requestedDate
         );
         if (is_array($upcomingOption)) {
             return (string) ($upcomingOption['date'] ?? $requestedDate);
@@ -3088,7 +3088,7 @@ class AdminController extends Controller
 
         $today = now()->toDateString();
         $todayOption = $availableDates->first(
-            fn (array $option): bool => (string) ($option['date'] ?? '') >= $today
+            fn(array $option): bool => (string) ($option['date'] ?? '') >= $today
         );
         if (is_array($todayOption)) {
             return (string) ($todayOption['date'] ?? $requestedDate);
@@ -3195,12 +3195,12 @@ class AdminController extends Controller
         $currentBooking = $this->resolveDashboardWorkerCurrentBooking($activeBookings);
         $currentStatus = $this->resolveDashboardWorkerMapStatus($worker, $currentBooking);
         $serviceIds = $worker?->dichVus?->pluck('id')
-            ?->map(fn ($serviceId): int => (int) $serviceId)
+            ?->map(fn($serviceId): int => (int) $serviceId)
             ?->filter()
             ?->values() ?? collect();
         $services = $worker?->dichVus?->pluck('ten_dich_vu')->filter()->values() ?? collect();
         $bookingsByDate = $rangeBookings->groupBy(
-            fn (DonDatLich $booking) => optional($booking->ngay_hen)->toDateString() ?: (string) $booking->ngay_hen
+            fn(DonDatLich $booking) => optional($booking->ngay_hen)->toDateString() ?: (string) $booking->ngay_hen
         );
 
         $days = collect($range['dates'])
@@ -3271,9 +3271,9 @@ class AdminController extends Controller
         string $workerStatusKey
     ): array {
         $slotMap = $bookingsForDate
-            ->groupBy(fn (DonDatLich $booking) => DonDatLich::normalizeTimeSlot($booking->khung_gio_hen))
-            ->map(fn (Collection $items) => $items
-                ->sortBy(fn (DonDatLich $booking): string => sprintf(
+            ->groupBy(fn(DonDatLich $booking) => DonDatLich::normalizeTimeSlot($booking->khung_gio_hen))
+            ->map(fn(Collection $items) => $items
+                ->sortBy(fn(DonDatLich $booking): string => sprintf(
                     '%02d-%s',
                     $this->resolveAdminWorkerScheduleBookingPriority((string) $booking->trang_thai),
                     optional($booking->updated_at)->format('YmdHis') ?? '00000000000000'
@@ -3281,7 +3281,7 @@ class AdminController extends Controller
                 ->first());
 
         $bookings = $bookingsForDate
-            ->map(fn (DonDatLich $booking): array => $this->serializeAdminWorkerScheduleBooking($booking))
+            ->map(fn(DonDatLich $booking): array => $this->serializeAdminWorkerScheduleBooking($booking))
             ->sortBy([
                 ['date', 'asc'],
                 ['slot', 'asc'],
@@ -3313,9 +3313,9 @@ class AdminController extends Controller
 
         $busyCount = $slots->whereIn('state', ['busy', 'repairing', 'completed', 'cancelled'])->count();
         $freeCount = $slots->where('state', 'free')->count();
-        $statusKey = $slots->contains(fn (array $slot): bool => $slot['state'] === 'repairing')
+        $statusKey = $slots->contains(fn(array $slot): bool => $slot['state'] === 'repairing')
             ? 'repairing'
-            : ($slots->contains(fn (array $slot): bool => in_array($slot['state'], ['busy', 'completed', 'cancelled'], true))
+            : ($slots->contains(fn(array $slot): bool => in_array($slot['state'], ['busy', 'completed', 'cancelled'], true))
                 ? 'scheduled'
                 : ($workerStatusKey === 'offline' ? 'offline' : 'available'));
 
@@ -3496,7 +3496,7 @@ class AdminController extends Controller
                         ['value' => 'all', 'label' => 'Tất cả'],
                         ['value' => 'overdue', 'label' => 'Đơn quá hạn'],
                         ['value' => 'unpaid', 'label' => 'Chờ thanh toán'],
-                        ['value' => 'complaint', 'label' => 'Có khiếu nại'],
+                        ['value' => 'complaint', 'label' => 'Có bảo hành'],
                         ['value' => 'contact_issue', 'label' => 'Không liên lạc được'],
                         ['value' => 'unassigned', 'label' => 'Chưa gán thợ'],
                     ],
@@ -3819,12 +3819,12 @@ class AdminController extends Controller
         $rows = $this->sortAdminBookingRows($rows, $filters['sort_by'], $filters['sort_dir']);
 
         $ids = collect(explode(',', (string) $request->query('ids', '')))
-            ->map(static fn ($id) => (int) trim((string) $id))
+            ->map(static fn($id) => (int) trim((string) $id))
             ->filter()
             ->unique()
             ->values();
         if ($ids->isNotEmpty()) {
-            $rows = $rows->filter(fn (array $row) => $ids->contains((int) ($row['id'] ?? 0)))->values();
+            $rows = $rows->filter(fn(array $row) => $ids->contains((int) ($row['id'] ?? 0)))->values();
         }
 
         $filename = 'admin-bookings-' . now()->format('Ymd_His') . '.csv';
@@ -3948,7 +3948,7 @@ class AdminController extends Controller
             $serviceId = (int) $filters['service_id'];
             $query->where(function (Builder $builder) use ($serviceId): void {
                 $builder
-                    ->whereHas('dichVus', fn (Builder $serviceQuery) => $serviceQuery->whereKey($serviceId))
+                    ->whereHas('dichVus', fn(Builder $serviceQuery) => $serviceQuery->whereKey($serviceId))
                     ->orWhere('dich_vu_id', $serviceId);
             });
         }
@@ -3987,7 +3987,7 @@ class AdminController extends Controller
     private function buildAdminBookingRows(array $filters, Carbon $now): Collection
     {
         return $this->fetchAdminBookingCollection($filters)
-            ->map(fn (DonDatLich $booking) => $this->serializeAdminBookingListRow($booking, $now))
+            ->map(fn(DonDatLich $booking) => $this->serializeAdminBookingListRow($booking, $now))
             ->values();
     }
 
@@ -4028,20 +4028,20 @@ class AdminController extends Controller
         }
 
         if ($filters['payment'] === 'failed') {
-            $filtered = $filtered->filter(fn (array $row): bool => (bool) ($row['flags']['payment_issue'] ?? false))->values();
+            $filtered = $filtered->filter(fn(array $row): bool => (bool) ($row['flags']['payment_issue'] ?? false))->values();
         }
 
         $view = $filters['view'];
         if ($view === 'overdue') {
             $filtered = $filtered->where('sla_state', 'overdue')->values();
         } elseif ($view === 'unpaid') {
-            $filtered = $filtered->filter(fn (array $row): bool => !(bool) ($row['payment']['is_paid'] ?? false))->values();
+            $filtered = $filtered->filter(fn(array $row): bool => !(bool) ($row['payment']['is_paid'] ?? false))->values();
         } elseif ($view === 'complaint') {
-            $filtered = $filtered->filter(fn (array $row): bool => (bool) ($row['flags']['has_complaint'] ?? false))->values();
+            $filtered = $filtered->filter(fn(array $row): bool => (bool) ($row['flags']['has_complaint'] ?? false))->values();
         } elseif ($view === 'contact_issue') {
-            $filtered = $filtered->filter(fn (array $row): bool => (bool) ($row['flags']['has_worker_contact_issue'] ?? false))->values();
+            $filtered = $filtered->filter(fn(array $row): bool => (bool) ($row['flags']['has_worker_contact_issue'] ?? false))->values();
         } elseif ($view === 'unassigned') {
-            $filtered = $filtered->filter(fn (array $row): bool => (bool) ($row['flags']['is_unassigned'] ?? false))->values();
+            $filtered = $filtered->filter(fn(array $row): bool => (bool) ($row['flags']['is_unassigned'] ?? false))->values();
         }
 
         return $filtered->values();
@@ -4050,7 +4050,7 @@ class AdminController extends Controller
     private function sortAdminBookingRows(Collection $rows, string $sortBy, string $sortDir): Collection
     {
         $direction = $sortDir === 'asc' ? 1 : -1;
-        $compareTimestamp = static fn (?string $left, ?string $right): int => (strtotime((string) $left) ?: 0) <=> (strtotime((string) $right) ?: 0);
+        $compareTimestamp = static fn(?string $left, ?string $right): int => (strtotime((string) $left) ?: 0) <=> (strtotime((string) $right) ?: 0);
 
         return $rows->sort(function (array $left, array $right) use ($sortBy, $direction, $compareTimestamp): int {
             $result = 0;
@@ -4089,11 +4089,11 @@ class AdminController extends Controller
             'overdue_count' => $rows->where('sla_state', 'overdue')->count(),
             'due_soon_count' => $rows->where('sla_state', 'due_soon')->count(),
             'on_track_count' => $rows->where('sla_state', 'on_track')->count(),
-            'unpaid_count' => $rows->filter(fn (array $row): bool => !(bool) ($row['payment']['is_paid'] ?? false))->count(),
-            'payment_issue_count' => $rows->filter(fn (array $row): bool => (bool) ($row['flags']['payment_issue'] ?? false))->count(),
-            'complaint_count' => $rows->filter(fn (array $row): bool => (bool) ($row['flags']['has_complaint'] ?? false))->count(),
-            'contact_issue_count' => $rows->filter(fn (array $row): bool => (bool) ($row['flags']['has_worker_contact_issue'] ?? false))->count(),
-            'unassigned_count' => $rows->filter(fn (array $row): bool => (bool) ($row['flags']['is_unassigned'] ?? false))->count(),
+            'unpaid_count' => $rows->filter(fn(array $row): bool => !(bool) ($row['payment']['is_paid'] ?? false))->count(),
+            'payment_issue_count' => $rows->filter(fn(array $row): bool => (bool) ($row['flags']['payment_issue'] ?? false))->count(),
+            'complaint_count' => $rows->filter(fn(array $row): bool => (bool) ($row['flags']['has_complaint'] ?? false))->count(),
+            'contact_issue_count' => $rows->filter(fn(array $row): bool => (bool) ($row['flags']['has_worker_contact_issue'] ?? false))->count(),
+            'unassigned_count' => $rows->filter(fn(array $row): bool => (bool) ($row['flags']['is_unassigned'] ?? false))->count(),
             'filtered_count' => $total,
         ];
     }
@@ -4302,7 +4302,7 @@ class AdminController extends Controller
         return match ((string) $reasonCode) {
             'loi_tai_phat' => 'Lỗi tái phát',
             'linh_kien_kem_chat_luong' => 'Linh kiện thay thế kém chất lượng',
-            default => 'Khiếu nại khác',
+            default => 'bảo hành khác',
         };
     }
 
@@ -4325,7 +4325,7 @@ class AdminController extends Controller
         return DanhMucDichVu::query()
             ->orderBy('ten_dich_vu')
             ->get(['id', 'ten_dich_vu'])
-            ->map(fn (DanhMucDichVu $service) => [
+            ->map(fn(DanhMucDichVu $service) => [
                 'id' => (int) $service->id,
                 'name' => (string) ($service->ten_dich_vu ?? 'Dịch vụ'),
             ])
@@ -4354,7 +4354,7 @@ class AdminController extends Controller
 
                 return $worker->supportsServiceIds($requiredServiceIds);
             })
-            ->map(fn (User $worker) => [
+            ->map(fn(User $worker) => [
                 'id' => (int) $worker->id,
                 'name' => (string) $worker->name,
                 'phone' => (string) ($worker->phone ?? ''),
@@ -4378,7 +4378,7 @@ class AdminController extends Controller
     private function adminBookingCancelReasonOptions(): array
     {
         return collect(DonDatLich::cancelReasonLabels())
-            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+            ->map(fn(string $label, string $value) => ['value' => $value, 'label' => $label])
             ->values()
             ->all();
     }
@@ -4437,7 +4437,7 @@ class AdminController extends Controller
         $paymentMethod = (string) ($booking->phuong_thuc_thanh_toan ?: 'cod');
         $paymentMethodLabel = $this->formatCustomerPaymentMethodLabel($paymentMethod);
         $isPaid = (bool) ($booking->trang_thai_thanh_toan ?? false);
-        $latestPayment = $booking->thanhToans->sortByDesc(fn ($payment) => optional($payment->created_at)->timestamp ?? 0)->first();
+        $latestPayment = $booking->thanhToans->sortByDesc(fn($payment) => optional($payment->created_at)->timestamp ?? 0)->first();
         $latestPaymentStatus = Str::lower((string) ($latestPayment?->trang_thai ?? ''));
         $paymentIssue = $this->resolveAdminBookingPaymentIssue($latestPaymentStatus, $isPaid, (string) $booking->trang_thai);
         $complaintCase = $booking->customerComplaintCase;
@@ -4584,7 +4584,7 @@ class AdminController extends Controller
         $complaintCase = $booking->customerComplaintCase;
         $complaintSnapshot = is_array($complaintCase?->last_snapshot) ? $complaintCase->last_snapshot : [];
         $paymentHistory = $booking->thanhToans
-            ->sortByDesc(fn (ThanhToan $payment) => optional($payment->created_at)->timestamp ?? 0)
+            ->sortByDesc(fn(ThanhToan $payment) => optional($payment->created_at)->timestamp ?? 0)
             ->map(function (ThanhToan $payment): array {
                 return [
                     'id' => (int) $payment->id,
@@ -4599,7 +4599,7 @@ class AdminController extends Controller
             })
             ->values();
         $reviewHistory = $booking->danhGias
-            ->sortByDesc(fn ($review) => optional($review->created_at)->timestamp ?? 0)
+            ->sortByDesc(fn($review) => optional($review->created_at)->timestamp ?? 0)
             ->map(function ($review): array {
                 return [
                     'id' => (int) $review->id,
@@ -4826,17 +4826,17 @@ class AdminController extends Controller
             $events->push([
                 'time' => optional($complaintCase->created_at)->toIso8601String(),
                 'time_label' => optional($complaintCase->created_at)->format('d/m/Y H:i'),
-                'title' => 'Khiếu nại',
-                'detail' => 'Khách tạo khiếu nại: ' . $reasonLabel,
+                'title' => 'bảo hành',
+                'detail' => 'Khách tạo bảo hành: ' . $reasonLabel,
                 'tone' => 'warning',
                 'actor' => 'Khách hàng',
             ]);
 
-                if ($complaintCase->assigned_at) {
+            if ($complaintCase->assigned_at) {
                 $events->push([
                     'time' => optional($complaintCase->assigned_at)->toIso8601String(),
                     'time_label' => optional($complaintCase->assigned_at)->format('d/m/Y H:i'),
-                    'title' => 'Nhận xử lý khiếu nại',
+                    'title' => 'Nhận xử lý bảo hành',
                     'detail' => 'Case được tiếp nhận bởi ' . ($complaintCase->assignedAdmin?->name ?: 'Admin'),
                     'tone' => 'info',
                     'actor' => $complaintCase->assignedAdmin?->name ?: 'Admin',
@@ -4847,7 +4847,7 @@ class AdminController extends Controller
                 $events->push([
                     'time' => optional($complaintCase->resolved_at)->toIso8601String(),
                     'time_label' => optional($complaintCase->resolved_at)->format('d/m/Y H:i'),
-                    'title' => 'Đóng khiếu nại',
+                    'title' => 'Đóng bảo hành',
                     'detail' => (string) ($complaintCase->resolution_note ?: 'Đã đánh dấu xử lý'),
                     'tone' => 'success',
                     'actor' => $complaintCase->assignedAdmin?->name ?: 'Admin',
@@ -4868,8 +4868,8 @@ class AdminController extends Controller
         }
 
         return $events
-            ->filter(fn (array $event): bool => !empty($event['time']))
-            ->sortByDesc(fn (array $event): int => strtotime((string) ($event['time'] ?? '')) ?: 0)
+            ->filter(fn(array $event): bool => !empty($event['time']))
+            ->sortByDesc(fn(array $event): int => strtotime((string) ($event['time'] ?? '')) ?: 0)
             ->values()
             ->all();
     }
@@ -4989,13 +4989,13 @@ class AdminController extends Controller
 
         $hasBookings = Schema::hasTable('don_dat_lich_dich_vu')
             ? DB::table('don_dat_lich_dich_vu')
-                ->where('dich_vu_id', $service->id)
-                ->exists()
+            ->where('dich_vu_id', $service->id)
+            ->exists()
             : false;
         $hasPosts = Schema::hasTable('bai_dang')
             ? DB::table('bai_dang')
-                ->where('dich_vu_id', $service->id)
-                ->exists()
+            ->where('dich_vu_id', $service->id)
+            ->exists()
             : false;
 
         if ($hasBookings || $hasPosts) {
@@ -5009,7 +5009,7 @@ class AdminController extends Controller
         $partImagePaths = LinhKien::query()
             ->where('dich_vu_id', $service->id)
             ->pluck('hinh_anh')
-            ->filter(static fn ($path) => trim((string) $path) !== '')
+            ->filter(static fn($path) => trim((string) $path) !== '')
             ->unique()
             ->values();
 
@@ -5023,7 +5023,7 @@ class AdminController extends Controller
         }
 
         $this->deleteStoredServiceImage($serviceImagePath);
-        $partImagePaths->each(fn ($path) => $this->deleteStoredPartImage($path));
+        $partImagePaths->each(fn($path) => $this->deleteStoredPartImage($path));
 
         return response()->json([
             'status' => 'success',
@@ -5058,11 +5058,11 @@ class AdminController extends Controller
             'status' => 'success',
             'data' => [
                 'items' => $parts
-                    ->map(fn (LinhKien $part) => $this->serializeAdminPart($part))
+                    ->map(fn(LinhKien $part) => $this->serializeAdminPart($part))
                     ->values(),
                 'summary' => [
                     'total' => $parts->count(),
-                    'priced' => $parts->filter(fn (LinhKien $part) => (float) ($part->gia ?? 0) > 0)->count(),
+                    'priced' => $parts->filter(fn(LinhKien $part) => (float) ($part->gia ?? 0) > 0)->count(),
                 ],
                 'service_options' => $this->getAdminCatalogServiceOptions(),
             ],
@@ -5238,11 +5238,11 @@ class AdminController extends Controller
             'status' => 'success',
             'data' => [
                 'items' => $symptoms
-                    ->map(fn (TrieuChung $symptom) => $this->serializeAdminSymptom($symptom))
+                    ->map(fn(TrieuChung $symptom) => $this->serializeAdminSymptom($symptom))
                     ->values(),
                 'summary' => [
                     'total' => $symptoms->count(),
-                    'linked_causes' => $symptoms->sum(fn (TrieuChung $symptom) => $symptom->nguyenNhans->count()),
+                    'linked_causes' => $symptoms->sum(fn(TrieuChung $symptom) => $symptom->nguyenNhans->count()),
                 ],
                 'service_options' => $this->getAdminCatalogServiceOptions(),
             ],
@@ -5394,14 +5394,14 @@ class AdminController extends Controller
             ->get();
 
         $symptoms = $services
-            ->flatMap(fn (DanhMucDichVu $service) => $service->trieuChungs ?? collect())
+            ->flatMap(fn(DanhMucDichVu $service) => $service->trieuChungs ?? collect())
             ->values();
         $causes = $symptoms
-            ->flatMap(fn (TrieuChung $symptom) => $symptom->nguyenNhans ?? collect())
+            ->flatMap(fn(TrieuChung $symptom) => $symptom->nguyenNhans ?? collect())
             ->unique('id')
             ->values();
         $resolutions = $causes
-            ->flatMap(fn (NguyenNhan $cause) => $cause->huongXuLys ?? collect())
+            ->flatMap(fn(NguyenNhan $cause) => $cause->huongXuLys ?? collect())
             ->unique('id')
             ->values();
 
@@ -5409,7 +5409,7 @@ class AdminController extends Controller
             'status' => 'success',
             'data' => [
                 'items' => $services
-                    ->map(fn (DanhMucDichVu $service) => $this->serializeRepairKnowledgeService($service))
+                    ->map(fn(DanhMucDichVu $service) => $this->serializeRepairKnowledgeService($service))
                     ->values(),
                 'summary' => [
                     'services' => $services->count(),
@@ -5614,7 +5614,7 @@ class AdminController extends Controller
         }
 
         $symptomIds = collect($request->input('symptom_ids', []))
-            ->map(static fn ($id) => (int) $id)
+            ->map(static fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values()
@@ -5625,7 +5625,7 @@ class AdminController extends Controller
         $cause = DB::transaction(function () use ($causeName, $lookup, $symptomIds) {
             $existingCause = NguyenNhan::query()
                 ->get()
-                ->first(fn (NguyenNhan $cause) => TextNormalizer::normalize((string) $cause->ten_nguyen_nhan) === $lookup);
+                ->first(fn(NguyenNhan $cause) => TextNormalizer::normalize((string) $cause->ten_nguyen_nhan) === $lookup);
 
             $cause = $existingCause ?: NguyenNhan::query()->create([
                 'ten_nguyen_nhan' => $causeName,
@@ -5682,13 +5682,13 @@ class AdminController extends Controller
         }
 
         $symptomIds = collect($request->input('symptom_ids', []))
-            ->map(static fn ($id) => (int) $id)
+            ->map(static fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values()
             ->all();
 
-        $existingSymptomIds = $cause->trieuChungs()->pluck('trieu_chung.id')->map(fn ($id) => (int) $id)->all();
+        $existingSymptomIds = $cause->trieuChungs()->pluck('trieu_chung.id')->map(fn($id) => (int) $id)->all();
 
         DB::transaction(function () use ($request, $cause, $symptomIds) {
             $cause->update([
@@ -5778,11 +5778,11 @@ class AdminController extends Controller
             'status' => 'success',
             'data' => [
                 'items' => $resolutions
-                    ->map(fn (HuongXuLy $resolution) => $this->serializeAdminResolution($resolution))
+                    ->map(fn(HuongXuLy $resolution) => $this->serializeAdminResolution($resolution))
                     ->values(),
                 'summary' => [
                     'total' => $resolutions->count(),
-                    'priced' => $resolutions->filter(fn (HuongXuLy $resolution) => (float) ($resolution->gia_tham_khao ?? 0) > 0)->count(),
+                    'priced' => $resolutions->filter(fn(HuongXuLy $resolution) => (float) ($resolution->gia_tham_khao ?? 0) > 0)->count(),
                 ],
                 'service_options' => $this->getAdminCatalogServiceOptions(),
                 'cause_options' => $this->getAdminCauseOptions(),
@@ -5947,7 +5947,7 @@ class AdminController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => array_map(
-                fn (AiKnowledgeItem $item): array => $this->transformAiKnowledgeRecord($item),
+                fn(AiKnowledgeItem $item): array => $this->transformAiKnowledgeRecord($item),
                 $paginator->items()
             ),
             'meta' => [
@@ -6375,7 +6375,7 @@ class AdminController extends Controller
             ->select(['id', 'ten_dich_vu', 'trang_thai'])
             ->orderBy('ten_dich_vu')
             ->get()
-            ->map(fn (DanhMucDichVu $service) => [
+            ->map(fn(DanhMucDichVu $service) => [
                 'id' => $service->id,
                 'ten_dich_vu' => $service->ten_dich_vu,
                 'trang_thai' => (int) $service->trang_thai,
@@ -6391,7 +6391,7 @@ class AdminController extends Controller
             ])
             ->orderBy('ten_trieu_chung')
             ->get()
-            ->map(fn (TrieuChung $symptom) => [
+            ->map(fn(TrieuChung $symptom) => [
                 'id' => $symptom->id,
                 'dich_vu_id' => $symptom->dich_vu_id,
                 'service_name' => $symptom->dichVu?->ten_dich_vu,
@@ -6404,14 +6404,14 @@ class AdminController extends Controller
     private function serializeRepairKnowledgeService(DanhMucDichVu $service): array
     {
         $symptoms = ($service->trieuChungs ?? collect())
-            ->sortBy(fn (TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
+            ->sortBy(fn(TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
             ->values();
         $causes = $symptoms
-            ->flatMap(fn (TrieuChung $symptom) => $symptom->nguyenNhans ?? collect())
+            ->flatMap(fn(TrieuChung $symptom) => $symptom->nguyenNhans ?? collect())
             ->unique('id')
             ->values();
         $resolutions = $causes
-            ->flatMap(fn (NguyenNhan $cause) => $cause->huongXuLys ?? collect())
+            ->flatMap(fn(NguyenNhan $cause) => $cause->huongXuLys ?? collect())
             ->unique('id')
             ->values();
 
@@ -6425,10 +6425,10 @@ class AdminController extends Controller
             'symptoms' => $symptoms
                 ->map(function (TrieuChung $symptom) {
                     $causes = ($symptom->nguyenNhans ?? collect())
-                        ->sortBy(fn (NguyenNhan $cause) => trim((string) $cause->ten_nguyen_nhan))
+                        ->sortBy(fn(NguyenNhan $cause) => trim((string) $cause->ten_nguyen_nhan))
                         ->values();
                     $resolutionCount = $causes
-                        ->flatMap(fn (NguyenNhan $cause) => $cause->huongXuLys ?? collect())
+                        ->flatMap(fn(NguyenNhan $cause) => $cause->huongXuLys ?? collect())
                         ->unique('id')
                         ->count();
 
@@ -6437,9 +6437,9 @@ class AdminController extends Controller
                         'causes' => $causes
                             ->map(function (NguyenNhan $cause) {
                                 $resolutions = ($cause->huongXuLys ?? collect())
-                                    ->sortBy(fn (HuongXuLy $resolution) => trim((string) $resolution->ten_huong_xu_ly))
+                                    ->sortBy(fn(HuongXuLy $resolution) => trim((string) $resolution->ten_huong_xu_ly))
                                     ->values()
-                                    ->map(fn (HuongXuLy $resolution) => $this->serializeAdminResolution($resolution))
+                                    ->map(fn(HuongXuLy $resolution) => $this->serializeAdminResolution($resolution))
                                     ->values();
 
                                 return array_merge($this->serializeAdminCause($cause), [
@@ -6499,7 +6499,7 @@ class AdminController extends Controller
             : $symptom->nguyenNhans()->get(['nguyen_nhan.id', 'ten_nguyen_nhan']);
 
         $causeNames = $causes
-            ->map(fn (NguyenNhan $cause) => trim((string) $cause->ten_nguyen_nhan))
+            ->map(fn(NguyenNhan $cause) => trim((string) $cause->ten_nguyen_nhan))
             ->filter()
             ->sort()
             ->values();
@@ -6534,7 +6534,7 @@ class AdminController extends Controller
             ->unique()
             ->values();
         $serviceNames = $symptoms
-            ->map(fn (TrieuChung $symptom) => $symptom->dichVu?->ten_dich_vu)
+            ->map(fn(TrieuChung $symptom) => $symptom->dichVu?->ten_dich_vu)
             ->filter()
             ->unique()
             ->sort()
@@ -6545,7 +6545,7 @@ class AdminController extends Controller
             ->unique()
             ->values();
         $symptomNames = $symptoms
-            ->map(fn (TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
+            ->map(fn(TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
             ->filter()
             ->unique()
             ->sort()
@@ -6578,7 +6578,7 @@ class AdminController extends Controller
             ? $cause->trieuChungs
             : collect();
         $serviceNames = $symptoms
-            ->map(fn (TrieuChung $symptom) => $symptom->dichVu?->ten_dich_vu)
+            ->map(fn(TrieuChung $symptom) => $symptom->dichVu?->ten_dich_vu)
             ->filter()
             ->unique()
             ->sort()
@@ -6589,7 +6589,7 @@ class AdminController extends Controller
             ->unique()
             ->values();
         $symptomNames = $symptoms
-            ->map(fn (TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
+            ->map(fn(TrieuChung $symptom) => trim((string) $symptom->ten_trieu_chung))
             ->filter()
             ->unique()
             ->sort()
@@ -6623,7 +6623,7 @@ class AdminController extends Controller
             ])
             ->orderBy('ten_nguyen_nhan')
             ->get()
-            ->map(fn (NguyenNhan $cause) => $this->serializeAdminCause($cause))
+            ->map(fn(NguyenNhan $cause) => $this->serializeAdminCause($cause))
             ->values();
     }
 
@@ -6640,7 +6640,7 @@ class AdminController extends Controller
 
         $existingCauses = NguyenNhan::query()
             ->get()
-            ->keyBy(fn (NguyenNhan $cause) => TextNormalizer::normalize((string) $cause->ten_nguyen_nhan));
+            ->keyBy(fn(NguyenNhan $cause) => TextNormalizer::normalize((string) $cause->ten_nguyen_nhan));
 
         $causeIds = [];
 
@@ -6704,7 +6704,7 @@ class AdminController extends Controller
 
         return array_values(array_filter(array_map(static function ($item): string {
             return trim((string) $item);
-        }, $items), static fn (string $item): bool => $item !== ''));
+        }, $items), static fn(string $item): bool => $item !== ''));
     }
 
     private function storeServiceImage(UploadedFile $file): string
@@ -6753,9 +6753,9 @@ class AdminController extends Controller
     private function normalizeWorkerServiceIds(array $serviceIds): array
     {
         return collect($serviceIds)
-            ->filter(static fn ($serviceId) => $serviceId !== null && $serviceId !== '')
-            ->map(static fn ($serviceId) => (int) $serviceId)
-            ->filter(static fn (int $serviceId) => $serviceId > 0)
+            ->filter(static fn($serviceId) => $serviceId !== null && $serviceId !== '')
+            ->map(static fn($serviceId) => (int) $serviceId)
+            ->filter(static fn(int $serviceId) => $serviceId > 0)
             ->unique()
             ->values()
             ->all();

@@ -63,7 +63,30 @@ document.addEventListener('DOMContentLoaded', () => {
         detailPartCatalogResults: document.getElementById('detailPartCatalogResults'),
         detailPartCatalogStatus: document.getElementById('detailPartCatalogStatus'),
         detailPartItemsEditor: document.getElementById('detailPartItemsEditor'),
+        detailPartCostDisplay: document.getElementById('detailPartCostDisplay'),
         detailPartNote: document.getElementById('detailPartNote'),
+        detailLaborCatalogSearch: document.getElementById('detailLaborCatalogSearch'),
+        detailLaborCatalogDropdown: document.getElementById('detailLaborCatalogDropdown'),
+        detailLaborCatalogStatus: document.getElementById('detailLaborCatalogStatus'),
+        detailLaborItemsEditor: document.getElementById('detailLaborItemsEditor'),
+        detailLaborCostDisplay: document.getElementById('detailLaborCostDisplay'),
+        adminLaborSymptomSelect: document.getElementById('adminLaborSymptomSelect'),
+        adminLaborCauseSelect: document.getElementById('adminLaborCauseSelect'),
+        adminLaborResolutionSelect: document.getElementById('adminLaborResolutionSelect'),
+        adminLaborSymptomPicker: document.getElementById('adminLaborSymptomPicker'),
+        adminLaborSymptomTrigger: document.getElementById('adminLaborSymptomTrigger'),
+        adminLaborSymptomPanel: document.getElementById('adminLaborSymptomPanel'),
+        adminLaborSymptomSearch: document.getElementById('adminLaborSymptomSearch'),
+        adminLaborSymptomOptions: document.getElementById('adminLaborSymptomOptions'),
+        adminLaborCausePicker: document.getElementById('adminLaborCausePicker'),
+        adminLaborCauseTrigger: document.getElementById('adminLaborCauseTrigger'),
+        adminLaborCausePanel: document.getElementById('adminLaborCausePanel'),
+        adminLaborCauseSearch: document.getElementById('adminLaborCauseSearch'),
+        adminLaborCauseOptions: document.getElementById('adminLaborCauseOptions'),
+        adminLaborResolutionSelectVisible: document.getElementById('adminLaborResolutionSelectVisible'),
+        btnAdminAddLaborItem: document.getElementById('btnAdminAddLaborItem'),
+        adminLaborResolutionPrice: document.getElementById('adminLaborResolutionPrice'),
+        btnAddManualLaborRow: document.getElementById('btnAddManualLaborRow'),
         detailPaymentMethod: document.getElementById('detailPaymentMethodSelect'),
         btnUpdateStatus: document.getElementById('btnUpdateBookingStatus'),
         btnAssignWorker: document.getElementById('btnAssignWorker'),
@@ -136,7 +159,16 @@ document.addEventListener('DOMContentLoaded', () => {
             searchRequestId: 0,
             serviceIds: [],
         },
+        laborCatalog: {
+            items: [],
+            cache: new Map(),
+            filteredItems: [],
+            selectedIds: new Set(),
+            requestId: 0,
+            serviceIds: [],
+        },
         searchTimer: null,
+        laborSearchTimer: null,
         loadingList: false,
         loadingDetail: false,
     };
@@ -521,6 +553,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (refs.detailPartCost) {
             refs.detailPartCost.value = String(Math.round(grandTotal));
         }
+        if (refs.detailPartCostDisplay) {
+            refs.detailPartCostDisplay.textContent = formatMoney(grandTotal);
+        }
 
         return grandTotal;
     };
@@ -591,6 +626,460 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     };
 
+    // ─── Labor catalog cascade picker (Triệu chứng → Nguyên nhân → Hướng xử lý) ──
+
+    const adminLaborRefs = {
+        symptomPicker: document.getElementById('adminLaborSymptomPicker'),
+        symptomTrigger: document.getElementById('adminLaborSymptomTrigger'),
+        symptomTriggerLabel: document.getElementById('adminLaborSymptomTriggerLabel'),
+        symptomPanel: document.getElementById('adminLaborSymptomPanel'),
+        symptomSearch: document.getElementById('adminLaborSymptomSearch'),
+        symptomOptions: document.getElementById('adminLaborSymptomOptions'),
+        symptomSelect: document.getElementById('adminLaborSymptomSelect'),
+        causePicker: document.getElementById('adminLaborCausePicker'),
+        causeTrigger: document.getElementById('adminLaborCauseTrigger'),
+        causeTriggerLabel: document.getElementById('adminLaborCauseTriggerLabel'),
+        causePanel: document.getElementById('adminLaborCausePanel'),
+        causeSearch: document.getElementById('adminLaborCauseSearch'),
+        causeOptions: document.getElementById('adminLaborCauseOptions'),
+        causeSelect: document.getElementById('adminLaborCauseSelect'),
+        resolutionSelect: document.getElementById('adminLaborResolutionSelectVisible'),
+        addBtn: document.getElementById('btnAdminAddLaborItem'),
+        statusEl: document.getElementById('detailLaborCatalogStatus'),
+        priceEl: document.getElementById('adminLaborResolutionPrice'),
+    };
+
+    const adminLaborPickerCfg = {
+        symptom: {
+            triggerEl: () => adminLaborRefs.symptomTrigger,
+            triggerLabelEl: () => adminLaborRefs.symptomTriggerLabel,
+            panelEl: () => adminLaborRefs.symptomPanel,
+            searchEl: () => adminLaborRefs.symptomSearch,
+            optionsEl: () => adminLaborRefs.symptomOptions,
+            placeholder: 'Chọn triệu chứng',
+            emptyText: 'Không tìm thấy triệu chứng.',
+            getLabel: (item) => item?.ten_trieu_chung || 'Triệu chứng',
+        },
+        cause: {
+            triggerEl: () => adminLaborRefs.causeTrigger,
+            triggerLabelEl: () => adminLaborRefs.causeTriggerLabel,
+            panelEl: () => adminLaborRefs.causePanel,
+            searchEl: () => adminLaborRefs.causeSearch,
+            optionsEl: () => adminLaborRefs.causeOptions,
+            placeholder: 'Chọn nguyên nhân',
+            emptyText: 'Không tìm thấy nguyên nhân.',
+            getLabel: (item) => item?.ten_nguyen_nhan || 'Nguyên nhân',
+        },
+    };
+
+    const adminLaborPickerSearch = { symptom: '', cause: '' };
+
+    const normalizePickerText = (v = '') => String(v || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('vi-VN').trim();
+
+    const closeLaborPicker = (type, resetKw = true) => {
+        const cfg = adminLaborPickerCfg[type];
+        if (!cfg) return;
+        cfg.panelEl()?.setAttribute('hidden', 'hidden');
+        cfg.triggerEl()?.setAttribute('aria-expanded', 'false');
+        if (resetKw) {
+            adminLaborPickerSearch[type] = '';
+            const s = cfg.searchEl();
+            if (s) s.value = '';
+        }
+    };
+
+    const closeAllLaborPickers = (except = null) => {
+        Object.keys(adminLaborPickerCfg).forEach((t) => { if (t !== except) closeLaborPicker(t); });
+    };
+
+    const renderLaborPickerOptions = (type) => {
+        const cfg = adminLaborPickerCfg[type];
+        if (!cfg?.optionsEl()) return;
+        const kw = normalizePickerText(adminLaborPickerSearch[type]);
+        const selectedVal = String(
+            type === 'symptom' ? (adminLaborRefs.symptomSelect?.value || '') : (adminLaborRefs.causeSelect?.value || '')
+        );
+        const allItems = type === 'symptom'
+            ? getAdminLaborSymptoms()
+            : getAdminLaborCauses();
+        const items = kw ? allItems.filter((i) => normalizePickerText(cfg.getLabel(i)).includes(kw)) : allItems;
+
+        if (!items.length) {
+            cfg.optionsEl().innerHTML = `<div class="dispatch-search-picker__empty">${escapeHtml(cfg.emptyText)}</div>`;
+            return;
+        }
+        cfg.optionsEl().innerHTML = items.map((item) => {
+            const val = String(Number(item?.id || 0));
+            const isSel = val !== '0' && val === selectedVal;
+            return `<button type="button" class="dispatch-search-picker__option ${isSel ? 'is-selected' : ''}" data-picker-type="${type}" data-picker-value="${val}">${escapeHtml(cfg.getLabel(item))}</button>`;
+        }).join('');
+    };
+
+    const openLaborPicker = (type) => {
+        const cfg = adminLaborPickerCfg[type];
+        const trigger = cfg?.triggerEl();
+        if (!trigger || trigger.disabled) return;
+        closeAllLaborPickers(type);
+        cfg.panelEl()?.removeAttribute('hidden');
+        trigger.setAttribute('aria-expanded', 'true');
+        renderLaborPickerOptions(type);
+        window.requestAnimationFrame(() => { cfg.searchEl()?.focus(); });
+    };
+
+    const applyLaborPickerSelection = (type, value) => {
+        const cfg = adminLaborPickerCfg[type];
+        if (!cfg) return;
+        const sel = type === 'symptom' ? adminLaborRefs.symptomSelect : adminLaborRefs.causeSelect;
+        if (sel) sel.value = String(value || '');
+        closeLaborPicker(type);
+        sel?.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    // ── Data helpers ──────────────────────────────────────────────────────────────
+
+    const getAdminLaborSymptoms = () => {
+        const map = new Map();
+        state.laborCatalog.items.forEach((item) => {
+            (Array.isArray(item?.trieu_chungs) ? item.trieu_chungs : []).forEach((s) => {
+                const sid = Number(s?.id || 0);
+                if (sid > 0 && !map.has(sid)) {
+                    map.set(sid, { id: sid, ten_trieu_chung: s?.ten_trieu_chung || 'Triệu chứng', dich_vu_id: Number(s?.dich_vu_id || 0) });
+                }
+            });
+        });
+        return [...map.values()].sort((a, b) => String(a.ten_trieu_chung).localeCompare(String(b.ten_trieu_chung), 'vi'));
+    };
+
+    const getAdminLaborItemsBySymptom = () => {
+        const sid = Number(state.laborCatalog.selectedSymptomId || 0);
+        if (sid <= 0) return state.laborCatalog.items;
+        return state.laborCatalog.items.filter((item) =>
+            Array.isArray(item?.trieu_chungs) && item.trieu_chungs.some((s) => Number(s?.id || 0) === sid)
+        );
+    };
+
+    const getAdminLaborCauses = () => {
+        if (Number(state.laborCatalog.selectedSymptomId || 0) <= 0) return [];
+        const map = new Map();
+        getAdminLaborItemsBySymptom().forEach((item) => {
+            const cid = Number(item?.nguyen_nhan?.id || item?.nguyen_nhan_id || 0);
+            if (cid > 0 && !map.has(cid)) {
+                map.set(cid, { id: cid, ten_nguyen_nhan: item?.nguyen_nhan?.ten_nguyen_nhan || 'Nguyên nhân' });
+            }
+        });
+        return [...map.values()].sort((a, b) => String(a.ten_nguyen_nhan).localeCompare(String(b.ten_nguyen_nhan), 'vi'));
+    };
+
+    const getAdminLaborResolutions = () => {
+        const cid = Number(state.laborCatalog.selectedCauseId || 0);
+        if (cid <= 0) return [];
+        return getAdminLaborItemsBySymptom()
+            .filter((item) => Number(item?.nguyen_nhan?.id || item?.nguyen_nhan_id || 0) === cid)
+            .sort((a, b) => String(a.ten_huong_xu_ly).localeCompare(String(b.ten_huong_xu_ly), 'vi'));
+    };
+
+    const getAdminSelectedResolution = () => {
+        const rid = Number(state.laborCatalog.selectedResolutionId || 0);
+        return getAdminLaborResolutions().find((item) => Number(item?.id || 0) === rid);
+    };
+
+    const getAdminDraftLaborIds = () => new Set(
+        Array.from(refs.detailLaborItemsEditor?.querySelectorAll('.js-labor-catalog-id') || [])
+            .map((el) => Number(el.value || 0)).filter((id) => id > 0)
+    );
+
+    // ── Picker sync (updates all 3 dropdowns + button state) ─────────────────────
+
+    const updateAdminLaborCascadePicker = () => {
+        const symptoms = getAdminLaborSymptoms();
+        const causes = getAdminLaborCauses();
+        const resolutions = getAdminLaborResolutions();
+        const selectedResolution = getAdminSelectedResolution();
+        const hasPrice = Number(selectedResolution?.gia_tham_khao || 0) > 0;
+        const alreadyAdded = selectedResolution && getAdminDraftLaborIds().has(Number(selectedResolution.id || 0));
+
+        // Symptom picker
+        const symSel = adminLaborRefs.symptomSelect;
+        if (symSel) {
+            symSel.innerHTML = ['<option value="">Chọn triệu chứng</option>',
+                ...symptoms.map((s) => `<option value="${s.id}" ${Number(state.laborCatalog.selectedSymptomId) === s.id ? 'selected' : ''}>${escapeHtml(s.ten_trieu_chung)}</option>`)
+            ].join('');
+        }
+        const symTrigger = adminLaborRefs.symptomTrigger;
+        const selSym = symptoms.find((s) => Number(s.id) === Number(state.laborCatalog.selectedSymptomId || 0));
+        if (adminLaborRefs.symptomTriggerLabel) adminLaborRefs.symptomTriggerLabel.textContent = selSym?.ten_trieu_chung || 'Chọn triệu chứng';
+        if (symTrigger) symTrigger.disabled = symptoms.length === 0 || isLockedBookingDetail();
+
+        // Cause picker
+        const causeSel = adminLaborRefs.causeSelect;
+        if (causeSel) {
+            causeSel.innerHTML = ['<option value="">Chọn nguyên nhân</option>',
+                ...causes.map((c) => `<option value="${c.id}" ${Number(state.laborCatalog.selectedCauseId) === c.id ? 'selected' : ''}>${escapeHtml(c.ten_nguyen_nhan)}</option>`)
+            ].join('');
+        }
+        const selCause = causes.find((c) => Number(c.id) === Number(state.laborCatalog.selectedCauseId || 0));
+        if (adminLaborRefs.causeTriggerLabel) adminLaborRefs.causeTriggerLabel.textContent = selCause?.ten_nguyen_nhan || 'Chọn nguyên nhân';
+        const causeTrigger = adminLaborRefs.causeTrigger;
+        if (causeTrigger) causeTrigger.disabled = causes.length === 0 || isLockedBookingDetail();
+
+        // Resolution select
+        const resSel = adminLaborRefs.resolutionSelect;
+        if (resSel) {
+            resSel.innerHTML = ['<option value="">Chọn hướng xử lý</option>',
+                ...resolutions.map((r) => `<option value="${r.id}" ${Number(state.laborCatalog.selectedResolutionId) === Number(r.id) ? 'selected' : ''}>${escapeHtml(r.ten_huong_xu_ly)}${Number(r.gia_tham_khao || 0) > 0 ? ' — ' + formatMoney(r.gia_tham_khao) : ''}</option>`)
+            ].join('');
+            resSel.disabled = resolutions.length === 0 || isLockedBookingDetail();
+        }
+
+        // Add button
+        const addBtn = adminLaborRefs.addBtn;
+        if (addBtn) {
+            const isDisabled = !selectedResolution || !hasPrice || alreadyAdded || isLockedBookingDetail();
+            addBtn.disabled = isDisabled;
+            addBtn.title = !selectedResolution ? 'Chọn hướng xử lý trước.'
+                : !hasPrice ? 'Hướng xử lý chưa có giá tham khảo.'
+                : alreadyAdded ? 'Đã có trong bảng tiền công.'
+                : 'Thêm tiền công vào bảng.';
+        }
+
+        // Status texts
+        const statusEl = adminLaborRefs.statusEl;
+        const priceEl = adminLaborRefs.priceEl;
+        if (!state.laborCatalog.items.length) {
+            if (statusEl) statusEl.textContent = state.detail ? 'Dịch vụ của đơn chưa có hướng xử lý.' : 'Mở chi tiết đơn để tải danh mục.';
+            if (priceEl) priceEl.textContent = '';
+            return;
+        }
+        if (!state.laborCatalog.selectedSymptomId) {
+            if (statusEl) statusEl.textContent = 'Chọn triệu chứng trước để lọc nguyên nhân tương ứng.';
+            if (priceEl) priceEl.textContent = `Hệ thống có ${state.laborCatalog.items.length} hướng xử lý theo dịch vụ của đơn.`;
+            return;
+        }
+        if (!state.laborCatalog.selectedCauseId) {
+            if (statusEl) statusEl.textContent = 'Tiếp tục chọn nguyên nhân để thu hẹp danh sách.';
+            if (priceEl) priceEl.textContent = `${causes.length} nguyên nhân phù hợp với triệu chứng đang chọn.`;
+            return;
+        }
+        if (!selectedResolution) {
+            if (statusEl) statusEl.textContent = 'Chọn hướng xử lý để thêm đúng dòng tiền công.';
+            if (priceEl) priceEl.textContent = `${resolutions.length} hướng xử lý khớp với nguyên nhân đã chọn.`;
+            return;
+        }
+        if (statusEl) statusEl.textContent = selectedResolution.mo_ta_cong_viec || 'Hướng xử lý chưa có mô tả công việc.';
+        if (priceEl) {
+            priceEl.textContent = alreadyAdded ? 'Hướng xử lý này đã có trong bảng tiền công.'
+                : !hasPrice ? 'Chưa có giá tham khảo, không thể thêm.'
+                : `Giá tham khảo: ${formatMoney(selectedResolution.gia_tham_khao)}. Nhấn "Thêm tiền công" để đưa vào bảng.`;
+        }
+    };
+
+    // ── Row markup + editor ───────────────────────────────────────────────────────
+
+    const buildAdminLaborRowMarkup = (item = {}) => {
+        const label = escapeHtml(String(item?.noi_dung || item?.ten_huong_xu_ly || '').trim());
+        const amount = Math.round(Number(item?.gia_tham_khao || item?.so_tien || 0));
+        const formattedAmount = amount > 0 ? Number(amount).toLocaleString('vi-VN') : '0';
+        const catalogId = Number(item?.huong_xu_ly_id || item?.id || 0);
+        const causeId = Number(item?.nguyen_nhan_id || item?.nguyen_nhan?.id || 0);
+        const symptomName = escapeHtml(item?.ten_trieu_chung || '');
+        const causeName = escapeHtml(item?.ten_nguyen_nhan || item?.nguyen_nhan?.ten_nguyen_nhan || '');
+        const meta = [symptomName, causeName].filter(Boolean).join(' • ') || (catalogId > 0 ? 'Từ danh mục tiền công' : 'Nhập thủ công');
+
+        return `
+            <div class="js-labor-row dispatch-pricing-v2-labor-row" data-labor-id="${catalogId}">
+                <input type="hidden" class="js-labor-catalog-id" value="${catalogId}">
+                <input type="hidden" class="js-labor-cause-id" value="${causeId}">
+                <input type="hidden" class="js-labor-amount" value="${amount}">
+                <div class="dispatch-pricing-v2-labor-main">
+                    <div class="dispatch-pricing-v2-field-label">Tên hạng mục công</div>
+                    <input type="text" class="dispatch-pricing-v2-input-dark js-labor-description dispatch-pricing-v2-inline-input" value="${label}" placeholder="Hướng xử lý..." ${catalogId > 0 ? 'readonly' : ''}>
+                    <div class="dispatch-pricing-v2-labor-row-meta">${meta}</div>
+                </div>
+                <div class="dispatch-pricing-v2-labor-col dispatch-pricing-v2-labor-col--price">
+                    <div class="dispatch-pricing-v2-field-label">Đơn giá (đ)</div>
+                    <div class="dispatch-pricing-v2-labor-price">
+                        <span class="js-labor-price-display">${formattedAmount}</span>
+                        <span class="dispatch-pricing-v2-labor-price__suffix">đ</span>
+                    </div>
+                </div>
+                <button type="button" class="js-labor-row-remove dispatch-pricing-v2-labor-remove dispatch-line-item__remove" aria-label="Xóa dòng">
+                    <span class="material-symbols-outlined" style="font-size:14px">delete</span>
+                </button>
+            </div>
+        `;
+    };
+
+    const buildAdminLaborManualRowMarkup = () => `
+        <div class="js-labor-row dispatch-pricing-v2-labor-row">
+            <input type="hidden" class="js-labor-catalog-id" value="0">
+            <input type="hidden" class="js-labor-cause-id" value="0">
+            <input type="hidden" class="js-labor-amount" value="">
+            <div class="dispatch-pricing-v2-labor-main">
+                <div class="dispatch-pricing-v2-field-label">Tên hạng mục công</div>
+                <input type="text" class="dispatch-pricing-v2-input-dark js-labor-description dispatch-pricing-v2-inline-input" value="" placeholder="Nhập mô tả tiền công...">
+                <div class="dispatch-pricing-v2-labor-row-meta">Nhập thủ công</div>
+            </div>
+            <div class="dispatch-pricing-v2-labor-col dispatch-pricing-v2-labor-col--price">
+                <div class="dispatch-pricing-v2-field-label">Đơn giá (đ)</div>
+                <input type="number" class="dispatch-pricing-v2-input-dark js-labor-amount-input dispatch-pricing-v2-inline-input dispatch-pricing-v2-inline-input--price" min="0" step="1000" value="" placeholder="0">
+            </div>
+            <button type="button" class="js-labor-row-remove dispatch-pricing-v2-labor-remove dispatch-line-item__remove" aria-label="Xóa dòng">
+                <span class="material-symbols-outlined" style="font-size:14px">delete</span>
+            </button>
+        </div>
+    `;
+
+    const getLaborRowAmount = (row) => {
+        const hiddenAmount = row.querySelector('.js-labor-amount');
+        const inputAmount = row.querySelector('.js-labor-amount-input');
+        return parseAmount(inputAmount?.value ?? hiddenAmount?.value ?? '0');
+    };
+
+    const insertAdminLaborRow = (item = {}) => {
+        if (!refs.detailLaborItemsEditor) return;
+        refs.detailLaborItemsEditor.querySelector('#detailLaborItemsEmpty')?.remove();
+        refs.detailLaborItemsEditor.insertAdjacentHTML('beforeend', buildAdminLaborRowMarkup(item));
+        syncAdminLaborCost();
+    };
+
+    const renderAdminLaborItems = (items = []) => {
+        if (!refs.detailLaborItemsEditor) return;
+        const valid = Array.isArray(items)
+            ? items.filter((i) => (i?.noi_dung || i?.ten_huong_xu_ly || '') !== '' || Number(i?.so_tien || i?.gia_tham_khao || 0) > 0)
+            : [];
+        if (!valid.length) {
+            refs.detailLaborItemsEditor.innerHTML = `<div class="text-xs text-on-surface-variant italic text-center py-4 border border-dashed border-outline-variant/50 rounded-lg" id="detailLaborItemsEmpty">Chưa có tiền công. Chọn hướng xử lý ở trên hoặc nhập thủ công.</div>`;
+            if (refs.detailLaborCostDisplay) refs.detailLaborCostDisplay.textContent = '0 ₫';
+            if (refs.detailLaborCost) refs.detailLaborCost.value = '0';
+            return;
+        }
+        refs.detailLaborItemsEditor.innerHTML = valid.map(buildAdminLaborRowMarkup).join('');
+        syncAdminLaborCost();
+    };
+
+    const collectAdminLaborItems = () => {
+        if (!refs.detailLaborItemsEditor) return [];
+        return Array.from(refs.detailLaborItemsEditor.querySelectorAll('.js-labor-row')).map((row) => ({
+            huong_xu_ly_id: Number(row.querySelector('.js-labor-catalog-id')?.value || 0) || null,
+            nguyen_nhan_id: Number(row.querySelector('.js-labor-cause-id')?.value || 0) || null,
+            noi_dung: row.querySelector('.js-labor-description')?.value?.trim() || '',
+            so_tien: getLaborRowAmount(row),
+        })).filter((item) => item.noi_dung !== '' || item.so_tien > 0);
+    };
+
+
+
+    const hideAdminLaborCatalogDropdown = () => closeAllLaborPickers();
+
+    // ── Add selected resolution ───────────────────────────────────────────────────
+
+    const addSelectedAdminLaborItem = () => {
+        if (isLockedBookingDetail()) { showToast('Đơn đã hoàn thành, không thể chỉnh sửa.', 'error'); return; }
+        const resolution = getAdminSelectedResolution();
+        if (!resolution) { showToast('Vui lòng chọn đầy đủ triệu chứng, nguyên nhân và hướng xử lý.', 'error'); return; }
+        if (Number(resolution.gia_tham_khao || 0) <= 0) { showToast('Hướng xử lý này chưa có giá tham khảo.', 'error'); return; }
+        const selSym = getAdminLaborSymptoms().find((s) => Number(s.id) === Number(state.laborCatalog.selectedSymptomId || 0));
+        insertAdminLaborRow({
+            huong_xu_ly_id: Number(resolution.id),
+            nguyen_nhan_id: Number(resolution?.nguyen_nhan?.id || resolution?.nguyen_nhan_id || 0),
+            ten_trieu_chung: selSym?.ten_trieu_chung || '',
+            ten_nguyen_nhan: resolution?.nguyen_nhan?.ten_nguyen_nhan || '',
+            noi_dung: resolution.ten_huong_xu_ly || 'Hướng xử lý',
+            so_tien: Number(resolution.gia_tham_khao),
+        });
+        
+        // Chỉ reset Hướng xử lý, giữ nguyên Triệu chứng và Nguyên nhân 
+        // để admin có thể chọn nhanh hướng xử lý khác cùng nguyên nhân.
+        state.laborCatalog.selectedResolutionId = null;
+        updateAdminLaborCascadePicker();
+    };
+
+    const syncAdminLaborCost = () => {
+        if (!refs.detailLaborItemsEditor) return 0;
+        let grandTotal = 0;
+        Array.from(refs.detailLaborItemsEditor.querySelectorAll('.js-labor-row')).forEach((row) => {
+            const priceInput = row.querySelector('.js-labor-row-price');
+            const amount = parseAmount(priceInput?.value || 0);
+            if (priceInput) priceInput.value = amount > 0 ? String(Math.trunc(amount)) : '0';
+            grandTotal += amount;
+        });
+        if (refs.detailLaborCost) refs.detailLaborCost.value = String(Math.trunc(grandTotal));
+        if (refs.detailLaborCostDisplay) refs.detailLaborCostDisplay.textContent = formatMoney(grandTotal);
+        return grandTotal;
+    };
+
+    const updateAdminLaborAddButtonState = () => {
+        if (!refs.btnAdminAddLaborItem) return;
+        const isLocked = isLockedBookingDetail();
+        const rid = Number(state.laborCatalog.selectedResolutionId || 0);
+        
+        refs.btnAdminAddLaborItem.disabled = isLocked || rid <= 0;
+        refs.btnAdminAddLaborItem.innerHTML = '<span class="material-symbols-outlined">add_circle</span> <span>Thêm vào đơn</span>';
+
+        if (refs.btnAddManualLaborRow) {
+            refs.btnAddManualLaborRow.disabled = isLocked;
+        }
+    };
+
+    const syncAdminLaborEditorLock = (isLocked = isLockedBookingDetail()) => {
+        if (!refs.detailLaborItemsEditor) return;
+        refs.detailLaborItemsEditor.classList.toggle('is-readonly', isLocked);
+        refs.detailLaborItemsEditor.querySelectorAll('.js-labor-row-content, .js-labor-row-price, .js-labor-row-remove')
+            .forEach((control) => setMutationLockState(control, isLocked));
+        
+        // Disable pickers
+        if (refs.adminLaborSymptomTrigger) refs.adminLaborSymptomTrigger.disabled = isLocked;
+        if (refs.adminLaborCauseTrigger) refs.adminLaborCauseTrigger.disabled = isLocked;
+        if (refs.adminLaborResolutionSelectVisible) refs.adminLaborResolutionSelectVisible.disabled = isLocked;
+    };
+
+    // ── Load catalog ──────────────────────────────────────────────────────────────
+
+    const loadAdminLaborCatalogForBooking = async (detail) => {
+        state.laborCatalog.requestId += 1;
+        const requestId = state.laborCatalog.requestId;
+        const serviceIds = Array.isArray(detail?.service_ids)
+            ? detail.service_ids.map((id) => parseInteger(id, 0, 0)).filter((id) => id > 0)
+            : [];
+
+        state.laborCatalog.selectedSymptomId = null;
+        state.laborCatalog.selectedCauseId = null;
+        state.laborCatalog.selectedResolutionId = null;
+        state.laborCatalog.items = [];
+
+        if (!serviceIds.length) {
+            updateAdminLaborCascadePicker();
+            return;
+        }
+
+        const cacheKey = serviceIds.slice().sort((a, b) => a - b).join(',');
+        if (state.laborCatalog.cache.has(cacheKey)) {
+            state.laborCatalog.items = state.laborCatalog.cache.get(cacheKey);
+            updateAdminLaborCascadePicker();
+            return;
+        }
+
+        if (adminLaborRefs.statusEl) adminLaborRefs.statusEl.textContent = 'Đang tải danh mục tiền công theo dịch vụ...';
+
+        try {
+            const params = new URLSearchParams();
+            serviceIds.forEach((id) => params.append('dich_vu_ids[]', id));
+            const response = await callApi(`/huong-xu-ly?${params.toString()}`, 'GET');
+            if (requestId !== state.laborCatalog.requestId) return;
+            if (!response.ok) throw new Error(response.data?.message || 'Không thể tải danh mục tiền công.');
+            const items = Array.isArray(response.data) ? response.data : [];
+            state.laborCatalog.items = items;
+            state.laborCatalog.cache.set(cacheKey, items);
+            updateAdminLaborCascadePicker();
+        } catch (error) {
+            if (requestId !== state.laborCatalog.requestId) return;
+            state.laborCatalog.items = [];
+            updateAdminLaborCascadePicker();
+            if (adminLaborRefs.statusEl) adminLaborRefs.statusEl.textContent = error.message || 'Không thể tải danh mục tiền công.';
+        }
+    };
     const syncDetailMutationLock = (detail = state.detail) => {
         const isLocked = isLockedBookingDetail(detail);
         if (refs.detailReadonlyNotice) {
@@ -618,14 +1107,19 @@ document.addEventListener('DOMContentLoaded', () => {
             refs.btnAssignWorker,
             refs.btnReschedule,
             refs.btnUpdateCosts,
+            refs.btnAdminAddLaborItem,
+            refs.btnAddManualLaborRow,
             refs.btnUpdatePaymentMethod,
             refs.btnConfirmCashPayment,
         ].forEach((control) => setMutationLockState(control, isLocked));
 
         syncAdminPartEditorLock(isLocked);
+        syncAdminLaborEditorLock(isLocked);
         updateAdminPartAddButtonState();
+        updateAdminLaborAddButtonState();
         if (isLocked) {
             hideAdminPartCatalogSuggestions();
+            hideAdminLaborCatalogDropdown();
         }
 
         return isLocked;
@@ -792,8 +1286,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 >
                     <span class="dispatch-part-suggestion__thumb">
                         ${item?.hinh_anh
-                            ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}">`
-                            : '<span class="material-symbols-outlined">image_not_supported</span>'}
+                    ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}">`
+                    : '<span class="material-symbols-outlined">image_not_supported</span>'}
                     </span>
                     <span class="dispatch-part-suggestion__body">
                         <span class="dispatch-part-suggestion__title">${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}</span>
@@ -860,8 +1354,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="checkbox" class="dispatch-part-option__check js-admin-part-check" value="${partId}" ${isSelected ? 'checked' : ''} ${hasPrice && !isLocked ? '' : 'disabled'}>
                     <div class="dispatch-part-option__thumb">
                         ${item?.hinh_anh
-                            ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}">`
-                            : '<span class="material-symbols-outlined">image_not_supported</span>'}
+                    ? `<img src="${escapeHtml(item.hinh_anh)}" alt="${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}">`
+                    : '<span class="material-symbols-outlined">image_not_supported</span>'}
                     </div>
                     <div class="dispatch-part-option__body">
                         <div class="dispatch-part-option__title">${escapeHtml(getAdminPartCatalogItemName(item) || 'Linh kien')}</div>
@@ -1314,7 +1808,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 note: `${formatNumber(summary.payment_issue_count || 0)} đơn lỗi thanh toán`,
             },
             {
-                label: 'Khiếu nại',
+                label: 'bảo hành',
                 value: formatNumber(summary.complaint_count || 0),
                 note: 'Đơn có phản ánh của khách',
             },
@@ -1375,7 +1869,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (booking?.flags?.has_complaint) {
-            flags.push(buildPill('Có khiếu nại', 'danger'));
+            flags.push(buildPill('Có bảo hành', 'danger'));
         }
 
         if (booking?.flags?.has_worker_contact_issue) {
@@ -1397,7 +1891,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isCompleted = isCompletedBookingStatus(booking?.status_key || booking?.status);
         const checked = !isCompleted && state.selected.has(Number(booking.id)) ? 'checked' : '';
         const complaintLink = booking?.flags?.has_complaint
-            ? `<a class="text-xs font-medium text-error hover:underline mt-1 inline-block" href="/admin/customer-feedback?search=${encodeURIComponent(booking.code || '')}">Xem khiếu nại</a>`
+            ? `<a class="text-xs font-medium text-error hover:underline mt-1 inline-block" href="/admin/customer-feedback?search=${encodeURIComponent(booking.code || '')}">Xem bảo hành</a>`
             : '';
 
         return `
@@ -1544,12 +2038,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="admin-orders-pagination-pages">
                 <button type="button" data-page-action="prev" ${current <= 1 ? 'disabled' : ''}>Trước</button>
                 ${pages.map((page) => {
-                    if (page === 'ellipsis') {
-                        return '<span class="px-1 text-muted">...</span>';
-                    }
-                    const active = page === current ? 'is-active' : '';
-                    return `<button type="button" class="${active}" data-page="${page}">${page}</button>`;
-                }).join('')}
+            if (page === 'ellipsis') {
+                return '<span class="px-1 text-muted">...</span>';
+            }
+            const active = page === current ? 'is-active' : '';
+            return `<button type="button" class="${active}" data-page="${page}">${page}</button>`;
+        }).join('')}
                 <button type="button" data-page-action="next" ${current >= last ? 'disabled' : ''}>Sau</button>
             </div>
         `;
@@ -1670,7 +2164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (refs.detailMedia) refs.detailMedia.innerHTML = '<p class="text-muted mb-0">Đang tải dữ liệu media...</p>';
         if (refs.detailTimeline) refs.detailTimeline.innerHTML = '<p class="text-muted mb-0">Đang tải timeline...</p>';
         if (refs.detailHistory) refs.detailHistory.innerHTML = '<p class="text-muted mb-0">Đang tải lịch sử thao tác...</p>';
-        if (refs.detailComplaint) refs.detailComplaint.innerHTML = '<p class="text-muted mb-0">Đang tải thông tin khiếu nại...</p>';
+        if (refs.detailComplaint) refs.detailComplaint.innerHTML = '<p class="text-muted mb-0">Đang tải thông tin bảo hành...</p>';
         if (refs.detailPayments) {
             refs.detailPayments.innerHTML = `
                 <tr>
@@ -1714,9 +2208,9 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.detailMedia.innerHTML = entries.map((entry) => `
             <article class="admin-orders-media-item">
                 ${entry.kind === 'image'
-                    ? `<img src="${escapeHtml(entry.url)}" alt="${escapeHtml(entry.phase)}">`
-                    : `<video src="${escapeHtml(entry.url)}" controls preload="metadata"></video>`
-                }
+                ? `<img src="${escapeHtml(entry.url)}" alt="${escapeHtml(entry.phase)}">`
+                : `<video src="${escapeHtml(entry.url)}" controls preload="metadata"></video>`
+            }
                 <span class="tag ${toneClass(entry.phase === 'Trước sửa' ? 'warning' : 'success')}">${escapeHtml(entry.phase)}</span>
             </article>
         `).join('');
@@ -1774,7 +2268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!complaint) {
-            refs.detailComplaint.innerHTML = '<p class="text-muted mb-0">Đơn này chưa phát sinh khiếu nại.</p>';
+            refs.detailComplaint.innerHTML = '<p class="text-muted mb-0">Đơn này chưa phát sinh bảo hành.</p>';
             if (refs.detailComplaintLink) {
                 refs.detailComplaintLink.href = complaintUrl;
             }
@@ -1889,6 +2383,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (refs.detailPartNote) refs.detailPartNote.value = detail?.cost_details?.part_note || '';
         if (refs.detailPaymentMethod) refs.detailPaymentMethod.value = detail?.payment?.method || 'cod';
 
+        // Labor items
+        const detailLaborItems = Array.isArray(detail?.cost_details?.labor_items)
+            ? detail.cost_details.labor_items
+            : [];
+        const fallbackLaborItems = detailLaborItems.length === 0 && Number(detail?.costs?.labor || 0) > 0
+            ? [{ noi_dung: 'Tiền công sửa chữa', so_tien: Number(detail?.costs?.labor || 0) }]
+            : [];
+        renderAdminLaborItems(detailLaborItems.length ? detailLaborItems : fallbackLaborItems);
+
+        // Part items
         const detailPartItems = Array.isArray(detail?.cost_details?.part_items)
             ? detail.cost_details.part_items
             : [];
@@ -1901,7 +2405,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 bao_hanh_thang: null,
             }]
             : [];
-
         renderAdminPartItems(detailPartItems.length ? detailPartItems : fallbackPartItems);
         syncDetailMutationLock(detail);
     };
@@ -1977,7 +2480,10 @@ document.addEventListener('DOMContentLoaded', () => {
             state.detail = detail;
             state.activeBookingId = Number(detail.id || bookingId);
             renderBookingDetail(detail);
-            await loadAdminPartCatalogForBooking(detail);
+            await Promise.all([
+                loadAdminPartCatalogForBooking(detail),
+                loadAdminLaborCatalogForBooking(detail),
+            ]);
             syncDetailMutationLock(detail);
         } catch (error) {
             console.error('Load booking detail error:', error);
@@ -2128,8 +2634,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const labor = parseAmount(refs.detailLaborCost?.value);
         syncAdminPartCost();
+        syncAdminLaborCost();
+
+        const laborItems = collectAdminLaborItems();
+        const labor = laborItems.reduce((sum, item) => sum + Number(item.so_tien || 0), 0);
         const partItems = collectAdminPartItems();
         const part = partItems.reduce((sum, item) => sum + Number(item.so_tien || 0), 0);
         const travel = parseAmount(refs.detailTravelCost?.value);
@@ -2142,20 +2651,9 @@ document.addEventListener('DOMContentLoaded', () => {
             phi_di_lai: travel,
             tien_thue_xe: transport,
             ghi_chu_linh_kien: partNote,
-            chi_tiet_tien_cong: labor > 0
-                ? [{ noi_dung: 'Tiền công sửa chữa', so_tien: labor }]
-                : [],
-            chi_tiet_linh_kien: part > 0
-                ? [{
-                    noi_dung: 'Linh kiện thay thế',
-                    don_gia: part,
-                    so_luong: 1,
-                    so_tien: part,
-                    bao_hanh_thang: null,
-                }]
-                : [],
+            chi_tiet_tien_cong: laborItems,
+            chi_tiet_linh_kien: partItems,
         };
-        payload.chi_tiet_linh_kien = partItems;
 
         const response = await callApi(`/admin/bookings/${state.activeBookingId}/financials`, 'PUT', payload);
         ensureSuccess(response, 'Không thể cập nhật chi phí');
@@ -2795,7 +3293,115 @@ document.addEventListener('DOMContentLoaded', () => {
         await runButtonAction(refs.btnConfirmCashPayment, confirmCashPayment);
     });
 
+    const toggleLaborPicker = (type) => {
+        const cfg = adminLaborPickerCfg[type];
+        if (!cfg) return;
+        const trigger = cfg.triggerEl();
+        if (trigger?.getAttribute('aria-expanded') === 'true') {
+            closeLaborPicker(type, false);
+        } else {
+            openLaborPicker(type);
+        }
+    };
+
+    const handleLaborPickerSearch = (type) => {
+        const cfg = adminLaborPickerCfg[type];
+        if (!cfg) return;
+        adminLaborPickerSearch[type] = cfg.searchEl()?.value || '';
+        renderLaborPickerOptions(type);
+    };
+
+    // --- Labor Picker Events ---
+    refs.adminLaborSymptomTrigger?.addEventListener('click', () => {
+        if (isLockedBookingDetail()) return;
+        toggleLaborPicker('symptom');
+    });
+
+    refs.adminLaborSymptomSearch?.addEventListener('input', () => {
+        handleLaborPickerSearch('symptom');
+    });
+
+    refs.adminLaborSymptomSelect?.addEventListener('change', (e) => {
+        state.laborCatalog.selectedSymptomId = Number(e.target.value) || null;
+        state.laborCatalog.selectedCauseId = null;
+        state.laborCatalog.selectedResolutionId = null;
+        updateAdminLaborCascadePicker();
+    });
+
+    refs.adminLaborCauseTrigger?.addEventListener('click', () => {
+        if (isLockedBookingDetail()) return;
+        toggleLaborPicker('cause');
+    });
+
+    refs.adminLaborCauseSearch?.addEventListener('input', () => {
+        handleLaborPickerSearch('cause');
+    });
+
+    refs.adminLaborCauseSelect?.addEventListener('change', (e) => {
+        state.laborCatalog.selectedCauseId = Number(e.target.value) || null;
+        state.laborCatalog.selectedResolutionId = null;
+        updateAdminLaborCascadePicker();
+    });
+
+    refs.adminLaborResolutionSelectVisible?.addEventListener('change', (e) => {
+        state.laborCatalog.selectedResolutionId = Number(e.target.value) || null;
+        updateAdminLaborCascadePicker();
+    });
+
+    refs.btnAdminAddLaborItem?.addEventListener('click', () => {
+        if (isLockedBookingDetail()) return;
+        addSelectedAdminLaborItem();
+    });
+
+    refs.btnAddManualLaborRow?.addEventListener('click', () => {
+        if (isLockedBookingDetail()) return;
+        insertAdminLaborRow({ noi_dung: '', so_tien: 0 });
+    });
+
+    refs.detailLaborItemsEditor?.addEventListener('input', (event) => {
+        if (event.target.closest('.js-labor-row')) {
+            syncAdminLaborCost();
+        }
+    });
+
+    refs.detailLaborItemsEditor?.addEventListener('click', (event) => {
+        const removeBtn = event.target.closest('.js-labor-row-remove');
+        if (!removeBtn) return;
+        if (isLockedBookingDetail()) return;
+
+        removeBtn.closest('.js-labor-row')?.remove();
+        syncAdminLaborCost();
+        
+        if (!refs.detailLaborItemsEditor?.querySelector('.js-labor-row')) {
+            renderAdminLaborItems([]);
+        }
+    });
+
+    // Global Click-outside & Option Selection for Labor Pickers
+    document.addEventListener('click', (event) => {
+        // Handle Option Click
+        const option = event.target.closest('.dispatch-search-picker__option');
+        if (option && !option.disabled) {
+            const type = option.getAttribute('data-picker-type');
+            const val = option.getAttribute('data-picker-value');
+            if (type && adminLaborPickerCfg[type]) {
+                applyLaborPickerSelection(type, val);
+                return; // Stop further processing if option was clicked
+            }
+        }
+
+        // Click-outside Symptom Picker
+        if (refs.adminLaborSymptomPicker && !refs.adminLaborSymptomPicker.contains(event.target)) {
+            closeLaborPicker('symptom', false);
+        }
+        // Click-outside Cause Picker
+        if (refs.adminLaborCausePicker && !refs.adminLaborCausePicker.contains(event.target)) {
+            closeLaborPicker('cause', false);
+        }
+    });
+
     hydrateAdminPartCatalogCopy();
     updateAdminPartAddButtonState();
+    updateAdminLaborAddButtonState();
     loadBookings();
 });

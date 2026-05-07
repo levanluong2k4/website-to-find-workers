@@ -67,7 +67,7 @@ class ChatbotApiTest extends TestCase
                                         'assistant_text' => 'Ban nen kiem tra ong thoat nuoc va ve sinh dan lanh.',
                                         'cases' => [],
                                         'technicians' => [],
-                'youtube_links' => [],
+                                        'youtube_links' => [],
                                     ], JSON_UNESCAPED_UNICODE),
                                 ],
                             ],
@@ -104,7 +104,7 @@ class ChatbotApiTest extends TestCase
 
             return str_contains($systemInstruction, 'ASSISTANT SOUL')
                 && str_contains($systemInstruction, 'ngat cau dao')
-                && str_contains($systemInstruction, 'Can tho chuyen nghiep');
+                && str_contains($systemInstruction, 'Cần thợ chuyên nghiệp');
         });
     }
 
@@ -424,7 +424,7 @@ class ChatbotApiTest extends TestCase
 
         $assistantText = (string) $response->json('data.assistant_text');
         $this->assertStringContainsString('giu khoang cach an toan', $assistantText);
-        $this->assertStringContainsString('Can tho chuyen nghiep', $assistantText);
+        $this->assertStringContainsString('Cần thợ chuyên nghiệp', $assistantText);
 
         Http::assertNothingSent();
     }
@@ -834,18 +834,20 @@ class ChatbotApiTest extends TestCase
 
     private function truncateTables(): void
     {
-        foreach ([
-            'chat_magic',
-            'chat_memories',
-            'ai_knowledge_items',
-            'danh_gia',
-            'don_dat_lich',
-            'tho_dich_vu',
-            'ho_so_tho',
-            'danh_muc_dich_vu',
-            'personal_access_tokens',
-            'users',
-        ] as $table) {
+        foreach (
+            [
+                'chat_magic',
+                'chat_memories',
+                'ai_knowledge_items',
+                'danh_gia',
+                'don_dat_lich',
+                'tho_dich_vu',
+                'ho_so_tho',
+                'danh_muc_dich_vu',
+                'personal_access_tokens',
+                'users',
+            ] as $table
+        ) {
             if (Schema::hasTable($table)) {
                 DB::table($table)->delete();
             }

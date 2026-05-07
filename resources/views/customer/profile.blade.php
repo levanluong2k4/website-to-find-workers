@@ -15,6 +15,9 @@
         --profile-primary: #1697e5;
         --profile-primary-dark: #0d86d1;
         --profile-primary-soft: #e6f5ff;
+        --profile-accent: #1697e5;
+        --profile-accent-dark: #0d86d1;
+        --profile-accent-light: #e6f5ff;
         --profile-success: #10b981;
         --profile-success-soft: #dcfce7;
         --profile-warning: #f59e0b;
@@ -453,7 +456,7 @@
 
     .profile-address-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 16px;
         margin-top: 18px;
     }
@@ -760,7 +763,9 @@
         .profile-form-grid {
             grid-template-columns: 1fr;
         }
+    }
 
+    @media (max-width: 680px) {
         .profile-address-grid {
             grid-template-columns: 1fr;
         }
@@ -801,6 +806,289 @@
             justify-content: flex-end;
         }
     }
+
+
+    /* ===== ADDRESS LIST ===== */
+    .address-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .address-list__empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 40px 24px;
+        color: var(--profile-muted);
+        text-align: center;
+    }
+
+    .address-list__empty .material-symbols-outlined {
+        font-size: 40px;
+        opacity: .5;
+    }
+
+    .addr-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 20px;
+        border: 1.5px solid var(--profile-border);
+        border-radius: 12px;
+        background: #fff;
+        transition: border-color .2s, box-shadow .2s;
+    }
+
+    .addr-card:hover { border-color: var(--profile-accent); }
+
+    .addr-card--default {
+        border-color: var(--profile-accent);
+        background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+    }
+
+    .addr-card__icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: var(--profile-accent-light, #e8f4ff);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: var(--profile-accent);
+    }
+
+    .addr-card--default .addr-card__icon {
+        background: var(--profile-accent);
+        color: #fff;
+    }
+
+    .addr-card__body { flex: 1; min-width: 0; }
+
+    .addr-card__head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    .addr-card__label {
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--profile-text);
+    }
+
+    .addr-card__badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 20px;
+        background: var(--profile-accent);
+        color: #fff;
+        letter-spacing: .3px;
+    }
+
+    .addr-card__text {
+        font-size: 13.5px;
+        color: var(--profile-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .addr-card__actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .addr-card__btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--profile-muted);
+        transition: background .15s, color .15s;
+    }
+
+    .addr-card__btn:hover { background: var(--profile-border); color: var(--profile-text); }
+    .addr-card__btn--danger:hover { background: #fee2e2; color: #dc2626; }
+    .addr-card__btn--star { color: var(--profile-accent-dark, #1d6fba); }
+    .addr-card__btn--star:hover { background: #e0f0ff; }
+
+    /* ===== ADDRESS MODAL ===== */
+    .addr-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.45);
+        backdrop-filter: blur(4px);
+        z-index: 9000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .2s;
+    }
+
+    .addr-modal-backdrop.is-open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .addr-modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,.2);
+        transform: translateY(20px) scale(.97);
+        transition: transform .2s;
+    }
+
+    .addr-modal-backdrop.is-open .addr-modal {
+        transform: translateY(0) scale(1);
+    }
+
+    .addr-modal__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px 16px;
+        border-bottom: 1px solid var(--profile-border);
+    }
+
+    .addr-modal__title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--profile-text);
+        margin: 0;
+    }
+
+    .addr-modal__close {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--profile-muted);
+        transition: background .15s;
+    }
+
+    .addr-modal__close:hover { background: var(--profile-border); }
+
+    .addr-modal__body {
+        padding: 20px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .addr-modal-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .addr-modal-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .addr-modal-field label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--profile-text);
+    }
+
+    .req { color: #dc2626; }
+
+    .addr-modal-input,
+    .addr-modal-select {
+        padding: 10px 14px;
+        border: 1.5px solid var(--profile-border);
+        border-radius: 10px;
+        font-size: 14px;
+        color: var(--profile-text);
+        background: #fff;
+        outline: none;
+        transition: border-color .15s;
+        width: 100%;
+    }
+
+    .addr-modal-input:focus,
+    .addr-modal-select:focus { border-color: var(--profile-accent); }
+
+    .addr-modal-preview {
+        padding: 12px 14px;
+        background: var(--profile-bg, #f8f9fc);
+        border-radius: 10px;
+        font-size: 13.5px;
+        color: var(--profile-muted);
+        line-height: 1.5;
+        min-height: 44px;
+    }
+
+    .addr-modal__footer {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .addr-modal-cancel {
+        padding: 10px 20px;
+        border-radius: 10px;
+        border: 1.5px solid var(--profile-border);
+        background: transparent;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--profile-muted);
+        transition: background .15s;
+    }
+
+    .addr-modal-cancel:hover { background: var(--profile-border); }
+
+    .addr-modal-save {
+        padding: 10px 20px;
+        border-radius: 10px;
+        border: none;
+        background: var(--profile-accent);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background .15s, transform .1s;
+    }
+
+    .addr-modal-save:hover { background: var(--profile-accent-dark, #1d6fba); }
+    .addr-modal-save:active { transform: scale(.97); }
+    .addr-modal-save:disabled { opacity: .6; pointer-events: none; }
+
+    @media (max-width: 600px) {
+        .addr-modal-grid { grid-template-columns: 1fr; }
+        .addr-modal { max-width: 100%; border-radius: 16px 16px 0 0; }
+        .addr-modal-backdrop { align-items: flex-end; }
+    }
+
 </style>
 @endpush
 
@@ -923,7 +1211,7 @@
                     </div>
                 </article>
 
-                <article class="profile-card profile-panel">
+                <article class="profile-card profile-panel" id="addressPanel">
                     <div class="profile-panel__header">
                         <div class="profile-panel__heading">
                             <div class="profile-panel__icon">
@@ -931,92 +1219,21 @@
                             </div>
                             <div>
                                 <h2 class="profile-panel__title">Địa chỉ đã lưu</h2>
-                                <p class="profile-panel__subtitle">Lưu địa chỉ mặc định để đặt lịch nhanh hơn ở lần tiếp theo.</p>
+                                <p class="profile-panel__subtitle">Quản lý nhiều địa chỉ và đặt một địa chỉ mặc định để đặt lịch nhanh hơn.</p>
                             </div>
                         </div>
-                        <button class="profile-btn-light" type="button" id="focusAddressBtn">
+                        <button class="profile-btn-light" type="button" id="openAddAddressModalBtn">
                             <span class="material-symbols-outlined">add</span>
-                            Thêm mới
+                            Thêm địa chỉ
                         </button>
                     </div>
 
                     <div class="profile-panel__body">
-                        <form id="addressForm">
-                            <div class="profile-address-toolbar">
-                                <p class="profile-address-note">Bạn hiện có một địa chỉ mặc định được dùng cho các lịch sửa tại nhà.</p>
+                        <div id="addressListContainer" class="address-list">
+                            <div class="address-list__empty" id="addressListEmpty">
+                                <span class="material-symbols-outlined">location_off</span>
+                                <p>Chưa có địa chỉ nào. Nhấn <strong>Thêm địa chỉ</strong> để bắt đầu.</p>
                             </div>
-
-                            <div class="profile-field">
-                                <label for="addressInput">Số nhà, tên đường</label>
-                                <textarea class="profile-textarea" id="addressInput" placeholder="123 Đường Trần Phú"></textarea>
-                                <p class="profile-field-hint">Phần tỉnh/thành, quận/huyện, phường/xã sẽ lấy từ dữ liệu địa giới Việt Nam để bạn chọn.</p>
-                            </div>
-
-                            <div class="profile-address-grid">
-                                <div class="profile-field">
-                                    <label for="provinceSelect">Tỉnh / Thành phố</label>
-                                    <select class="profile-select" id="provinceSelect">
-                                        <option value="">Đang tải tỉnh / thành...</option>
-                                    </select>
-                                </div>
-
-                                <div class="profile-field">
-                                    <label for="districtSelect">Quận / Huyện</label>
-                                    <select class="profile-select" id="districtSelect" disabled>
-                                        <option value="">Chọn tỉnh / thành trước</option>
-                                    </select>
-                                </div>
-
-                                <div class="profile-field">
-                                    <label for="wardSelect">Phường / Xã</label>
-                                    <select class="profile-select" id="wardSelect" disabled>
-                                        <option value="">Chọn quận / huyện trước</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="profile-address-preview">
-                                <strong>Địa chỉ hoàn chỉnh</strong>
-                                <p id="fullAddressPreview">Chưa chọn đủ thông tin địa chỉ.</p>
-                            </div>
-
-                            <button class="profile-btn profile-submit-btn" type="submit" id="addressSubmitBtn">
-                                <span class="material-symbols-outlined">pin_drop</span>
-                                Lưu địa chỉ
-                            </button>
-                        </form>
-
-                        <div class="saved-addresses">
-                            <article class="saved-address-card is-primary" id="savedAddressCard">
-                                <div class="saved-address-icon">
-                                    <span class="material-symbols-outlined">home</span>
-                                </div>
-                                <div class="saved-address-copy">
-                                    <div class="saved-address-title">
-                                        Nhà riêng
-                                        <span class="saved-address-tag">Mặc định</span>
-                                    </div>
-                                    <p id="savedAddressText">Chưa cập nhật địa chỉ mặc định.</p>
-                                </div>
-                                <div class="saved-address-actions">
-                                    <button class="saved-address-btn" type="button" id="editAddressBtn" title="Chỉnh sửa địa chỉ">
-                                        <span class="material-symbols-outlined">edit</span>
-                                    </button>
-                                    <button class="saved-address-btn" type="button" id="removeAddressBtn" title="Xóa địa chỉ" disabled>
-                                        <span class="material-symbols-outlined">delete</span>
-                                    </button>
-                                </div>
-                            </article>
-
-                            <article class="saved-address-card is-empty" id="savedAddressEmptyCard">
-                                <div class="saved-address-icon">
-                                    <span class="material-symbols-outlined">work</span>
-                                </div>
-                                <div class="saved-address-copy">
-                                    <div class="saved-address-title">Địa chỉ phụ</div>
-                                    <p>Hệ thống hiện hỗ trợ một địa chỉ mặc định. Bạn có thể cập nhật địa chỉ này bất cứ lúc nào ở ô phía trên.</p>
-                                </div>
-                            </article>
                         </div>
                     </div>
                 </article>
@@ -1153,6 +1370,59 @@
     </footer>
 </div>
 @endsection
+
+{{-- ===== ADDRESS MODAL ===== --}}
+<div class="addr-modal-backdrop" id="addressModalBackdrop" aria-hidden="true">
+    <div class="addr-modal" role="dialog" aria-modal="true" aria-labelledby="addressModalTitle">
+        <div class="addr-modal__header">
+            <h3 class="addr-modal__title" id="addressModalTitle">Thêm địa chỉ mới</h3>
+            <button class="addr-modal__close" type="button" id="closeAddressModalBtn" aria-label="Đóng">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <form id="addressModalForm" class="addr-modal__body" novalidate>
+            <input type="hidden" id="addressModalId">
+
+            <div class="addr-modal-field">
+                <label for="modalLabelInput">Nhãn địa chỉ (tùy chọn)</label>
+                <input class="addr-modal-input" id="modalLabelInput" type="text" placeholder="VD: Nhà riêng, Văn phòng...">
+            </div>
+
+            <div class="addr-modal-grid">
+                <div class="addr-modal-field">
+                    <label for="modalProvinceSelect">Tỉnh / Thành phố <span class="req">*</span></label>
+                    <select class="addr-modal-select" id="modalProvinceSelect">
+                        <option value="">Chọn tỉnh / thành phố</option>
+                    </select>
+                </div>
+                <div class="addr-modal-field">
+                    <label for="modalWardSelect">Phường / Xã <span class="req">*</span></label>
+                    <select class="addr-modal-select" id="modalWardSelect" disabled>
+                        <option value="">Chọn tỉnh / thành trước</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="addr-modal-field">
+                <label for="modalSoNhaInput">Địa chỉ chi tiết (số nhà, tên đường) <span class="req">*</span></label>
+                <input class="addr-modal-input" id="modalSoNhaInput" type="text" placeholder="VD: 02 Nguyễn Đình Chiểu, hẻm 12, căn hộ 4B">
+            </div>
+
+            <div class="addr-modal-preview" id="modalAddressPreview">
+                Chưa chọn đủ thông tin địa chỉ.
+            </div>
+
+            <div class="addr-modal__footer">
+                <button type="button" class="addr-modal-cancel" id="cancelAddressModalBtn">Hủy</button>
+                <button type="submit" class="addr-modal-save" id="saveAddressModalBtn">
+                    <span class="material-symbols-outlined">pin_drop</span>
+                    Lưu địa chỉ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 @push('scripts')
 <script type="module" src="{{ asset('assets/js/customer/profile.js') }}?v={{ time() }}"></script>

@@ -1,4 +1,4 @@
-﻿import { callApi, getCurrentUser, showToast } from '../api.js';
+import { callApi, getCurrentUser, showToast } from '../api.js';
 import { createReviewMediaController } from './review-media.js';
 import { setupReviewLightbox } from '../review-lightbox.js';
 import {
@@ -188,8 +188,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const complaintReasonLabels = {
-        loi_tai_phat: 'Lỗi tái phát',
-        linh_kien_kem_chat_luong: 'Linh kiện thay thế kém chất lượng',
+        loi_tai_phat: 'Lỗi tái phát sau khi sửa',
+        linh_kien_kem_chat_luong: 'Linh kiện thay thế bị lỗi / kém chất lượng',
+        sua_chua_khong_triet_de: 'Sửa chữa chưa triệt để',
+        khac: 'Lý do khác',
     };
 
     const resetComplaintFormState = () => {
@@ -198,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
             complaintBookingId.value = '';
         }
         if (complaintBookingContext) {
-            complaintBookingContext.textContent = 'Khiếu nại cho đơn hàng đã hoàn tất.';
+            complaintBookingContext.textContent = 'Yêu cầu bảo hành cho đơn hàng đã hoàn tất.';
         }
         if (complaintImagesInput) {
             complaintImagesInput.value = '';
@@ -207,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
             complaintVideoInput.value = '';
         }
         if (btnSubmitComplaint) {
-            btnSubmitComplaint.textContent = 'Gá»­i khiáº¿u náº¡i';
+            btnSubmitComplaint.textContent = '🛡️ Gửi yêu cầu bảo hành';
             btnSubmitComplaint.disabled = false;
         }
         if (complaintNote) {
@@ -224,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         complaintBookingId.value = booking.id || '';
         if (complaintBookingContext) {
             const workerName = booking?.tho?.name || 'thợ xử lý đơn';
-            complaintBookingContext.innerHTML = `Khiếu nại cho đơn #${escapeHtml(booking.id)} - ${escapeHtml(workerName)}.`;
+            complaintBookingContext.innerHTML = `Yêu cầu bảo hành cho đơn #${escapeHtml(booking.id)} - ${escapeHtml(workerName)}.`;
         }
         complaintModalInstance?.show();
     };
@@ -243,20 +245,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const caseInfo = policy.complaintCase;
 
         if (caseInfo) {
-            const reasonLabel = complaintReasonLabels[caseInfo.reason_code] || caseInfo.reason_label || 'Khiáº¿u náº¡i';
-            return `<p class="booking-complaint-state">Đã gửi khiếu nại: ${escapeHtml(reasonLabel)}</p>`;
+            const reasonLabel = complaintReasonLabels[caseInfo.reason_code] || caseInfo.reason_label || 'Bảo hành';
+            return `<p class="booking-complaint-state">Đã gửi yêu cầu bảo hành: ${escapeHtml(reasonLabel)}</p>`;
         }
 
         if (policy.canComplain) {
             return `
                 <button class="booking-action-button booking-action-button--danger btn-complaint" type="button" data-id="${booking.id}">
-                    <span class="material-symbols-outlined">report_problem</span>Khiáº¿u náº¡i
+                    <span class="material-symbols-outlined">verified_user</span>Bảo hành
                 </button>
             `;
         }
 
         if (policy.reason === 'expired') {
-            return '<p class="booking-complaint-state">Đã hết hạn gửi khiếu nại cho đơn này.</p>';
+            return `
+                <button class="booking-action-button booking-action-button--danger btn-complaint is-disabled" type="button" data-id="${booking.id}" disabled style="opacity: 0.5; cursor: not-allowed;" title="Đã hết thời hạn bảo hành cho đơn này.">
+                    <span class="material-symbols-outlined">verified_user</span>Hết hạn bảo hành
+                </button>
+            `;
         }
 
         return '';
@@ -1073,7 +1079,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bookingId = event.currentTarget.dataset.id || '';
                 const booking = allBookings.find((item) => String(item.id) === String(bookingId));
                 if (!booking) {
-                    showToast('Không tìm thấy đơn để gửi khiếu nại.', 'error');
+                    showToast('Không tìm thấy đơn để gửi bảo hành.', 'error');
                     return;
                 }
 
@@ -1259,12 +1265,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const bookingId = complaintBookingId?.value || '';
             const selectedReason = formComplaint.querySelector('input[name="ly_do_khieu_nai"]:checked');
             if (!bookingId) {
-                showToast('Không xác định được đơn cần khiếu nại.', 'error');
+                showToast('Không xác định được đơn cần bảo hành.', 'error');
                 return;
             }
 
             if (!selectedReason) {
-                showToast('Vui lòng chọn lý do khiếu nại.', 'error');
+                showToast('Vui lòng chọn lý do bảo hành.', 'error');
                 return;
             }
 
@@ -1294,11 +1300,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 ensureOk(await callApi(`/don-dat-lich/${bookingId}/complaint`, 'POST', formData), 'Lá»—i gá»­i khiáº¿u náº¡i');
-                showToast('Đã gửi khiếu nại thành công.');
+                showToast('Đã gửi bảo hành thành công.');
                 complaintModalInstance?.hide();
                 await loadBookings();
             } catch (error) {
-                showToast(error.message || 'Không thể gửi khiếu nại', 'error');
+                showToast(error.message || 'Không thể gửi bảo hành', 'error');
             } finally {
                 if (btnSubmitComplaint) {
                     btnSubmitComplaint.disabled = false;

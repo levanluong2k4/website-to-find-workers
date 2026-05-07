@@ -664,7 +664,7 @@ async function loadWalletStats(el) {
                 if (history.length > 0) {
                     transactionHistory.innerHTML = history.map(item => {
                         const date = new Date(item.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
-                        const isPlus = item.loai_giao_dich === 'nap_tien' || item.loai_giao_dich === 'nhan_doanh_thu_cong';
+                        const isPlus = Number(item.so_tien) >= 0;
                         const sign = isPlus ? '+' : '-';
                         const color = isPlus ? '#10b981' : '#ef4444';
                         
@@ -675,18 +675,21 @@ async function loadWalletStats(el) {
                         if (item.loai_giao_dich === 'tru_thue_nha_nuoc') label = 'Trừ thuế (Đơn #' + (item.ma_don_hang||'') + ')';
                         if (item.loai_giao_dich === 'tru_phi_nen_tang') label = 'Trừ phí nền tảng (Đơn #' + (item.ma_don_hang||'') + ')';
                         if (item.loai_giao_dich === 'nhan_doanh_thu_cong') label = 'Cộng tiền công (Đơn #' + (item.ma_don_hang||'') + ')';
+                        if (item.loai_giao_dich === 'nhan_phi_di_lai') label = 'Cộng phí đi lại (Đơn #' + (item.ma_don_hang||'') + ')';
+                        if (item.loai_giao_dich === 'hoan_thanh_don') label = (isPlus ? 'Nhận doanh thu (Đơn #' : 'Thanh toán phí (Đơn #') + (item.ma_don_hang||'') + ')';
 
                         const statusBadge = item.trang_thai === 'dang_xu_ly' 
                             ? '<span style="font-size: 0.6rem; background: #fef08a; color: #854d0e; padding: 0.1rem 0.4rem; border-radius: 99px; margin-left: 0.3rem; font-weight: bold;">Đang xử lý</span>' 
                             : '';
+                        const settingsStr = JSON.stringify(response.data.settings || {}).replace(/'/g, "&#39;");
                         return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid #f1f5f9;">
+                        <div class="transaction-item" onclick='openTransactionDetail(${JSON.stringify(item).replace(/'/g, "&#39;")}, ${settingsStr})' style="display:flex; justify-content:space-between; align-items:center; padding:.75rem .5rem; border-bottom:1px solid #f1f5f9; cursor:pointer; transition:background-color 0.2s; border-radius:6px;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='transparent'">
                             <div>
                                 <div style="font-weight:600; color:#0f172a; margin-bottom:.15rem;">${escapeHtml(label)}${statusBadge}</div>
                                 <div style="font-size:.7rem; color:#64748b;">${date}</div>
                             </div>
                             <div style="font-weight:700; color:${color}; font-family:'DM Sans',sans-serif;">
-                                ${sign}${Number(item.so_tien).toLocaleString('vi-VN')}đ
+                                ${sign}${Math.abs(Number(item.so_tien)).toLocaleString('vi-VN')}đ
                             </div>
                         </div>`;
                     }).join('');
@@ -768,3 +771,177 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+window.openTransactionDetail = function(item, settings = {}) {
+    let modal = document.getElementById('transactionDetailModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'transactionDetailModal';
+        modal.className = 'worker-service-modal d-none';
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML = `
+            <div class="worker-service-modal-card" role="dialog" aria-modal="true" style="max-width:420px; max-height: 90vh; overflow-y: auto;">
+                <div class="worker-service-modal-head" style="position: sticky; top: 0; background: #fff; z-index: 10;">
+                    <h3 style="margin:0; font-family:'DM Sans',sans-serif; font-size:1.05rem; font-weight:800; color:#0f172a;">Chi tiết giao dịch</h3>
+                    <button type="button" onclick="closeTransactionDetail()" class="worker-service-modal-btn is-secondary" style="padding:0.25rem 0.5rem;">Đóng</button>
+                </div>
+                <div class="worker-service-modal-body" id="transactionDetailBody" style="padding:1.25rem;">
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    const body = document.getElementById('transactionDetailBody');
+    const date = new Date(item.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const isPlus = Number(item.so_tien) >= 0;
+    const sign = isPlus ? '+' : '-';
+    const color = isPlus ? '#10b981' : '#ef4444';
+
+    let typeStr = 'Giao dịch khác';
+    if (item.loai_giao_dich === 'nap_tien') typeStr = 'Nạp tiền vào ví';
+    if (item.loai_giao_dich === 'rut_tien') typeStr = 'Rút tiền về tài khoản ngân hàng';
+    if (item.loai_giao_dich === 'tru_tien_linh_kien') typeStr = 'Trừ tiền linh kiện';
+    if (item.loai_giao_dich === 'tru_thue_nha_nuoc') typeStr = 'Trừ thuế thu nhập';
+    if (item.loai_giao_dich === 'tru_phi_nen_tang') typeStr = 'Trừ phí nền tảng (hoa hồng)';
+    if (item.loai_giao_dich === 'nhan_doanh_thu_cong') typeStr = 'Cộng tiền công (sau phí)';
+    if (item.loai_giao_dich === 'nhan_phi_di_lai') typeStr = 'Cộng phí đi lại';
+    if (item.loai_giao_dich === 'hoan_thanh_don') typeStr = 'Tổng kết đơn hàng (Giao dịch gộp)';
+
+    let statusStr = 'Thành công';
+    let statusColor = '#10b981';
+    if (item.trang_thai === 'dang_xu_ly') {
+        statusStr = 'Đang xử lý';
+        statusColor = '#f59e0b';
+    } else if (item.trang_thai === 'that_bai') {
+        statusStr = 'Thất bại';
+        statusColor = '#ef4444';
+    }
+
+    let detailHtml = '';
+    if (item.loai_giao_dich === 'hoan_thanh_don' && item.don_hang) {
+        const pttt = item.don_hang.phuong_thuc_thanh_toan === 'cod' ? 'Tiền mặt' : 'Chuyển khoản';
+        const tong_tien = Number(item.don_hang.tong_tien || 0);
+        const tien_cong = Number(item.don_hang.tien_cong || 0);
+        const tien_linh_kien = Number(item.don_hang.phi_linh_kien || 0);
+        const phi_di_lai = Number(item.don_hang.phi_di_lai || 0);
+        
+        const thue = Math.round(tien_cong * ((settings?.tax_rate || 10) / 100));
+        const phi_san = Math.round(tien_cong * ((settings?.fee_rate || 20) / 100));
+
+        let breakdownHtml = '';
+        if (item.don_hang.phuong_thuc_thanh_toan === 'cod') {
+            breakdownHtml = `
+                <div style="margin-top:0.75rem; border-top:1px dashed #e2e8f0; padding-top:0.75rem;">
+                    <div style="font-weight:700; color:#0f172a; margin-bottom:0.5rem;">Chi tiết doanh thu (Thu hộ tiền mặt)</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span style="color:#64748b;">Tổng tiền thu khách</span>
+                        <span style="font-weight:600;">${tong_tien.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    ${tien_linh_kien > 0 ? `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span style="color:#ef4444;">- Trừ tiền linh kiện</span>
+                        <span style="color:#ef4444; font-weight:500;">${tien_linh_kien.toLocaleString('vi-VN')}đ</span>
+                    </div>` : ''}
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span style="color:#ef4444;">- Trừ thuế (${settings?.tax_rate||10}%)</span>
+                        <span style="color:#ef4444; font-weight:500;">${thue.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span style="color:#ef4444;">- Trừ phí nền tảng (${settings?.fee_rate||20}%)</span>
+                        <span style="color:#ef4444; font-weight:500;">${phi_san.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            const tien_cong_thuc = tien_cong - thue - phi_san;
+            breakdownHtml = `
+                <div style="margin-top:0.75rem; border-top:1px dashed #e2e8f0; padding-top:0.75rem;">
+                    <div style="font-weight:700; color:#0f172a; margin-bottom:0.5rem;">Chi tiết doanh thu (Khách chuyển khoản)</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span style="color:#64748b;">Tổng tiền khách thanh toán (Admin thu hộ)</span>
+                        <span style="font-weight:600;">${tong_tien.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span style="color:#64748b;">Tiền công gốc</span>
+                        <span style="font-weight:500;">${tien_cong.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span style="color:#64748b;">Thuế (${settings?.tax_rate||10}%)</span>
+                        <span style="font-weight:500;">-${thue.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <span style="color:#64748b;">Phí nền tảng (${settings?.fee_rate||20}%)</span>
+                        <span style="font-weight:500;">-${phi_san.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem; padding-top:0.25rem; border-top:1px dotted #e2e8f0;">
+                        <span style="color:#10b981; font-weight:500;">+ Tiền công thực nhận (Cộng vào ví)</span>
+                        <span style="color:#10b981; font-weight:600;">${tien_cong_thuc.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                    ${phi_di_lai > 0 ? `
+                    <div style="display:flex; justify-content:space-between; margin-top:0.25rem;">
+                        <span style="color:#10b981;">+ Phí đi lại</span>
+                        <span style="color:#10b981; font-weight:500;">${phi_di_lai.toLocaleString('vi-VN')}đ</span>
+                    </div>` : ''}
+                </div>
+            `;
+        }
+
+        detailHtml = `
+            <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding-bottom:0.5rem; margin-top:0.5rem;">
+                <span style="color:#64748b;">Phương thức TT</span>
+                <span style="font-weight:600; color:#0f172a;">${pttt}</span>
+            </div>
+            ${breakdownHtml}
+        `;
+    }
+
+    body.innerHTML = `
+        <div style="text-align:center; margin-bottom:1.5rem;">
+            <div style="font-size:1.75rem; font-weight:800; font-family:'DM Sans',sans-serif; color:${color};">${sign}${Math.abs(Number(item.so_tien)).toLocaleString('vi-VN')}đ</div>
+            <div style="font-size:0.85rem; color:#64748b; margin-top:0.25rem;">${date}</div>
+        </div>
+        
+        <div style="background:#f8fafc; border-radius:8px; padding:1rem; display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem;">
+            <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding-bottom:0.5rem;">
+                <span style="color:#64748b;">Mã giao dịch</span>
+                <span style="font-weight:600; color:#0f172a;">#TXN_${item.id}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding-bottom:0.5rem;">
+                <span style="color:#64748b;">Loại</span>
+                <span style="font-weight:600; color:#0f172a; text-align:right;">${escapeHtml(typeStr)}</span>
+            </div>
+            ${item.ma_don_hang ? `
+            <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #e2e8f0; padding-bottom:0.5rem;">
+                <span style="color:#64748b;">Đơn hàng liên quan</span>
+                <span style="font-weight:600; color:#3b82f6;">#${item.ma_don_hang}</span>
+            </div>
+            ` : ''}
+            <div style="display:flex; justify-content:space-between; ${detailHtml ? '' : 'border-bottom:1px dashed #e2e8f0; padding-bottom:0.5rem;'}">
+                <span style="color:#64748b;">Trạng thái</span>
+                <span style="font-weight:600; color:${statusColor};">${statusStr}</span>
+            </div>
+            ${detailHtml}
+        </div>
+    `;
+
+    modal.classList.remove('d-none');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeTransactionDetail = function() {
+    const modal = document.getElementById('transactionDetailModal');
+    if (modal) {
+        modal.classList.add('d-none');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+};
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        window.closeTransactionDetail();
+    }
+});
+

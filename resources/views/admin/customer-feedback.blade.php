@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Feedback và khiếu nại - Admin')
+@section('title', 'Feedback và bảo hành - Admin')
 
 @push('styles')
 <style>
@@ -860,9 +860,9 @@
                 <div class="feedback-admin-hero__top">
                     <div>
                         <p class="feedback-admin-kicker">Chăm sóc khách hàng / Feedback desk</p>
-                        <h1 class="feedback-admin-title">Feedback và khiếu nại</h1>
+                        <h1 class="feedback-admin-title">Feedback và bảo hành</h1>
                         <p class="feedback-admin-subtitle">
-                            Tổng hợp các đánh giá thấp, hủy đơn và khiếu nại sau sửa chữa. Chọn từng case để xem bằng chứng,
+                            Tổng hợp các đánh giá thấp, hủy đơn và bảo hành sau sửa chữa. Chọn từng case để xem bằng chứng,
                             thông tin đơn liên quan và cập nhật hướng xử lý ngay trên panel chi tiết.
                         </p>
                     </div>
@@ -886,8 +886,7 @@
                             type="search"
                             class="feedback-admin-input"
                             id="customerFeedbackSearch"
-                            placeholder="Tìm theo khách hàng, mã đơn, dịch vụ, ghi chú..."
-                        >
+                            placeholder="Tìm theo khách hàng, mã đơn, dịch vụ, ghi chú...">
                     </label>
 
                     <label class="feedback-admin-field">
@@ -896,7 +895,7 @@
                             <option value="">Tất cả loại</option>
                             <option value="low_rating">Đánh giá thấp</option>
                             <option value="cancellation">Hủy đơn</option>
-                            <option value="customer_complaint">Khiếu nại</option>
+                            <option value="customer_complaint">bảo hành</option>
                         </select>
                     </label>
 

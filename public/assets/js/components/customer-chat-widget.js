@@ -157,10 +157,30 @@ if (isCustomerScope) {
             const servicesMoreUrl = typeof meta.services_more_url === 'string' && meta.services_more_url
                 ? meta.services_more_url
                 : '/customer/search';
+            const mapEmbedUrl = typeof meta.map_embed_url === 'string' && meta.map_embed_url ? meta.map_embed_url : null;
+            const mapUrl = typeof meta.map_url === 'string' && meta.map_url ? meta.map_url : null;
 
-            if (!cases.length && !technicians.length && !services.length) {
+            if (!cases.length && !technicians.length && !services.length && !mapEmbedUrl) {
                 return '';
             }
+
+            const mapHtml = mapEmbedUrl
+                ? `
+                    <div class="chat-map-embed">
+                        <iframe
+                            src="${escapeHtml(mapEmbedUrl)}"
+                            width="100%"
+                            height="200"
+                            style="border:0;border-radius:12px;display:block;"
+                            allowfullscreen=""
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            title="Bản đồ cửa hàng"
+                        ></iframe>
+                        ${mapUrl ? `<a href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener noreferrer" class="chat-map-open-link">📍 Mở Google Maps</a>` : ''}
+                    </div>
+                `
+                : '';
 
             const caseHtml = cases.map((item) => `
                 <div class="chat-card">
@@ -206,8 +226,9 @@ if (isCustomerScope) {
                 `
                 : '';
 
-            return `<div class="customer-chat-rich-content">${caseHtml}${techHtml}${serviceHtml}</div>`;
+            return `<div class="customer-chat-rich-content">${mapHtml}${caseHtml}${techHtml}${serviceHtml}</div>`;
         };
+
 
         const appendMessage = (sender, text, meta = null) => {
             appendTimestamp();

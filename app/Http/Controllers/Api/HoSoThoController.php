@@ -282,7 +282,12 @@ class HoSoThoController extends Controller
             'wallet' => [
                 'so_du' => $wallet ? (float) $wallet->so_du : 0,
                 'da_rut_trong_ky' => abs((float) $daRutTrongKy),
-                'history' => $wallet ? \App\Models\LichSuGiaoDich::where('ma_vi', $wallet->id)->orderBy('created_at', 'desc')->take(10)->get() : []
+                'history' => $wallet ? \App\Models\LichSuGiaoDich::with('donHang:id,phuong_thuc_thanh_toan,tong_tien,tien_cong,phi_di_lai,phi_linh_kien')
+                    ->where('ma_vi', $wallet->id)
+                    ->whereNotIn('loai_giao_dich', ['tru_tien_linh_kien', 'tru_thue_nha_nuoc', 'tru_phi_nen_tang', 'nhan_doanh_thu_cong', 'nhan_phi_di_lai'])
+                    ->orderBy('created_at', 'desc')
+                    ->take(20)
+                    ->get() : []
             ],
             'settings' => [
                 'tax_rate' => (float) $taxRate,

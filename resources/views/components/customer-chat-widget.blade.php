@@ -422,6 +422,41 @@
             border: 1px solid #d8dde6;
         }
 
+        .chat-map-embed {
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #e0e3e5;
+            border-radius: 14px;
+            padding: 8px;
+            box-shadow: 0 8px 18px -14px rgba(25, 28, 30, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-map-open-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 32px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid #d8e2ff;
+            background: #f4f8ff;
+            color: #0058be;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            text-decoration: none;
+            transition: transform 0.2s ease, background 0.2s ease;
+            align-self: flex-start;
+        }
+
+        .chat-map-open-link:hover {
+            background: #eaf3ff;
+            transform: translateY(-1px);
+        }
+
         .customer-chat-service-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));

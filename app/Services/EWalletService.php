@@ -54,78 +54,130 @@ class EWalletService
 
     /**
      * Luồng 2: Hoàn thành đơn hàng & Chia tiền chi tiết
+     *
+     * COD (tiền mặt):
+     *   Thợ thu hộ toàn bộ tiền mặt từ khách → ví thợ bị trừ: thue + phi_nen_tang (+ tien_linh_kien nếu có)
+     *
+     * Transfer (chuyển khoản):
+     *   Admin thu hộ tiền khách → ví thợ được cộng: tien_cong - thue - phi_nen_tang + phi_di_lai
      */
-    public function processHoanThanhDonHang($ma_tho, $ma_don_hang, $tien_cong, $tien_linh_kien, $la_tien_mat = true)
-    {
-        return DB::transaction(function () use ($ma_tho, $ma_don_hang, $tien_cong, $tien_linh_kien, $la_tien_mat) {
+    public function processHoanThanhDonHang(
+        int|string $ma_tho,
+        int|string $ma_don_hang,
+        float $tien_cong,
+        float $tien_linh_kien,
+        float $phi_di_lai = 0,
+        bool $la_tien_mat = true
+    ): bool {
+        return DB::transaction(function () use ($ma_tho, $ma_don_hang, $tien_cong, $tien_linh_kien, $phi_di_lai, $la_tien_mat) {
             $vi = $this->getWallet($ma_tho);
 
             $ty_le_thue = $this->getSetting('ty_le_thue_nha_nuoc', 10);
-            $ty_le_phi = $this->getSetting('ty_le_phi_nen_tang', 20);
+            $ty_le_phi  = $this->getSetting('ty_le_phi_nen_tang', 20);
 
-            $thue = $tien_cong * ($ty_le_thue / 100);
-            $phi_san = $tien_cong * ($ty_le_phi / 100);
+            $thue    = round($tien_cong * ($ty_le_thue / 100), 0);
+            $phi_san = round($tien_cong * ($ty_le_phi  / 100), 0);
 
             if ($la_tien_mat) {
-                // Tiền Mặt (Thợ thu hộ Admin toàn bộ tiền)
+                // ── COD: thợ thu hộ toàn bộ tiền mặt ──────────────────────
+                // Thợ phải nộp lại: linh kiện + thuế + phí nền tảng
                 $tong_tru = $tien_linh_kien + $thue + $phi_san;
                 $vi->so_du -= $tong_tru;
                 $vi->save();
 
+                // Lịch sử tổng hợp
+                LichSuGiaoDich::create([
+                    'ma_vi'          => $vi->id,
+                    'so_tien'        => -$tong_tru,
+                    'loai_giao_dich' => 'hoan_thanh_don',
+                    'ma_don_hang'    => $ma_don_hang,
+                    'trang_thai'     => 'thanh_cong',
+                ]);
+
                 if ($tien_linh_kien > 0) {
                     LichSuGiaoDich::create([
-                        'ma_vi' => $vi->id,
-                        'so_tien' => -$tien_linh_kien,
+                        'ma_vi'          => $vi->id,
+                        'so_tien'        => -$tien_linh_kien,
                         'loai_giao_dich' => 'tru_tien_linh_kien',
-                        'ma_don_hang' => $ma_don_hang
+                        'ma_don_hang'    => $ma_don_hang,
+                        'trang_thai'     => 'thanh_cong',
                     ]);
                 }
 
                 if ($thue > 0) {
                     LichSuGiaoDich::create([
-                        'ma_vi' => $vi->id,
-                        'so_tien' => -$thue,
+                        'ma_vi'          => $vi->id,
+                        'so_tien'        => -$thue,
                         'loai_giao_dich' => 'tru_thue_nha_nuoc',
-                        'ma_don_hang' => $ma_don_hang
+                        'ma_don_hang'    => $ma_don_hang,
+                        'trang_thai'     => 'thanh_cong',
                     ]);
                 }
 
                 if ($phi_san > 0) {
                     LichSuGiaoDich::create([
-                        'ma_vi' => $vi->id,
-                        'so_tien' => -$phi_san,
+                        'ma_vi'          => $vi->id,
+                        'so_tien'        => -$phi_san,
                         'loai_giao_dich' => 'tru_phi_nen_tang',
-                        'ma_don_hang' => $ma_don_hang
+                        'ma_don_hang'    => $ma_don_hang,
+                        'trang_thai'     => 'thanh_cong',
                     ]);
                 }
             } else {
-                // Online (Admin thu hộ Thợ tiền công)
-                $tong_cong = $tien_cong - $thue - $phi_san;
+                // ── Chuyển khoản: admin thu hộ tiền khách ──────────────────
+                // Thợ nhận: tiền công còn lại sau phí + phí đi lại
+                $tien_cong_thuc = $tien_cong - $thue - $phi_san;
+                $tong_cong      = $tien_cong_thuc + $phi_di_lai;
+
                 $vi->so_du += $tong_cong;
                 $vi->save();
 
+                // Lịch sử tổng hợp
                 LichSuGiaoDich::create([
-                    'ma_vi' => $vi->id,
-                    'so_tien' => $tien_cong,
-                    'loai_giao_dich' => 'nhan_doanh_thu_cong',
-                    'ma_don_hang' => $ma_don_hang
+                    'ma_vi'          => $vi->id,
+                    'so_tien'        => $tong_cong,
+                    'loai_giao_dich' => 'hoan_thanh_don',
+                    'ma_don_hang'    => $ma_don_hang,
+                    'trang_thai'     => 'thanh_cong',
                 ]);
+
+                // Chi tiết: tiền công gốc
+                LichSuGiaoDich::create([
+                    'ma_vi'          => $vi->id,
+                    'so_tien'        => $tien_cong,
+                    'loai_giao_dich' => 'nhan_doanh_thu_cong',
+                    'ma_don_hang'    => $ma_don_hang,
+                    'trang_thai'     => 'thanh_cong',
+                ]);
+
+                // Phí đi lại (nếu có)
+                if ($phi_di_lai > 0) {
+                    LichSuGiaoDich::create([
+                        'ma_vi'          => $vi->id,
+                        'so_tien'        => $phi_di_lai,
+                        'loai_giao_dich' => 'nhan_phi_di_lai',
+                        'ma_don_hang'    => $ma_don_hang,
+                        'trang_thai'     => 'thanh_cong',
+                    ]);
+                }
 
                 if ($thue > 0) {
                     LichSuGiaoDich::create([
-                        'ma_vi' => $vi->id,
-                        'so_tien' => -$thue,
+                        'ma_vi'          => $vi->id,
+                        'so_tien'        => -$thue,
                         'loai_giao_dich' => 'tru_thue_nha_nuoc',
-                        'ma_don_hang' => $ma_don_hang
+                        'ma_don_hang'    => $ma_don_hang,
+                        'trang_thai'     => 'thanh_cong',
                     ]);
                 }
 
                 if ($phi_san > 0) {
                     LichSuGiaoDich::create([
-                        'ma_vi' => $vi->id,
-                        'so_tien' => -$phi_san,
+                        'ma_vi'          => $vi->id,
+                        'so_tien'        => -$phi_san,
                         'loai_giao_dich' => 'tru_phi_nen_tang',
-                        'ma_don_hang' => $ma_don_hang
+                        'ma_don_hang'    => $ma_don_hang,
+                        'trang_thai'     => 'thanh_cong',
                     ]);
                 }
             }

@@ -224,6 +224,10 @@ Route::prefix('admin')->group(function () {
         return view('admin.travel-fee-config');
     })->name('admin.travel-fee-config');
 
+    Route::get('/revenue', function () {
+        return view('admin.revenue');
+    })->name('admin.revenue');
+
     Route::get('/bookings', function () {
         return view('admin.bookings');
     })->name('admin.bookings');

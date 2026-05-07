@@ -512,6 +512,11 @@
         box-shadow: var(--dispatch-shadow);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         position: relative;
+        cursor: pointer;
+    }
+
+    .admin-dispatch-worker:active {
+        transform: scale(0.985);
     }
 
     .admin-dispatch-worker__badge-corner {
@@ -719,6 +724,241 @@
         }
     }
 
+    /* ── Worker Timeline Modal ── */
+    .dtm-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9000;
+        background: rgba(11, 28, 48, 0.55);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+    }
+    .dtm-overlay.is-open { display: flex; }
+
+    .dtm-modal {
+        background: #fff;
+        border-radius: 1.25rem;
+        box-shadow: 0 32px 72px rgba(11, 28, 48, 0.18);
+        width: 100%;
+        max-width: 760px;
+        max-height: calc(100vh - 3rem);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: dtm-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes dtm-slide-in {
+        from { opacity: 0; transform: translateY(24px) scale(0.97); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    .dtm-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.5rem 1.75rem;
+        border-bottom: 1px solid rgba(194,198,214,0.25);
+        flex-shrink: 0;
+    }
+    .dtm-header__left { display: flex; flex-direction: column; gap: 0.2rem; }
+    .dtm-header__title {
+        margin: 0;
+        font-family: 'Manrope', sans-serif;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--dispatch-text);
+    }
+    .dtm-header__subtitle { font-size: 0.8rem; color: var(--dispatch-muted-soft); }
+    .dtm-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border: 0;
+        border-radius: 50%;
+        background: var(--dispatch-soft);
+        color: var(--dispatch-muted);
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background 0.15s;
+        flex-shrink: 0;
+    }
+    .dtm-close:hover { background: #e0e7ff; }
+
+    .dtm-booking-chip {
+        margin: 1.25rem 1.75rem;
+        flex-shrink: 0;
+        padding: 1rem 1.25rem;
+        border-radius: 0.875rem;
+        background: var(--dispatch-soft);
+        border: 2px dashed var(--dispatch-primary-soft);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: grab;
+        user-select: none;
+        transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    }
+    .dtm-booking-chip:active { cursor: grabbing; }
+    .dtm-booking-chip.is-dragging { opacity: 0.5; transform: scale(0.98); }
+    .dtm-chip-drag-hint {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+        flex-shrink: 0;
+        color: var(--dispatch-primary);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .dtm-chip-drag-hint i { font-size: 1.1rem; }
+    .dtm-chip-info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+    .dtm-chip-service {
+        font-weight: 700;
+        color: var(--dispatch-text);
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .dtm-chip-meta { font-size: 0.8rem; color: var(--dispatch-muted-soft); }
+    .dtm-chip-badge {
+        margin-left: auto;
+        flex-shrink: 0;
+        padding: 0.2rem 0.7rem;
+        border-radius: 2rem;
+        background: var(--dispatch-primary);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .dtm-body {
+        overflow-y: auto;
+        flex: 1;
+        padding: 0.5rem 1.75rem 1.75rem;
+    }
+    .dtm-body::-webkit-scrollbar { width: 5px; }
+    .dtm-body::-webkit-scrollbar-thumb { background: rgba(194,198,214,0.5); border-radius: 4px; }
+
+    .dtm-timeline-item {
+        display: grid;
+        grid-template-columns: 3.5rem 1.5rem 1fr;
+        gap: 0 0.75rem;
+        align-items: start;
+        min-height: 4.5rem;
+    }
+    .dtm-time {
+        padding-top: 1rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--dispatch-muted-soft);
+        text-align: right;
+        white-space: nowrap;
+    }
+    .dtm-rail {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 1rem;
+    }
+    .dtm-rail::after {
+        content: '';
+        flex: 1;
+        width: 2px;
+        background: rgba(194,198,214,0.3);
+        min-height: 2rem;
+    }
+    .dtm-marker {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid #cbd5e1;
+        background: #fff;
+        flex-shrink: 0;
+    }
+    .dtm-marker.is-busy   { background: #fb923c; border-color: #fb923c; }
+    .dtm-marker.is-free   { background: #22c55e; border-color: #22c55e; }
+    .dtm-marker.is-target { background: var(--dispatch-primary); border-color: var(--dispatch-primary); box-shadow: 0 0 0 3px rgba(0,88,190,0.2); }
+
+    .dtm-entry {
+        margin: 0.5rem 0;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        border: 1.5px solid rgba(194,198,214,0.2);
+        background: #f8faff;
+        font-size: 0.85rem;
+    }
+    .dtm-entry.is-busy { background: #fff7ed; border-color: #fed7aa; }
+    .dtm-entry.is-free {
+        background: #f0fdf4;
+        border-color: rgba(34,197,94,0.25);
+        border-style: dashed;
+        transition: background 0.15s, border-color 0.15s, transform 0.15s;
+    }
+    .dtm-entry.is-free.is-target {
+        background: #eff6ff;
+        border-color: var(--dispatch-primary);
+        border-style: solid;
+    }
+    .dtm-entry.is-free.drag-over {
+        background: #dbeafe;
+        border-color: var(--dispatch-primary);
+        transform: scale(1.01);
+        box-shadow: 0 0 0 3px rgba(0,88,190,0.15);
+    }
+    .dtm-entry__label { font-weight: 600; color: var(--dispatch-text); }
+    .dtm-entry__sub   { color: var(--dispatch-muted-soft); font-size: 0.78rem; margin-top: 0.15rem; }
+    .dtm-entry__drop-hint {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--dispatch-primary);
+    }
+    .dtm-assign-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.6rem;
+        padding: 0.4rem 0.9rem;
+        border: 0;
+        border-radius: 0.5rem;
+        background: var(--dispatch-primary);
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .dtm-assign-btn:hover  { background: #0047a3; }
+    .dtm-assign-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .dtm-end-label {
+        text-align: center;
+        padding: 1rem;
+        font-size: 0.78rem;
+        color: #c2c6d6;
+    }
+    .dtm-footer {
+        padding: 1rem 1.75rem;
+        border-top: 1px solid rgba(194,198,214,0.2);
+        flex-shrink: 0;
+        font-size: 0.8rem;
+        color: var(--dispatch-muted-soft);
+        text-align: center;
+    }
+
+
+
     @media (max-width: 1200px) {
         .admin-dispatch-card {
             grid-template-columns: 1fr;
@@ -867,6 +1107,44 @@
                 </section>
             </div>
         </section>
+    </div>
+</div>
+
+{{-- Worker Timeline Modal --}}
+<div class="dtm-overlay" id="dtmOverlay" role="dialog" aria-modal="true" aria-labelledby="dtmTitle">
+    <div class="dtm-modal" id="dtmModal">
+        <div class="dtm-header">
+            <div class="dtm-header__left">
+                <h2 class="dtm-header__title" id="dtmTitle">Lịch làm việc</h2>
+                <span class="dtm-header__subtitle" id="dtmSubtitle">Kéo thẻ đơn hàng bên dưới vào khung giờ phù hợp để phân công</span>
+            </div>
+            <button type="button" class="dtm-close" id="dtmClose" aria-label="Đóng">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="dtm-booking-chip" id="dtmBookingChip" draggable="true">
+            <div class="dtm-chip-drag-hint">
+                <i class="fas fa-grip-vertical"></i>
+                <span>Kéo</span>
+            </div>
+            <div class="dtm-chip-info">
+                <span class="dtm-chip-service" id="dtmChipService">Dịch vụ</span>
+                <span class="dtm-chip-meta" id="dtmChipMeta">Khách hàng • Giờ yêu cầu</span>
+            </div>
+            <span class="dtm-chip-badge" id="dtmChipSlot">--:--</span>
+        </div>
+
+        <div class="dtm-body" id="dtmBody">
+            <div style="text-align:center;padding:2rem;color:#c2c6d6;">
+                <i class="fas fa-circle-notch fa-spin" style="font-size:1.5rem;"></i>
+            </div>
+        </div>
+
+        <div class="dtm-footer" id="dtmFooter">
+            <i class="fas fa-info-circle"></i>
+            Khung giờ màu xanh lá là trống · Khung giờ màu cam đã có đơn · Kéo thẻ đơn vào đúng giờ khách yêu cầu để giao việc
+        </div>
     </div>
 </div>
 @endsection

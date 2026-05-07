@@ -39,6 +39,7 @@ class DonDatLichController extends Controller
             'tho:id,name,avatar,phone',
             'dichVus:id,ten_dich_vu,hinh_anh',
             'danhGias',
+            'customerComplaintCase',
         ]);
 
         if ($this->canActAsCustomer($user) && !$this->isAdmin($user)) {
@@ -56,8 +57,7 @@ class DonDatLichController extends Controller
         \App\Http\Requests\DonDatLich\StoreDonDatLichRequest $request,
         TravelFeeConfigService $travelFeeConfigService,
         CloudinaryUploadService $cloudinaryUploadService
-    )
-    {
+    ) {
         $user = $request->user();
         if (!$this->canActAsCustomer($user)) {
             return response()->json(['message' => 'Chi khach hang moi co quyen dat lich'], 403);
@@ -804,6 +804,26 @@ class DonDatLichController extends Controller
                 'trang_thai' => 'success',
                 'ma_giao_dich' => 'CASH_COMPLETE_' . time(),
             ]);
+
+            // Trừ phí dịch vụ + thuế khỏi ví thợ (COD: thợ thu hộ toàn bộ tiền mặt)
+            if ($booking->tho_id) {
+                try {
+                    app(\App\Services\EWalletService::class)->processHoanThanhDonHang(
+                        ma_tho: $booking->tho_id,
+                        ma_don_hang: $booking->id,
+                        tien_cong: (float) ($booking->tien_cong ?? 0),
+                        tien_linh_kien: (float) ($booking->phi_linh_kien ?? 0),
+                        phi_di_lai: (float) ($booking->phi_di_lai ?? 0),
+                        la_tien_mat: true
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('COD wallet deduction failed', [
+                        'booking_id' => $booking->id,
+                        'worker_id'  => $booking->tho_id,
+                        'error'      => $e->getMessage(),
+                    ]);
+                }
+            }
         }
 
         $actorName = $user->name ?? 'He thong';
@@ -813,7 +833,7 @@ class DonDatLichController extends Controller
         $this->loadBookingResponseRelations($booking);
         $this->notifyCustomerAboutBookingUpdate(
             $booking,
-            $paymentMethod === 'transfer' ? 'Tho da cap nhat ket qua sua chua' : 'Don dat lich da hoan tat',
+            $paymentMethod === 'transfer' ? 'Tho da cap nhat ket qua sua chua' : 'Đơn đặt hàng đã hoàn thành',
             $notificationMessage,
             $paymentMethod === 'transfer' ? 'booking_payment_requested' : 'booking_completed',
             $paymentMethod === 'transfer' ? 'Xem va thanh toan online' : 'Xem chi tiet don'
@@ -936,10 +956,30 @@ class DonDatLichController extends Controller
             'ma_giao_dich' => 'CASH_' . time(),
         ]);
 
+        // Trừ phí dịch vụ + thuế khỏi ví thợ (COD: thợ thu hộ toàn bộ tiền mặt)
+        if ($booking->tho_id) {
+            try {
+                app(\App\Services\EWalletService::class)->processHoanThanhDonHang(
+                    ma_tho: $booking->tho_id,
+                    ma_don_hang: $booking->id,
+                    tien_cong: (float) ($booking->tien_cong ?? 0),
+                    tien_linh_kien: (float) ($booking->phi_linh_kien ?? 0),
+                    phi_di_lai: (float) ($booking->phi_di_lai ?? 0),
+                    la_tien_mat: true
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('COD wallet deduction failed', [
+                    'booking_id' => $booking->id,
+                    'worker_id'  => $booking->tho_id,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
+        }
+
         $this->loadBookingResponseRelations($booking);
         $this->notifyCustomerAboutBookingUpdate(
             $booking,
-            'Don dat lich da hoan tat',
+            'Đơn đặt hàng đã hoàn thành',
             'Tho ' . ($user->name ?? 'he thong') . ' da xac nhan thanh toan tien mat cho don #' . $booking->id . '. Cam on ban da su dung dich vu!',
             'booking_completed'
         );
@@ -1030,8 +1070,8 @@ class DonDatLichController extends Controller
 
         $catalogResolutionIds = collect($normalizedItems)
             ->pluck('huong_xu_ly_id')
-            ->filter(static fn ($id) => $id !== null && $id !== '')
-            ->map(static fn ($id) => (int) $id)
+            ->filter(static fn($id) => $id !== null && $id !== '')
+            ->map(static fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values();
@@ -1039,10 +1079,10 @@ class DonDatLichController extends Controller
         $catalogResolutions = $catalogResolutionIds->isEmpty()
             ? collect()
             : HuongXuLy::query()
-                ->with('nguyenNhan.trieuChungs:id,dich_vu_id')
-                ->whereIn('id', $catalogResolutionIds->all())
-                ->get()
-                ->keyBy('id');
+            ->with('nguyenNhan.trieuChungs:id,dich_vu_id')
+            ->whereIn('id', $catalogResolutionIds->all())
+            ->get()
+            ->keyBy('id');
 
         $allowedServiceIds = $booking === null
             ? []
@@ -1063,11 +1103,11 @@ class DonDatLichController extends Controller
             $resolutionServiceIds = $catalogResolution === null
                 ? collect()
                 : collect($catalogResolution->nguyenNhan?->trieuChungs ?? [])
-                    ->pluck('dich_vu_id')
-                    ->map(static fn ($id) => (int) $id)
-                    ->filter()
-                    ->unique()
-                    ->values();
+                ->pluck('dich_vu_id')
+                ->map(static fn($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
 
             if (
                 $catalogResolutionId !== null
@@ -1137,8 +1177,8 @@ class DonDatLichController extends Controller
 
         $catalogPartIds = collect($normalizedItems)
             ->pluck('linh_kien_id')
-            ->filter(static fn ($id) => $id !== null && $id !== '')
-            ->map(static fn ($id) => (int) $id)
+            ->filter(static fn($id) => $id !== null && $id !== '')
+            ->map(static fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values();
@@ -1146,9 +1186,9 @@ class DonDatLichController extends Controller
         $catalogParts = $catalogPartIds->isEmpty()
             ? collect()
             : LinhKien::query()
-                ->whereIn('id', $catalogPartIds->all())
-                ->get()
-                ->keyBy('id');
+            ->whereIn('id', $catalogPartIds->all())
+            ->get()
+            ->keyBy('id');
 
         $allowedServiceIds = $booking === null
             ? []
@@ -1412,8 +1452,8 @@ class DonDatLichController extends Controller
 
         return trim(
             ($slot ? $this->formatSlotForDisplay($slot) : $scheduledAt->format('H:i'))
-            . ' ngày '
-            . $scheduledAt->format('d/m/Y')
+                . ' ngày '
+                . $scheduledAt->format('d/m/Y')
         );
     }
 
@@ -1519,8 +1559,8 @@ class DonDatLichController extends Controller
         }
 
         return collect($serviceIds)
-            ->filter(static fn ($id) => $id !== null && $id !== '')
-            ->map(static fn ($id) => (int) $id)
+            ->filter(static fn($id) => $id !== null && $id !== '')
+            ->map(static fn($id) => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -1549,7 +1589,7 @@ class DonDatLichController extends Controller
     private function getEligibleWorkersForServiceIds(array $serviceIds): Collection
     {
         $serviceIds = collect($serviceIds)
-            ->map(static fn ($id) => (int) $id)
+            ->map(static fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values()
@@ -1587,7 +1627,7 @@ class DonDatLichController extends Controller
 
         $workerServiceIds = $worker->dichVus()
             ->pluck('danh_muc_dich_vu.id')
-            ->map(static fn ($id) => (int) $id);
+            ->map(static fn($id) => (int) $id);
 
         return $bookingServiceIds->diff($workerServiceIds)->isEmpty();
     }
@@ -1610,7 +1650,7 @@ class DonDatLichController extends Controller
         }
 
         return $serviceIds
-            ->map(static fn ($id) => (int) $id)
+            ->map(static fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values()

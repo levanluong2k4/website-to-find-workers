@@ -415,6 +415,14 @@ export function createBookingDetailModalController({
               <div class="dispatch-detail-item__value">${escapeHtml(getStatusLabel(booking))}</div>
             </div>
             <div class="dispatch-detail-item">
+              <span class="dispatch-detail-item__label">Phương thức thanh toán</span>
+              <div class="dispatch-detail-item__value">
+                ${booking.phuong_thuc_thanh_toan === 'transfer'
+                  ? '<span style="color:#0a7ea4;font-weight:600;">💳 Chuyển khoản ngân hàng</span>'
+                  : '<span style="font-weight:600;">💵 Tiền mặt (COD)</span>'}
+              </div>
+            </div>
+            <div class="dispatch-detail-item">
               <span class="dispatch-detail-item__label">Ghi chú linh kiện</span>
               <div class="dispatch-detail-item__value">${nl2brSafe(booking.ghi_chu_linh_kien || 'Chưa có ghi chú linh kiện.')}</div>
             </div>

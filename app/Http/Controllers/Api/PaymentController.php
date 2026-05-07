@@ -842,6 +842,26 @@ class PaymentController extends Controller
         $booking->save();
 
         app(\App\Services\Chat\AiKnowledgeSyncService::class)->syncBookingCases($bookingId);
+
+        // Cộng tiền vào ví thợ (chuyển khoản: admin thu hộ tiền khách)
+        if ($booking->tho_id) {
+            try {
+                app(\App\Services\EWalletService::class)->processHoanThanhDonHang(
+                    ma_tho:         $booking->tho_id,
+                    ma_don_hang:    $booking->id,
+                    tien_cong:      (float) ($booking->tien_cong ?? 0),
+                    tien_linh_kien: 0,
+                    phi_di_lai:     (float) ($booking->phi_di_lai ?? 0),
+                    la_tien_mat:    false
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Transfer wallet credit failed', [
+                    'booking_id' => $booking->id,
+                    'worker_id'  => $booking->tho_id,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     private function resolvePaymentAmount(DonDatLich $booking): float

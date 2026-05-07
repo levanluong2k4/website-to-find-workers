@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         transportRequested: false, isOutOfRange: false, isOpen: false, locationSource: '',
         symptomCatalog: [], symptomCatalogKey: '', symptomCatalogPromise: null, selectedSymptomId: null, selectedSymptomIds: {},
         serviceProblemInputs: {}, activeProblemServiceId: null, busySlotsByDate: {},
+        savedAddresses: [], selectedSavedAddressId: null,
     };
     const $ = (id) => document.getElementById(id);
     const refs = {
@@ -73,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         atHome: $('bookingWizardAtHomePanel'), atStore: $('bookingWizardAtStorePanel'), transportWrap: $('bookingWizardTransportWrap'),
         storeAddress: $('bookingWizardStoreAddress'), storeTransportNote: $('bookingWizardStoreTransportNote'),
         transportToggle: $('bookingWizardTransportToggle'), getLocation: $('bookingWizardGetLocation'), locationStatus: $('bookingWizardLocationStatus'),
+        savedAddresses: $('bookingWizardSavedAddresses'),
         tinh: $('bookingWizardTinh'), huyen: $('bookingWizardHuyen'), xa: $('bookingWizardXa'), soNha: $('bookingWizardSoNha'),
         dateCards: $('bookingWizardDateCards'), timeSlots: $('bookingWizardTimeSlots'), description: $('bookingWizardDescription'), problemFields: $('bookingWizardProblemFields'),
         problemSuggest: $('bookingWizardProblemSuggest'), problemSuggestCopy: $('bookingWizardProblemSuggestCopy'), problemSuggestList: $('bookingWizardProblemSuggestList'),
@@ -1629,10 +1631,15 @@ document.addEventListener('DOMContentLoaded', () => {
             state.lng = '';
             state.locationSource = '';
             refs.locationStatus.textContent = 'Không cần lấy vị trí khi mang thiết bị đến cửa hàng.';
-        } else if (!hasCompleteHomeAddress()) {
-            refs.locationStatus.textContent = 'Vui lÃ²ng láº¥y vá»‹ trÃ­ hiá»‡n táº¡i hoáº·c nháº­p Ä‘á»§ Ä‘á»‹a chá»‰ Ä‘á»ƒ há»‡ thá»‘ng tÃ­nh phÃ­ di chuyá»ƒn.';
         } else {
-            refs.locationStatus.textContent = 'Há»‡ thá»‘ng sáº½ tá»± cáº­p nháº­t phÃ­ di chuyá»ƒn khi báº¡n thay Ä‘á»•i Ä‘á»‹a chá»‰.';
+            const defaultAddr = state.savedAddresses.find((a) => a.la_mac_dinh);
+            if (defaultAddr && !state.lat) {
+                selectSavedAddress(defaultAddr.id);
+            } else if (!hasRequiredHomeAddressSelection()) {
+                refs.locationStatus.textContent = 'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.';
+            } else {
+                refs.locationStatus.textContent = 'Hệ thống sẽ tự cập nhật phí di chuyển khi bạn thay đổi địa chỉ.';
+            }
         }
         clearDisabledTimeSlot();
         syncHidden();
@@ -2340,8 +2347,10 @@ document.addEventListener('DOMContentLoaded', () => {
             serviceProblemInputs: {},
             activeProblemServiceId: null,
             busySlotsByDate: {},
+            selectedSavedAddressId: null,
         });
         refs.form.reset();
+        renderSavedAddresses();
         refs.success.classList.add('d-none');
         refs.workerBanner.classList.add('d-none');
         refs.sumWorkerCard.classList.add('d-none');
@@ -2438,6 +2447,89 @@ document.addEventListener('DOMContentLoaded', () => {
         addressLookupTimer = window.setTimeout(() => {
             geocodeManualAddress();
         }, 500);
+    }
+
+    async function loadSavedAddresses() {
+        try {
+            const user = getCurrentUser();
+            if (!user || !['customer', 'admin'].includes(user.role)) return;
+
+            const res = await callApi('/user/addresses');
+            if (res.ok && Array.isArray(res.data?.data)) {
+                state.savedAddresses = res.data.data;
+                const def = state.savedAddresses.find(a => a.la_mac_dinh);
+                if (def) {
+                    state.selectedSavedAddressId = def.id;
+                    // Auto-fill default address if in home repair mode
+                    if (state.repairMode === 'at_home' && !state.lat) {
+                        selectSavedAddress(def.id);
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Không tải được địa chỉ đã lưu', error);
+        }
+    }
+
+    function renderSavedAddresses() {
+        // Function intentionally left empty or removed to hide UI selection
+    }
+
+    function selectSavedAddress(id) {
+        const addr = state.savedAddresses.find((a) => Number(a.id) === Number(id));
+        if (!addr) return;
+
+        const detailAddress = String(addr.so_nha || addr.dia_chi_cu_the || '').trim();
+        const provinceName = String(addr.tinh || addr.tinh_thanh || '').trim();
+        const districtName = String(addr.huyen || addr.quan_huyen || '').trim();
+        const wardName = String(addr.xa || addr.phuong_xa || '').trim();
+
+        state.selectedSavedAddressId = addr.id;
+
+        state.soNha = detailAddress;
+        if (refs.soNha) refs.soNha.value = state.soNha;
+
+        suppressAddressGeocode = true;
+
+        let matchedProvince = pickOptionValue(refs.tinh, provinceName);
+        if (!matchedProvince) matchedProvince = pickOptionFromText(refs.tinh, provinceName);
+        if (matchedProvince) {
+            refs.tinh.value = matchedProvince;
+            refs.tinh.dispatchEvent(new Event('change'));
+        }
+
+        if (!isMergedAddressMode()) {
+            let matchedDistrict = pickOptionValue(refs.huyen, districtName);
+            if (!matchedDistrict) matchedDistrict = pickOptionFromText(refs.huyen, districtName);
+            if (matchedDistrict) {
+                refs.huyen.value = matchedDistrict;
+                refs.huyen.dispatchEvent(new Event('change'));
+            }
+        } else {
+            state.huyen = districtName;
+        }
+
+        let matchedWard = pickOptionValue(refs.xa, wardName);
+        if (!matchedWard) {
+            matchedWard = pickOptionFromText(refs.xa, wardName);
+        }
+        if (matchedWard) {
+            refs.xa.value = matchedWard;
+            refs.xa.dispatchEvent(new Event('change'));
+        }
+
+        suppressAddressGeocode = false;
+
+        if (addr.vi_do && addr.kinh_do) {
+            state.lat = String(addr.vi_do);
+            state.lng = String(addr.kinh_do);
+            state.locationSource = 'saved';
+            syncHidden();
+            updateTravelEstimate();
+            refs.locationStatus.textContent = 'Đã cập nhật vị trí theo địa chỉ lưu sẵn.';
+        } else {
+            queueAddressRecalculation();
+        }
     }
 
     async function loadAddressData() {
@@ -2562,16 +2654,7 @@ document.addEventListener('DOMContentLoaded', () => {
         queueAddressRecalculation();
     });
 
-    repairCards.forEach((card) => card.addEventListener('click', () => {
-        if (state.repairMode === 'at_store') {
-            refs.locationStatus.textContent = 'Không cần lấy vị trí khi mang thiết bị đến cửa hàng.';
-            return;
-        }
 
-        refs.locationStatus.textContent = hasRequiredHomeAddressSelection()
-            ? 'Hệ thống sẽ tự cập nhật phí di chuyển khi bạn thay đổi địa chỉ.'
-            : 'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.';
-    }));
 
     renderDateCards();
     renderTimeSlots();
@@ -2580,6 +2663,7 @@ document.addEventListener('DOMContentLoaded', () => {
     syncHidden();
     updateSummary();
     loadTravelFeeConfig();
+    loadSavedAddresses();
     window.addEventListener('resize', queueViewportFit);
     if (isStandalone) openModal();
 });

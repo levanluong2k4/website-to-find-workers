@@ -104,8 +104,6 @@
                                         <p class="booking-address-hint">Sử dụng GPS để hệ thống tự điền địa chỉ và tính phí di chuyển.</p>
                                     </div>
 
-                                    <div class="booking-address-divider"><span>Hoặc nhập địa chỉ bên dưới</span></div>
-
                                     <div class="booking-address-grid">
                                         <label class="booking-field">
                                             <span>Tỉnh / Thành phố</span>

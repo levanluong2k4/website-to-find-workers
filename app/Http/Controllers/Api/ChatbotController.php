@@ -98,6 +98,8 @@ class ChatbotController extends Controller
                 'youtube_links' => $assistantPayload['youtube_links'],
                 'model' => $assistantPayload['model'],
                 'ai' => $assistantPayload['ai'] ?? null,
+                'map_url' => $assistantPayload['map_url'] ?? null,
+                'map_embed_url' => $assistantPayload['map_embed_url'] ?? null,
             ]
         );
 
@@ -265,14 +267,14 @@ class ChatbotController extends Controller
         if ($this->isStoreMapQuestion($text)) {
             return $this->finalizeAssistantPayload(
                 $text,
-                $this->buildStoreInfoPayload('store_map_rule', $this->buildStoreMapAssistantText())
+                $this->buildStoreInfoPayload('store_map_rule', $this->buildStoreMapAssistantText(), $this->buildStoreMapMeta())
             );
         }
 
         if ($this->isStoreAddressQuestion($text)) {
             return $this->finalizeAssistantPayload(
                 $text,
-                $this->buildStoreInfoPayload('store_address_rule', $this->buildStoreAddressAssistantText())
+                $this->buildStoreInfoPayload('store_address_rule', $this->buildStoreAddressAssistantText(), $this->buildStoreMapMeta())
             );
         }
 
@@ -880,15 +882,37 @@ class ChatbotController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function buildStoreInfoPayload(string $status, string $assistantText): array
+    private function buildStoreInfoPayload(string $status, string $assistantText, array $extra = []): array
     {
-        return [
+        return array_merge([
             'assistant_text' => $assistantText,
             'cases' => [],
             'technicians' => [],
             'youtube_links' => [],
             'model' => null,
             'ai' => $this->deterministicAiMeta($status),
+        ], $extra);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildStoreMapMeta(): array
+    {
+        $address = trim($this->travelFeeConfigService->resolveStoreAddress());
+        if ($address === '') {
+            return [];
+        }
+
+        $lat = $this->travelFeeConfigService->resolveStoreLatitude();
+        $lng = $this->travelFeeConfigService->resolveStoreLongitude();
+
+        $hasCoords = $lat !== 0.0 && $lng !== 0.0;
+        $query = $hasCoords ? "{$lat},{$lng}" : $address;
+
+        return [
+            'map_url' => 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($address),
+            'map_embed_url' => 'https://maps.google.com/maps?q=' . rawurlencode($query) . '&output=embed&z=16',
         ];
     }
 

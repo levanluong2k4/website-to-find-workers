@@ -1732,34 +1732,42 @@
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-bottom-0">
                 <div>
-                    <h5 class="modal-title fw-bold" id="modalComplaintLabel">Gửi khiếu nại</h5>
-                    <p class="text-muted mb-0 small">Nếu phát sinh lỗi sau khi thợ hoàn tất, bạn có thể gửi khiếu nại để admin xử lý.</p>
+                    <h5 class="modal-title fw-bold" id="modalComplaintLabel">🛡️ Yêu cầu bảo hành</h5>
+                    <p class="text-muted mb-0 small">Nếu thiết bị phát sinh lỗi trong thời gian bảo hành, bạn có thể gửi yêu cầu để được hỗ trợ miễn phí.</p>
                 </div>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted mb-3" id="complaintBookingContext">Khiếu nại cho đơn hàng đã hoàn tất.</p>
+                <p class="text-muted mb-3" id="complaintBookingContext">Yêu cầu bảo hành cho đơn hàng đã hoàn tất.</p>
 
                 <form id="formComplaint">
                     <input type="hidden" id="complaintBookingId" name="don_dat_lich_id">
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Lý do khiếu nại <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold">Lý do bảo hành <span class="text-danger">*</span></label>
                         <div class="complaint-reason-list">
                             <label class="complaint-reason-item">
                                 <input type="radio" name="ly_do_khieu_nai" value="loi_tai_phat" required>
-                                <span>Lỗi tái phát</span>
+                                <span>🔁 Lỗi tái phát sau khi sửa</span>
                             </label>
                             <label class="complaint-reason-item">
                                 <input type="radio" name="ly_do_khieu_nai" value="linh_kien_kem_chat_luong" required>
-                                <span>Linh kiện thay thế kém chất lượng</span>
+                                <span>⚙️ Linh kiện thay thế bị lỗi / kém chất lượng</span>
+                            </label>
+                            <label class="complaint-reason-item">
+                                <input type="radio" name="ly_do_khieu_nai" value="sua_chua_khong_triet_de" required>
+                                <span>🔧 Sửa chữa chưa triệt để</span>
+                            </label>
+                            <label class="complaint-reason-item">
+                                <input type="radio" name="ly_do_khieu_nai" value="khac" required>
+                                <span>📝 Lý do khác</span>
                             </label>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold" for="complaintNote">Ghi chú lỗi</label>
-                        <textarea class="form-control bg-light border-0" id="complaintNote" name="ghi_chu" rows="4" placeholder="Mô tả lỗi gặp phải, thời điểm xảy ra, tình trạng hiện tại..."></textarea>
+                        <label class="form-label fw-bold" for="complaintNote">Mô tả vấn đề cần bảo hành</label>
+                        <textarea class="form-control bg-light border-0" id="complaintNote" name="ghi_chu" rows="4" placeholder="Mô tả chi tiết lỗi gặp phải, thời điểm xảy ra, tình trạng hiện tại của thiết bị..."></textarea>
                     </div>
 
                     <div class="mb-4">
@@ -1781,7 +1789,9 @@
                         <p class="text-muted mt-2 mb-0 small">Tối đa 5 ảnh, 1 video. Mỗi file ảnh &lt;= 5MB, video &lt;= 30MB.</p>
                     </div>
 
-                    <button type="submit" class="btn btn-danger w-100 rounded-pill py-2 fw-bold" id="btnSubmitComplaint">Gửi khiếu nại</button>
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold" id="btnSubmitComplaint">
+                        🛡️ Gửi yêu cầu bảo hành
+                    </button>
                 </form>
             </div>
         </div>

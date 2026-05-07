@@ -1663,6 +1663,7 @@ class AppNavbar extends HTMLElement {
             { href: '/admin/services', label: 'Dịch vụ', icon: 'fas fa-screwdriver-wrench', active: isCurrentPath('/admin/services', '/admin/linh-kien') },
             { href: '/admin/tri-thuc-sua-chua', label: 'Tri thức sửa chữa', icon: 'fas fa-diagram-project', active: isCurrentPath('/admin/tri-thuc-sua-chua', '/admin/trieu-chung', '/admin/nguyen-nhan', '/admin/huong-xu-ly', '/admin/gia') },
             { href: '/admin/customer-feedback', label: 'Báo cáo', icon: 'fas fa-chart-simple', active: isCurrentPath('/admin/customer-feedback', '/admin/bookings') },
+            { href: '/admin/revenue', label: 'Doanh thu', icon: 'fas fa-chart-line', active: isCurrentPath('/admin/revenue') },
             { href: '/admin/travel-fee-config', label: 'Cài đặt', icon: 'fas fa-gear', active: isCurrentPath('/admin/travel-fee-config', '/admin/assistant-soul') },
         ];
 
