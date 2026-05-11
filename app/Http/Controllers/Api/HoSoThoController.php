@@ -272,6 +272,7 @@ class HoSoThoController extends Controller
 
         $taxRate = \App\Models\AppSetting::where('key', 'ty_le_thue_nha_nuoc')->value('value') ?? 10;
         $feeRate = \App\Models\AppSetting::where('key', 'ty_le_phi_nen_tang')->value('value') ?? 20;
+        $travelFeeRate = \App\Models\AppSetting::where('key', 'ty_le_nhan_phi_di_lai_tho')->value('value') ?? 100;
 
         return response()->json([
             'tong_doanh_thu' => $tongDoanhThu,
@@ -291,7 +292,8 @@ class HoSoThoController extends Controller
             ],
             'settings' => [
                 'tax_rate' => (float) $taxRate,
-                'fee_rate' => (float) $feeRate
+                'fee_rate' => (float) $feeRate,
+                'travel_fee_rate' => (float) $travelFeeRate,
             ]
         ]);
     }

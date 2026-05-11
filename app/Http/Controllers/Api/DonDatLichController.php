@@ -6,15 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DonDatLich\RescheduleBookingRequest;
 use App\Http\Requests\DonDatLich\UpdateBookingCostsRequest;
 use App\Http\Requests\DonDatLich\UpdateTrangThaiRequest;
+use App\Models\CustomerFeedbackCase;
 use App\Models\DonDatLich;
 use App\Models\HuongXuLy;
 use App\Models\LinhKien;
 use App\Models\User;
+use App\Notifications\BookingWarrantyRequestedNotification;
 use App\Notifications\BookingStatusNotification;
 use App\Notifications\NewBookingNotification;
 use App\Services\Media\CloudinaryUploadService;
 use App\Services\TravelFeeConfigService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +32,8 @@ class DonDatLichController extends Controller
     private const MIN_FUTURE_RESCHEDULE_SLOTS = 2;
 
     private const CUSTOMER_RESCHEDULE_WINDOW_DAYS = 7;
+
+    private const WARRANTY_RESPONSE_HOURS = 24;
 
     public function index(Request $request)
     {
@@ -348,6 +353,7 @@ class DonDatLichController extends Controller
         $booking->tho_id = $user->id;
         $booking->trang_thai = 'da_xac_nhan';
         $booking->save();
+        $booking->unsetRelation('customerComplaintCase');
         $this->loadBookingResponseRelations($booking);
 
         $this->notifyCustomerAboutBookingUpdate(
@@ -371,6 +377,7 @@ class DonDatLichController extends Controller
             'dichVus:id,ten_dich_vu,hinh_anh',
             'danhGias',
             'thanhToans',
+            'customerComplaintCase',
             'workerContactIssueReporter:id,name',
         ])->find($id);
 
@@ -387,6 +394,145 @@ class DonDatLichController extends Controller
         }
 
         return response()->json($this->serializeBookingDetail($booking));
+    }
+
+    public function submitComplaint(Request $request, string $id, CloudinaryUploadService $cloudinaryUploadService)
+    {
+        $user = $request->user();
+        if (!$this->canActAsCustomer($user)) {
+            return response()->json(['message' => 'Chi khach hang moi duoc gui yeu cau bao hanh.'], 403);
+        }
+
+        $booking = DonDatLich::with([
+            'khachHang:id,name,avatar,phone,address',
+            'tho:id,name,avatar,phone',
+            'dichVus:id,ten_dich_vu,hinh_anh',
+            'customerComplaintCase',
+        ])->find($id);
+
+        if (!$booking) {
+            return response()->json(['message' => 'Khong tim thay don dat lich.'], 404);
+        }
+
+        if (!$this->isAdmin($user) && (int) $booking->khach_hang_id !== (int) $user->id) {
+            return response()->json(['message' => 'Ban khong phai khach hang cua don nay.'], 403);
+        }
+
+        if (!$booking->isCompleted()) {
+            return response()->json(['message' => 'Chi don da hoan thanh moi duoc gui bao hanh.'], 422);
+        }
+
+        if ((int) ($booking->tho_id ?? 0) <= 0) {
+            return response()->json(['message' => 'Don nay chua co tho phu trach hop le de bao hanh.'], 422);
+        }
+
+        $existingCase = $booking->customerComplaintCase;
+        if ($existingCase && DonDatLich::isWarrantyOpenStatus($existingCase->status)) {
+            return response()->json(['message' => 'Don nay dang co 1 case bao hanh mo.'], 422);
+        }
+
+        $policy = $booking->warranty_policy;
+        if (!($policy['can_request'] ?? false)) {
+            return response()->json([
+                'message' => $this->resolveWarrantyPolicyRejectionMessage((string) ($policy['reason'] ?? 'expired'), $policy),
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'ly_do_khieu_nai' => 'required|in:loi_tai_phat,linh_kien_kem_chat_luong,sua_chua_khong_triet_de,khac',
+            'ghi_chu' => 'nullable|string|max:2000',
+            'hinh_anh_khieu_nai' => 'nullable|array|max:5',
+            'hinh_anh_khieu_nai.*' => 'nullable|image|max:5120',
+            'video_khieu_nai' => 'nullable|mimes:mp4,mov,avi,wmv,webm|max:30720',
+        ]);
+
+        $reasonCode = (string) $validated['ly_do_khieu_nai'];
+        if ($reasonCode === 'linh_kien_kem_chat_luong' && !$this->bookingHasReplacementParts($booking)) {
+            return response()->json([
+                'message' => 'Don nay khong co linh kien thay the nen khong the chon ly do bao hanh nay.',
+            ], 422);
+        }
+
+        $reasonLabel = $this->warrantyReasonLabels()[$reasonCode] ?? 'Bao hanh';
+        $note = trim((string) ($validated['ghi_chu'] ?? ''));
+        $uploadedMedia = $this->uploadComplaintMedia($request, $cloudinaryUploadService);
+        $warrantyExpiresAt = !empty($policy['expires_at']) ? Carbon::parse((string) $policy['expires_at']) : null;
+        $requestedAt = now();
+        $deadlineAt = $requestedAt->copy()->addHours(self::WARRANTY_RESPONSE_HOURS);
+
+        DB::transaction(function () use (
+            $booking,
+            $existingCase,
+            $user,
+            $reasonCode,
+            $reasonLabel,
+            $note,
+            $uploadedMedia,
+            $requestedAt,
+            $deadlineAt,
+            $warrantyExpiresAt
+        ): void {
+            $case = $existingCase ?: new CustomerFeedbackCase([
+                'source_type' => 'customer_complaint',
+                'source_id' => (int) $booking->id,
+            ]);
+            $snapshot = is_array($case->last_snapshot) ? $case->last_snapshot : [];
+
+            $case->fill([
+                'customer_id' => (int) $user->id,
+                'booking_id' => (int) $booking->id,
+                'worker_id' => (int) $booking->tho_id,
+                'priority' => $reasonCode === 'linh_kien_kem_chat_luong' ? 'high' : 'medium',
+                'status' => 'worker_notified',
+                'assigned_admin_id' => null,
+                'assigned_at' => null,
+                'deadline_at' => $deadlineAt,
+                'assignment_note' => null,
+                'resolved_at' => null,
+                'resolution_note' => null,
+                'last_snapshot' => array_merge($snapshot, [
+                    'reason_code' => $reasonCode,
+                    'reason_label' => $reasonLabel,
+                    'note' => $note,
+                    'images' => $uploadedMedia['images'],
+                    'video' => $uploadedMedia['video'],
+                    'requested_at' => $requestedAt->toIso8601String(),
+                    'warranty_expires_at' => $warrantyExpiresAt?->toIso8601String(),
+                    'response_deadline_at' => $deadlineAt->toIso8601String(),
+                    'worker_response_note' => '',
+                    'worker_response_at' => null,
+                ]),
+            ]);
+            $case->save();
+        });
+
+        $this->loadBookingResponseRelations($booking);
+
+        try {
+            $booking->tho?->notify(new BookingWarrantyRequestedNotification($booking, $reasonLabel));
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('Worker warranty notification failed', [
+                'booking_id' => $booking->id,
+                'worker_id' => $booking->tho_id,
+                'message' => $exception->getMessage(),
+            ]);
+
+            if ($booking->customerComplaintCase) {
+                $booking->customerComplaintCase->status = 'new';
+                $booking->customerComplaintCase->saveQuietly();
+            }
+        }
+
+        $booking->refresh();
+        $this->loadBookingResponseRelations($booking);
+
+        return response()->json([
+            'message' => 'Da gui yeu cau bao hanh thanh cong.',
+            'data' => [
+                'booking' => $this->serializeBookingDetail($booking),
+                'warranty_case' => $booking->warranty_case,
+            ],
+        ], 201);
     }
 
     public function reportCustomerUnreachable(Request $request, string $id)
@@ -991,6 +1137,91 @@ class DonDatLichController extends Controller
         ]);
     }
 
+    public function updateComplaintStatus(Request $request, string $id)
+    {
+        $user = $request->user();
+        if (!$this->canActAsWorker($user)) {
+            return response()->json(['message' => 'Chi tho moi duoc cap nhat case bao hanh.'], 403);
+        }
+
+        $booking = DonDatLich::with([
+            'khachHang:id,name,avatar,phone,address',
+            'tho:id,name,avatar,phone',
+            'dichVus:id,ten_dich_vu,hinh_anh',
+            'customerComplaintCase',
+        ])->find($id);
+
+        if (!$booking) {
+            return response()->json(['message' => 'Khong tim thay don dat lich.'], 404);
+        }
+
+        if (!$this->isAdmin($user) && (int) $booking->tho_id !== (int) $user->id) {
+            return response()->json(['message' => 'Chi tho da xu ly don moi duoc thao tac bao hanh.'], 403);
+        }
+
+        $case = $booking->customerComplaintCase;
+        if (!$case) {
+            return response()->json(['message' => 'Don nay chua co case bao hanh nao.'], 404);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:accepted,in_progress,completed,rejected',
+            'note' => 'nullable|string|max:2000',
+        ]);
+
+        $nextStatus = (string) $validated['status'];
+        $note = trim((string) ($validated['note'] ?? ''));
+        $currentStatus = (string) ($case->status ?: 'new');
+
+        if ($nextStatus === 'rejected' && $note === '') {
+            return response()->json(['message' => 'Tho phai nhap ly do khi tu choi bao hanh.'], 422);
+        }
+
+        if (!$this->canTransitionWarrantyCase($currentStatus, $nextStatus)) {
+            return response()->json([
+                'message' => 'Case bao hanh dang o trang thai khong phu hop de chuyen buoc nay.',
+            ], 422);
+        }
+
+        $now = now();
+        $snapshot = is_array($case->last_snapshot) ? $case->last_snapshot : [];
+        $statusKey = match ($nextStatus) {
+            'accepted' => 'accepted_at',
+            'in_progress' => 'started_at',
+            'completed' => 'completed_at',
+            'rejected' => 'rejected_at',
+            default => 'updated_at',
+        };
+        $snapshot[$statusKey] = $now->toIso8601String();
+        $snapshot['worker_response_at'] = $now->toIso8601String();
+        $snapshot['worker_response_note'] = $note;
+        $snapshot['worker_response_by_id'] = (int) $user->id;
+        $snapshot['worker_response_by_name'] = (string) ($user->name ?? 'Tho ky thuat');
+
+        $case->status = $nextStatus;
+        $case->resolved_at = in_array($nextStatus, ['completed', 'rejected'], true) ? $now : null;
+        $case->resolution_note = in_array($nextStatus, ['completed', 'rejected'], true)
+            ? ($note !== '' ? $note : $case->resolution_note)
+            : null;
+        $case->last_snapshot = $snapshot;
+        $case->save();
+
+        $this->loadBookingResponseRelations($booking);
+        $this->notifyCustomerAboutWarrantyCaseUpdate($booking, $nextStatus, $note, $user);
+
+        return response()->json([
+            'message' => $this->warrantyWorkerStatusMessages()[$nextStatus] ?? 'Da cap nhat case bao hanh.',
+            'data' => [
+                'booking' => $this->serializeBookingDetail($booking->fresh([
+                    'khachHang:id,name,avatar,phone,address',
+                    'tho:id,name,avatar,phone',
+                    'dichVus:id,ten_dich_vu,hinh_anh',
+                    'customerComplaintCase',
+                ])),
+            ],
+        ]);
+    }
+
     public function confirmPartWarranty(Request $request, string $id, int $partIndex)
     {
         $user = $request->user();
@@ -1053,6 +1284,7 @@ class DonDatLichController extends Controller
                 'dichVus:id,ten_dich_vu,hinh_anh',
                 'danhGias',
                 'thanhToans',
+                'customerComplaintCase',
             ]),
         ]);
     }
@@ -1661,7 +1893,7 @@ class DonDatLichController extends Controller
     {
         static $serviceRelationTablesReady = null;
 
-        $relations = ['tho:id,name', 'khachHang:id,name,email', 'workerContactIssueReporter:id,name'];
+        $relations = ['tho:id,name', 'khachHang:id,name,email', 'customerComplaintCase', 'workerContactIssueReporter:id,name'];
 
         if ($serviceRelationTablesReady === null) {
             $serviceRelationTablesReady = Schema::hasTable('danh_muc_dich_vu')
@@ -1692,5 +1924,144 @@ class DonDatLichController extends Controller
     private function resolvePendingPaymentStatus(?string $paymentMethod): string
     {
         return $paymentMethod === 'transfer' ? 'cho_thanh_toan' : 'cho_hoan_thanh';
+    }
+
+    private function bookingHasReplacementParts(DonDatLich $booking): bool
+    {
+        $partItems = is_array($booking->chi_tiet_linh_kien) ? array_values(array_filter($booking->chi_tiet_linh_kien)) : [];
+        if ($partItems !== []) {
+            return true;
+        }
+
+        if ((float) ($booking->phi_linh_kien ?? 0) > 0) {
+            return true;
+        }
+
+        return trim((string) ($booking->ghi_chu_linh_kien ?? '')) !== '';
+    }
+
+    private function warrantyReasonLabels(): array
+    {
+        return [
+            'loi_tai_phat' => 'Loi tai phat sau khi sua',
+            'linh_kien_kem_chat_luong' => 'Linh kien thay the bi loi / kem chat luong',
+            'sua_chua_khong_triet_de' => 'Sua chua khong triet de',
+            'khac' => 'Ly do khac',
+        ];
+    }
+
+    private function resolveWarrantyPolicyRejectionMessage(string $reason, array $policy): string
+    {
+        return match ($reason) {
+            'case_open' => 'Don nay dang co 1 case bao hanh mo, vui long cho xu ly xong.',
+            'not_completed' => 'Chi don da hoan thanh moi duoc gui bao hanh.',
+            'no_worker' => 'Don nay chua co tho phu trach hop le de bao hanh.',
+            'expired' => !empty($policy['expires_label'])
+                ? 'Don nay da het bao hanh tu ' . $policy['expires_label'] . '.'
+                : 'Don nay da het thoi han bao hanh.',
+            default => 'Don nay hien khong the tao yeu cau bao hanh.',
+        };
+    }
+
+    private function canTransitionWarrantyCase(string $currentStatus, string $nextStatus): bool
+    {
+        return match ($nextStatus) {
+            'accepted' => in_array($currentStatus, ['new', 'worker_notified'], true),
+            'in_progress' => $currentStatus === 'accepted',
+            'completed' => in_array($currentStatus, ['accepted', 'in_progress'], true),
+            'rejected' => in_array($currentStatus, ['new', 'worker_notified', 'accepted', 'in_progress'], true),
+            default => false,
+        };
+    }
+
+    private function warrantyWorkerStatusMessages(): array
+    {
+        return [
+            'accepted' => 'Da nhan xu ly bao hanh.',
+            'in_progress' => 'Da chuyen case sang dang xu ly.',
+            'completed' => 'Da hoan tat bao hanh cho don nay.',
+            'rejected' => 'Da tu choi case bao hanh.',
+        ];
+    }
+
+    private function notifyCustomerAboutWarrantyCaseUpdate(DonDatLich $booking, string $status, string $note, User $actor): void
+    {
+        $content = match ($status) {
+            'accepted' => [
+                'title' => 'Tho da nhan bao hanh cho don cua ban',
+                'message' => 'Tho ' . ($actor->name ?? 'ky thuat vien') . ' da nhan yeu cau bao hanh cua don #' . $booking->id . '.',
+                'type' => 'booking_warranty_accepted',
+            ],
+            'in_progress' => [
+                'title' => 'Tho dang xu ly bao hanh',
+                'message' => 'Tho ' . ($actor->name ?? 'ky thuat vien') . ' dang xu ly yeu cau bao hanh cua don #' . $booking->id . '.',
+                'type' => 'booking_warranty_in_progress',
+            ],
+            'completed' => [
+                'title' => 'Yeu cau bao hanh da hoan tat',
+                'message' => 'Tho ' . ($actor->name ?? 'ky thuat vien') . ' da hoan tat bao hanh cho don #' . $booking->id . ($note !== '' ? ' Ghi chu: ' . $note : ''),
+                'type' => 'booking_warranty_completed',
+            ],
+            'rejected' => [
+                'title' => 'Yeu cau bao hanh da bi tu choi',
+                'message' => 'Tho ' . ($actor->name ?? 'ky thuat vien') . ' da tu choi bao hanh cho don #' . $booking->id . ($note !== '' ? '. Ly do: ' . $note : '.'),
+                'type' => 'booking_warranty_rejected',
+            ],
+            default => null,
+        };
+
+        if ($content === null) {
+            return;
+        }
+
+        $this->notifyCustomerAboutBookingUpdate(
+            $booking,
+            $content['title'],
+            $content['message'],
+            $content['type']
+        );
+    }
+
+    private function uploadComplaintMedia(Request $request, CloudinaryUploadService $cloudinaryUploadService): array
+    {
+        $imageUrls = [];
+
+        foreach ($request->file('hinh_anh_khieu_nai', []) as $file) {
+            if (!$file instanceof UploadedFile) {
+                continue;
+            }
+
+            $uploadResult = $cloudinaryUploadService->uploadUploadedFile($file, [
+                'folder' => 'complaints/images',
+            ]);
+
+            $secureUrl = $this->normalizeComplaintMediaUrl($uploadResult['secure_url'] ?? null);
+            if ($secureUrl !== null) {
+                $imageUrls[] = $secureUrl;
+            }
+        }
+
+        $videoUrl = null;
+
+        if ($request->hasFile('video_khieu_nai')) {
+            $uploadResult = $cloudinaryUploadService->uploadUploadedFile($request->file('video_khieu_nai'), [
+                'folder' => 'complaints/videos',
+                'resource_type' => 'video',
+            ]);
+
+            $videoUrl = $this->normalizeComplaintMediaUrl($uploadResult['secure_url'] ?? null);
+        }
+
+        return [
+            'images' => array_values(array_unique($imageUrls)),
+            'video' => $videoUrl,
+        ];
+    }
+
+    private function normalizeComplaintMediaUrl(mixed $value): ?string
+    {
+        $url = trim((string) ($value ?? ''));
+
+        return $url !== '' ? $url : null;
     }
 }

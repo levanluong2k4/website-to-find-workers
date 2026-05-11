@@ -26,19 +26,21 @@ class SimilarIssueSearchService
         $normalizedMessage = TextNormalizer::normalize($message);
         $tokens = TextNormalizer::tokens($message);
         $serviceHint = $this->detectServiceHint($normalizedMessage, $this->normalizedWords($message));
+        $issueContext = $this->extractIssueContext($normalizedMessage, $serviceHint);
 
         $knowledgeResults = $this->searchKnowledgeLibrary(
             $message,
             $limit,
             $normalizedMessage,
             $tokens,
-            $serviceHint
+            $serviceHint,
+            $issueContext
         );
         if ($knowledgeResults !== []) {
             return $knowledgeResults;
         }
 
-        return $this->searchLegacyBookings($message, $limit, $serviceHint['service_id']);
+        return $this->searchLegacyBookings($message, $limit, $serviceHint['service_id'], $issueContext);
     }
 
     /**
@@ -49,14 +51,16 @@ class SimilarIssueSearchService
         int $limit,
         string $normalizedMessage,
         array $tokens,
-        array $serviceHint
+        array $serviceHint,
+        array $issueContext
     ): array
     {
         $semanticResults = $this->searchKnowledgeLibrarySemantic(
             $limit,
             $normalizedMessage,
             $tokens,
-            $serviceHint
+            $serviceHint,
+            $issueContext
         );
         if ($semanticResults !== []) {
             return $semanticResults;
@@ -67,7 +71,8 @@ class SimilarIssueSearchService
             $limit,
             $normalizedMessage,
             $tokens,
-            $serviceHint['service_id']
+            $serviceHint['service_id'],
+            $issueContext
         );
     }
 
@@ -78,7 +83,8 @@ class SimilarIssueSearchService
         int $limit,
         string $normalizedMessage,
         array $tokens,
-        array $serviceHint
+        array $serviceHint,
+        array $issueContext
     ): array
     {
         if ($normalizedMessage === '') {
@@ -150,6 +156,8 @@ class SimilarIssueSearchService
             ->sortByDesc('score')
             ->values();
 
+        $ranked = collect($this->applyIssueFocusFilter($ranked->all(), $issueContext));
+
         return $ranked->take($limit)->map(function (array $case): array {
             unset($case['score']);
 
@@ -165,7 +173,8 @@ class SimilarIssueSearchService
         int $limit,
         string $normalizedMessage,
         array $tokens,
-        ?int $serviceId = null
+        ?int $serviceId = null,
+        array $issueContext = []
     ): array
     {
         $dbDriver = DB::connection()->getDriverName();
@@ -228,6 +237,8 @@ class SimilarIssueSearchService
             ->sortByDesc('score')
             ->values();
 
+        $ranked = collect($this->applyIssueFocusFilter($ranked->all(), $issueContext));
+
         return $ranked->take($limit)->map(function (array $case): array {
             unset($case['score']);
 
@@ -238,7 +249,12 @@ class SimilarIssueSearchService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function searchLegacyBookings(string $message, int $limit, ?int $serviceId = null): array
+    private function searchLegacyBookings(
+        string $message,
+        int $limit,
+        ?int $serviceId = null,
+        array $issueContext = []
+    ): array
     {
         $tokens = TextNormalizer::tokens($message);
         $normalizedMessage = TextNormalizer::normalize($message);
@@ -298,6 +314,8 @@ class SimilarIssueSearchService
             ->filter(fn (array $case): bool => $case['score'] >= 0.2)
             ->sortByDesc('score')
             ->values();
+
+        $ranked = collect($this->applyIssueFocusFilter($ranked->all(), $issueContext));
 
         return $ranked->take($limit)->map(function (array $case): array {
             unset($case['score']);
@@ -555,6 +573,179 @@ class SimilarIssueSearchService
     }
 
     /**
+     * @param  array{service_id: int|null, service_name: string|null}  $serviceHint
+     * @return array{normalized_query: string, tokens: array<int, string>}
+     */
+    private function extractIssueContext(string $normalizedMessage, array $serviceHint): array
+    {
+        if (($serviceHint['service_id'] ?? null) === null) {
+            return [
+                'normalized_query' => '',
+                'tokens' => [],
+            ];
+        }
+
+        $issueText = $normalizedMessage;
+        $normalizedServiceName = TextNormalizer::normalize((string) ($serviceHint['service_name'] ?? ''));
+        $serviceAlias = $this->serviceAlias($normalizedServiceName);
+
+        if ($normalizedServiceName !== '' && str_contains($issueText, $normalizedServiceName)) {
+            $issueText = $this->removeFirstPhrase($issueText, $normalizedServiceName);
+        } elseif ($serviceAlias !== '' && str_contains($issueText, $serviceAlias)) {
+            $issueText = $this->removeFirstPhrase($issueText, $serviceAlias);
+        } elseif ($serviceAlias !== '') {
+            $issueWords = $this->normalizedWords($issueText);
+            $serviceWords = $this->normalizedWords($serviceAlias);
+            $removedLeadingServiceWords = false;
+
+            foreach ($serviceWords as $serviceWord) {
+                $leadingWord = $issueWords[0] ?? null;
+                if ($leadingWord !== null && $leadingWord === $serviceWord) {
+                    array_shift($issueWords);
+                    $removedLeadingServiceWords = true;
+                }
+            }
+
+            if ($removedLeadingServiceWords) {
+                $issueText = implode(' ', $issueWords);
+            }
+        }
+
+        $noiseWords = [
+            'nguyen', 'nhan', 'do', 'dau', 'tai', 'sao', 'vi', 'the', 'nao',
+            'la', 'gi', 'cho', 'hoi', 'giup', 'voi', 'a', 'ah', 'ua', 'nhe',
+        ];
+
+        $issueWords = array_values(array_filter(
+            $this->normalizedWords($issueText),
+            static fn (string $word): bool => !in_array($word, $noiseWords, true)
+        ));
+
+        return [
+            'normalized_query' => implode(' ', $issueWords),
+            'tokens' => $issueWords,
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $cases
+     * @param  array{normalized_query?: string, tokens?: array<int, string>}  $issueContext
+     * @return array<int, array<string, mixed>>
+     */
+    private function applyIssueFocusFilter(array $cases, array $issueContext): array
+    {
+        if ($cases === []) {
+            return [];
+        }
+
+        $issueTokens = array_values(array_filter((array) ($issueContext['tokens'] ?? []), 'is_string'));
+        $issueQuery = trim((string) ($issueContext['normalized_query'] ?? ''));
+
+        if ($issueTokens === [] || $issueQuery === '') {
+            return $cases;
+        }
+
+        $scoredCases = collect($cases)
+            ->map(function (array $case) use ($issueTokens, $issueQuery): array {
+                $case['issue_focus_score'] = $this->resultIssueFocusScore($case, $issueTokens, $issueQuery);
+
+                return $case;
+            })
+            ->values();
+
+        $topFocusScore = (float) $scoredCases->max('issue_focus_score');
+        if ($topFocusScore < 0.28) {
+            return $cases;
+        }
+
+        $minimumFocusScore = max(0.16, $topFocusScore * 0.55);
+        $filteredCases = $scoredCases
+            ->filter(fn (array $case): bool => (float) ($case['issue_focus_score'] ?? 0.0) >= $minimumFocusScore)
+            ->values();
+
+        if ($filteredCases->isEmpty()) {
+            return $cases;
+        }
+
+        return $filteredCases->map(function (array $case): array {
+            unset($case['issue_focus_score']);
+
+            return $case;
+        })->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $case
+     * @param  array<int, string>  $issueTokens
+     */
+    private function resultIssueFocusScore(array $case, array $issueTokens, string $issueQuery): float
+    {
+        $problemScore = $this->focusFieldScore($issueTokens, $issueQuery, (string) ($case['problem_description'] ?? ''));
+        $causeScore = $this->focusFieldScore($issueTokens, $issueQuery, (string) ($case['cause'] ?? ''));
+        $solutionScore = $this->focusFieldScore($issueTokens, $issueQuery, (string) ($case['solution'] ?? ''));
+
+        return max(
+            $problemScore,
+            min(1.0, (0.7 * $problemScore) + (0.2 * $causeScore) + (0.1 * $solutionScore))
+        );
+    }
+
+    /**
+     * @param  array<int, string>  $focusTokens
+     */
+    private function focusFieldScore(array $focusTokens, string $focusQuery, string $text): float
+    {
+        if ($text === '' || $focusTokens === []) {
+            return 0.0;
+        }
+
+        $haystackTokens = $this->normalizedWords($text);
+        $tokenScore = $this->normalizedOverlapScore($focusTokens, $haystackTokens);
+        $phraseScore = $focusQuery !== '' ? $this->phraseScore($focusQuery, $text) : 0.0;
+
+        return min(1.0, (0.76 * $tokenScore) + (0.24 * $phraseScore));
+    }
+
+    /**
+     * @param  array<int, string>  $sourceTokens
+     * @param  array<int, string>  $targetTokens
+     */
+    private function normalizedOverlapScore(array $sourceTokens, array $targetTokens): float
+    {
+        if ($sourceTokens === [] || $targetTokens === []) {
+            return 0.0;
+        }
+
+        $targetMap = array_fill_keys($targetTokens, true);
+        $hits = 0;
+
+        foreach ($sourceTokens as $token) {
+            if (isset($targetMap[$token])) {
+                $hits++;
+            }
+        }
+
+        return min(1.0, $hits / max(count($sourceTokens), 1));
+    }
+
+    private function removeFirstPhrase(string $text, string $phrase): string
+    {
+        if ($text === '' || $phrase === '') {
+            return trim($text);
+        }
+
+        $position = strpos($text, $phrase);
+        if ($position === false) {
+            return trim($text);
+        }
+
+        $updated = substr($text, 0, $position) . ' ' . substr($text, $position + strlen($phrase));
+        $updated = preg_replace('/\s+/u', ' ', $updated) ?? $updated;
+
+        return trim($updated);
+    }
+
+    /**
      * @param  array<int, string>  $messageWords
      * @return array{service_id: int|null, service_name: string|null}
      */
@@ -592,8 +783,9 @@ class SimilarIssueSearchService
                 $phraseScore = 0.95;
             }
 
-            $tokenScore = TextNormalizer::overlapScore($serviceWords, $messageWords);
-            $matchCount = count(array_intersect($serviceWords, $messageWords));
+            $tokenMatch = $this->serviceTokenMatchScore($serviceWords, $messageWords);
+            $tokenScore = $tokenMatch['score'];
+            $matchCount = $tokenMatch['matched_words'];
             $score = max($phraseScore, $tokenScore);
 
             if ($matchCount === 0) {
@@ -608,6 +800,8 @@ class SimilarIssueSearchService
                 'service_id' => (int) $service->id,
                 'service_name' => $serviceName,
                 'match_count' => $matchCount,
+                'exact_match_count' => $tokenMatch['exact_matches'],
+                'fuzzy_match_count' => $tokenMatch['fuzzy_matches'],
                 'service_word_count' => count($serviceWords),
                 'score' => $score,
             ];
@@ -619,7 +813,13 @@ class SimilarIssueSearchService
                     $candidate['match_count'] < ($bestMatch['match_count'] ?? 0)
                     || (
                         $candidate['match_count'] === ($bestMatch['match_count'] ?? 0)
-                        && $candidate['service_word_count'] <= ($bestMatch['service_word_count'] ?? 0)
+                        && (
+                            $candidate['exact_match_count'] < ($bestMatch['exact_match_count'] ?? 0)
+                            || (
+                                $candidate['exact_match_count'] === ($bestMatch['exact_match_count'] ?? 0)
+                                && $candidate['service_word_count'] <= ($bestMatch['service_word_count'] ?? 0)
+                            )
+                        )
                     )
                 )
             ) {
@@ -638,6 +838,100 @@ class SimilarIssueSearchService
             'service_id' => $bestMatch['service_id'],
             'service_name' => $bestMatch['service_name'],
         ];
+    }
+
+    /**
+     * @param  array<int, string>  $serviceWords
+     * @param  array<int, string>  $messageWords
+     * @return array{score: float, exact_matches: int, fuzzy_matches: int, matched_words: int}
+     */
+    private function serviceTokenMatchScore(array $serviceWords, array $messageWords): array
+    {
+        if ($serviceWords === [] || $messageWords === []) {
+            return [
+                'score' => 0.0,
+                'exact_matches' => 0,
+                'fuzzy_matches' => 0,
+                'matched_words' => 0,
+            ];
+        }
+
+        $remainingMessageWords = array_values($messageWords);
+        $exactMatches = 0;
+        $fuzzyMatches = 0;
+        $weightedMatches = 0.0;
+
+        foreach ($serviceWords as $serviceWord) {
+            $exactIndex = array_search($serviceWord, $remainingMessageWords, true);
+            if ($exactIndex !== false) {
+                $exactMatches++;
+                $weightedMatches += 1.0;
+                unset($remainingMessageWords[$exactIndex]);
+                continue;
+            }
+
+            $bestIndex = null;
+            $bestSimilarity = 0.0;
+
+            foreach ($remainingMessageWords as $messageIndex => $messageWord) {
+                $similarity = $this->approximateWordSimilarity($serviceWord, $messageWord);
+                if ($similarity <= $bestSimilarity) {
+                    continue;
+                }
+
+                $bestSimilarity = $similarity;
+                $bestIndex = $messageIndex;
+            }
+
+            if ($bestIndex === null) {
+                continue;
+            }
+
+            $fuzzyMatches++;
+            $weightedMatches += $bestSimilarity;
+            unset($remainingMessageWords[$bestIndex]);
+        }
+
+        return [
+            'score' => min(1.0, $weightedMatches / max(count($serviceWords), 1)),
+            'exact_matches' => $exactMatches,
+            'fuzzy_matches' => $fuzzyMatches,
+            'matched_words' => $exactMatches + $fuzzyMatches,
+        ];
+    }
+
+    private function approximateWordSimilarity(string $serviceWord, string $messageWord): float
+    {
+        if ($serviceWord === '' || $messageWord === '' || $serviceWord === $messageWord) {
+            return 0.0;
+        }
+
+        $serviceLength = strlen($serviceWord);
+        $messageLength = strlen($messageWord);
+
+        if ($serviceLength < 3 || $messageLength < 3) {
+            return 0.0;
+        }
+
+        if (abs($serviceLength - $messageLength) > 1) {
+            return 0.0;
+        }
+
+        if (($serviceWord[0] ?? '') !== ($messageWord[0] ?? '')) {
+            return 0.0;
+        }
+
+        $distance = levenshtein($serviceWord, $messageWord);
+        $maxLength = max($serviceLength, $messageLength);
+        $allowedDistance = $maxLength >= 6 ? 2 : 1;
+
+        if ($distance <= 0 || $distance > $allowedDistance) {
+            return 0.0;
+        }
+
+        $similarity = 1 - ($distance / $maxLength);
+
+        return $similarity >= 0.72 ? $similarity : 0.0;
     }
 
     /**

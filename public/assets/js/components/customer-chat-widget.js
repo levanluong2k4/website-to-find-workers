@@ -151,7 +151,8 @@ if (isCustomerScope) {
                 return '';
             }
 
-            const cases = Array.isArray(meta.cases) ? meta.cases : [];
+            const showCases = meta.show_cases === true;
+            const cases = showCases && Array.isArray(meta.cases) ? meta.cases : [];
             const technicians = Array.isArray(meta.technicians) ? meta.technicians : [];
             const services = Array.isArray(meta.services) ? meta.services : [];
             const servicesMoreUrl = typeof meta.services_more_url === 'string' && meta.services_more_url
@@ -390,6 +391,7 @@ if (isCustomerScope) {
                     payload.assistant_text || 'TÃ´i Ä‘Ã£ nháº­n Ä‘Æ°á»£c yÃªu cáº§u cá»§a báº¡n.',
                     {
                         cases: payload.cases || [],
+                        show_cases: payload.show_cases === true,
                         technicians: payload.technicians || [],
                         services: payload.services || [],
                         services_more_url: payload.services_more_url || null,
@@ -479,6 +481,7 @@ if (isCustomerScope) {
                     payload.assistant_text || 'Tôi đã nhận được yêu cầu của bạn.',
                     {
                         cases: payload.cases || [],
+                        show_cases: payload.show_cases === true,
                         technicians: payload.technicians || [],
                         services: payload.services || [],
                         services_more_url: payload.services_more_url || null,

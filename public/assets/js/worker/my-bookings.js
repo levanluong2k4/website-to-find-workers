@@ -30,7 +30,7 @@ if (!user || !['worker', 'admin'].includes(user.role)) {
   window.location.href = `${baseUrl}/login?role=worker`;
 }
 
-const WORKER_BOARD_STATUSES = ['pending', 'upcoming', 'inprogress', 'payment', 'done', 'cancelled', 'all'];
+const WORKER_BOARD_STATUSES = ['pending', 'upcoming', 'inprogress', 'payment', 'warranty', 'done', 'cancelled', 'all'];
 const WORKER_BOOKING_SCOPES = ['all', 'today'];
 const CUSTOMER_UNREACHABLE_STATUS = 'khong_lien_lac_duoc_voi_khach_hang';
 const bookingPageParams = new URLSearchParams(window.location.search);
@@ -50,6 +50,54 @@ const JOBS_PER_PAGE = 2;
 const bookingsContainer = document.getElementById('bookingsContainer');
 const bookingPagination = document.getElementById('bookingPagination');
 const bookingPaginationWrap = document.getElementById('bookingPaginationWrap');
+const sidebarHead = document.querySelector('.worker-sidebar__head');
+const sidebarCloseButton = document.getElementById('workerSidebarClose');
+const topbarNotificationRail = document.querySelector('.dispatch-board-topbar__notification--rail');
+if (topbarNotificationRail && sidebarHead) {
+  sidebarHead.insertBefore(topbarNotificationRail, sidebarCloseButton || null);
+}
+const boardTabList = document.querySelector('.dispatch-board-topbar__tabs');
+if (boardTabList && !boardTabList.querySelector('[data-board-status="warranty"]')) {
+  boardTabList.insertAdjacentHTML(
+    'beforeend',
+    '<button type="button" class="dispatch-board-topbar__tab dispatch-board-topbar__tab--warranty" data-board-status="warranty">Bao hanh</button>',
+  );
+}
+const ensureBoardTabBadge = (tab, status) => {
+  if (!tab || !status) {
+    return;
+  }
+
+  const currentLabel = (tab.querySelector('.dispatch-board-topbar__tab-label')?.textContent || tab.textContent || status)
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!tab.querySelector('.dispatch-board-topbar__tab-label')) {
+    tab.textContent = '';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'dispatch-board-topbar__tab-label';
+    labelEl.textContent = currentLabel;
+    tab.appendChild(labelEl);
+  }
+
+  if (!tab.querySelector('.dispatch-board-topbar__tab-badge')) {
+    const badgeEl = document.createElement('span');
+    badgeEl.className = 'dispatch-board-topbar__tab-badge';
+    if (status === 'warranty') {
+      badgeEl.classList.add('dispatch-board-topbar__tab-badge--alert');
+      tab.classList.add('dispatch-board-topbar__tab--warranty');
+    }
+    badgeEl.id = `cnt-${status}`;
+    badgeEl.textContent = '0';
+    tab.appendChild(badgeEl);
+  }
+};
+
+if (boardTabList) {
+  Array.from(boardTabList.querySelectorAll('[data-board-status]')).forEach((tab) => {
+    ensureBoardTabBadge(tab, tab.dataset.boardStatus || '');
+  });
+}
 const boardStatusTabs = Array.from(document.querySelectorAll('[data-board-status]'));
 const bookingScopeButtons = Array.from(document.querySelectorAll('[data-booking-scope]'));
 const boardIntroEyebrow = document.getElementById('dispatchBoardIntroEyebrow');
@@ -181,6 +229,15 @@ const normalizeWorkerBooking = (booking = {}, { isMarketJob = false } = {}) => {
 
   return normalizedBooking;
 };
+const getBookingComplaintCase = (booking) => booking?.warranty_case
+  || booking?.complaint_case
+  || booking?.warranty_policy?.warranty_case
+  || booking?.complaint_policy?.complaint_case
+  || null;
+const hasOpenComplaintCase = (booking) => {
+  const complaintCase = getBookingComplaintCase(booking);
+  return ['new', 'worker_notified', 'accepted', 'in_progress'].includes(String(complaintCase?.status || ''));
+};
 const rebuildWorkerBookings = () => {
   const bookingMap = new Map();
 
@@ -206,7 +263,8 @@ const statusFilters = {
   upcoming: (booking) => ['da_xac_nhan', CUSTOMER_UNREACHABLE_STATUS].includes(booking.trang_thai),
   inprogress: (booking) => booking.trang_thai === 'dang_lam',
   payment: (booking) => ['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking.trang_thai),
-  done: (booking) => booking.trang_thai === 'da_xong',
+  warranty: (booking) => Boolean(getBookingComplaintCase(booking)),
+  done: (booking) => booking.trang_thai === 'da_xong' && !getBookingComplaintCase(booking),
   cancelled: (booking) => booking.trang_thai === 'da_huy',
   all: () => true,
 };
@@ -295,6 +353,12 @@ const boardViewCopy = {
     title: 'Các đơn chờ thanh toán',
     subtitle: 'Ưu tiên các công việc đã hoàn tất sửa chữa nhưng còn bước thanh toán để dòng tiền không bị chậm lại.',
     badgeLabel: 'Chờ thanh toán',
+  },
+  warranty: {
+    eyebrow: 'Bao hanh',
+    title: 'Cac case bao hanh can xu ly',
+    subtitle: 'Tap trung cac don da phat sinh bao hanh de nhan xu ly, cap nhat tien do va dong case dung quy trinh.',
+    badgeLabel: 'Bao hanh',
   },
   done: {
     eyebrow: 'Hoàn thành',
@@ -564,6 +628,14 @@ const boardStatusPriority = {
 };
 
 const parseBookingStartDateTime = (booking) => {
+  const directDateTime = booking?.thoi_gian_hen || booking?.thoi_gian_hoan_thanh;
+  if (directDateTime) {
+    const parsedDirectDateTime = new Date(directDateTime);
+    if (!Number.isNaN(parsedDirectDateTime.getTime())) {
+      return parsedDirectDateTime.getTime();
+    }
+  }
+
   const dateText = String(booking?.ngay_hen || '').slice(0, 10);
   if (!dateText) {
     return Number.MAX_SAFE_INTEGER;
@@ -575,10 +647,24 @@ const parseBookingStartDateTime = (booking) => {
   return Number.isNaN(candidate.getTime()) ? Number.MAX_SAFE_INTEGER : candidate.getTime();
 };
 
-const compareBoardBookings = (left, right) => {
-  const startDiff = parseBookingStartDateTime(left) - parseBookingStartDateTime(right);
-  if (startDiff !== 0) {
-    return startDiff;
+const getBookingDistanceFromNow = (booking, referenceTime = Date.now()) => {
+  const bookingTime = parseBookingStartDateTime(booking);
+  if (!Number.isFinite(bookingTime) || bookingTime === Number.MAX_SAFE_INTEGER) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  return Math.abs(bookingTime - referenceTime);
+};
+
+const compareBoardBookings = (left, right, referenceTime = Date.now()) => {
+  const distanceDiff = getBookingDistanceFromNow(left, referenceTime) - getBookingDistanceFromNow(right, referenceTime);
+  if (distanceDiff !== 0) {
+    return distanceDiff;
+  }
+
+  const recencyDiff = parseBookingStartDateTime(right) - parseBookingStartDateTime(left);
+  if (recencyDiff !== 0) {
+    return recencyDiff;
   }
 
   const statusDiff = (boardStatusPriority[left?.trang_thai] || 99) - (boardStatusPriority[right?.trang_thai] || 99);
@@ -598,7 +684,9 @@ const getScopedBookings = (status = window.currentStatus, scope = window.current
     ? filteredByStatus.filter((booking) => isTodayBooking(booking))
     : filteredByStatus;
 
-  return filteredByScope.sort(compareBoardBookings);
+  const referenceTime = Date.now();
+
+  return filteredByScope.sort((left, right) => compareBoardBookings(left, right, referenceTime));
 };
 
 const getFilterCount = (status) => getScopedBookings(status, 'all').length;
@@ -731,6 +819,8 @@ const boardRenderer = createWorkerBoardRenderer({
     isClaimableMarketBooking,
     isAssignedPendingBooking,
     canOpenRouteGuide,
+    getBookingComplaintCase,
+    hasOpenComplaintCase,
   },
 });
 
@@ -770,10 +860,13 @@ function updateSummary() {
 }
 
 function updateCounters() {
-  ['pending', 'upcoming', 'inprogress', 'payment', 'done', 'cancelled'].forEach((status) => {
+  ['pending', 'upcoming', 'inprogress', 'payment', 'warranty', 'done', 'cancelled'].forEach((status) => {
     const counter = document.getElementById(`cnt-${status}`);
     if (counter) {
-      counter.textContent = getFilterCount(status);
+      const count = getFilterCount(status);
+      counter.textContent = String(count);
+      counter.classList.toggle('is-active-count', count > 0);
+      counter.closest('.dispatch-board-topbar__tab')?.classList.toggle('is-attention', status === 'warranty' && count > 0);
     }
   });
 }
@@ -819,6 +912,7 @@ const topbarNotificationCenter = createTopbarNotificationCenter({
 function syncBoardStatusTabs() {
   boardStatusTabs.forEach((tab) => {
     tab.classList.toggle('is-active', tab.dataset.boardStatus === window.currentStatus);
+    tab.setAttribute('aria-selected', String(tab.dataset.boardStatus === window.currentStatus));
   });
 }
 
@@ -842,7 +936,11 @@ function focusBookingFromQuery() {
     return;
   }
 
-  window.currentStatus = statusToneMap[booking.trang_thai] || window.currentStatus;
+  if (getBookingComplaintCase(booking)) {
+    window.currentStatus = 'warranty';
+  } else if (!(window.currentStatus === 'warranty' && getBookingComplaintCase(booking))) {
+    window.currentStatus = statusToneMap[booking.trang_thai] || window.currentStatus;
+  }
   window.currentScope = 'all';
   window.currentPage = 1;
   syncBoardStatusTabs();
@@ -1173,6 +1271,69 @@ window.confirmPartWarranty = async function(id, partIndex) {
   }
 };
 
+window.updateComplaintStatus = async function(id, status, options = {}) {
+  const booking = window.allBookings.find((item) => item.id === id);
+  const complaintCase = getBookingComplaintCase(booking);
+
+  if (!booking || !complaintCase) {
+    showToast('Khong tim thay case bao hanh can xu ly.', 'error');
+    return;
+  }
+
+  let note = String(options.note || '').trim();
+  if (status === 'rejected' && !note) {
+    if (typeof Swal !== 'undefined') {
+      const result = await Swal.fire({
+        title: 'Tu choi bao hanh',
+        input: 'textarea',
+        inputLabel: 'Nhap ly do tu choi',
+        inputPlaceholder: 'Vi du: thiet bi phat sinh loi ngoai pham vi bao hanh...',
+        inputAttributes: {
+          'aria-label': 'Ly do tu choi bao hanh',
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Xac nhan',
+        cancelButtonText: 'Dong',
+        inputValidator: (value) => (!String(value || '').trim() ? 'Vui long nhap ly do tu choi.' : undefined),
+      });
+
+      if (!result.isConfirmed) {
+        return;
+      }
+
+      note = String(result.value || '').trim();
+    } else {
+      note = String(window.prompt('Nhap ly do tu choi bao hanh:', '') || '').trim();
+      if (!note) {
+        showToast('Vui long nhap ly do tu choi bao hanh.', 'error');
+        return;
+      }
+    }
+  }
+
+  try {
+    const response = await callApi(`/don-dat-lich/${id}/complaint/status`, 'PUT', {
+      status,
+      note,
+    });
+
+    if (!response.ok) {
+      showToast(response.data?.message || 'Khong the cap nhat case bao hanh.', 'error');
+      return;
+    }
+
+    showToast(response.data?.message || 'Da cap nhat case bao hanh.');
+    const shouldRefreshDetail = Number(window.activeBookingId || 0) === Number(id);
+    await loadMyBookings(window.currentStatus);
+    if (shouldRefreshDetail) {
+      openViewDetailsModal(id, { syncUrl: false });
+    }
+  } catch (error) {
+    console.error(error);
+    showToast('Loi ket noi khi cap nhat case bao hanh.', 'error');
+  }
+};
+
 const pricingModalController = createPricingModalController({
   getAllBookings: () => window.allBookings,
   afterSubmit: async () => {
@@ -1197,6 +1358,7 @@ const bookingDetailModalController = createBookingDetailModalController({
   getBookingTotal,
   getStatusLabel,
   getLocationLabel,
+  getBookingComplaintCase,
 });
 
 window.openViewDetailsModal = (id, options) => bookingDetailModalController.open(id, options);
@@ -1254,5 +1416,3 @@ completeBookingModalController.init();
 routeGuideController.init();
 topbarNotificationCenter.init();
 loadMyBookings(window.currentStatus);
-
-

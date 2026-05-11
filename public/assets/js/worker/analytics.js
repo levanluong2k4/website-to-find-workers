@@ -6,7 +6,7 @@ const state = {
   bookings: [],
   visibleBookings: [],
   wallet: { so_du: 0, da_rut_trong_ky: 0 },
-  settings: { tax_rate: 10, fee_rate: 20 },
+  settings: { tax_rate: 10, fee_rate: 20, travel_fee_rate: 100 },
   period: '30d',
   customStart: '',
   customEnd: '',
@@ -203,6 +203,13 @@ function getServiceLabel(booking) {
   return getServiceNames(booking).join(', ');
 }
 
+function getTravelFeePayout(booking) {
+  const rawTravelFee = getNumeric(booking?.phi_di_lai);
+  const receiveRate = getNumeric(state.settings.travel_fee_rate) / 100;
+
+  return Math.round(rawTravelFee * receiveRate);
+}
+
 // Income calculations
 function calculateIncome(booking) {
     const isCompleted = booking?.trang_thai === 'da_xong';
@@ -223,18 +230,24 @@ function calculateIncome(booking) {
     
     const taxRate = state.settings.tax_rate / 100;
     const feeRate = state.settings.fee_rate / 100;
+    const travelFee = getNumeric(booking?.phi_di_lai);
+    const travelPayout = getTravelFeePayout(booking);
     
     const tax = grossWage * taxRate;
     const fee = grossWage * feeRate;
-    const net = grossWage - tax - fee;
-    
-    const isPaid = Boolean(booking?.trang_thai_thanh_toan) && isCompleted;
-    const isPending = !isCancelled && (!isCompleted || !isPaid) && grossWage > 0;
+    const netLabor = grossWage - tax - fee;
+    const net = netLabor + travelPayout;
+    const hasIncome = grossWage > 0 || travelPayout > 0;
+    const isPaid = isCompleted && hasIncome;
+    const isPending = !isCancelled && !isCompleted && hasIncome;
     
     return {
         gross: grossWage,
         tax: tax,
         fee: fee,
+        travelFee,
+        travelPayout,
+        netLabor,
         net: net,
         isCompleted,
         isCancelled,
@@ -243,10 +256,12 @@ function calculateIncome(booking) {
     };
 }
 
-function getStatusMeta(income) {
+function getStatusMeta(booking, income) {
   if (income.isCancelled) return { label: 'Đã hủy', tone: 'cancelled' };
-  if (income.isPaid) return { label: 'Đã cộng ví', tone: 'paid' };
-  return { label: 'Chờ cộng ví', tone: 'pending' };
+  if (income.isPaid) return { label: 'Đã xử lý ví', tone: 'paid' };
+  if (booking?.trang_thai === 'cho_thanh_toan') return { label: 'Chờ khách thanh toán', tone: 'pending' };
+  if (booking?.trang_thai === 'cho_hoan_thanh') return { label: 'Chờ xác nhận COD', tone: 'pending' };
+  return { label: 'Chờ hoàn thành đơn', tone: 'pending' };
 }
 
 function escapeHtml(value) {
@@ -295,11 +310,11 @@ function syncPeriodButtons() {
 }
 
 function renderLoadingState() {
-  if (dom.revenueTableBody) dom.revenueTableBody.innerHTML = `<tr><td colspan="10"><div class="revenue-state"><strong>Đang tải dữ liệu</strong> Vui lòng chờ trong giây lát...</div></td></tr>`;
+  if (dom.revenueTableBody) dom.revenueTableBody.innerHTML = `<tr><td colspan="11"><div class="revenue-state"><strong>Đang tải dữ liệu</strong> Vui lòng chờ trong giây lát...</div></td></tr>`;
 }
 
 function renderWorkspaceError(message) {
-  const content = `<tr><td colspan="10"><div class="revenue-state"><strong>Lỗi dữ liệu</strong> ${escapeHtml(message)}</div></td></tr>`;
+  const content = `<tr><td colspan="11"><div class="revenue-state"><strong>Lỗi dữ liệu</strong> ${escapeHtml(message)}</div></td></tr>`;
   if (dom.revenueTableBody) dom.revenueTableBody.innerHTML = content;
 }
 
@@ -337,18 +352,20 @@ function buildMetrics(bookings) {
     let totalGross = 0;
     let totalTax = 0;
     let totalFee = 0;
+    let totalTravelPayout = 0;
     let totalNet = 0;
     let paidCount = 0;
     let incomeCount = 0;
     
     bookings.forEach(booking => {
         const income = calculateIncome(booking);
-        if (income.isCancelled || income.gross <= 0) return;
+        if (income.isCancelled || (income.gross <= 0 && income.travelPayout <= 0)) return;
         
         incomeCount++;
         totalGross += income.gross;
         totalTax += income.tax;
         totalFee += income.fee;
+        totalTravelPayout += income.travelPayout;
         totalNet += income.net;
         
         if (income.isPaid) {
@@ -368,6 +385,7 @@ function buildMetrics(bookings) {
         totalGross,
         totalTax,
         totalFee,
+        totalTravelPayout,
         totalNet,
         netRatio,
         averageNet,
@@ -380,7 +398,7 @@ function buildChartSeries(bookings) {
   const range = getPeriodRange();
   const monetized = bookings.filter(b => {
       const inc = calculateIncome(b);
-      return !inc.isCancelled && inc.gross > 0;
+      return !inc.isCancelled && (inc.gross > 0 || inc.travelPayout > 0);
   });
   
   if (!monetized.length) return { labels: [], gross: [], net: [], deduct: [] };
@@ -512,28 +530,29 @@ function renderChart(bookings) {
 function renderTable(bookings) {
   if (!dom.revenueTableBody) return;
   if (!bookings.length) {
-    dom.revenueTableBody.innerHTML = `<tr><td colspan="10"><div class="revenue-state"><strong>Không có đơn hàng</strong> Không tìm thấy đơn nào khớp với bộ lọc hiện tại.</div></td></tr>`;
+    dom.revenueTableBody.innerHTML = `<tr><td colspan="11"><div class="revenue-state"><strong>Không có đơn hàng</strong> Không tìm thấy đơn nào khớp với bộ lọc hiện tại.</div></td></tr>`;
     return;
   }
 
   const html = bookings.map((booking) => {
     const income = calculateIncome(booking);
-    const meta = getStatusMeta(income);
+    const meta = getStatusMeta(booking, income);
 
     return `
-      <tr>
-        <td class="table-id">#${booking.id}</td>
-        <td>${formatDateLabel(booking)}</td>
-        <td>${escapeHtml(getServiceLabel(booking))}</td>
-        <td>
+      <tr class="revenue-table__row">
+        <td class="table-id" data-label="Mã đơn">#${booking.id}</td>
+        <td data-label="Hoàn thành">${formatDateLabel(booking)}</td>
+        <td data-label="Dịch vụ">${escapeHtml(getServiceLabel(booking))}</td>
+        <td data-label="Khách hàng">
             <div style="font-weight: 500;">${escapeHtml(getCustomerName(booking))}</div>
         </td>
-        <td style="font-weight: 500;">${formatMoney(income.gross)}</td>
-        <td style="color: #ef4444;">${formatMoney(income.tax)}</td>
-        <td style="color: #ef4444;">${formatMoney(income.fee)}</td>
-        <td style="font-weight: 700; color: #10b981;">${formatMoney(income.net)}</td>
-        <td><span class="revenue-status revenue-status--${meta.tone}">${escapeHtml(meta.label)}</span></td>
-        <td><button type="button" class="action-btn" data-id="${booking.id}">Chi tiết</button></td>
+        <td data-label="Công gộp" style="font-weight: 500;">${formatMoney(income.gross)}</td>
+        <td data-label="Thuế" style="color: #ef4444;">${formatMoney(income.tax)}</td>
+        <td data-label="Phí nền tảng" style="color: #ef4444;">${formatMoney(income.fee)}</td>
+        <td data-label="Phí đi lại" style="color: #0ea5e9; font-weight: 700;">${formatMoney(income.travelPayout)}</td>
+        <td data-label="Thực nhận" style="font-weight: 700; color: #10b981;">${formatMoney(income.net)}</td>
+        <td data-label="Trạng thái"><span class="revenue-status revenue-status--${meta.tone}">${escapeHtml(meta.label)}</span></td>
+        <td class="revenue-table__action" data-label="Chi tiết"><button type="button" class="action-btn" data-id="${booking.id}">Chi tiết</button></td>
       </tr>
     `;
   }).join('');
@@ -550,7 +569,7 @@ function openDrawer(bookingId) {
   if (!booking) return;
 
   const income = calculateIncome(booking);
-  const meta = getStatusMeta(income);
+  const meta = getStatusMeta(booking, income);
 
   if (dom.drawerTitle) dom.drawerTitle.textContent = `Phiếu lương đơn #${booking.id}`;
   if (dom.drawerSubtitle) dom.drawerSubtitle.textContent = escapeHtml(getServiceLabel(booking));
@@ -568,27 +587,29 @@ function openDrawer(bookingId) {
         <div class="drawer-kv"><span>Tiền công gộp</span><strong>${formatMoney(income.gross)}</strong></div>
         <div class="drawer-kv"><span>Thuế nhà nước (${state.settings.tax_rate}%)</span><strong style="color:#ef4444;">-${formatMoney(income.tax)}</strong></div>
         <div class="drawer-kv"><span>Phí nền tảng (${state.settings.fee_rate}%)</span><strong style="color:#ef4444;">-${formatMoney(income.fee)}</strong></div>
+        <div class="drawer-kv"><span>Phí đi lại thợ nhận (${state.settings.travel_fee_rate}%)</span><strong style="color:#0ea5e9;">+${formatMoney(income.travelPayout)}</strong></div>
         <div class="drawer-divider" style="height: 1px; background: #e2e8f0; margin: 0.75rem 0;"></div>
         <div class="drawer-kv" style="font-size: 1.1rem;"><span>Thực nhận</span><strong style="color:#10b981;">${formatMoney(income.net)}</strong></div>
       </div>
       
       <div class="drawer-section" style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
         <p style="font-size: 0.85rem; color: #64748b; margin: 0; line-height: 1.4;">
-            ${income.isPaid ? 'Khoản thực nhận này đã được cộng vào số dư ví thợ của bạn.' : (income.isPending ? 'Đơn này đang chờ khách thanh toán hoặc hệ thống xử lý để cộng ví.' : 'Đơn chưa phát sinh doanh thu công.')}
+            ${income.isPaid ? 'Đơn này đã được hệ thống chốt và xử lý ví tự động.' : (income.isPending ? 'Đơn này chưa hoàn tất bước thanh toán hoặc xác nhận cuối cùng.' : 'Đơn chưa phát sinh doanh thu công.')}
         </p>
+        ${income.travelFee > 0 && income.travelPayout !== income.travelFee ? `<p style="font-size: 0.8rem; color: #64748b; margin: 0.65rem 0 0; line-height: 1.45;">Phí đi lại gốc: ${formatMoney(income.travelFee)}. Cấu hình hiện tại cho thợ nhận ${state.settings.travel_fee_rate}% phí đi lại.</p>` : ''}
       </div>
     `;
   }
 
-  dom.revenueDrawerOverlay?.classList.add('is-visible');
-  dom.revenueDrawer?.classList.add('is-visible');
+  dom.revenueDrawerOverlay?.classList.add('is-open');
+  dom.revenueDrawer?.classList.add('is-open');
   dom.revenueDrawer?.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
 }
 
 function closeDrawer() {
-  dom.revenueDrawerOverlay?.classList.remove('is-visible');
-  dom.revenueDrawer?.classList.remove('is-visible');
+  dom.revenueDrawerOverlay?.classList.remove('is-open');
+  dom.revenueDrawer?.classList.remove('is-open');
   dom.revenueDrawer?.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
 }

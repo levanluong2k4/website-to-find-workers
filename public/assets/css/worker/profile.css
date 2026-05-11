@@ -1,0 +1,107 @@
+.worker-profile-main {
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.14), transparent 24%),
+    linear-gradient(180deg, #f7fbfe 0%, #eef5fb 100%);
+}
+
+.worker-header {
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+}
+
+.worker-profile-layout {
+  gap: 1.4rem !important;
+  align-items: start;
+}
+
+.worker-profile-sidebar,
+.worker-profile-editor {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-section {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.07);
+  backdrop-filter: blur(16px);
+}
+
+.profile-section h6 {
+  letter-spacing: -0.02em;
+}
+
+.form-control,
+.form-select {
+  min-height: 46px;
+  background: rgba(248, 250, 252, 0.86);
+}
+
+.worker-profile-sidebar .profile-section:first-child {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.worker-profile-editor form {
+  display: grid;
+  gap: 1rem;
+}
+
+.worker-profile-editor form > .profile-section,
+.worker-profile-editor form > button[type="submit"] {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 1080px) {
+  .worker-profile-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .worker-profile-sidebar .profile-section:first-child {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .worker-header {
+    padding: 0 1rem 0.25rem;
+    background: transparent;
+    border-bottom: 0;
+    backdrop-filter: none;
+  }
+
+  .worker-profile-layout {
+    padding: 1rem !important;
+    gap: 1rem !important;
+  }
+
+  .profile-section {
+    padding: 1rem;
+    border-radius: 1.2rem;
+  }
+
+  .worker-profile-sidebar .profile-section:first-child,
+  .worker-profile-editor .profile-section {
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
+  }
+
+  .worker-profile-main > .worker-profile-layout,
+  .worker-profile-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .worker-profile-main [style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .worker-profile-main [style*="display:flex; gap:.75rem; margin-bottom:1.5rem;"] {
+    flex-direction: column;
+  }
+
+  .worker-profile-main [style*="padding:1.5rem; display:grid; grid-template-columns:320px 1fr"] {
+    padding: 1rem !important;
+  }
+}

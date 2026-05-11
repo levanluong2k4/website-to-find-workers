@@ -111,6 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/don-dat-lich/{id}/status', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateStatus']);
         Route::put('/don-dat-lich/{id}/update-costs', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateCosts']);
         Route::post('/don-dat-lich/{id}/complaint', [\App\Http\Controllers\Api\DonDatLichController::class, 'submitComplaint']);
+        Route::put('/don-dat-lich/{id}/complaint/status', [\App\Http\Controllers\Api\DonDatLichController::class, 'updateComplaintStatus']);
         Route::post('/don-dat-lich/{id}/parts/{partIndex}/confirm-warranty', [\App\Http\Controllers\Api\DonDatLichController::class, 'confirmPartWarranty']);
         Route::put('/bookings/{id}/payment-method', [\App\Http\Controllers\Api\DonDatLichController::class, 'updatePaymentMethod']);
         Route::post('/bookings/{id}/request-payment', [\App\Http\Controllers\Api\DonDatLichController::class, 'requestPayment']);

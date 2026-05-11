@@ -20,6 +20,38 @@
       <div class="dispatch-board">
         <section class="dispatch-board-topbar" aria-label="Điều hướng lịch làm việc">
           <div class="dispatch-board-topbar__inner">
+            <div class="dispatch-board-topbar__notification dispatch-board-topbar__notification--rail">
+              <button
+                type="button"
+                class="dispatch-board-topbar__icon-btn"
+                id="dispatchTopNotificationButton"
+                aria-label="Thông báo"
+                aria-expanded="false">
+                <span class="material-symbols-outlined">notifications</span>
+                <span class="dispatch-board-topbar__notification-badge is-hidden" id="dispatchTopNotificationBadge">0</span>
+              </button>
+
+              <div class="dispatch-board-topbar__notification-menu" id="dispatchTopNotificationMenu">
+                <div class="dispatch-board-topbar__notification-head">
+                  <div>
+                    <h3>ThÃ´ng bÃ¡o</h3>
+                    <p>Cáº­p nháº­t má»›i nháº¥t tá»« cÃ¡c Ä‘Æ¡n báº¡n Ä‘ang xá»­ lÃ½.</p>
+                  </div>
+                  <button type="button" class="dispatch-board-topbar__notification-mark" id="dispatchTopNotificationMarkAll">ÄÃ£ Ä‘á»c háº¿t</button>
+                </div>
+
+                <div class="dispatch-board-topbar__notification-list" id="dispatchTopNotificationList">
+                  <div class="dispatch-board-topbar__notification-empty">
+                    <span class="material-symbols-outlined">notifications_off</span>
+                    <p>ChÆ°a cÃ³ thÃ´ng bÃ¡o nÃ o.</p>
+                  </div>
+                </div>
+
+                <div class="dispatch-board-topbar__notification-foot">
+                  <a href="/worker/my-bookings">Xem lịch làm việc</a>
+                </div>
+              </div>
+            </div>
             <div class="dispatch-board-topbar__nav">
               <div class="dispatch-board-topbar__title">Lịch làm việc</div>
               <div class="dispatch-board-topbar__tabs" role="tablist">
@@ -29,6 +61,7 @@
                 <button type="button" class="dispatch-board-topbar__tab" data-board-status="payment">Chưa thanh toán</button>
                 <button type="button" class="dispatch-board-topbar__tab" data-board-status="done">Hoàn thành</button>
                 <button type="button" class="dispatch-board-topbar__tab" data-board-status="cancelled">Đã hủy</button>
+                <button type="button" class="dispatch-board-topbar__tab dispatch-board-topbar__tab--warranty" data-board-status="warranty">Bảo hành</button>
               </div>
             </div>
 

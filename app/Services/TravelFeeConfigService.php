@@ -37,6 +37,8 @@ class TravelFeeConfigService
 
     private const DEFAULT_COMPLAINT_WINDOW_DAYS = 3;
 
+    private const DEFAULT_SERVICE_WARRANTY_MONTHS = 1;
+
     /**
      * @var array<string, mixed>|null
      */
@@ -133,6 +135,9 @@ class TravelFeeConfigService
             'complaint_window_days' => array_key_exists('complaint_window_days', $config)
                 ? $config['complaint_window_days']
                 : ($currentConfig['complaint_window_days'] ?? self::DEFAULT_COMPLAINT_WINDOW_DAYS),
+            'service_warranty_months' => array_key_exists('service_warranty_months', $config)
+                ? $config['service_warranty_months']
+                : ($currentConfig['service_warranty_months'] ?? self::DEFAULT_SERVICE_WARRANTY_MONTHS),
             'tiers' => array_key_exists('tiers', $config)
                 ? $config['tiers']
                 : ($currentConfig['tiers'] ?? []),
@@ -258,6 +263,11 @@ class TravelFeeConfigService
         return (int) ($this->getConfig()['complaint_window_days'] ?? self::DEFAULT_COMPLAINT_WINDOW_DAYS);
     }
 
+    public function resolveServiceWarrantyMonths(): int
+    {
+        return (int) ($this->getConfig()['service_warranty_months'] ?? self::DEFAULT_SERVICE_WARRANTY_MONTHS);
+    }
+
     /**
      * @return array<string, mixed>|null
      */
@@ -359,6 +369,8 @@ class TravelFeeConfigService
         )));
         $complaintWindowDays = (int) ($config['complaint_window_days'] ?? self::DEFAULT_COMPLAINT_WINDOW_DAYS);
         $complaintWindowDays = max(1, min($complaintWindowDays, 30));
+        $serviceWarrantyMonths = (int) ($config['service_warranty_months'] ?? self::DEFAULT_SERVICE_WARRANTY_MONTHS);
+        $serviceWarrantyMonths = max(1, min($serviceWarrantyMonths, 24));
 
         return [
             'free_distance_km' => $freeDistanceKm,
@@ -372,6 +384,7 @@ class TravelFeeConfigService
             'store_opening_hours' => $storeOpeningHours !== '' ? $storeOpeningHours : self::DEFAULT_STORE_OPENING_HOURS,
             'booking_time_slots' => $bookingTimeSlots,
             'complaint_window_days' => $complaintWindowDays,
+            'service_warranty_months' => $serviceWarrantyMonths,
             'tiers' => $tiers,
         ];
     }
@@ -404,6 +417,7 @@ class TravelFeeConfigService
             'max_service_distance_km' => $config['max_service_distance_km'],
             'default_per_km' => $config['default_per_km'],
             'complaint_window_days' => $config['complaint_window_days'],
+            'service_warranty_months' => $config['service_warranty_months'],
             'booking_time_slots' => array_map(function (string $slot): array {
                 return [
                     'value' => $slot,

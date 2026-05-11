@@ -41,6 +41,8 @@ export function createWorkerBoardRenderer({
     isClaimableMarketBooking,
     isAssignedPendingBooking,
     canOpenRouteGuide,
+    getBookingComplaintCase,
+    hasOpenComplaintCase,
   } = helpers;
 
   let repairTimers = {};
@@ -62,14 +64,20 @@ export function createWorkerBoardRenderer({
   };
 
   const renderEmptyState = (scope = getCurrentScope()) => {
+    const status = getCurrentStatus();
+    const isWarrantyBoard = status === 'warranty';
     bookingsContainer.innerHTML = `
       <div class="dispatch-board-empty">
         <div>
-          <span class="material-symbols-outlined">inventory_2</span>
-          <h3>${scope === 'today' ? 'Khong co lich trong hom nay' : 'Khong co lich lam viec phu hop'}</h3>
-          <p>${scope === 'today'
-            ? 'He thong chua ghi nhan don nao dien ra trong hom nay cho tai khoan nay.'
-            : 'Khi co lich sua chua moi, he thong se hien thi truc tiep tai day.'}</p>
+          <span class="material-symbols-outlined">${isWarrantyBoard ? 'verified_user' : 'inventory_2'}</span>
+          <h3>${isWarrantyBoard
+            ? 'Chua co yeu cau bao hanh nao'
+            : (scope === 'today' ? 'Khong co lich trong hom nay' : 'Khong co lich lam viec phu hop')}</h3>
+          <p>${isWarrantyBoard
+            ? 'Khi khach gui bao hanh, case se hien thi tai tab nay de ban nhan xu ly va cap nhat tien do.'
+            : (scope === 'today'
+              ? 'He thong chua ghi nhan don nao dien ra trong hom nay cho tai khoan nay.'
+              : 'Khi co lich sua chua moi, he thong se hien thi truc tiep tai day.')}</p>
         </div>
       </div>
     `;
@@ -177,6 +185,89 @@ export function createWorkerBoardRenderer({
     `;
   };
 
+  const getComplaintCaseStatusLabel = (complaintCase) => complaintCase?.status_label || ({
+    new: 'Khach vua tao case',
+    worker_notified: 'Da gui cho tho',
+    accepted: 'Tho da nhan',
+    in_progress: 'Dang xu ly',
+    completed: 'Da hoan tat',
+    rejected: 'Da tu choi',
+    expired: 'Het han',
+  }[String(complaintCase?.status || '')] || 'Bao hanh');
+
+  const getComplaintCaseTone = (complaintCase) => {
+    const status = String(complaintCase?.status || '');
+    if (['completed'].includes(status)) {
+      return 'success';
+    }
+    if (['rejected', 'expired'].includes(status)) {
+      return 'danger';
+    }
+    return 'warning';
+  };
+
+  const renderComplaintCaseActions = (booking, complaintCase) => {
+    const status = String(complaintCase?.status || '');
+    const actions = [
+      renderBoardButton({
+        variant: 'secondary',
+        icon: 'visibility',
+        label: 'Chi tiet',
+        onclick: `openViewDetailsModal(${booking.id})`,
+      }),
+    ];
+
+    if (status === 'new' || status === 'worker_notified') {
+      actions.unshift(renderBoardButton({
+        variant: 'main-success',
+        icon: 'task_alt',
+        label: 'Nhan bao hanh',
+        onclick: `updateComplaintStatus(${booking.id}, 'accepted')`,
+      }));
+      actions.push(renderBoardButton({
+        variant: 'secondary',
+        icon: 'close',
+        label: 'Tu choi',
+        onclick: `updateComplaintStatus(${booking.id}, 'rejected')`,
+      }));
+      return actions.join('');
+    }
+
+    if (status === 'accepted') {
+      actions.unshift(renderBoardButton({
+        variant: 'main',
+        icon: 'play_arrow',
+        label: 'Bat dau xu ly',
+        onclick: `updateComplaintStatus(${booking.id}, 'in_progress')`,
+      }));
+      actions.push(renderBoardButton({
+        variant: 'secondary',
+        icon: 'close',
+        label: 'Tu choi',
+        onclick: `updateComplaintStatus(${booking.id}, 'rejected')`,
+      }));
+      return actions.join('');
+    }
+
+    if (status === 'in_progress') {
+      actions.unshift(renderBoardButton({
+        variant: 'main-warm',
+        icon: 'task_alt',
+        label: 'Hoan tat bao hanh',
+        onclick: `updateComplaintStatus(${booking.id}, 'completed')`,
+      }));
+      actions.push(renderBoardButton({
+        variant: 'secondary',
+        icon: 'close',
+        label: 'Tu choi',
+        onclick: `updateComplaintStatus(${booking.id}, 'rejected')`,
+      }));
+      return actions.join('');
+    }
+
+    return actions.join('');
+  };
+
   const renderInlineNote = (booking) => {
     if (booking.trang_thai === 'dang_lam' && !hasUpdatedPricing(booking)) {
       return '<div class="dispatch-inline-note dispatch-inline-note--danger">Ban can cap nhat gia truoc khi su dung nut bao hoan thanh.</div>';
@@ -228,6 +319,18 @@ export function createWorkerBoardRenderer({
   };
 
   const getBoardNoteConfig = (booking) => {
+    const complaintCase = getBookingComplaintCase(booking);
+    if (complaintCase) {
+      return {
+        tone: getComplaintCaseTone(complaintCase),
+        icon: 'verified_user',
+        title: getComplaintCaseStatusLabel(complaintCase),
+        body: complaintCase?.worker_response_note
+          || complaintCase?.note
+          || 'Don nay dang co case bao hanh can duoc theo doi va cap nhat.',
+      };
+    }
+
     if (booking?.worker_contact_issue?.is_open) {
       const reporterName = booking?.worker_contact_issue?.reporter_name || booking?.worker_contact_issue?.reported_by?.name || 'Thợ phụ trách';
       const calledPhone = booking?.worker_contact_issue?.called_phone || booking?.khach_hang?.phone || '';
@@ -329,6 +432,8 @@ export function createWorkerBoardRenderer({
     `;
   };
 
+  const formatBookingCode = (booking) => `#${String(Math.max(0, Math.trunc(getNumeric(booking?.id)))).padStart(4, '0')}`;
+
   const renderBoardButton = ({
     variant = 'secondary',
     icon = 'open_in_new',
@@ -373,6 +478,11 @@ export function createWorkerBoardRenderer({
     const actions = [];
     const utilityActions = [];
     const pricingReady = booking.trang_thai === 'dang_lam' ? hasUpdatedPricing(booking) : false;
+    const complaintCase = getBookingComplaintCase(booking);
+
+    if (complaintCase) {
+      return renderComplaintCaseActions(booking, complaintCase);
+    }
 
     if (isClaimableMarketBooking(booking)) {
       actions.push(renderBoardButton({
@@ -505,6 +615,7 @@ export function createWorkerBoardRenderer({
     const paymentMarkup = renderBoardPaymentPanel(booking);
     const scheduleDateText = getBookingCardDateLabel(booking);
     const scheduleTimeText = getBookingPrimaryTimeLabel(booking);
+    const bookingCode = formatBookingCode(booking);
     const location = getAddress(booking);
     const locationLabel = getLocationLabel(booking);
     const statusLabel = getStatusLabel(booking);
@@ -523,6 +634,10 @@ export function createWorkerBoardRenderer({
                 <span class="dispatch-board-card__eyebrow">${escapeHtml(serviceBadge)}</span>
                 <h3 class="dispatch-board-card__title">${escapeHtml(title)}</h3>
                 <div class="dispatch-board-card__support">
+                  <span class="dispatch-board-card__support-item">
+                    <span class="material-symbols-outlined">tag</span>
+                    <span>Ma don ${escapeHtml(bookingCode)}</span>
+                  </span>
                   <span class="dispatch-board-card__support-item">
                     <span class="material-symbols-outlined">person</span>
                     <span>${escapeHtml(customerName)}</span>
@@ -669,6 +784,3 @@ export function createWorkerBoardRenderer({
     renderBookings,
   };
 }
-
-
-

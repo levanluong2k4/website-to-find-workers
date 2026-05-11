@@ -46,6 +46,24 @@
     min-width: 0;
   }
 
+  .worker-sidebar__head-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-shrink: 0;
+  }
+
+  .worker-sidebar__head-tools .dispatch-board-topbar__notification {
+    position: relative;
+  }
+
+  .worker-sidebar__head-tools .dispatch-board-topbar__notification-menu {
+    top: calc(100% + 12px);
+    left: 0;
+    right: auto;
+    width: min(360px, calc(100vw - 32px));
+  }
+
   .worker-sidebar__brand-mark {
     width: 3rem;
     height: 3rem;
@@ -345,6 +363,7 @@
     }
   }
 </style>
+<link rel="stylesheet" href="{{ asset('assets/css/worker/sidebar-shell.css') }}">
 @endpush
 
 <div class="worker-mobile-topbar">
@@ -358,8 +377,13 @@
   </button>
 
   <div class="worker-mobile-topbar__meta">
+    <span class="worker-mobile-topbar__eyebrow">Không gian thợ</span>
     <strong class="worker-mobile-topbar__title">{{ $activeMenu['label'] }}</strong>
   </div>
+
+  <a href="/worker/profile" class="worker-mobile-topbar__profile" aria-label="Mở hồ sơ thợ">
+    <span class="material-symbols-outlined">person</span>
+  </a>
 </div>
 
 <div class="worker-sidebar-overlay" id="workerSidebarOverlay"></div>
@@ -443,6 +467,15 @@
     </div>
   </div>
 </aside>
+
+<nav class="worker-mobile-dock" aria-label="Điều hướng nhanh của thợ">
+  @foreach ($menu as $item)
+    <a href="{{ $item['href'] }}" class="worker-mobile-dock__item {{ $item['active'] ? 'is-active' : '' }}">
+      <span class="material-symbols-outlined">{{ $item['icon'] }}</span>
+      <span>{{ $item['label'] }}</span>
+    </a>
+  @endforeach
+</nav>
 
 @push('scripts')
 <script type="module">

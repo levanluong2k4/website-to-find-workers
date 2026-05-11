@@ -886,18 +886,31 @@ body {
 @media (max-width: 768px) {
   .worker-revenue {
     margin-left: 0;
-    padding-top: 92px;
+    padding-top: 0;
   }
 
   .worker-revenue__header {
-    top: 76px;
-    padding: 1rem 1rem 0.85rem;
+    position: static;
+    padding: 0 0 0.25rem;
     align-items: stretch;
     flex-direction: column;
+    background: transparent;
+    border-bottom: 0;
+    backdrop-filter: none;
   }
 
   .worker-revenue__body {
     padding: 1rem 1rem 1.5rem;
+  }
+
+  .revenue-controls {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 88px);
+    z-index: 25;
+    padding: 0.85rem;
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
   }
 
   .revenue-controls,
@@ -923,10 +936,100 @@ body {
     flex-direction: column;
   }
 
+  .period-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+    scrollbar-width: none;
+  }
+
+  .period-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .period-tab {
+    white-space: nowrap;
+  }
+
   .revenue-field--search,
   .revenue-table-filters .revenue-field {
     width: 100%;
     min-width: 0;
+  }
+
+  .revenue-table-wrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .revenue-table,
+  .revenue-table tbody,
+  .revenue-table tr,
+  .revenue-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .revenue-table {
+    min-width: 0;
+    background: transparent;
+  }
+
+  .revenue-table thead {
+    display: none;
+  }
+
+  .revenue-table__row {
+    padding: 1rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(226, 232, 240, 0.92);
+    background: rgba(255, 255, 255, 0.84);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+  }
+
+  .revenue-table__row + .revenue-table__row {
+    margin-top: 0.85rem;
+  }
+
+  .revenue-table td {
+    padding: 0.68rem 0;
+    border-bottom: 1px solid rgba(241, 245, 249, 0.96);
+  }
+
+  .revenue-table td:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .revenue-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.32rem;
+    color: var(--revenue-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .revenue-table__action .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .revenue-drawer {
+    width: 100%;
+    border-radius: 1.5rem 1.5rem 0 0;
+    top: auto;
+    bottom: 0;
+    height: min(84vh, 760px);
+    transform: translateY(100%);
+    box-shadow: 0 -20px 42px rgba(15, 23, 42, 0.16);
+  }
+
+  .revenue-drawer.is-open {
+    transform: translateY(0);
   }
 }
 

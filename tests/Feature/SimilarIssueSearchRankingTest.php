@@ -81,6 +81,159 @@ class SimilarIssueSearchRankingTest extends TestCase
         $this->assertSame('Replace the drain hose', $results[0]['solution']);
     }
 
+    public function test_typo_in_service_name_keeps_results_scoped_to_the_same_service(): void
+    {
+        $washerServiceId = DB::table('danh_muc_dich_vu')->insertGetId([
+            'ten_dich_vu' => 'Sua may giat',
+            'mo_ta' => 'Sua may giat tai nha',
+            'trang_thai' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $microwaveServiceId = DB::table('danh_muc_dich_vu')->insertGetId([
+            'ten_dich_vu' => 'Sua lo vi song',
+            'mo_ta' => 'Sua lo vi song tai nha',
+            'trang_thai' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('ai_knowledge_items')->insert([
+            [
+                'source_type' => 'booking_case',
+                'source_id' => 201,
+                'source_key' => 'booking_case:201',
+                'primary_service_id' => $washerServiceId,
+                'service_name' => 'Sua may giat',
+                'title' => 'May giat khong len nguon',
+                'content' => 'Trieu chung: may giat khong len nguon. Nguyen nhan: long day nguon. Giai phap: kiem tra o cam va day cap.',
+                'normalized_content' => 'trieu chung may giat khong len nguon nguyen nhan long day nguon giai phap kiem tra o cam va day cap',
+                'symptom_text' => 'May giat khong len nguon',
+                'cause_text' => 'Long day nguon',
+                'solution_text' => 'Kiem tra o cam va day cap',
+                'price_context' => 'labor 70000 VND',
+                'rating_avg' => 4.90,
+                'quality_score' => 0.9000,
+                'metadata' => json_encode([], JSON_UNESCAPED_UNICODE),
+                'is_active' => true,
+                'published_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'source_type' => 'booking_case',
+                'source_id' => 202,
+                'source_key' => 'booking_case:202',
+                'primary_service_id' => $microwaveServiceId,
+                'service_name' => 'Sua lo vi song',
+                'title' => 'Lo vi song khong len nguon',
+                'content' => 'Trieu chung: lo vi song khong len nguon. Nguyen nhan: dut cau chi. Giai phap: thay cau chi va kiem tra mach.',
+                'normalized_content' => 'trieu chung lo vi song khong len nguon nguyen nhan dut cau chi giai phap thay cau chi va kiem tra mach',
+                'symptom_text' => 'Lo vi song khong len nguon',
+                'cause_text' => 'Dut cau chi',
+                'solution_text' => 'Thay cau chi va kiem tra mach',
+                'price_context' => 'labor 90000 VND',
+                'rating_avg' => 5.00,
+                'quality_score' => 0.9900,
+                'metadata' => json_encode([], JSON_UNESCAPED_UNICODE),
+                'is_active' => true,
+                'published_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $results = app(SimilarIssueSearchService::class)->search('may giac khong len nguon nguyen nhan gi', 3);
+
+        $this->assertCount(1, $results);
+        $this->assertSame('Sua may giat', $results[0]['service_type']);
+        $this->assertSame(201, $results[0]['id']);
+    }
+
+    public function test_specific_issue_query_filters_out_other_same_service_symptoms(): void
+    {
+        $serviceId = DB::table('danh_muc_dich_vu')->insertGetId([
+            'ten_dich_vu' => 'Sua may lanh',
+            'mo_ta' => 'Sua may lanh tai nha',
+            'trang_thai' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('ai_knowledge_items')->insert([
+            [
+                'source_type' => 'booking_case',
+                'source_id' => 301,
+                'source_key' => 'booking_case:301',
+                'primary_service_id' => $serviceId,
+                'service_name' => 'Sua may lanh',
+                'title' => 'May lanh khong hoat dong mat nguon toan tap',
+                'content' => 'Trieu chung: may lanh khong hoat dong mat nguon toan tap. Nguyen nhan: long day nguon. Giai phap: kiem tra day cap va bo nguon.',
+                'normalized_content' => 'trieu chung may lanh khong hoat dong mat nguon toan tap nguyen nhan long day nguon giai phap kiem tra day cap va bo nguon',
+                'symptom_text' => 'May lanh khong hoat dong / Mat nguon toan tap',
+                'cause_text' => 'Long day nguon',
+                'solution_text' => 'Kiem tra day cap va bo nguon',
+                'price_context' => 'labor 120000 VND',
+                'rating_avg' => 4.80,
+                'quality_score' => 0.9200,
+                'metadata' => json_encode([], JSON_UNESCAPED_UNICODE),
+                'is_active' => true,
+                'published_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'source_type' => 'booking_case',
+                'source_id' => 302,
+                'source_key' => 'booking_case:302',
+                'primary_service_id' => $serviceId,
+                'service_name' => 'Sua may lanh',
+                'title' => 'May lanh qua lanh',
+                'content' => 'Trieu chung: may lanh qua lanh. Nguyen nhan: loi cam bien nhiet do. Giai phap: kiem tra cam bien.',
+                'normalized_content' => 'trieu chung may lanh qua lanh nguyen nhan loi cam bien nhiet do giai phap kiem tra cam bien',
+                'symptom_text' => 'May lanh qua lanh',
+                'cause_text' => 'Loi cam bien nhiet do',
+                'solution_text' => 'Kiem tra cam bien',
+                'price_context' => 'labor 150000 VND',
+                'rating_avg' => 4.90,
+                'quality_score' => 0.9500,
+                'metadata' => json_encode([], JSON_UNESCAPED_UNICODE),
+                'is_active' => true,
+                'published_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'source_type' => 'booking_case',
+                'source_id' => 303,
+                'source_key' => 'booking_case:303',
+                'primary_service_id' => $serviceId,
+                'service_name' => 'Sua may lanh',
+                'title' => 'May lanh chay lien tuc nhung khong lanh',
+                'content' => 'Trieu chung: may lanh chay lien tuc nhung khong lanh kem lanh thoi ra gio. Nguyen nhan: thieu gas. Giai phap: nap gas va kiem tra ro ri.',
+                'normalized_content' => 'trieu chung may lanh chay lien tuc nhung khong lanh kem lanh thoi ra gio nguyen nhan thieu gas giai phap nap gas va kiem tra ro ri',
+                'symptom_text' => 'May chay lien tuc nhung khong lanh / Kem lanh / Thoi ra gio',
+                'cause_text' => 'Thieu gas',
+                'solution_text' => 'Nap gas va kiem tra ro ri',
+                'price_context' => 'labor 180000 VND',
+                'rating_avg' => 5.00,
+                'quality_score' => 0.9800,
+                'metadata' => json_encode([], JSON_UNESCAPED_UNICODE),
+                'is_active' => true,
+                'published_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $results = app(SimilarIssueSearchService::class)->search('may lanh mat nguon nguyen nhan do dau', 3);
+
+        $this->assertCount(1, $results);
+        $this->assertSame(301, $results[0]['id']);
+        $this->assertSame('May lanh khong hoat dong / Mat nguon toan tap', $results[0]['problem_description']);
+    }
+
     private function prepareSchema(): void
     {
         if (!Schema::hasTable('danh_muc_dich_vu')) {

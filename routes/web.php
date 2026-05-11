@@ -103,6 +103,11 @@ Route::prefix('worker')->group(function () {
     })->name('worker.jobs');
 
     Route::get('/jobs/{id}', function ($id) {
+        $hasWarrantyCase = \App\Models\CustomerFeedbackCase::query()
+            ->where('source_type', 'customer_complaint')
+            ->where('booking_id', $id)
+            ->exists();
+
         $statusMap = [
             'cho_xac_nhan' => 'pending',
             'da_xac_nhan' => 'upcoming',
@@ -119,7 +124,9 @@ Route::prefix('worker')->group(function () {
             ->value('trang_thai');
 
         $redirectParams = ['booking' => $id];
-        if ($bookingStatus && isset($statusMap[$bookingStatus])) {
+        if ($hasWarrantyCase) {
+            $redirectParams['status'] = 'warranty';
+        } elseif ($bookingStatus && isset($statusMap[$bookingStatus])) {
             $redirectParams['status'] = $statusMap[$bookingStatus];
         }
 

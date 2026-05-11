@@ -15,6 +15,7 @@ use App\Models\NguyenNhan;
 use App\Models\ThanhToan;
 use App\Models\TrieuChung;
 use App\Models\User;
+use App\Notifications\BookingStatusNotification;
 use App\Services\Chat\AssistantSoulConfigService;
 use App\Services\Chat\AiKnowledgeSyncService;
 use App\Services\Chat\TextNormalizer;
@@ -1925,8 +1926,8 @@ class AdminController extends Controller
             'cancellation_cases' => $cases->where('type', 'cancellation')->count(),
             'complaint_cases' => $cases->where('type', 'customer_complaint')->count(),
             'high_priority_cases' => $cases->where('priority', 'high')->count(),
-            'in_progress_cases' => $cases->where('status', 'in_progress')->count(),
-            'resolved_cases' => $cases->where('status', 'resolved')->count(),
+            'in_progress_cases' => $cases->filter(fn(array $case) => !$this->isCustomerFeedbackClosedStatus((string) ($case['status'] ?? 'new')))->count(),
+            'resolved_cases' => $cases->filter(fn(array $case) => $this->isCustomerFeedbackClosedStatus((string) ($case['status'] ?? 'new')))->count(),
             'affected_customers' => $cases->pluck('customer_id')->filter()->unique()->count(),
             'overdue_cases' => $cases->where('due_state', 'overdue')->count(),
             'due_today_cases' => $cases->where('due_state', 'due_today')->count(),
@@ -1986,17 +1987,20 @@ class AdminController extends Controller
             ? trim((string) $request->input('resolution_action', ''))
             : trim((string) ($existingSnapshot['resolution_action'] ?? ''));
 
+        $isWarrantyCase = $source['source_type'] === 'customer_complaint';
+        $currentStatus = (string) ($caseState->status ?: 'new');
+
         $caseState->fill([
             'customer_id' => $source['customer_id'],
             'booking_id' => $source['booking_id'],
             'worker_id' => $source['worker_id'],
             'priority' => $source['priority'],
-            'status' => 'in_progress',
+            'status' => $isWarrantyCase ? $currentStatus : 'in_progress',
             'assigned_admin_id' => $user?->id,
             'assigned_at' => $caseState->assigned_at ?: $now,
-            'resolved_at' => null,
+            'resolved_at' => $isWarrantyCase ? $caseState->resolved_at : null,
             'assignment_note' => $assignmentNote,
-            'resolution_note' => null,
+            'resolution_note' => $isWarrantyCase ? $caseState->resolution_note : null,
             'last_snapshot' => $this->mergeCustomerFeedbackSnapshot(
                 $source,
                 $existingSnapshot,
@@ -2043,25 +2047,51 @@ class AdminController extends Controller
             ? trim((string) $request->input('resolution_action', ''))
             : trim((string) ($existingSnapshot['resolution_action'] ?? ''));
 
+        $isWarrantyCase = $source['source_type'] === 'customer_complaint';
+        $nextStatus = $isWarrantyCase
+            ? ($resolutionAction === 'reject' ? 'rejected' : 'completed')
+            : 'resolved';
+        $nextSnapshot = $this->mergeCustomerFeedbackSnapshot(
+            $source,
+            $existingSnapshot,
+            $resolutionAction !== '' ? $resolutionAction : null
+        );
+
+        if ($isWarrantyCase) {
+            $nextSnapshot['worker_response_at'] = $now->toIso8601String();
+            $nextSnapshot['worker_response_note'] = trim((string) $request->input('resolution_note', ''));
+            $nextSnapshot['worker_response_by_id'] = (int) ($user?->id ?? 0);
+            $nextSnapshot['worker_response_by_name'] = (string) ($user?->name ?? 'Admin');
+            $nextSnapshot[$nextStatus === 'rejected' ? 'rejected_at' : 'completed_at'] = $now->toIso8601String();
+            $nextSnapshot['admin_resolution_at'] = $now->toIso8601String();
+            $nextSnapshot['admin_resolution_action'] = $resolutionAction !== '' ? $resolutionAction : 'free_repair';
+        }
+
         $caseState->fill([
             'customer_id' => $source['customer_id'],
             'booking_id' => $source['booking_id'],
             'worker_id' => $source['worker_id'],
             'priority' => $source['priority'],
-            'status' => 'resolved',
+            'status' => $nextStatus,
             'assigned_admin_id' => $caseState->assigned_admin_id ?: $user?->id,
             'assigned_at' => $caseState->assigned_at ?: $now,
             'resolved_at' => $now,
             'assignment_note' => $caseState->assignment_note,
             'resolution_note' => trim((string) $request->input('resolution_note', '')) ?: null,
-            'last_snapshot' => $this->mergeCustomerFeedbackSnapshot(
-                $source,
-                $existingSnapshot,
-                $resolutionAction !== '' ? $resolutionAction : null
-            ),
+            'last_snapshot' => $nextSnapshot,
         ]);
         $caseState->save();
         $caseState->load('assignedAdmin:id,name');
+
+        if ($isWarrantyCase && $caseState->booking && $caseState->customer) {
+            $this->notifyCustomerAboutWarrantyCaseResolution(
+                $caseState->booking,
+                $caseState->customer,
+                $nextStatus,
+                trim((string) $request->input('resolution_note', '')),
+                $user,
+            );
+        }
 
         return response()->json([
             'status' => 'success',
@@ -2544,6 +2574,25 @@ class AdminController extends Controller
 
     private function formatCustomerFeedbackStatusLabel(string $status): string
     {
+        if ($status === 'worker_notified') {
+            return 'Da gui cho tho';
+        }
+
+        if ($status === 'accepted') {
+            return 'Tho da nhan';
+        }
+
+        if ($status === 'completed') {
+            return 'Da hoan tat';
+        }
+
+        if ($status === 'rejected') {
+            return 'Da tu choi';
+        }
+
+        if ($status === 'expired') {
+            return 'Het han';
+        }
         return match ($status) {
             'in_progress' => 'Đang xử lý',
             'resolved' => 'Đã xử lý',
@@ -2553,6 +2602,25 @@ class AdminController extends Controller
 
     private function resolveCustomerFeedbackStatusTone(string $status): string
     {
+        if ($status === 'worker_notified') {
+            return 'info';
+        }
+
+        if ($status === 'accepted') {
+            return 'warning';
+        }
+
+        if ($status === 'completed') {
+            return 'success';
+        }
+
+        if ($status === 'rejected') {
+            return 'danger';
+        }
+
+        if ($status === 'expired') {
+            return 'muted';
+        }
         return match ($status) {
             'in_progress' => 'warning',
             'resolved' => 'success',
@@ -2562,7 +2630,7 @@ class AdminController extends Controller
 
     private function resolveCustomerFeedbackDueState(?Carbon $deadlineAt, string $status, Carbon $now): string
     {
-        if ($status === 'resolved') {
+        if ($this->isCustomerFeedbackClosedStatus($status)) {
             return 'resolved';
         }
 
@@ -2590,6 +2658,11 @@ class AdminController extends Controller
             'resolved' => 'Đã đóng',
             default => 'Chưa đặt hạn',
         };
+    }
+
+    private function isCustomerFeedbackClosedStatus(string $status): bool
+    {
+        return in_array($status, ['resolved', 'completed', 'rejected', 'expired'], true);
     }
 
     private function mapLowRatingFeedbackCase(DanhGia $review): array
@@ -2682,6 +2755,10 @@ class AdminController extends Controller
         $customer = $caseState->customer ?? $booking?->khachHang;
         $worker = $caseState->worker ?? $booking?->tho;
         $snapshot = is_array($caseState->last_snapshot) ? $caseState->last_snapshot : [];
+        $requestedAt = $this->parseCustomerFeedbackTimestamp($snapshot['requested_at'] ?? null) ?? $caseState->created_at;
+        $warrantyExpiresAt = $this->parseCustomerFeedbackTimestamp($snapshot['warranty_expires_at'] ?? null);
+        $responseDeadlineAt = $this->parseCustomerFeedbackTimestamp($snapshot['response_deadline_at'] ?? null);
+        $workerResponseAt = $this->parseCustomerFeedbackTimestamp($snapshot['worker_response_at'] ?? null);
         $reasonCode = (string) ($snapshot['reason_code'] ?? '');
         $reasonLabel = (string) ($snapshot['reason_label'] ?? match ($reasonCode) {
             'loi_tai_phat' => 'Lỗi tái phát',
@@ -2729,7 +2806,7 @@ class AdminController extends Controller
             'worker_name' => $worker?->name ?: 'Chưa gán thợ',
             'worker_phone' => $worker?->phone ?: null,
             'service_label' => $booking ? $this->buildCustomerServiceLabel($booking) : 'Chưa rõ dịch vụ',
-            'created_at' => optional($caseState->created_at)->toDateTimeString(),
+            'created_at' => optional($requestedAt)->toDateTimeString(),
             'created_label' => optional($caseState->created_at)->format('d/m/Y H:i') ?: 'Không rõ thời điểm',
             'summary' => $this->truncateDashboardText($content, 120),
             'content' => $content,
@@ -2746,6 +2823,15 @@ class AdminController extends Controller
             'booking_after_images' => $bookingAfterImages,
             'booking_after_videos' => $bookingAfterVideos,
         ];
+
+        $case['created_label'] = optional($requestedAt)->format('d/m/Y H:i') ?: ($case['created_label'] ?? 'Khong ro thoi diem');
+        $case['warranty_expires_at'] = $warrantyExpiresAt?->toIso8601String();
+        $case['warranty_expires_label'] = $warrantyExpiresAt?->format('d/m/Y');
+        $case['response_deadline_at'] = $responseDeadlineAt?->toIso8601String();
+        $case['response_deadline_label'] = $responseDeadlineAt?->format('d/m/Y H:i');
+        $case['worker_response_note'] = trim((string) ($snapshot['worker_response_note'] ?? ''));
+        $case['worker_response_at'] = $workerResponseAt?->toIso8601String();
+        $case['worker_response_label'] = $workerResponseAt?->format('d/m/Y H:i');
 
         return $this->applyCustomerFeedbackCaseState($case, $caseState);
     }
@@ -2783,6 +2869,60 @@ class AdminController extends Controller
         $case['resolution_action'] = trim((string) ($snapshot['resolution_action'] ?? ($case['resolution_action'] ?? '')));
 
         return $case;
+    }
+
+    private function parseCustomerFeedbackTimestamp(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value->copy();
+        }
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse((string) $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function notifyCustomerAboutWarrantyCaseResolution(
+        DonDatLich $booking,
+        User $customer,
+        string $status,
+        string $note,
+        ?User $actor = null
+    ): void {
+        $content = match ($status) {
+            'completed' => [
+                'title' => 'Yeu cau bao hanh da duoc admin chot',
+                'message' => 'Admin da cap nhat ket qua bao hanh cho don #' . $booking->id . ($note !== '' ? '. Ghi chu: ' . $note : '.'),
+                'type' => 'booking_warranty_completed',
+            ],
+            'rejected' => [
+                'title' => 'Yeu cau bao hanh da bi tu choi',
+                'message' => 'Admin da tu choi yeu cau bao hanh cho don #' . $booking->id . ($note !== '' ? '. Ly do: ' . $note : '.'),
+                'type' => 'booking_warranty_rejected',
+            ],
+            default => null,
+        };
+
+        if ($content === null) {
+            return;
+        }
+
+        try {
+            $customer->notify(new BookingStatusNotification(
+                $booking,
+                $content['title'],
+                $content['message'],
+                $content['type'],
+                'Xem chi tiet'
+            ));
+        } catch (\Throwable) {
+        }
     }
 
     private function resolveCustomerFeedbackSourceCase(string $caseKey): array

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\TravelFeeConfigService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class DonDatLich extends Model
 {
@@ -24,6 +25,17 @@ class DonDatLich extends Model
         'da_xong',
         'hoan_thanh',
     ];
+    public const WARRANTY_OPEN_STATUSES = [
+        'new',
+        'worker_notified',
+        'accepted',
+        'in_progress',
+    ];
+    public const WARRANTY_CLOSED_STATUSES = [
+        'completed',
+        'rejected',
+        'expired',
+    ];
     public const SCHEDULE_BLOCKING_STATUSES = [
         'cho_xac_nhan',
         'da_xac_nhan',
@@ -35,7 +47,7 @@ class DonDatLich extends Model
 
     protected $table = 'don_dat_lich';
 
-    protected $appends = ['complaint_policy'];
+    protected $appends = ['warranty_policy', 'warranty_case', 'complaint_policy', 'complaint_case'];
 
     protected $fillable = [
         'khach_hang_id',
@@ -153,6 +165,38 @@ class DonDatLich extends Model
         return self::isCompletedStatus($this->trang_thai);
     }
 
+    public static function warrantyStatusLabels(): array
+    {
+        return [
+            'new' => 'Moi tao',
+            'worker_notified' => 'Da gui',
+            'accepted' => 'Tho da nhan',
+            'in_progress' => 'Dang xu ly',
+            'completed' => 'Da hoan tat',
+            'rejected' => 'Da tu choi',
+            'expired' => 'Het han',
+        ];
+    }
+
+    public static function warrantyStatusLabel(?string $status): string
+    {
+        if ($status === null || $status === '') {
+            return 'Moi tao';
+        }
+
+        return self::warrantyStatusLabels()[$status] ?? 'Dang cap nhat';
+    }
+
+    public static function warrantyOpenStatuses(): array
+    {
+        return self::WARRANTY_OPEN_STATUSES;
+    }
+
+    public static function isWarrantyOpenStatus(?string $status): bool
+    {
+        return in_array((string) $status, self::WARRANTY_OPEN_STATUSES, true);
+    }
+
     public static function fixedTimeSlots(): array
     {
         try {
@@ -254,39 +298,133 @@ class DonDatLich extends Model
 
     public function getComplaintPolicyAttribute(): array
     {
-        $canComplain = false;
-        $reason = '';
-        
-        if ($this->isCompleted()) {
-            $completedAt = $this->thoi_gian_hoan_thanh;
-            $maxWarrantyMonths = 0;
-            
-            if (is_array($this->chi_tiet_linh_kien)) {
-                foreach ($this->chi_tiet_linh_kien as $part) {
-                    $months = (int) ($part['bao_hanh_thang'] ?? 0);
-                    if ($months > $maxWarrantyMonths) {
-                        $maxWarrantyMonths = $months;
-                    }
-                }
-            }
-            
-            if ($maxWarrantyMonths > 0 && $completedAt !== null) {
-                $expiredAt = $completedAt->copy()->addMonths($maxWarrantyMonths);
-                if (now()->lessThan($expiredAt)) {
-                    $canComplain = true;
-                } else {
-                    $reason = 'expired';
-                }
-            } else {
-                $reason = 'expired';
-            }
+        return $this->getWarrantyPolicyAttribute();
+    }
+
+    public function getComplaintCaseAttribute(): ?array
+    {
+        return $this->getWarrantyCaseAttribute();
+    }
+
+    public function getWarrantyCaseAttribute(): ?array
+    {
+        return $this->serializeWarrantyCase($this->getRelationValue('customerComplaintCase'));
+    }
+
+    public function getWarrantyPolicyAttribute(): array
+    {
+        $warrantyCase = $this->getWarrantyCaseAttribute();
+        $completedAt = $this->thoi_gian_hoan_thanh instanceof Carbon
+            ? $this->thoi_gian_hoan_thanh->copy()
+            : ($this->thoi_gian_hoan_thanh ? Carbon::parse($this->thoi_gian_hoan_thanh) : null);
+        $expiresAt = $completedAt?->copy()->addMonthsNoOverflow($this->resolveServiceWarrantyMonths());
+        $now = now();
+        $isExpired = $expiresAt ? $now->gt($expiresAt) : true;
+        $openCaseExists = (bool) ($warrantyCase['is_open'] ?? false);
+        $reason = 'not_completed';
+        $canRequest = false;
+
+        if (!$this->isCompleted()) {
+            $reason = 'not_completed';
+        } elseif ((int) ($this->tho_id ?? 0) <= 0) {
+            $reason = 'no_worker';
+        } elseif ($openCaseExists) {
+            $reason = 'case_open';
+        } elseif (!$isExpired) {
+            $canRequest = true;
+            $reason = '';
+        } else {
+            $reason = 'expired';
         }
 
         return [
-            'can_complain' => $canComplain,
+            'can_request' => $canRequest,
+            'can_complain' => $canRequest,
             'reason' => $reason,
-            'complaint_case' => $this->relationLoaded('customerComplaintCase') ? $this->customerComplaintCase : null,
+            'warranty_months' => $this->resolveServiceWarrantyMonths(),
+            'completed_at' => $completedAt?->toIso8601String(),
+            'completed_label' => $completedAt?->format('d/m/Y H:i'),
+            'expires_at' => $expiresAt?->toIso8601String(),
+            'expires_label' => $expiresAt?->format('d/m/Y'),
+            'is_active' => !$isExpired && $this->isCompleted(),
+            'is_expired' => $isExpired,
+            'open_case_exists' => $openCaseExists,
+            'warranty_case' => $warrantyCase,
+            'complaint_case' => $warrantyCase,
         ];
     }
-}
 
+    private function resolveServiceWarrantyMonths(): int
+    {
+        try {
+            return max(1, app(TravelFeeConfigService::class)->resolveServiceWarrantyMonths());
+        } catch (\Throwable) {
+            return 1;
+        }
+    }
+
+    private function serializeWarrantyCase(?CustomerFeedbackCase $case): ?array
+    {
+        if (!$case) {
+            return null;
+        }
+
+        $snapshot = is_array($case->last_snapshot) ? $case->last_snapshot : [];
+        $status = (string) ($case->status ?: 'new');
+        $requestedAt = $this->parseWarrantyCaseTimestamp($snapshot['requested_at'] ?? null) ?? $case->created_at;
+        $warrantyExpiresAt = $this->parseWarrantyCaseTimestamp($snapshot['warranty_expires_at'] ?? null);
+        $workerRespondedAt = $this->parseWarrantyCaseTimestamp($snapshot['worker_response_at'] ?? null);
+        $closedAt = $case->resolved_at instanceof Carbon ? $case->resolved_at->copy() : $case->resolved_at;
+        $video = trim((string) ($snapshot['video'] ?? ''));
+
+        return [
+            'id' => (int) $case->id,
+            'status' => $status,
+            'status_label' => self::warrantyStatusLabel($status),
+            'status_tone' => $this->resolveWarrantyStatusTone($status),
+            'is_open' => self::isWarrantyOpenStatus($status),
+            'reason_code' => trim((string) ($snapshot['reason_code'] ?? '')),
+            'reason_label' => trim((string) ($snapshot['reason_label'] ?? '')),
+            'note' => trim((string) ($snapshot['note'] ?? '')),
+            'images' => array_values(array_filter((array) ($snapshot['images'] ?? []))),
+            'video' => $video !== '' ? $video : null,
+            'requested_at' => $requestedAt?->toIso8601String(),
+            'requested_label' => $requestedAt?->format('d/m/Y H:i'),
+            'warranty_expires_at' => $warrantyExpiresAt?->toIso8601String(),
+            'warranty_expires_label' => $warrantyExpiresAt?->format('d/m/Y'),
+            'worker_response_note' => trim((string) ($snapshot['worker_response_note'] ?? '')),
+            'worker_response_at' => $workerRespondedAt?->toIso8601String(),
+            'worker_response_label' => $workerRespondedAt?->format('d/m/Y H:i'),
+            'closed_at' => $closedAt?->toIso8601String(),
+            'closed_label' => $closedAt?->format('d/m/Y H:i'),
+        ];
+    }
+
+    private function resolveWarrantyStatusTone(string $status): string
+    {
+        return match ($status) {
+            'completed' => 'success',
+            'rejected' => 'danger',
+            'expired' => 'muted',
+            'accepted', 'in_progress' => 'warning',
+            default => 'info',
+        };
+    }
+
+    private function parseWarrantyCaseTimestamp(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value->copy();
+        }
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse((string) $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+}

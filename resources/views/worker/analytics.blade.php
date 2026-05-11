@@ -20,7 +20,7 @@
           <span>Báo cáo lương thợ</span>
         </div>
         <h1>Thu nhập thực nhận</h1>
-        <p>Báo cáo lương chi tiết: Tiền công tạo ra, khoản bị khấu trừ và thực nhận cộng vào ví của bạn.</p>
+        <p>Báo cáo lương chi tiết: Tiền công tạo ra, khoản bị khấu trừ và trạng thái hệ thống xử lý ví cho từng đơn.</p>
       </div>
 
       <div class="worker-revenue__header-actions">
@@ -64,13 +64,13 @@
             <span class="material-symbols-outlined">date_range</span>
             <span>30 ngày gần đây</span>
           </div>
-          <p class="revenue-hero__label">Thực nhận trong kỳ (Cộng ví)</p>
+          <p class="revenue-hero__label">Thực nhận trong kỳ</p>
           <h2 class="revenue-hero__amount" id="heroCollectedAmount">0 đ</h2>
           <p class="revenue-hero__insight" id="heroInsight">Đang tải dữ liệu thu nhập...</p>
 
           <div class="revenue-hero__stats">
             <div class="revenue-hero__stat">
-              <span>Chờ cộng ví</span>
+              <span>Chờ xử lý</span>
               <strong id="heroPendingAmount" style="color: #f59e0b;">0 đ</strong>
             </div>
             <div class="revenue-hero__stat">
@@ -200,8 +200,8 @@
           <input type="search" id="revenueSearchInput" class="revenue-field revenue-field--search" placeholder="Tìm theo mã đơn, khách hàng" />
           <select id="statusFilter" class="revenue-field">
             <option value="all">Tất cả trạng thái</option>
-            <option value="paid">Đã cộng ví</option>
-            <option value="pending">Chờ cộng ví</option>
+            <option value="paid">Đã xử lý ví</option>
+            <option value="pending">Chờ xử lý</option>
             <option value="cancelled">Đã hủy</option>
           </select>
         </div>
@@ -217,6 +217,7 @@
                 <th>Công gộp</th>
                 <th>Thuế</th>
                 <th>Phí nền tảng</th>
+                <th>Phí đi lại</th>
                 <th>Thực nhận</th>
                 <th>Trạng thái</th>
                 <th></th>
@@ -224,7 +225,7 @@
             </thead>
             <tbody id="revenueTableBody">
               <tr>
-                <td colspan="10">
+                <td colspan="11">
                   <div class="revenue-state">
                     <strong>Đang tải dữ liệu</strong>
                     Vui lòng chờ trong giây lát...

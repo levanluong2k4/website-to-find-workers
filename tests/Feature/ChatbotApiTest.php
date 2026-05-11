@@ -87,11 +87,13 @@ class ChatbotApiTest extends TestCase
             'data' => [
                 'assistant_text',
                 'cases',
+                'show_cases',
                 'technicians',
                 'youtube_links',
                 'assistant_message_id',
             ],
         ]);
+        $response->assertJsonPath('data.show_cases', false);
 
         $this->assertSame(2, ChatMagic::query()->count());
         $this->assertSame('user', ChatMagic::query()->orderBy('id')->first()->sender);
@@ -596,10 +598,68 @@ class ChatbotApiTest extends TestCase
         $response->assertJsonPath('data.ai.status', 'unsupported_service_rule');
 
         $assistantText = (string) $response->json('data.assistant_text');
-        $this->assertStringContainsString('dịch vụ sửa bếp ga chưa có trong cửa hàng', mb_strtolower($assistantText, 'UTF-8'));
+        $assistantNormalized = \App\Services\Chat\TextNormalizer::normalize($assistantText);
+        $this->assertStringContainsString('dich vu sua bep ga chua co trong cua hang', $assistantNormalized);
         $this->assertStringContainsString('Bạn có muốn tôi gợi ý dịch vụ khác đang có trong cửa hàng không?', $assistantText);
 
         Http::assertNothingSent();
+    }
+
+    public function test_unsupported_issue_question_returns_store_unavailable_message_without_ai_call(): void
+    {
+        DB::table('danh_muc_dich_vu')->insert([
+            'ten_dich_vu' => 'Sua may lanh',
+        ]);
+
+        Http::fake();
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'dien thoai khong len nguon',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.model', null);
+        $response->assertJsonPath('data.ai.status', 'unsupported_service_rule');
+
+        $assistantNormalized = \App\Services\Chat\TextNormalizer::normalize((string) $response->json('data.assistant_text'));
+        $this->assertStringContainsString('dich vu sua dien thoai chua co trong cua hang', $assistantNormalized);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_issue_diagnosis_response_hides_case_cards_in_payload(): void
+    {
+        DB::table('danh_muc_dich_vu')->insert([
+            'ten_dich_vu' => 'Sua may lanh',
+        ]);
+
+        Http::fake([
+            'https://generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                [
+                                    'text' => json_encode([
+                                        'assistant_text' => 'May lanh mat nguon can kiem tra nguon dien va board.',
+                                        'cases' => [],
+                                        'technicians' => [],
+                                        'youtube_links' => [],
+                                    ], JSON_UNESCAPED_UNICODE),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $response = $this->postJson('/api/chat/send', [
+            'text' => 'may lanh mat nguon nguyen nhan do dau',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.show_cases', false);
     }
 
     public function test_service_catalog_question_ignores_previous_unsupported_context_and_lists_current_services(): void

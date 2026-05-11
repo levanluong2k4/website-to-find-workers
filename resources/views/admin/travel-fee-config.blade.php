@@ -537,7 +537,7 @@
                   <input class="tw-w-full tw-pl-12 tw-pr-4 tw-py-4 tw-bg-surface-container-low tw-border-none tw-rounded-2xl focus:tw-ring-2 focus:tw-ring-primary/20 focus:tw-bg-surface-container-lowest tw-transition-all tw-text-sm tw-font-medium" type="number" id="travelFeeComplaintWindowDays" value="" placeholder="3" min="1" max="30" step="1" />
                 </div>
                 <p class="tw-text-xs tw-text-slate-500">DÃ¹ng cho quy táº¯c há»— trá»£ sau sá»­a chá»¯a vÃ  khiáº¿u náº¡i.</p>
-                <div class="tfc-field-error" data-error-for="complaint_window_days"></div>
+                <div class="tfc-field-error" data-error-for="service_warranty_months"></div>
               </div>
             </div>
           </div>
@@ -576,7 +576,7 @@
                   <span class="material-symbols-outlined tw-text-primary">account_balance_wallet</span>
                   Cấu hình lương thợ
                 </h3>
-                <p class="tw-text-xs tw-text-slate-500 tw-mt-1">Thiết lập tỷ lệ thuế và phí ứng dụng. Điều này ảnh hưởng trực tiếp đến thu nhập thực nhận của thợ.</p>
+                <p class="tw-text-xs tw-text-slate-500 tw-mt-1">Thiết lập tỷ lệ thuế, phí ứng dụng và phần trăm phí đi lại được cộng vào ví thợ.</p>
               </div>
               <button type="button" id="btnSaveWageConfig" class="tw-px-6 tw-py-2 tw-rounded-full tw-bg-primary tw-text-white tw-text-sm tw-font-bold hover:tw-bg-primary-container tw-transition-all active:tw-scale-95 tw-shadow-lg tw-shadow-primary/20 tw-flex tw-items-center tw-gap-2">
                 <span class="material-symbols-outlined tw-text-base">save</span>
@@ -595,10 +595,12 @@
                 <span class="tw-bg-orange-50 tw-px-3 tw-py-1.5 tw-rounded-lg tw-border tw-border-orange-200 tw-text-orange-700">Phí ứng dụng (<span id="wageFormulaFee">20</span>%)</span>
                 <span class="tw-text-slate-400">=</span>
                 <span class="tw-bg-green-50 tw-px-3 tw-py-1.5 tw-rounded-lg tw-border tw-border-green-200 tw-text-green-700 tw-font-extrabold">Lương thực nhận của thợ (<span id="wageFormulaNet">70</span>%)</span>
+                <span class="tw-text-slate-400">+</span>
+                <span class="tw-bg-sky-50 tw-px-3 tw-py-1.5 tw-rounded-lg tw-border tw-border-sky-200 tw-text-sky-700">Phí đi lại thợ nhận (<span id="wageFormulaTravel">100</span>%)</span>
               </div>
             </div>
 
-            <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-6 tw-mb-6">
+            <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-3 tw-gap-6 tw-mb-6">
               <!-- Tax Rate -->
               <div class="tw-bg-red-50 tw-border tw-border-red-100 tw-rounded-2xl tw-p-6">
                 <div class="tw-flex tw-items-center tw-gap-3 tw-mb-4">
@@ -648,6 +650,30 @@
                 </div>
                 <input type="range" id="feeRateSlider" min="0" max="50" step="0.1" value="20" class="tw-w-full tw-mt-3 tw-h-2 tw-accent-orange-500" />
               </div>
+
+              <div class="tw-bg-sky-50 tw-border tw-border-sky-100 tw-rounded-2xl tw-p-6">
+                <div class="tw-flex tw-items-center tw-gap-3 tw-mb-4">
+                  <div class="tw-w-10 tw-h-10 tw-rounded-xl tw-bg-sky-100 tw-flex tw-items-center tw-justify-center">
+                    <span class="material-symbols-outlined tw-text-sky-600">route</span>
+                  </div>
+                  <div>
+                    <p class="tw-font-bold tw-text-sm">Tỷ lệ nhận phí đi lại</p>
+                    <p class="tw-text-xs tw-text-slate-500">Phần trăm phí đi lại được cộng vào ví thợ</p>
+                  </div>
+                </div>
+                <div class="tw-flex tw-items-center tw-gap-3">
+                  <div class="tw-relative tw-flex-1">
+                    <input type="number" id="travelFeeRateInput" min="0" max="100" step="0.1" value="100"
+                      class="tw-w-full tw-py-3 tw-pl-4 tw-pr-10 tw-rounded-xl tw-border-2 tw-border-sky-200 focus:tw-border-sky-400 tw-bg-white tw-text-on-background tw-font-bold tw-text-lg focus:tw-outline-none tw-transition-colors" />
+                    <span class="tw-absolute tw-right-3 tw-top-1/2 tw--translate-y-1/2 tw-text-sky-500 tw-font-bold">%</span>
+                  </div>
+                  <div class="tw-text-center">
+                    <p class="tw-text-xs tw-text-slate-400 tw-mb-0.5">Trên phí 50k</p>
+                    <p class="tw-font-bold tw-text-sky-600" id="travelFeeExampleAmount">50,000đ</p>
+                  </div>
+                </div>
+                <input type="range" id="travelFeeRateSlider" min="0" max="100" step="0.1" value="100" class="tw-w-full tw-mt-3 tw-h-2 tw-accent-sky-500" />
+              </div>
             </div>
 
             <!-- Live preview card -->
@@ -671,6 +697,13 @@
                     Phí ứng dụng (<span id="previewFeePct">20</span>%)
                   </span>
                   <span class="tw-font-bold tw-text-orange-400" id="previewFeeAmount">100,000đ</span>
+                </div>
+                <div class="tw-flex tw-justify-between tw-items-center tw-py-2 tw-border-b tw-border-white/10">
+                  <span class="tw-text-sm tw-text-sky-300 tw-flex tw-items-center tw-gap-2">
+                    <span class="material-symbols-outlined tw-text-sm">add</span>
+                    Phí đi lại thợ nhận (<span id="previewTravelFeePct">100</span>% của 50,000đ)
+                  </span>
+                  <span class="tw-font-bold tw-text-sky-300" id="previewTravelFeeAmount">50,000đ</span>
                 </div>
                 <div class="tw-flex tw-justify-between tw-items-center tw-pt-3">
                   <span class="tw-font-extrabold tw-text-green-300 tw-flex tw-items-center tw-gap-2">

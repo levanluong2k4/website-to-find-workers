@@ -5,6 +5,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,100..900;1,100..900&family=Material+Symbols+Outlined" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { corePlugins: { preflight: false } }</script>
+<link rel="stylesheet" href="{{ asset('assets/css/worker/profile.css') }}">
 <style>
   .worker-main { margin-left:240px; min-height:100vh; background:#f8fafc; }
   .worker-header { background:#fff; border-bottom:1px solid #e2e8f0; padding:.875rem 1.5rem; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
@@ -60,13 +61,13 @@
 @endpush
 
 @section('content')
-<div style="display:flex;">
+<div class="worker-profile-shell" style="display:flex;">
 
 <!-- SIDEBAR COMPONENT -->
 <x-worker-sidebar />
 
 <!-- MAIN -->
-<div class="worker-main" style="flex:1;">
+<div class="worker-main worker-profile-main" style="flex:1;">
   <div class="worker-header">
     <div>
       <h5 style="font-family:'DM Sans',sans-serif; font-weight:700; margin:0; font-size:1rem; color:#0f172a;">Hồ sơ cá nhân</h5>
@@ -74,10 +75,10 @@
     </div>
   </div>
 
-  <div style="padding:1.5rem; display:grid; grid-template-columns:320px 1fr; gap:1.25rem; align-items:start;">
+  <div class="worker-profile-layout" style="padding:1.5rem; display:grid; grid-template-columns:320px 1fr; gap:1.25rem; align-items:start;">
 
     <!-- Left: Profile Card -->
-    <div>
+    <div class="worker-profile-sidebar">
       <!-- Avatar + Stats -->
       <div class="profile-section" style="text-align:center;">
         <!-- Avatar upload -->
@@ -134,7 +135,7 @@
     </div>
 
     <!-- Right: Edit Form -->
-    <div>
+    <div class="worker-profile-editor">
       <form id="formWorkerProfile">
         <!-- Personal Info -->
         <div class="profile-section">

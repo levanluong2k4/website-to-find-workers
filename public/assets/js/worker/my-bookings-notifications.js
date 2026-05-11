@@ -36,6 +36,16 @@ export function createTopbarNotificationCenter({
       return { icon: 'cancel', tone: 'is-danger' };
     case 'booking_customer_unreachable':
       return { icon: 'phone_disabled', tone: 'is-danger' };
+    case 'booking_warranty_requested':
+      return { icon: 'verified_user', tone: 'is-warning' };
+    case 'booking_warranty_accepted':
+      return { icon: 'task_alt', tone: 'is-success' };
+    case 'booking_warranty_in_progress':
+      return { icon: 'build_circle', tone: 'is-warning' };
+    case 'booking_warranty_completed':
+      return { icon: 'done_all', tone: 'is-success' };
+    case 'booking_warranty_rejected':
+      return { icon: 'block', tone: 'is-danger' };
     default:
       return { icon: 'notifications', tone: '' };
     }

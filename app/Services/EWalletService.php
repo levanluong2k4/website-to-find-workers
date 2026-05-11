@@ -74,14 +74,17 @@ class EWalletService
 
             $ty_le_thue = $this->getSetting('ty_le_thue_nha_nuoc', 10);
             $ty_le_phi  = $this->getSetting('ty_le_phi_nen_tang', 20);
+            $ty_le_nhan_phi_di_lai = $this->getSetting('ty_le_nhan_phi_di_lai_tho', 100);
 
             $thue    = round($tien_cong * ($ty_le_thue / 100), 0);
             $phi_san = round($tien_cong * ($ty_le_phi  / 100), 0);
+            $phi_di_lai_thuc_nhan = round($phi_di_lai * ($ty_le_nhan_phi_di_lai / 100), 0);
+            $phi_di_lai_giu_lai = max(0, round($phi_di_lai - $phi_di_lai_thuc_nhan, 0));
 
             if ($la_tien_mat) {
                 // ── COD: thợ thu hộ toàn bộ tiền mặt ──────────────────────
                 // Thợ phải nộp lại: linh kiện + thuế + phí nền tảng
-                $tong_tru = $tien_linh_kien + $thue + $phi_san;
+                $tong_tru = $tien_linh_kien + $thue + $phi_san + $phi_di_lai_giu_lai;
                 $vi->so_du -= $tong_tru;
                 $vi->save();
 
@@ -127,7 +130,7 @@ class EWalletService
                 // ── Chuyển khoản: admin thu hộ tiền khách ──────────────────
                 // Thợ nhận: tiền công còn lại sau phí + phí đi lại
                 $tien_cong_thuc = $tien_cong - $thue - $phi_san;
-                $tong_cong      = $tien_cong_thuc + $phi_di_lai;
+                $tong_cong      = $tien_cong_thuc + $phi_di_lai_thuc_nhan;
 
                 $vi->so_du += $tong_cong;
                 $vi->save();
@@ -151,10 +154,10 @@ class EWalletService
                 ]);
 
                 // Phí đi lại (nếu có)
-                if ($phi_di_lai > 0) {
+                if ($phi_di_lai_thuc_nhan > 0) {
                     LichSuGiaoDich::create([
                         'ma_vi'          => $vi->id,
-                        'so_tien'        => $phi_di_lai,
+                        'so_tien'        => $phi_di_lai_thuc_nhan,
                         'loai_giao_dich' => 'nhan_phi_di_lai',
                         'ma_don_hang'    => $ma_don_hang,
                         'trang_thai'     => 'thanh_cong',

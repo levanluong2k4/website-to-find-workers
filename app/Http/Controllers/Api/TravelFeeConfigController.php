@@ -40,6 +40,7 @@ class TravelFeeConfigController extends Controller
             'booking_time_slots' => 'required|array|min:1|max:12',
             'booking_time_slots.*' => 'required|string|max:20',
             'complaint_window_days' => 'nullable|integer|min:1|max:30',
+            'service_warranty_months' => 'nullable|integer|min:1|max:24',
             'tiers' => 'required|array|min:1|max:20',
             'tiers.*.from_km' => 'required|numeric|min:0|max:1000',
             'tiers.*.to_km' => 'required|numeric|min:0|max:1000',
@@ -232,6 +233,10 @@ class TravelFeeConfigController extends Controller
             $payload['complaint_window_days'] = (int) $request->input('complaint_window_days');
         }
 
+        if ($request->exists('service_warranty_months')) {
+            $payload['service_warranty_months'] = (int) $request->input('service_warranty_months');
+        }
+
         $state = $travelFeeConfigService->updateConfig($payload, $request->user());
 
         return response()->json([
@@ -245,12 +250,14 @@ class TravelFeeConfigController extends Controller
     {
         $taxRate = (float) (\App\Models\AppSetting::where('key', 'ty_le_thue_nha_nuoc')->value('value') ?? 10);
         $feeRate = (float) (\App\Models\AppSetting::where('key', 'ty_le_phi_nen_tang')->value('value') ?? 20);
+        $travelFeeRate = (float) (\App\Models\AppSetting::where('key', 'ty_le_nhan_phi_di_lai_tho')->value('value') ?? 100);
 
         return response()->json([
             'status' => 'success',
             'data' => [
                 'tax_rate' => $taxRate,
                 'fee_rate' => $feeRate,
+                'travel_fee_rate' => $travelFeeRate,
                 'net_rate' => max(0, 100 - $taxRate - $feeRate),
             ]
         ]);
@@ -261,11 +268,13 @@ class TravelFeeConfigController extends Controller
         $validated = $request->validate([
             'tax_rate' => 'required|numeric|min:0|max:50',
             'fee_rate' => 'required|numeric|min:0|max:50',
+            'travel_fee_rate' => 'required|numeric|min:0|max:100',
             'notify_workers' => 'boolean',
         ]);
 
         $taxRate = (float) $validated['tax_rate'];
         $feeRate = (float) $validated['fee_rate'];
+        $travelFeeRate = (float) $validated['travel_fee_rate'];
         $notifyWorkers = (bool) ($validated['notify_workers'] ?? true);
 
         if ($taxRate + $feeRate >= 100) {
@@ -281,6 +290,10 @@ class TravelFeeConfigController extends Controller
         \App\Models\AppSetting::updateOrCreate(
             ['key' => 'ty_le_phi_nen_tang'],
             ['value' => $feeRate, 'updated_by' => $user?->id]
+        );
+        \App\Models\AppSetting::updateOrCreate(
+            ['key' => 'ty_le_nhan_phi_di_lai_tho'],
+            ['value' => $travelFeeRate, 'updated_by' => $user?->id]
         );
 
         $netRate = max(0, 100 - $taxRate - $feeRate);
@@ -299,6 +312,7 @@ class TravelFeeConfigController extends Controller
                         'message' => "Hệ thống vừa cập nhật tỷ lệ lương mới: Thuế {$taxRate}% + Phí ứng dụng {$feeRate}% = Bạn thực nhận {$netRate}% tiền công.",
                         'tax_rate' => $taxRate,
                         'fee_rate' => $feeRate,
+                        'travel_fee_rate' => $travelFeeRate,
                         'net_rate' => $netRate,
                     ]),
                     'read_at' => null,
@@ -315,6 +329,7 @@ class TravelFeeConfigController extends Controller
             'data' => [
                 'tax_rate' => $taxRate,
                 'fee_rate' => $feeRate,
+                'travel_fee_rate' => $travelFeeRate,
                 'net_rate' => $netRate,
                 'notified_workers' => $notifiedCount,
             ]

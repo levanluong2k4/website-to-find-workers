@@ -1474,13 +1474,237 @@
 
     .booking-complaint-state {
         margin: 0;
-        padding: 0.58rem 0.78rem;
-        border-radius: 14px;
-        background: #fff4ed;
-        border: 1px solid #fed7aa;
+        display: grid;
+        gap: 0.68rem;
+        padding: 0.88rem 0.92rem;
+        border-radius: 18px;
+        border: 1px solid #fde0cc;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 247, 240, 0.98)),
+            #fff7f1;
+        color: #7c2d12;
+        box-shadow: 0 16px 34px rgba(230, 112, 44, 0.12);
+        text-align: left;
+    }
+
+    .booking-complaint-state__head {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.72rem;
+    }
+
+    .booking-complaint-state__icon {
+        width: 2.45rem;
+        height: 2.45rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(251, 146, 60, 0.22);
+        color: #ea580c;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+
+    .booking-complaint-state__icon .material-symbols-outlined {
+        font-size: 1.18rem;
+        font-variation-settings: 'FILL' 1, 'wght' 650, 'GRAD' 0, 'opsz' 24;
+    }
+
+    .booking-complaint-state__copy {
+        min-width: 0;
+        display: grid;
+        gap: 0.12rem;
+    }
+
+    .booking-complaint-state__eyebrow {
+        color: #c2410c;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .booking-complaint-state__title {
+        color: #7c2d12;
+        font-size: 0.9rem;
+        font-weight: 800;
+        line-height: 1.3;
+    }
+
+    .booking-complaint-state__badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.42rem 0.7rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(251, 146, 60, 0.28);
+        color: #c2410c;
+        font-size: 0.73rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .booking-complaint-state__reason {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.44rem;
+        width: fit-content;
+        max-width: 100%;
+        padding: 0.42rem 0.62rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(251, 146, 60, 0.18);
         color: #9a3412;
-        font-size: 0.8rem;
+        font-size: 0.77rem;
         font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .booking-complaint-state__reason .material-symbols-outlined {
+        font-size: 0.98rem;
+        flex-shrink: 0;
+    }
+
+    .booking-complaint-state__hint {
+        margin: 0;
+        color: #9a3412;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        opacity: 0.92;
+    }
+
+    .booking-complaint-state--active {
+        border-color: #bfdbfe;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(239, 246, 255, 0.98)),
+            #eff6ff;
+        color: #1d4ed8;
+        box-shadow: 0 16px 34px rgba(37, 99, 235, 0.12);
+    }
+
+    .booking-complaint-state--active .booking-complaint-state__icon,
+    .booking-complaint-state--working .booking-complaint-state__icon {
+        color: #2563eb;
+        border-color: rgba(59, 130, 246, 0.22);
+    }
+
+    .booking-complaint-state--active .booking-complaint-state__eyebrow,
+    .booking-complaint-state--active .booking-complaint-state__title,
+    .booking-complaint-state--active .booking-complaint-state__badge,
+    .booking-complaint-state--active .booking-complaint-state__reason,
+    .booking-complaint-state--active .booking-complaint-state__hint {
+        color: #1d4ed8;
+    }
+
+    .booking-complaint-state--active .booking-complaint-state__badge,
+    .booking-complaint-state--active .booking-complaint-state__reason {
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .booking-complaint-state--working {
+        border-color: #c7d2fe;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(238, 242, 255, 0.98)),
+            #eef2ff;
+        color: #4338ca;
+        box-shadow: 0 16px 34px rgba(79, 70, 229, 0.12);
+    }
+
+    .booking-complaint-state--working .booking-complaint-state__eyebrow,
+    .booking-complaint-state--working .booking-complaint-state__title,
+    .booking-complaint-state--working .booking-complaint-state__badge,
+    .booking-complaint-state--working .booking-complaint-state__reason,
+    .booking-complaint-state--working .booking-complaint-state__hint {
+        color: #4338ca;
+    }
+
+    .booking-complaint-state--working .booking-complaint-state__badge,
+    .booking-complaint-state--working .booking-complaint-state__reason {
+        border-color: rgba(99, 102, 241, 0.22);
+    }
+
+    .booking-complaint-state--success {
+        border-color: #bbf7d0;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(240, 253, 244, 0.98)),
+            #f0fdf4;
+        color: #15803d;
+        box-shadow: 0 16px 34px rgba(22, 163, 74, 0.11);
+    }
+
+    .booking-complaint-state--success .booking-complaint-state__icon {
+        color: #16a34a;
+        border-color: rgba(34, 197, 94, 0.22);
+    }
+
+    .booking-complaint-state--success .booking-complaint-state__eyebrow,
+    .booking-complaint-state--success .booking-complaint-state__title,
+    .booking-complaint-state--success .booking-complaint-state__badge,
+    .booking-complaint-state--success .booking-complaint-state__reason,
+    .booking-complaint-state--success .booking-complaint-state__hint {
+        color: #15803d;
+    }
+
+    .booking-complaint-state--success .booking-complaint-state__badge,
+    .booking-complaint-state--success .booking-complaint-state__reason {
+        border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    .booking-complaint-state--danger {
+        border-color: #fecaca;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(254, 242, 242, 0.98)),
+            #fef2f2;
+        color: #b91c1c;
+        box-shadow: 0 16px 34px rgba(220, 38, 38, 0.1);
+    }
+
+    .booking-complaint-state--danger .booking-complaint-state__icon {
+        color: #dc2626;
+        border-color: rgba(248, 113, 113, 0.24);
+    }
+
+    .booking-complaint-state--danger .booking-complaint-state__eyebrow,
+    .booking-complaint-state--danger .booking-complaint-state__title,
+    .booking-complaint-state--danger .booking-complaint-state__badge,
+    .booking-complaint-state--danger .booking-complaint-state__reason,
+    .booking-complaint-state--danger .booking-complaint-state__hint {
+        color: #b91c1c;
+    }
+
+    .booking-complaint-state--danger .booking-complaint-state__badge,
+    .booking-complaint-state--danger .booking-complaint-state__reason {
+        border-color: rgba(248, 113, 113, 0.24);
+    }
+
+    .booking-complaint-state--muted {
+        border-color: #dbe4f0;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.98)),
+            #f8fafc;
+        color: #475569;
+        box-shadow: none;
+    }
+
+    .booking-complaint-state--muted .booking-complaint-state__icon {
+        color: #64748b;
+        border-color: rgba(148, 163, 184, 0.24);
+    }
+
+    .booking-complaint-state--muted .booking-complaint-state__eyebrow,
+    .booking-complaint-state--muted .booking-complaint-state__title,
+    .booking-complaint-state--muted .booking-complaint-state__badge,
+    .booking-complaint-state--muted .booking-complaint-state__reason,
+    .booking-complaint-state--muted .booking-complaint-state__hint {
+        color: #475569;
+    }
+
+    .booking-complaint-state--muted .booking-complaint-state__badge,
+    .booking-complaint-state--muted .booking-complaint-state__reason {
+        border-color: rgba(148, 163, 184, 0.22);
     }
 
     .complaint-reason-list {
@@ -1537,6 +1761,16 @@
         .booking-total-mini {
             align-items: flex-start;
         }
+
+        .booking-complaint-state__head {
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: flex-start;
+        }
+
+        .booking-complaint-state__badge {
+            grid-column: 2;
+            justify-self: start;
+        }
     }
 
     @media (max-width: 767.98px) {
@@ -1564,6 +1798,27 @@
         .history-hero {
             padding: 1.2rem;
             border-radius: 26px;
+        }
+
+        .booking-complaint-state {
+            padding: 0.82rem 0.84rem;
+            border-radius: 16px;
+            gap: 0.58rem;
+        }
+
+        .booking-complaint-state__icon {
+            width: 2.2rem;
+            height: 2.2rem;
+            border-radius: 14px;
+        }
+
+        .booking-complaint-state__title {
+            font-size: 0.84rem;
+        }
+
+        .booking-complaint-state__reason,
+        .booking-complaint-state__hint {
+            font-size: 0.74rem;
         }
 
         .metric-grid {
@@ -1784,7 +2039,9 @@
                                     <span class="material-symbols-outlined">videocam</span>
                                     <span>Thêm video</span>
                                 </label>
+                                <div class="review-media-upload__summary" id="complaintMediaSummary">0/5 ảnh • 0/1 video</div>
                             </div>
+                            <div class="review-media-gallery" id="complaintMediaPreview"></div>
                         </div>
                         <p class="text-muted mt-2 mb-0 small">Tối đa 5 ảnh, 1 video. Mỗi file ảnh &lt;= 5MB, video &lt;= 30MB.</p>
                     </div>

@@ -14,6 +14,22 @@ document.addEventListener('DOMContentLoaded', () => {
         preview: document.getElementById('customerFeedbackPreview'),
     };
 
+    const ensureStatusOption = (value, label) => {
+        if (!refs.status || refs.status.querySelector(`option[value="${value}"]`)) {
+            return;
+        }
+
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        refs.status.appendChild(option);
+    };
+
+    ensureStatusOption('worker_notified', 'Da gui tho');
+    ensureStatusOption('accepted', 'Tho da nhan');
+    ensureStatusOption('completed', 'Da hoan tat');
+    ensureStatusOption('rejected', 'Da tu choi');
+
     const decisionOptions = [
         {
             value: 'refund',
@@ -77,6 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return 'feedback-badge--info';
         }
     };
+
+    const isWarrantyCase = (item) => item?.type === 'customer_complaint';
+    const isClosedFeedbackCase = (item) => ['resolved', 'completed', 'rejected', 'expired'].includes(String(item?.status || ''));
 
     const buildQuery = () => {
         const params = new URLSearchParams(window.location.search);
@@ -215,7 +234,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildFooterActions = (item, requireDecision = false) => {
         const actionDisabled = state.actionBusy ? 'disabled' : '';
 
-        if (item.status === 'resolved') {
+        if (isWarrantyCase(item) && isClosedFeedbackCase(item)) {
+            return `
+                <div class="feedback-case-footer">
+                    <div class="feedback-case-footer__actions">
+                        <span class="feedback-case-link">Case bao hanh da dong. Neu can can thiep tiep, hay tao yeu cau moi tren booking.</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (isClosedFeedbackCase(item)) {
             return `
                 <div class="feedback-case-footer">
                     <div class="feedback-case-footer__actions">
@@ -306,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const actionDisabled = state.actionBusy ? 'disabled' : '';
         const selectedOption = decisionOptions.find((option) => option.value === draft.action);
         const beforeMediaCount = (item.booking_before_images?.length || 0) + (item.booking_before_videos?.length || 0);
-        const decisionNote = item.status === 'resolved' && item.resolution_note
+        const decisionNote = isClosedFeedbackCase(item) && item.resolution_note
             ? `<div class="feedback-case-note feedback-case-note--success">
                 Kết quả đã được chốt lúc ${escapeHtml(item.resolved_label || '--')}.
                 ${selectedOption ? `Hướng xử lý: <strong>${escapeHtml(selectedOption.label)}</strong>.` : ''}
@@ -419,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildGenericDetail = (item) => {
         const draft = getCaseDraft(item);
         const actionDisabled = state.actionBusy ? 'disabled' : '';
-        const resolutionBlock = item.status === 'resolved' && item.resolution_note
+        const resolutionBlock = isClosedFeedbackCase(item) && item.resolution_note
             ? `<div class="feedback-case-note feedback-case-note--success">
                 Case đã được chốt lúc ${escapeHtml(item.resolved_label || '--')}.<br>
                 ${escapeHtml(item.resolution_note)}

@@ -386,6 +386,68 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
     const canConfirmWarrantyFromDetail = (booking, item) => user?.role === 'admin' && getWarrantyStatusMeta(booking, item).tone === 'is-active';
+    const getComplaintPolicy = (booking) => {
+        const policy = booking?.warranty_policy || booking?.complaint_policy || {};
+        return {
+            canRequest: Boolean(policy.can_request ?? policy.can_complain),
+            reason: String(policy.reason || ''),
+            expiresLabel: String(policy.expires_label || ''),
+            complaintCase: booking?.warranty_case || booking?.complaint_case || policy?.warranty_case || policy?.complaint_case || null,
+        };
+    };
+    const getComplaintCaseBadgeText = (caseInfo) => {
+        const status = String(caseInfo?.status || '');
+        const statusLabel = caseInfo?.status_label || ({
+            new: 'Đã gửi',
+            worker_notified: 'Đã gửi',
+            accepted: 'Thợ đã nhận',
+            in_progress: 'Đang xử lý',
+            completed: 'Đã hoàn tất',
+            rejected: 'Đã từ chối',
+            expired: 'Hết hạn',
+        }[status] || 'Bảo hành');
+
+        if (status === 'rejected' && caseInfo?.worker_response_note) {
+            return `${statusLabel}: ${caseInfo.worker_response_note}`;
+        }
+
+        return statusLabel;
+    };
+    const isComplaintCaseOpen = (caseInfo) => Boolean(
+        caseInfo?.is_open
+        ?? ['new', 'worker_notified', 'accepted', 'in_progress'].includes(String(caseInfo?.status || ''))
+    );
+    const buildComplaintActionMarkup = (booking) => {
+        const policy = getComplaintPolicy(booking);
+        const caseInfo = policy.complaintCase;
+
+        if (caseInfo && isComplaintCaseOpen(caseInfo)) {
+            return `<div class="detail-summary-note"><strong>Bảo hành</strong>${escapeHtml(getComplaintCaseBadgeText(caseInfo))}</div>`;
+        }
+
+        if (policy.canRequest) {
+            const nextButtonLabel = policy.expiresLabel
+                ? `${caseInfo ? 'Gui bao hanh moi den' : 'Bao hanh den'} ${policy.expiresLabel}`
+                : (caseInfo ? 'Gui yeu cau bao hanh moi' : 'Gui yeu cau bao hanh');
+            const previousCaseNote = caseInfo
+                ? `<div class="detail-summary-note"><strong>Bao hanh truoc</strong>${escapeHtml(getComplaintCaseBadgeText(caseInfo))}</div>`
+                : '';
+            return `${previousCaseNote}<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="complaint">${escapeHtml(nextButtonLabel)}</button></div>`;
+            const buttonLabel = policy.expiresLabel ? `Bảo hành đến ${policy.expiresLabel}` : 'Gửi yêu cầu bảo hành';
+            return `<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="complaint">${escapeHtml(buttonLabel)}</button></div>`;
+        }
+
+        if (policy.reason === 'expired') {
+            const expiredLabel = policy.expiresLabel ? `Hết bảo hành từ ${policy.expiresLabel}` : 'Đã hết hạn bảo hành';
+            return `<div class="detail-summary-note"><strong>Bảo hành</strong>${escapeHtml(expiredLabel)}</div>`;
+        }
+
+        if (caseInfo) {
+            return `<div class="detail-summary-note"><strong>Bao hanh</strong>${escapeHtml(getComplaintCaseBadgeText(caseInfo))}</div>`;
+        }
+
+        return '';
+    };
     const buildCostLineItems = (items, type, emptyMessage, booking = null) => {
         if (!items.length) {
             return `<div class="detail-empty-note">${escapeHtml(emptyMessage)}</div>`;
@@ -523,7 +585,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="pay">Chọn cách thanh toán</button></div>';
         }
-        if (booking?.trang_thai === 'da_xong' && !review) return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="review">Gửi đánh giá</button></div>';
+        if (booking?.trang_thai === 'da_xong') {
+            const actions = [];
+            if (!review) {
+                actions.push('<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="review">Gửi đánh giá</button></div>');
+            }
+            const complaintAction = buildComplaintActionMarkup(booking);
+            if (complaintAction) {
+                actions.push(complaintAction);
+            }
+            return actions.length
+                ? `<div class="detail-summary-action-stack">${actions.join('')}</div>`
+                : '<div class="detail-summary-note"><strong>Cập nhật mới nhất</strong>Hệ thống sẽ tiếp tục cập nhật tiến độ xử lý tại các thẻ thông tin bên dưới.</div>';
+        }
         if (booking?.trang_thai === 'da_huy') return '<div class="detail-summary-action"><button type="button" class="detail-outline-button" data-booking-action="rebook">Đặt lịch mới</button></div>';
         return '<div class="detail-summary-note"><strong>Cập nhật mới nhất</strong>Hệ thống sẽ tiếp tục cập nhật tiến độ xử lý tại các thẻ thông tin bên dưới.</div>';
     };
@@ -721,6 +795,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return currentBooking;
     };
     const selectPendingPaymentMode = async (booking) => {
+        const hasReplacementParts = getPartItems(currentBooking).length > 0;
+
+        let complaintMediaController = null;
+
         const result = await Swal.fire({
             title: 'Chọn cách thanh toán',
             input: 'radio',
@@ -969,6 +1047,122 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(response.data?.message || 'Đã xác nhận sử dụng bảo hành.');
         await loadBooking();
     };
+    const openComplaintModal = async () => {
+        if (!currentBooking) {
+            return;
+        }
+
+        const policy = getComplaintPolicy(currentBooking);
+        if (!policy.canRequest) {
+            showToast(policy.reason === 'expired'
+                ? (policy.expiresLabel ? `Đơn này đã hết bảo hành từ ${policy.expiresLabel}.` : 'Đơn này đã hết thời hạn bảo hành.')
+                : 'Đơn này hiện chưa thể gửi bảo hành.', 'error');
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'Gửi yêu cầu bảo hành',
+            html: `
+                <div class="text-start" style="display:grid; gap:0.9rem;">
+                    <div>
+                        <label class="form-label fw-bold mb-2">Lý do bảo hành <span class="text-danger">*</span></label>
+                        <div style="display:grid; gap:0.5rem;">
+                            <label style="display:flex; gap:0.5rem; align-items:flex-start;"><input type="radio" name="bookingDetailComplaintReason" value="loi_tai_phat" checked> <span>Lỗi tái phát sau khi sửa</span></label>
+                            <label style="display:flex; gap:0.5rem; align-items:flex-start;"><input type="radio" name="bookingDetailComplaintReason" value="linh_kien_kem_chat_luong"> <span>Linh kiện thay thế bị lỗi / kém chất lượng</span></label>
+                            <label style="display:flex; gap:0.5rem; align-items:flex-start;"><input type="radio" name="bookingDetailComplaintReason" value="sua_chua_khong_triet_de"> <span>Sửa chữa chưa triệt để</span></label>
+                            <label style="display:flex; gap:0.5rem; align-items:flex-start;"><input type="radio" name="bookingDetailComplaintReason" value="khac"> <span>Lý do khác</span></label>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="bookingDetailComplaintNote" class="form-label fw-bold mb-2">Mô tả vấn đề</label>
+                        <textarea id="bookingDetailComplaintNote" class="swal2-textarea" style="margin:0; width:100%; min-height:120px;" placeholder="Mô tả chi tiết lỗi hiện tại, thời điểm phát sinh và tình trạng thiết bị..."></textarea>
+                    </div>
+                    <div>
+                        <label for="bookingDetailComplaintImages" class="form-label fw-bold mb-2">Hình ảnh minh chứng</label>
+                        <input id="bookingDetailComplaintImages" type="file" accept="image/*" multiple class="swal2-file" style="display:block; width:100%; margin:0;">
+                        <div class="text-muted small mt-1">Tối đa 5 ảnh, mỗi ảnh không quá 5MB.</div>
+                    </div>
+                    <div>
+                        <label for="bookingDetailComplaintVideo" class="form-label fw-bold mb-2">Video minh chứng</label>
+                        <input id="bookingDetailComplaintVideo" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv" class="swal2-file" style="display:block; width:100%; margin:0;">
+                        <div class="text-muted small mt-1">${policy.expiresLabel ? `Bảo hành đến ${escapeHtml(policy.expiresLabel)}.` : 'Có thể đính kèm 1 video nếu cần.'}</div>
+                    </div>
+                    <div class="review-media-upload" style="gap:0.75rem;">
+                        <div class="review-media-upload__summary" id="bookingDetailComplaintMediaSummary">0/5 ảnh • 0/1 video</div>
+                        <div class="review-media-gallery" id="bookingDetailComplaintMediaPreview"></div>
+                    </div>
+                </div>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Gửi bảo hành',
+            cancelButtonText: 'Đóng',
+            didOpen: () => {
+                const popup = Swal.getPopup();
+                complaintMediaController = createReviewMediaController({
+                    imageInput: popup?.querySelector('#bookingDetailComplaintImages') || null,
+                    videoInput: popup?.querySelector('#bookingDetailComplaintVideo') || null,
+                    previewContainer: popup?.querySelector('#bookingDetailComplaintMediaPreview') || null,
+                    summaryElement: popup?.querySelector('#bookingDetailComplaintMediaSummary') || null,
+                    limits: {
+                        maxImages: 5,
+                        maxVideoDuration: 3600,
+                    },
+                });
+                complaintMediaController.reset();
+
+                if (getPartItems(currentBooking).length > 0) {
+                    return;
+                }
+
+                const partReasonOption = popup?.querySelector('input[name="bookingDetailComplaintReason"][value="linh_kien_kem_chat_luong"]')?.closest('label');
+                partReasonOption?.remove();
+            },
+            preConfirm: () => {
+                const popup = Swal.getPopup();
+                const selectedReason = popup?.querySelector('input[name="bookingDetailComplaintReason"]:checked')?.value || '';
+                const note = popup?.querySelector('#bookingDetailComplaintNote')?.value || '';
+                const imageFiles = Array.from(popup?.querySelector('#bookingDetailComplaintImages')?.files || []);
+                const videoFile = popup?.querySelector('#bookingDetailComplaintVideo')?.files?.[0] || null;
+
+                if (!selectedReason) {
+                    Swal.showValidationMessage('Vui lòng chọn lý do bảo hành.');
+                    return false;
+                }
+
+                if (imageFiles.length > 5) {
+                    Swal.showValidationMessage('Bạn chỉ được tải tối đa 5 ảnh.');
+                    return false;
+                }
+
+                return {
+                    selectedReason,
+                    note,
+                    imageFiles,
+                    videoFile,
+                };
+            },
+        });
+
+        if (!result.isConfirmed || !result.value) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('ly_do_khieu_nai', result.value.selectedReason);
+        formData.append('ghi_chu', result.value.note || '');
+        result.value.imageFiles.forEach((file) => formData.append('hinh_anh_khieu_nai[]', file));
+        if (result.value.videoFile) {
+            formData.append('video_khieu_nai', result.value.videoFile);
+        }
+
+        const response = ensureOk(
+            await callApi(`/don-dat-lich/${currentBooking.id}/complaint`, 'POST', formData),
+            'Không thể gửi yêu cầu bảo hành'
+        );
+        showToast(response.data?.message || 'Đã gửi yêu cầu bảo hành.');
+        await loadBooking();
+    };
     const attachActionListeners = () => {
         document.querySelectorAll('[data-booking-action="reschedule"]').forEach((button) => button.addEventListener('click', async (event) => {
             const target = event.currentTarget;
@@ -1000,6 +1194,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }));
         document.querySelectorAll('[data-booking-action="review"]').forEach((button) => button.addEventListener('click', () => openReviewModal()));
+        document.querySelectorAll('[data-booking-action="complaint"]').forEach((button) => button.addEventListener('click', async () => {
+            try {
+                await openComplaintModal();
+            } catch (error) {
+                showToast(error.message || 'Không thể gửi yêu cầu bảo hành', 'error');
+            }
+        }));
         document.querySelectorAll('[data-booking-action="rebook"]').forEach((button) => button.addEventListener('click', () => {
             if (!currentBooking) {
                 showToast('Không tìm thấy đơn để đặt lại.', 'error');

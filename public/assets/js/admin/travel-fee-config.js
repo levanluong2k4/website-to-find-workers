@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
         store_longitude: 109.1995,
         store_transport_fee: 0,
         complaint_window_days: 3,
+        service_warranty_months: 1,
     };
 
     const state = {
@@ -154,7 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
             helper: 'Gioi han toi da cho sua tai nha tu cua hang hoac tu tho duoc chi dinh.',
         });
         syncFieldCopy(refs.complaintWindowInput, {
-            helper: 'D\u00f9ng cho quy t\u1eafc h\u1ed7 tr\u1ee3 sau s\u1eeda ch\u1eefa v\u00e0 khi\u1ebfu n\u1ea1i.',
+            label: 'Thoi han bao hanh dich vu (thang)',
+            placeholder: 'VD: 1',
+            helper: 'Nguon du lieu chinh cho nut Bao hanh cua khach sau khi don da hoan thanh.',
         });
     };
 
@@ -413,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
         store_hotline: String(refs.storeHotlineInput?.value || '').trim(),
         booking_time_slots: readBookingSlots(),
         max_service_distance_km: refs.maxServiceDistanceInput?.value ?? '',
-        complaint_window_days: refs.complaintWindowInput?.value ?? '',
+        service_warranty_months: refs.complaintWindowInput?.value ?? '',
         tiers: readRows(),
     });
 
@@ -573,13 +576,13 @@ document.addEventListener('DOMContentLoaded', () => {
             addError('max_service_distance_km', 'Pham vi phuc vu toi da phai tu 0 den 1000 km.');
         }
 
-        const complaintWindowDays = parseNumber(rawState.complaint_window_days);
-        if (String(rawState.complaint_window_days ?? '').trim() === '') {
-            addError('complaint_window_days', 'Vui long nhap so ngay khieu nai.');
-        } else if (complaintWindowDays === null || !Number.isInteger(complaintWindowDays)) {
-            addError('complaint_window_days', 'So ngay khieu nai phai la so nguyen.');
-        } else if (complaintWindowDays < 1 || complaintWindowDays > 30) {
-            addError('complaint_window_days', 'So ngay khieu nai phai tu 1 den 30.');
+        const serviceWarrantyMonths = parseNumber(rawState.service_warranty_months);
+        if (String(rawState.service_warranty_months ?? '').trim() === '') {
+            addError('service_warranty_months', 'Vui long nhap so thang bao hanh dich vu.');
+        } else if (serviceWarrantyMonths === null || !Number.isInteger(serviceWarrantyMonths)) {
+            addError('service_warranty_months', 'So thang bao hanh phai la so nguyen.');
+        } else if (serviceWarrantyMonths < 1 || serviceWarrantyMonths > 24) {
+            addError('service_warranty_months', 'So thang bao hanh phai tu 1 den 24.');
         }
 
         const rows = rawState.tiers.map((row) => ({
@@ -672,7 +675,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 free_distance_km: legacyConfig.free_distance_km,
                 default_per_km: state.legacyConfig.default_per_km,
                 store_transport_fee: legacyConfig.store_transport_fee,
-                complaint_window_days: Number(complaintWindowDays || state.legacyConfig.complaint_window_days || 3),
+                complaint_window_days: Number(state.legacyConfig.complaint_window_days || 3),
+                service_warranty_months: Number(serviceWarrantyMonths || state.legacyConfig.service_warranty_months || 1),
                 tiers: preview.tiers.map((tier) => ({
                     from_km: tier.from_km,
                     to_km: tier.to_km,
@@ -719,8 +723,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setFieldError('booking_time_slots', errors.booking_time_slots || '');
         setFieldError('max_service_distance_km', errors.max_service_distance_km || '');
         toggleInvalid(refs.maxServiceDistanceInput, Boolean(errors.max_service_distance_km));
-        setFieldError('complaint_window_days', errors.complaint_window_days || '');
-        toggleInvalid(refs.complaintWindowInput, Boolean(errors.complaint_window_days));
+        setFieldError('service_warranty_months', errors.service_warranty_months || '');
+        toggleInvalid(refs.complaintWindowInput, Boolean(errors.service_warranty_months));
 
         refs.bookingSlotList?.querySelectorAll('[data-booking-slot-row]').forEach((row) => {
             const index = Number(row.dataset.bookingSlotIndex);
@@ -1066,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
             refs.maxServiceDistanceInput.value = String(visibleConfig.max_service_distance_km);
         }
         if (refs.complaintWindowInput) {
-            refs.complaintWindowInput.value = String(config.complaint_window_days ?? DEFAULT_LEGACY_CONFIG.complaint_window_days);
+            refs.complaintWindowInput.value = String(config.service_warranty_months ?? DEFAULT_LEGACY_CONFIG.service_warranty_months);
         }
         renderBookingSlotRows(visibleConfig.booking_time_slots);
         renderRows(visibleConfig.tiers);
@@ -1079,6 +1083,7 @@ document.addEventListener('DOMContentLoaded', () => {
             store_longitude: Number(config.store_longitude ?? DEFAULT_LEGACY_CONFIG.store_longitude),
             store_transport_fee: Number(config.store_transport_fee ?? preview?.store?.transport_fee ?? DEFAULT_LEGACY_CONFIG.store_transport_fee),
             complaint_window_days: Number(config.complaint_window_days ?? DEFAULT_LEGACY_CONFIG.complaint_window_days),
+            service_warranty_months: Number(config.service_warranty_months ?? DEFAULT_LEGACY_CONFIG.service_warranty_months),
         };
     };
 
@@ -1292,39 +1297,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const taxSlider = document.getElementById('taxRateSlider');
     const feeInput = document.getElementById('feeRateInput');
     const feeSlider = document.getElementById('feeRateSlider');
+    const travelFeeInput = document.getElementById('travelFeeRateInput');
+    const travelFeeSlider = document.getElementById('travelFeeRateSlider');
     const btnSaveWage = document.getElementById('btnSaveWageConfig');
 
     const SAMPLE_AMOUNT = 500000;
+    const SAMPLE_TRAVEL_AMOUNT = 50000;
 
     const fmt = (n) => Math.round(n).toLocaleString('vi-VN') + '\u0111';
 
     function updateWagePreview() {
         const tax = parseFloat(taxInput?.value || 0);
         const fee = parseFloat(feeInput?.value || 0);
+        const travelFeeRate = parseFloat(travelFeeInput?.value || 100);
         const net = Math.max(0, 100 - tax - fee);
 
         const taxAmt = SAMPLE_AMOUNT * tax / 100;
         const feeAmt = SAMPLE_AMOUNT * fee / 100;
-        const netAmt = SAMPLE_AMOUNT * net / 100;
+        const travelFeeAmt = SAMPLE_TRAVEL_AMOUNT * travelFeeRate / 100;
+        const netAmt = (SAMPLE_AMOUNT * net / 100) + travelFeeAmt;
 
         // Formula banner
         document.getElementById('wageFormulaTax')?.replaceChildren(document.createTextNode(tax));
         document.getElementById('wageFormulaFee')?.replaceChildren(document.createTextNode(fee));
         document.getElementById('wageFormulaNet')?.replaceChildren(document.createTextNode(net.toFixed(1)));
+        document.getElementById('wageFormulaTravel')?.replaceChildren(document.createTextNode(travelFeeRate));
 
         // Sidebar example amounts
         const taxEx = document.getElementById('taxExampleAmount');
         if (taxEx) taxEx.textContent = fmt(taxAmt);
         const feeEx = document.getElementById('feeExampleAmount');
         if (feeEx) feeEx.textContent = fmt(feeAmt);
+        const travelEx = document.getElementById('travelFeeExampleAmount');
+        if (travelEx) travelEx.textContent = fmt(travelFeeAmt);
 
         // Live preview
         document.getElementById('previewTaxPct')?.replaceChildren(document.createTextNode(tax));
         document.getElementById('previewFeePct')?.replaceChildren(document.createTextNode(fee));
+        document.getElementById('previewTravelFeePct')?.replaceChildren(document.createTextNode(travelFeeRate));
         const pTax = document.getElementById('previewTaxAmount');
         if (pTax) pTax.textContent = fmt(taxAmt);
         const pFee = document.getElementById('previewFeeAmount');
         if (pFee) pFee.textContent = fmt(feeAmt);
+        const pTravel = document.getElementById('previewTravelFeeAmount');
+        if (pTravel) pTravel.textContent = fmt(travelFeeAmt);
         const pNet = document.getElementById('previewNetAmount');
         if (pNet) pNet.textContent = fmt(netAmt);
     }
@@ -1334,15 +1350,18 @@ document.addEventListener('DOMContentLoaded', () => {
     taxSlider?.addEventListener('input', () => { if (taxInput) taxInput.value = taxSlider.value; updateWagePreview(); });
     feeInput?.addEventListener('input', () => { if (feeSlider) feeSlider.value = feeInput.value; updateWagePreview(); });
     feeSlider?.addEventListener('input', () => { if (feeInput) feeInput.value = feeSlider.value; updateWagePreview(); });
+    travelFeeInput?.addEventListener('input', () => { if (travelFeeSlider) travelFeeSlider.value = travelFeeInput.value; updateWagePreview(); });
+    travelFeeSlider?.addEventListener('input', () => { if (travelFeeInput) travelFeeInput.value = travelFeeSlider.value; updateWagePreview(); });
 
     // Load current wage config
     (async () => {
         try {
             const res = await callApi('/admin/wage-config');
             if (res.ok && res.data?.data) {
-                const { tax_rate, fee_rate } = res.data.data;
+                const { tax_rate, fee_rate, travel_fee_rate } = res.data.data;
                 if (taxInput) { taxInput.value = tax_rate; if (taxSlider) taxSlider.value = tax_rate; }
                 if (feeInput) { feeInput.value = fee_rate; if (feeSlider) feeSlider.value = fee_rate; }
+                if (travelFeeInput) { travelFeeInput.value = travel_fee_rate ?? 100; if (travelFeeSlider) travelFeeSlider.value = travel_fee_rate ?? 100; }
                 updateWagePreview();
             }
         } catch (e) { /* use defaults */ }
@@ -1352,6 +1371,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSaveWage?.addEventListener('click', async () => {
         const tax = parseFloat(taxInput?.value || 0);
         const fee = parseFloat(feeInput?.value || 0);
+        const travelFeeRate = parseFloat(travelFeeInput?.value || 100);
 
         if (tax + fee >= 100) {
             showToast('T\u1ed5ng thu\u1ebf + ph\u00ed kh\u00f4ng \u0111\u01b0\u1ee3c \u2265 100%.', 'error');
@@ -1366,6 +1386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await callApi('/admin/wage-config', 'PUT', {
                 tax_rate: tax,
                 fee_rate: fee,
+                travel_fee_rate: travelFeeRate,
                 notify_workers: notify,
             });
             if (res.ok) {

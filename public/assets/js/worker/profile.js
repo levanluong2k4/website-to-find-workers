@@ -208,6 +208,34 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+function formatCurrency(value) {
+    return `${Math.round(Number(value || 0)).toLocaleString('vi-VN')}đ`;
+}
+
+function formatSignedCurrency(value, sign = '') {
+    const amount = Math.round(Number(value || 0));
+    if (!amount) return formatCurrency(0);
+    return `${sign}${formatCurrency(amount)}`;
+}
+
+function renderTransactionDetailRow(label, value, options = {}) {
+    const {
+        labelColor = '#64748b',
+        valueColor = '#0f172a',
+        valueWeight = 500,
+        marginTop = '0',
+        paddingTop = '0',
+        borderTop = false,
+    } = options;
+
+    return `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; margin-top:${marginTop}; padding-top:${paddingTop}; ${borderTop ? 'border-top:1px dotted #e2e8f0;' : ''}">
+            <span style="color:${labelColor};">${escapeHtml(label)}</span>
+            <span style="font-weight:${valueWeight}; color:${valueColor}; text-align:right; white-space:nowrap;">${escapeHtml(value)}</span>
+        </div>
+    `;
+}
+
 function getAvatarUrl(source) {
     if (!source) return '/assets/images/user-default.png';
     if (String(source).startsWith('http')) return source;
@@ -825,64 +853,119 @@ window.openTransactionDetail = function(item, settings = {}) {
         const tien_cong = Number(item.don_hang.tien_cong || 0);
         const tien_linh_kien = Number(item.don_hang.phi_linh_kien || 0);
         const phi_di_lai = Number(item.don_hang.phi_di_lai || 0);
-        
+        const travelFeeRate = Number(settings?.travel_fee_rate || 100);
+        const phi_di_lai_nhan = Math.round(phi_di_lai * (travelFeeRate / 100));
+        const phi_di_lai_giu_lai = Math.max(0, phi_di_lai - phi_di_lai_nhan);
         const thue = Math.round(tien_cong * ((settings?.tax_rate || 10) / 100));
         const phi_san = Math.round(tien_cong * ((settings?.fee_rate || 20) / 100));
+        const tien_cong_thuc = Math.max(0, tien_cong - thue - phi_san);
+        const tong_vao_vi = Number(item.so_tien || (tien_cong_thuc + phi_di_lai_nhan));
+        const tong_khau_tru_cod = Math.abs(Number(item.so_tien || (tien_linh_kien + thue + phi_san + phi_di_lai_giu_lai)));
+        const codTravelHintHtml = phi_di_lai > 0 ? `
+            <div style="margin-top:0.75rem; padding:0.75rem; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; font-size:0.8rem; line-height:1.55; color:#1d4ed8;">
+                Khách trả trực tiếp <strong style="color:#0f172a;">${formatCurrency(phi_di_lai)}</strong> phí đi lại cho thợ.
+                ${phi_di_lai_giu_lai > 0
+                    ? `Hệ thống giữ lại <strong style="color:#b91c1c;">${formatCurrency(phi_di_lai_giu_lai)}</strong> từ khoản này, nên ví bị trừ phần tương ứng.`
+                    : `Tỷ lệ nhận phí đi lại hiện tại là <strong style="color:#0f172a;">${travelFeeRate.toLocaleString('vi-VN')}%</strong>, nên ví không bị trừ khoản phí đi lại nào.`}
+            </div>
+        ` : '';
+
+        const customerBreakdownHtml = `
+            <div style="margin-top:0.75rem; border-top:1px dashed #e2e8f0; padding-top:0.75rem;">
+                <div style="font-weight:700; color:#0f172a; margin-bottom:0.5rem;">Cấu phần khách thanh toán</div>
+                ${renderTransactionDetailRow('Tiền công dịch vụ', formatCurrency(tien_cong))}
+                ${renderTransactionDetailRow('Phí đi lại khách thanh toán', formatCurrency(phi_di_lai), { marginTop: '0.25rem' })}
+                ${renderTransactionDetailRow('Tiền linh kiện khách thanh toán', formatCurrency(tien_linh_kien), { marginTop: '0.25rem' })}
+                ${renderTransactionDetailRow('= Tổng khách thanh toán', formatCurrency(tong_tien), {
+                    marginTop: '0.5rem',
+                    paddingTop: '0.5rem',
+                    borderTop: true,
+                    labelColor: '#0f172a',
+                    valueColor: '#0f172a',
+                    valueWeight: 700,
+                })}
+            </div>
+        `;
 
         let breakdownHtml = '';
         if (item.don_hang.phuong_thuc_thanh_toan === 'cod') {
             breakdownHtml = `
-                <div style="margin-top:0.75rem; border-top:1px dashed #e2e8f0; padding-top:0.75rem;">
-                    <div style="font-weight:700; color:#0f172a; margin-bottom:0.5rem;">Chi tiết doanh thu (Thu hộ tiền mặt)</div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                        <span style="color:#64748b;">Tổng tiền thu khách</span>
-                        <span style="font-weight:600;">${tong_tien.toLocaleString('vi-VN')}đ</span>
-                    </div>
-                    ${tien_linh_kien > 0 ? `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                        <span style="color:#ef4444;">- Trừ tiền linh kiện</span>
-                        <span style="color:#ef4444; font-weight:500;">${tien_linh_kien.toLocaleString('vi-VN')}đ</span>
-                    </div>` : ''}
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                        <span style="color:#ef4444;">- Trừ thuế (${settings?.tax_rate||10}%)</span>
-                        <span style="color:#ef4444; font-weight:500;">${thue.toLocaleString('vi-VN')}đ</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                        <span style="color:#ef4444;">- Trừ phí nền tảng (${settings?.fee_rate||20}%)</span>
-                        <span style="color:#ef4444; font-weight:500;">${phi_san.toLocaleString('vi-VN')}đ</span>
-                    </div>
+                ${customerBreakdownHtml}
+                ${codTravelHintHtml}
+                <div style="margin-top:0.75rem; padding:0.75rem; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed;">
+                    <div style="font-weight:700; color:#0f172a; margin-bottom:0.5rem;">Các khoản hệ thống khấu trừ vào ví</div>
+                    ${tien_linh_kien > 0 ? renderTransactionDetailRow('- Tiền linh kiện', formatSignedCurrency(tien_linh_kien, '-'), {
+                        labelColor: '#ef4444',
+                        valueColor: '#ef4444',
+                    }) : ''}
+                    ${thue > 0 ? renderTransactionDetailRow(`- Thuế (${settings?.tax_rate || 10}%)`, formatSignedCurrency(thue, '-'), {
+                        labelColor: '#ef4444',
+                        valueColor: '#ef4444',
+                        marginTop: '0.25rem',
+                    }) : ''}
+                    ${phi_san > 0 ? renderTransactionDetailRow(`- Phí nền tảng (${settings?.fee_rate || 20}%)`, formatSignedCurrency(phi_san, '-'), {
+                        labelColor: '#ef4444',
+                        valueColor: '#ef4444',
+                        marginTop: '0.25rem',
+                    }) : ''}
+                    ${phi_di_lai_giu_lai > 0 ? renderTransactionDetailRow(`- Phí đi lại hệ thống giữ lại (${Math.max(0, 100 - travelFeeRate).toLocaleString('vi-VN')}%)`, formatSignedCurrency(phi_di_lai_giu_lai, '-'), {
+                        labelColor: '#ef4444',
+                        valueColor: '#ef4444',
+                        marginTop: '0.25rem',
+                    }) : ''}
+                    ${renderTransactionDetailRow('= Tổng trừ vào ví', formatSignedCurrency(tong_khau_tru_cod, '-'), {
+                        marginTop: '0.5rem',
+                        paddingTop: '0.5rem',
+                        borderTop: true,
+                        labelColor: '#b45309',
+                        valueColor: '#b45309',
+                        valueWeight: 700,
+                    })}
                 </div>
             `;
         } else {
-            const tien_cong_thuc = tien_cong - thue - phi_san;
             breakdownHtml = `
-                <div style="margin-top:0.75rem; border-top:1px dashed #e2e8f0; padding-top:0.75rem;">
-                    <div style="font-weight:700; color:#0f172a; margin-bottom:0.5rem;">Chi tiết doanh thu (Khách chuyển khoản)</div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                        <span style="color:#64748b;">Tổng tiền khách thanh toán (Admin thu hộ)</span>
-                        <span style="font-weight:600;">${tong_tien.toLocaleString('vi-VN')}đ</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                        <span style="color:#64748b;">Tiền công gốc</span>
-                        <span style="font-weight:500;">${tien_cong.toLocaleString('vi-VN')}đ</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                        <span style="color:#64748b;">Thuế (${settings?.tax_rate||10}%)</span>
-                        <span style="font-weight:500;">-${thue.toLocaleString('vi-VN')}đ</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                        <span style="color:#64748b;">Phí nền tảng (${settings?.fee_rate||20}%)</span>
-                        <span style="font-weight:500;">-${phi_san.toLocaleString('vi-VN')}đ</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem; padding-top:0.25rem; border-top:1px dotted #e2e8f0;">
-                        <span style="color:#10b981; font-weight:500;">+ Tiền công thực nhận (Cộng vào ví)</span>
-                        <span style="color:#10b981; font-weight:600;">${tien_cong_thuc.toLocaleString('vi-VN')}đ</span>
-                    </div>
-                    ${phi_di_lai > 0 ? `
-                    <div style="display:flex; justify-content:space-between; margin-top:0.25rem;">
-                        <span style="color:#10b981;">+ Phí đi lại</span>
-                        <span style="color:#10b981; font-weight:500;">${phi_di_lai.toLocaleString('vi-VN')}đ</span>
-                    </div>` : ''}
+                ${customerBreakdownHtml}
+                <div style="margin-top:0.75rem; padding:0.75rem; border:1px solid #dbeafe; border-radius:10px; background:#f8fbff;">
+                    <div style="font-weight:700; color:#0f172a; margin-bottom:0.5rem;">Cách tính số tiền vào ví thợ</div>
+                    ${renderTransactionDetailRow('Tiền công trước khấu trừ', formatCurrency(tien_cong))}
+                    ${renderTransactionDetailRow(`- Thuế (${settings?.tax_rate || 10}%)`, formatSignedCurrency(thue, '-'), {
+                        labelColor: '#ef4444',
+                        valueColor: '#ef4444',
+                        marginTop: '0.25rem',
+                    })}
+                    ${renderTransactionDetailRow(`- Phí nền tảng (${settings?.fee_rate || 20}%)`, formatSignedCurrency(phi_san, '-'), {
+                        labelColor: '#ef4444',
+                        valueColor: '#ef4444',
+                        marginTop: '0.25rem',
+                    })}
+                    ${renderTransactionDetailRow('= Tiền công thực nhận', formatCurrency(tien_cong_thuc), {
+                        marginTop: '0.5rem',
+                        paddingTop: '0.5rem',
+                        borderTop: true,
+                        labelColor: '#10b981',
+                        valueColor: '#10b981',
+                        valueWeight: 700,
+                    })}
+                    ${renderTransactionDetailRow(`+ Phí đi lại thợ nhận (${travelFeeRate.toLocaleString('vi-VN')}%)`, formatCurrency(phi_di_lai_nhan), {
+                        labelColor: '#10b981',
+                        valueColor: '#10b981',
+                        marginTop: '0.25rem',
+                    })}
+                    ${phi_di_lai_giu_lai > 0 ? renderTransactionDetailRow(`Phí đi lại hệ thống giữ lại (${Math.max(0, 100 - travelFeeRate).toLocaleString('vi-VN')}%)`, formatCurrency(phi_di_lai_giu_lai), {
+                        labelColor: '#64748b',
+                        valueColor: '#64748b',
+                        marginTop: '0.25rem',
+                    }) : ''}
+                    ${renderTransactionDetailRow('= Tổng cộng vào ví', formatCurrency(tong_vao_vi), {
+                        marginTop: '0.5rem',
+                        paddingTop: '0.5rem',
+                        borderTop: true,
+                        labelColor: '#0f172a',
+                        valueColor: '#0f172a',
+                        valueWeight: 700,
+                    })}
+                    ${tien_linh_kien > 0 ? `<div style="margin-top:0.5rem; font-size:0.78rem; color:#64748b;">Khoản linh kiện khách thanh toán được tách riêng và không cộng vào ví của giao dịch này.</div>` : ''}
                 </div>
             `;
         }
@@ -944,4 +1027,3 @@ document.addEventListener('keydown', (event) => {
         window.closeTransactionDetail();
     }
 });
-

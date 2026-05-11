@@ -48,7 +48,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const complaintNote = document.getElementById('complaintNote');
     const complaintImagesInput = document.getElementById('complaintImagesInput');
     const complaintVideoInput = document.getElementById('complaintVideoInput');
+    const complaintMediaPreview = document.getElementById('complaintMediaPreview');
+    const complaintMediaSummary = document.getElementById('complaintMediaSummary');
     const btnSubmitComplaint = document.getElementById('btnSubmitComplaint');
+    const complaintPartIssueInput = formComplaint?.querySelector('input[name="ly_do_khieu_nai"][value="linh_kien_kem_chat_luong"]') || null;
+    const complaintPartIssueOption = complaintPartIssueInput?.closest('.complaint-reason-item') || null;
+    const complaintMediaController = createReviewMediaController({
+        imageInput: complaintImagesInput,
+        videoInput: complaintVideoInput,
+        previewContainer: complaintMediaPreview,
+        summaryElement: complaintMediaSummary,
+        limits: {
+            maxImages: 5,
+            maxVideoDuration: 3600,
+        },
+    });
 
     const reviewMediaController = createReviewMediaController({
         imageInput: reviewImagesInput,
@@ -212,8 +226,28 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSubmitComplaint.textContent = '🛡️ Gửi yêu cầu bảo hành';
             btnSubmitComplaint.disabled = false;
         }
+        complaintMediaController.reset();
         if (complaintNote) {
             complaintNote.value = '';
+        }
+    };
+
+    const syncComplaintReasonOptions = (booking) => {
+        if (!complaintPartIssueInput || !complaintPartIssueOption) {
+            return;
+        }
+
+        const hasReplacementParts = bookingHasReplacementParts(booking);
+        complaintPartIssueOption.hidden = !hasReplacementParts;
+        complaintPartIssueInput.disabled = !hasReplacementParts;
+
+        if (!hasReplacementParts && complaintPartIssueInput.checked) {
+            const defaultReasonInput = formComplaint?.querySelector('input[name="ly_do_khieu_nai"][value="loi_tai_phat"]');
+            if (defaultReasonInput) {
+                defaultReasonInput.checked = true;
+            } else {
+                complaintPartIssueInput.checked = false;
+            }
         }
     };
 
@@ -223,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         resetComplaintFormState();
+        syncComplaintReasonOptions(booking);
         complaintBookingId.value = booking.id || '';
         if (complaintBookingContext) {
             const workerName = booking?.tho?.name || 'thợ xử lý đơn';
@@ -232,7 +267,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getComplaintPolicy = (booking) => {
-        const policy = booking?.complaint_policy || {};
+        const policy = booking?.warranty_policy || booking?.complaint_policy || {};
+        const complaintCase = booking?.warranty_case
+            || booking?.complaint_case
+            || policy?.warranty_case
+            || policy?.complaint_case
+            || null;
+
+        return {
+            canComplain: Boolean(policy.can_request ?? policy.can_complain),
+            reason: String(policy.reason || ''),
+            expiresLabel: String(policy.expires_label || ''),
+            complaintCase,
+        };
+
         return {
             canComplain: Boolean(policy.can_complain),
             reason: String(policy.reason || ''),
@@ -240,16 +288,55 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
+    const getComplaintCaseBadgeText = (caseInfo) => {
+        const status = String(caseInfo?.status || '');
+        const statusLabel = caseInfo?.status_label || ({
+            new: 'ÄÃ£ gá»­i',
+            worker_notified: 'ÄÃ£ gá»­i',
+            accepted: 'Thá»£ Ä‘Ã£ nháº­n',
+            in_progress: 'Äang xá»­ lÃ½',
+            completed: 'ÄÃ£ hoÃ n táº¥t',
+            rejected: 'ÄÃ£ tá»« chá»‘i',
+            expired: 'Háº¿t háº¡n',
+        }[status] || 'Báº£o hÃ nh');
+
+        if (status === 'rejected' && caseInfo?.worker_response_note) {
+            return `${statusLabel}: ${caseInfo.worker_response_note}`;
+        }
+
+        return statusLabel;
+    };
+
+    const isComplaintCaseOpen = (caseInfo) => Boolean(
+        caseInfo?.is_open
+        ?? ['new', 'worker_notified', 'accepted', 'in_progress'].includes(String(caseInfo?.status || ''))
+    );
+
     const buildComplaintActionHtml = (booking) => {
         const policy = getComplaintPolicy(booking);
         const caseInfo = policy.complaintCase;
 
-        if (caseInfo) {
+        if (caseInfo && isComplaintCaseOpen(caseInfo)) {
+            return `<p class="booking-complaint-state" title="${escapeHtml(caseInfo?.reason_label || 'Yeu cau bao hanh')}">${escapeHtml(getComplaintCaseBadgeText(caseInfo))}</p>`;
             const reasonLabel = complaintReasonLabels[caseInfo.reason_code] || caseInfo.reason_label || 'Bảo hành';
             return `<p class="booking-complaint-state">Đã gửi yêu cầu bảo hành: ${escapeHtml(reasonLabel)}</p>`;
         }
 
         if (policy.canComplain) {
+            const nextButtonLabel = policy.expiresLabel
+                ? `${caseInfo ? 'Gui bao hanh moi den' : 'Bao hanh den'} ${policy.expiresLabel}`
+                : (caseInfo ? 'Gui bao hanh moi' : 'Bao hanh');
+            return `
+                <button class="booking-action-button booking-action-button--danger btn-complaint" type="button" data-id="${booking.id}" title="${escapeHtml(nextButtonLabel)}">
+                    <span class="material-symbols-outlined">verified_user</span>${escapeHtml(nextButtonLabel)}
+                </button>
+            `;
+            const buttonLabel = policy.expiresLabel ? `Báº£o hÃ nh Ä‘áº¿n ${policy.expiresLabel}` : 'Báº£o hÃ nh';
+            return `
+                <button class="booking-action-button booking-action-button--danger btn-complaint" type="button" data-id="${booking.id}" title="${escapeHtml(buttonLabel)}">
+                    <span class="material-symbols-outlined">verified_user</span>${escapeHtml(buttonLabel)}
+                </button>
+            `;
             return `
                 <button class="booking-action-button booking-action-button--danger btn-complaint" type="button" data-id="${booking.id}">
                     <span class="material-symbols-outlined">verified_user</span>Bảo hành
@@ -258,6 +345,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (policy.reason === 'expired') {
+            const expiredLabel = policy.expiresLabel ? `Háº¿t báº£o hÃ nh tá»« ${policy.expiresLabel}` : 'Háº¿t háº¡n báº£o hÃ nh';
+            return `
+                <button class="booking-action-button booking-action-button--danger btn-complaint is-disabled" type="button" data-id="${booking.id}" disabled style="opacity: 0.5; cursor: not-allowed;" title="${escapeHtml(expiredLabel)}">
+                    <span class="material-symbols-outlined">verified_user</span>${escapeHtml(expiredLabel)}
+                </button>
+            `;
             return `
                 <button class="booking-action-button booking-action-button--danger btn-complaint is-disabled" type="button" data-id="${booking.id}" disabled style="opacity: 0.5; cursor: not-allowed;" title="Đã hết thời hạn bảo hành cho đơn này.">
                     <span class="material-symbols-outlined">verified_user</span>Hết hạn bảo hành
@@ -265,12 +358,151 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
+        if (caseInfo) {
+            return `<p class="booking-complaint-state" title="${escapeHtml(caseInfo?.reason_label || 'Yeu cau bao hanh')}">${escapeHtml(getComplaintCaseBadgeText(caseInfo))}</p>`;
+        }
+
+        return '';
+    };
+
+    const getComplaintCaseVisualMetaV2 = (caseInfo) => {
+        const status = String(caseInfo?.status || '');
+
+        if (status === 'accepted') {
+            return {
+                tone: 'active',
+                icon: 'verified_user',
+                title: 'Thợ đã tiếp nhận ca bảo hành',
+                hint: 'Thợ phụ trách sẽ chủ động liên hệ để xử lý cho bạn.',
+            };
+        }
+
+        if (status === 'in_progress') {
+            return {
+                tone: 'working',
+                icon: 'handyman',
+                title: 'Yêu cầu đang được xử lý',
+                hint: 'Ca bảo hành đang được thực hiện, bạn có thể theo dõi tiếp trong lịch sử đơn.',
+            };
+        }
+
+        if (status === 'completed') {
+            return {
+                tone: 'success',
+                icon: 'task_alt',
+                title: 'Bảo hành đã hoàn tất',
+                hint: 'Ca bảo hành này đã được xử lý xong.',
+            };
+        }
+
+        if (status === 'rejected') {
+            return {
+                tone: 'danger',
+                icon: 'cancel',
+                title: 'Yêu cầu này chưa được tiếp nhận',
+                hint: String(caseInfo?.worker_response_note || '').trim() || 'Thợ đã từ chối yêu cầu bảo hành này.',
+            };
+        }
+
+        if (status === 'expired') {
+            return {
+                tone: 'muted',
+                icon: 'schedule',
+                title: 'Yêu cầu bảo hành đã hết hạn',
+                hint: 'Đơn này đã vượt quá thời gian bảo hành.',
+            };
+        }
+
+        return {
+            tone: 'pending',
+            icon: 'outgoing_mail',
+            title: 'Yêu cầu của bạn đã được ghi nhận',
+            hint: 'Hệ thống đã chuyển yêu cầu bảo hành đến đúng thợ phụ trách đơn.',
+        };
+    };
+
+    const getComplaintCaseShortLabelV2 = (caseInfo) => {
+        const status = String(caseInfo?.status || '');
+        return caseInfo?.status_label || ({
+            new: 'Đã gửi',
+            worker_notified: 'Đã gửi',
+            accepted: 'Thợ đã nhận',
+            in_progress: 'Đang xử lý',
+            completed: 'Đã hoàn tất',
+            rejected: 'Đã từ chối',
+            expired: 'Hết hạn',
+        }[status] || 'Bảo hành');
+    };
+
+    const buildComplaintCaseSummaryHtmlV2 = (caseInfo, { open = false } = {}) => {
+        if (!caseInfo) {
+            return '';
+        }
+
+        const reasonLabel = complaintReasonLabels[caseInfo.reason_code] || caseInfo.reason_label || 'Yêu cầu bảo hành';
+        const statusLabel = getComplaintCaseShortLabelV2(caseInfo);
+        const visualMeta = getComplaintCaseVisualMetaV2(caseInfo);
+        const sectionLabel = open ? 'Theo dõi bảo hành' : 'Kết quả bảo hành';
+
+        return `
+            <div class="booking-complaint-state booking-complaint-state--${escapeHtml(visualMeta.tone)}" title="${escapeHtml(reasonLabel)}">
+                <div class="booking-complaint-state__head">
+                    <span class="booking-complaint-state__icon" aria-hidden="true">
+                        <span class="material-symbols-outlined">${escapeHtml(visualMeta.icon)}</span>
+                    </span>
+                    <div class="booking-complaint-state__copy">
+                        <span class="booking-complaint-state__eyebrow">${escapeHtml(sectionLabel)}</span>
+                        <strong class="booking-complaint-state__title">${escapeHtml(visualMeta.title)}</strong>
+                    </div>
+                    <span class="booking-complaint-state__badge">${escapeHtml(statusLabel)}</span>
+                </div>
+                <div class="booking-complaint-state__reason">
+                    <span class="material-symbols-outlined" aria-hidden="true">rule</span>
+                    <span>${escapeHtml(reasonLabel)}</span>
+                </div>
+                <p class="booking-complaint-state__hint">${escapeHtml(visualMeta.hint)}</p>
+            </div>
+        `;
+    };
+
+    const buildComplaintActionHtmlV2 = (booking) => {
+        const policy = getComplaintPolicy(booking);
+        const caseInfo = policy.complaintCase;
+
+        if (caseInfo && isComplaintCaseOpen(caseInfo)) {
+            return buildComplaintCaseSummaryHtmlV2(caseInfo, { open: true });
+        }
+
+        if (policy.canComplain) {
+            const nextButtonLabel = policy.expiresLabel
+                ? `${caseInfo ? 'Gui bao hanh moi den' : 'Bao hanh den'} ${policy.expiresLabel}`
+                : (caseInfo ? 'Gui bao hanh moi' : 'Bao hanh');
+            return `
+                <button class="booking-action-button booking-action-button--danger btn-complaint" type="button" data-id="${booking.id}" title="${escapeHtml(nextButtonLabel)}">
+                    <span class="material-symbols-outlined">verified_user</span>${escapeHtml(nextButtonLabel)}
+                </button>
+            `;
+        }
+
+        if (policy.reason === 'expired') {
+            const expiredLabel = policy.expiresLabel ? `Het bao hanh tu ${policy.expiresLabel}` : 'Het han bao hanh';
+            return `
+                <button class="booking-action-button booking-action-button--danger btn-complaint is-disabled" type="button" data-id="${booking.id}" disabled style="opacity: 0.5; cursor: not-allowed;" title="${escapeHtml(expiredLabel)}">
+                    <span class="material-symbols-outlined">verified_user</span>${escapeHtml(expiredLabel)}
+                </button>
+            `;
+        }
+
+        if (caseInfo) {
+            return buildComplaintCaseSummaryHtmlV2(caseInfo);
+        }
+
         return '';
     };
 
     const buildReviewActionHtml = (booking) => {
         const review = getLatestReview(booking);
-        const complaintActionHtml = buildComplaintActionHtml(booking);
+        const complaintActionHtml = buildComplaintActionHtmlV2(booking);
         if (!review) {
             return `
                 <button class="booking-action-button booking-action-button--primary btn-review" type="button" data-id="${booking.id}" data-worker="${escapeHtml(booking.tho?.name || 'thợ đã hỗ trợ đơn này')}">
@@ -342,6 +574,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getStoredCostItems = (booking, key) => Array.isArray(booking?.[key]) ? booking[key].filter(Boolean) : [];
+    const bookingHasReplacementParts = (booking) => {
+        const partItems = getStoredCostItems(booking, 'chi_tiet_linh_kien');
+        if (partItems.length) {
+            return true;
+        }
+
+        if (Number(booking?.phi_linh_kien || 0) > 0) {
+            return true;
+        }
+
+        return String(booking?.ghi_chu_linh_kien || '').trim() !== '';
+    };
 
     const getBookingTotal = (booking) => {
         const total = Number(booking.tong_tien || 0);

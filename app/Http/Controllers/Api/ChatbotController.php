@@ -92,6 +92,7 @@ class ChatbotController extends Controller
             $assistantPayload['assistant_text'],
             [
                 'cases' => $assistantPayload['cases'],
+                'show_cases' => (bool) ($assistantPayload['show_cases'] ?? false),
                 'technicians' => $assistantPayload['technicians'],
                 'services' => $assistantPayload['services'] ?? [],
                 'services_more_url' => $assistantPayload['services_more_url'] ?? null,
@@ -161,6 +162,7 @@ class ChatbotController extends Controller
         return response()->json([
             'assistant_text' => $assistantPayload['assistant_text'] ?? '',
             'cases' => $assistantPayload['cases'] ?? [],
+            'show_cases' => (bool) ($assistantPayload['show_cases'] ?? false),
             'technicians' => $assistantPayload['technicians'] ?? [],
             'services' => $assistantPayload['services'] ?? [],
             'services_more_url' => $assistantPayload['services_more_url'] ?? null,
@@ -305,6 +307,20 @@ class ChatbotController extends Controller
             ]);
         }
 
+        $unsupportedIssueService = $this->serviceSearchIntentService->detectUnsupportedIssueService($text);
+        if ($unsupportedIssueService['is_unsupported_service_issue']) {
+            return $this->finalizeAssistantPayload($text, [
+                'assistant_text' => $this->buildUnsupportedServiceAssistantText(
+                    (string) ($unsupportedIssueService['requested_service_name'] ?? '')
+                ),
+                'cases' => [],
+                'technicians' => [],
+                'youtube_links' => [],
+                'model' => null,
+                'ai' => $this->deterministicAiMeta('unsupported_service_rule'),
+            ]);
+        }
+
         if ($serviceSearchIntent['is_service_search']) {
             $technicians = $this->technicianRecommendationService->recommend(
                 $text,
@@ -397,6 +413,7 @@ class ChatbotController extends Controller
         );
 
         $payload['assistant_text'] = $assistantText;
+        $payload['show_cases'] = (bool) ($payload['show_cases'] ?? false);
 
         return $payload;
     }

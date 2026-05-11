@@ -24,6 +24,7 @@ export function createBookingDetailModalController({
   getBookingTotal,
   getStatusLabel,
   getLocationLabel,
+  getBookingComplaintCase,
 }) {
   const content = document.getElementById('bookingDetailContent');
   const modalEl = document.getElementById('modalViewDetails');
@@ -194,6 +195,67 @@ export function createBookingDetailModalController({
     Number(booking?.tho_id || 0) === Number(workerId || 0) && getWarrantyStatusMeta(booking, item).canConfirm,
   );
 
+  const getComplaintCaseStatusLabel = (complaintCase) => complaintCase?.status_label || ({
+    new: 'Khach vua tao case',
+    worker_notified: 'Da gui cho tho',
+    accepted: 'Tho da nhan',
+    in_progress: 'Dang xu ly',
+    completed: 'Da hoan tat',
+    rejected: 'Da tu choi',
+    expired: 'Het han',
+  }[String(complaintCase?.status || '')] || 'Bao hanh');
+
+  const renderComplaintCaseActionButtons = (booking, complaintCase) => {
+    const status = String(complaintCase?.status || '');
+
+    if (status === 'new' || status === 'worker_notified') {
+      return `
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="button" class="dispatch-btn dispatch-btn--primary" onclick="updateComplaintStatus(${booking.id}, 'accepted')">
+            <span class="material-symbols-outlined">task_alt</span>
+            Nhan bao hanh
+          </button>
+          <button type="button" class="dispatch-btn dispatch-btn--ghost" onclick="updateComplaintStatus(${booking.id}, 'rejected')">
+            <span class="material-symbols-outlined">close</span>
+            Tu choi
+          </button>
+        </div>
+      `;
+    }
+
+    if (status === 'accepted') {
+      return `
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="button" class="dispatch-btn dispatch-btn--primary" onclick="updateComplaintStatus(${booking.id}, 'in_progress')">
+            <span class="material-symbols-outlined">play_arrow</span>
+            Bat dau xu ly
+          </button>
+          <button type="button" class="dispatch-btn dispatch-btn--ghost" onclick="updateComplaintStatus(${booking.id}, 'rejected')">
+            <span class="material-symbols-outlined">close</span>
+            Tu choi
+          </button>
+        </div>
+      `;
+    }
+
+    if (status === 'in_progress') {
+      return `
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="button" class="dispatch-btn dispatch-btn--primary" onclick="updateComplaintStatus(${booking.id}, 'completed')">
+            <span class="material-symbols-outlined">task_alt</span>
+            Hoan tat bao hanh
+          </button>
+          <button type="button" class="dispatch-btn dispatch-btn--ghost" onclick="updateComplaintStatus(${booking.id}, 'rejected')">
+            <span class="material-symbols-outlined">close</span>
+            Tu choi
+          </button>
+        </div>
+      `;
+    }
+
+    return '';
+  };
+
   const renderCostItemCards = (items, emptyMessage, type, booking = null) => {
     if (!items.length) {
       return `<div class="dispatch-inline-note">${emptyMessage}</div>`;
@@ -268,6 +330,7 @@ export function createBookingDetailModalController({
       ? `Khoảng cách đo được: ${getNumeric(booking.khoang_cach).toFixed(1)} km`
       : 'Khách tự mang thiết bị đến cửa hàng';
 
+    const complaintCase = getBookingComplaintCase(booking);
     const contactIssue = booking?.worker_contact_issue || null;
     const canReportCustomerUnreachable = Number(booking?.tho_id || 0) === Number(workerId || 0)
       && ['da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang'].includes(booking?.trang_thai);
@@ -305,6 +368,32 @@ export function createBookingDetailModalController({
                   <span>${escapeHtml(contactIssue?.is_open ? 'Cập nhật báo admin' : 'Báo admin hỗ trợ')}</span>
                 </button>`
               : ''}
+          </div>
+        `
+      : '';
+
+    const complaintCaseMarkup = complaintCase
+      ? `
+          <div class="dispatch-note-card mt-4">
+            <div class="dispatch-note-card__label">Case bao hanh</div>
+            <div class="dispatch-note-card__hint">${escapeHtml(getComplaintCaseStatusLabel(complaintCase))}</div>
+            <div class="dispatch-detail-list mt-3">
+              <div class="dispatch-detail-item">
+                <span class="dispatch-detail-item__label">Ly do</span>
+                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.reason_label || 'Khach hang gui bao hanh')}</div>
+              </div>
+              <div class="dispatch-detail-item">
+                <span class="dispatch-detail-item__label">Thoi diem gui</span>
+                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.requested_label || 'Chua cap nhat')}</div>
+              </div>
+              <div class="dispatch-detail-item">
+                <span class="dispatch-detail-item__label">Han bao hanh</span>
+                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.warranty_expires_label || 'Chua cap nhat')}</div>
+              </div>
+            </div>
+            ${complaintCase?.note ? `<div class="dispatch-inline-note mt-3">${nl2brSafe(complaintCase.note)}</div>` : ''}
+            ${complaintCase?.worker_response_note ? `<div class="dispatch-inline-note mt-3">${nl2brSafe(complaintCase.worker_response_note)}</div>` : ''}
+            ${renderComplaintCaseActionButtons(booking, complaintCase)}
           </div>
         `
       : '';
@@ -373,7 +462,7 @@ export function createBookingDetailModalController({
 
           <div class="dispatch-cost-breakdown">
             <div class="dispatch-cost-row">
-              <span>Phí đi lại</span>
+              <span>Phí đi lại khách thanh toán</span>
               <strong>${formatMoney(getNumeric(booking.phi_di_lai))}</strong>
             </div>
             <div class="dispatch-cost-row">
@@ -433,6 +522,7 @@ export function createBookingDetailModalController({
           </div>
 
           ${contactIssueMarkup}
+          ${complaintCaseMarkup}
         </div>
       </div>
     `;
@@ -461,6 +551,3 @@ export function createBookingDetailModalController({
     open,
   };
 }
-
-
-
