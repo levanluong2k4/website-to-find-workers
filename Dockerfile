@@ -12,6 +12,8 @@ COPY . .
 
 RUN composer install --optimize-autoloader --no-dev --no-interaction
 
+RUN cp -n .env.example .env || true
+
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
@@ -21,4 +23,7 @@ RUN a2enmod rewrite
 
 EXPOSE 80
 
-CMD php artisan config:cache && php artisan route:cache && apache2-foreground
+CMD php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan view:clear && \
+    apache2-foreground
