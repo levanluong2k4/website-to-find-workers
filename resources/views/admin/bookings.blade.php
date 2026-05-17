@@ -218,6 +218,25 @@
             </button>
         </div>
 
+        <div id="lateWorkerSummary" class="hidden order-2 px-6 py-2.5 border-b border-surface-container bg-red-50/70">
+            <div class="rounded-2xl border border-error/15 bg-gradient-to-r from-red-50 via-amber-50 to-white p-4">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <div class="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-error">
+                            <span class="material-symbols-outlined text-[16px]">warning</span>
+                            Thợ trễ hẹn
+                        </div>
+                        <h3 class="mt-3 text-lg font-bold text-on-surface">Thống kê thợ có đơn bắt đầu muộn</h3>
+                        <p id="lateWorkerSummaryMeta" class="mt-1 text-sm text-on-surface-variant">Đang tổng hợp dữ liệu trễ hẹn...</p>
+                    </div>
+                    <div class="text-xs text-on-surface-variant lg:max-w-[320px]">
+                        Hệ thống nhóm theo thợ phụ trách trong bộ lọc hiện tại và đếm các đơn bắt đầu sau khi khung giờ hẹn đã kết thúc.
+                    </div>
+                </div>
+                <div id="lateWorkerSummaryList" class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"></div>
+            </div>
+        </div>
+
         <!-- More Filters (Collapsible) -->
         <div id="moreFiltersSection" class="bg-surface-container-low/50 border-b border-surface-container p-6 transition-all duration-300 hidden">
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -255,12 +274,22 @@
                         Trạng thái SLA
                         <span class="inline-block bg-error text-white text-[10px] px-1.5 rounded ml-1" id="orderSlaAlertBadge" hidden>0</span>
                     </label>
-                    <div id="orderSlaDropdown" class="hidden">
-                        <button type="button" id="orderSlaDropdownToggle"><span id="orderSlaDropdownLabel"></span></button>
-                        <div id="orderSlaDropdownMenu"></div>
+                    <div id="orderSlaDropdown" class="admin-orders-sla-dropdown hidden">
+                        <button
+                            type="button"
+                            id="orderSlaDropdownToggle"
+                            class="admin-orders-sla-dropdown__toggle relative w-full rounded-lg border border-outline-variant bg-surface-container-lowest py-2 pl-3 pr-10 text-left text-sm text-on-surface focus:ring-1 focus:ring-primary"
+                            aria-haspopup="listbox"
+                            aria-expanded="false"
+                        >
+                            <span id="orderSlaDropdownLabel" class="block truncate">Tất cả SLA</span>
+                            <span class="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant">expand_more</span>
+                        </button>
+                        <div id="orderSlaDropdownMenu" class="admin-orders-sla-dropdown__menu" role="listbox" hidden></div>
                     </div>
                     <select id="orderSlaFilter" class="w-full py-2 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm focus:ring-1 focus:ring-primary">
                         <option value="">Tất cả SLA</option>
+                        <option value="late">Trễ hẹn</option>
                     </select>
                 </div>
                 <!-- Date Range -->
@@ -296,7 +325,7 @@
         </div>
 
         <!-- Bulk Actions -->
-        <div id="bulkActionBar" class="bg-primary-fixed/30 px-6 py-3 flex items-center justify-between border-b border-surface-container" hidden>
+        <div id="bulkActionBar" class="order-1 bg-primary-fixed/30 px-6 py-3 flex items-center justify-between border-b border-surface-container" hidden>
             <span class="text-sm font-medium text-on-surface">Đã chọn <strong id="bulkSelectedCount">0</strong> đơn</span>
             <div class="flex gap-2">
                 <button type="button" id="btnBulkAssignWorker" class="text-xs font-medium px-3 py-1.5 bg-surface-container-lowest rounded-md shadow-sm hover:bg-surface transition-colors border border-outline-variant/30">Gán/đổi thợ</button>
@@ -307,7 +336,7 @@
         </div>
 
         <!-- Table -->
-        <div class="overflow-x-auto">
+        <div class="order-3 overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-surface/50 text-xs font-label uppercase tracking-wider text-on-surface-variant border-b border-surface-container">
@@ -332,7 +361,7 @@
         </div>
 
         <!-- Pagination -->
-        <div id="orderPagination" class="p-4 border-t border-surface-container flex items-center justify-between text-sm text-on-surface-variant bg-surface/30">
+        <div id="orderPagination" class="order-4 p-4 border-t border-surface-container flex items-center justify-between text-sm text-on-surface-variant bg-surface/30">
         </div>
     </div>
 </main>
@@ -435,6 +464,7 @@
                     <select id="detailRescheduleSlot" class="w-full py-2 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm focus:ring-1 focus:ring-primary mb-3">
                         <option value="">Chọn khung giờ</option>
                     </select>
+                    <p id="detailRescheduleHint" class="text-[11px] text-on-surface-variant mb-3">Chỉ được đổi trong khung ngày/giờ hợp lệ như phía khách đặt lịch.</p>
                     <button type="button" class="w-full py-2 px-4 bg-surface-container hover:bg-surface-container-high text-primary rounded-lg text-sm font-medium transition-colors border border-primary/20" id="btnRescheduleBooking">Cập nhật lịch</button>
                 </div>
 
@@ -572,7 +602,8 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div class="flex flex-col gap-1">
                                 <label class="text-xs text-on-surface-variant" for="detailTravelCost">Phí đi lại (₫)</label>
-                                <input type="number" min="0" step="1000" id="detailTravelCost" class="w-full py-2 px-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm focus:ring-1 focus:ring-primary">
+                                <input type="number" min="0" step="1000" id="detailTravelCost" readonly class="w-full py-2 px-3 bg-surface-container border border-outline-variant rounded-lg text-sm text-on-surface-variant cursor-not-allowed">
+                                <p class="text-[11px] text-on-surface-variant">Tự tính theo quãng đường đặt lịch. Admin chỉ xem, không chỉnh tay.</p>
                             </div>
                             <div class="flex flex-col gap-1">
                                 <label class="text-xs text-on-surface-variant" for="detailTransportCost">Phí vận chuyển (₫)</label>

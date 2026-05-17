@@ -1271,6 +1271,162 @@ window.confirmPartWarranty = async function(id, partIndex) {
   }
 };
 
+const submitComplaintStatusFormData = async (bookingId, formData) => {
+  const token = localStorage.getItem('access_token');
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${baseUrl}/api/don-dat-lich/${bookingId}/complaint/status`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  return {
+    status: response.status,
+    ok: response.ok,
+    data,
+  };
+};
+
+const promptWarrantyCompletionEvidence = async (booking, complaintCase, initialNote = '') => {
+  if (typeof Swal === 'undefined') {
+    return {
+      isConfirmed: true,
+      value: {
+        note: String(window.prompt('Nhap ghi chu hoan tat bao hanh (khong bat buoc):', initialNote) || '').trim(),
+        imageFiles: [],
+        videoFile: null,
+      },
+    };
+  }
+
+  const previewUrls = [];
+  const revokePreviewUrls = () => {
+    while (previewUrls.length) {
+      URL.revokeObjectURL(previewUrls.pop());
+    }
+  };
+
+  const renderPreview = (popup) => {
+    if (!popup) {
+      return;
+    }
+
+    const imageInput = popup.querySelector('#warrantyCompletionImages');
+    const videoInput = popup.querySelector('#warrantyCompletionVideo');
+    const summary = popup.querySelector('#warrantyCompletionSummary');
+    const preview = popup.querySelector('#warrantyCompletionPreview');
+    if (!imageInput || !videoInput || !summary || !preview) {
+      return;
+    }
+
+    const imageFiles = Array.from(imageInput.files || []).slice(0, 5);
+    const videoFile = videoInput.files?.[0] || null;
+
+    summary.textContent = `${imageFiles.length}/5 anh • ${videoFile ? '1/1 video' : '0/1 video'}`;
+    revokePreviewUrls();
+
+    const imageCards = imageFiles.map((file) => {
+      const url = URL.createObjectURL(file);
+      previewUrls.push(url);
+      return `
+        <figure style="margin:0;display:grid;gap:6px;">
+          <img src="${url}" alt="${escapeHtml(file.name)}" style="width:100%;height:92px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,0.3);">
+          <figcaption style="font-size:12px;color:#475569;word-break:break-word;">${escapeHtml(file.name)}</figcaption>
+        </figure>
+      `;
+    });
+
+    const videoCard = videoFile
+      ? (() => {
+        const url = URL.createObjectURL(videoFile);
+        previewUrls.push(url);
+        return `
+          <figure style="margin:0;display:grid;gap:6px;">
+            <video src="${url}" controls preload="metadata" style="width:100%;height:92px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,0.3);"></video>
+            <figcaption style="font-size:12px;color:#475569;word-break:break-word;">${escapeHtml(videoFile.name)}</figcaption>
+          </figure>
+        `;
+      })()
+      : '';
+
+    preview.innerHTML = imageCards.length || videoCard
+      ? `${imageCards.join('')}${videoCard}`
+      : '<div style="grid-column:1 / -1;padding:12px;border:1px dashed rgba(148,163,184,0.45);border-radius:12px;color:#64748b;font-size:13px;">Chua co tep minh chung duoc chon.</div>';
+  };
+
+  return Swal.fire({
+    title: `Hoan tat bao hanh #${escapeHtml(booking?.id || '')}`,
+    html: `
+      <div style="display:grid;gap:14px;text-align:left;">
+        <div style="padding:12px 14px;border-radius:16px;background:#f8fafc;border:1px solid rgba(148,163,184,0.2);color:#334155;font-size:13px;line-height:1.6;">
+          ${escapeHtml(complaintCase?.reason_label || 'Case bao hanh')}${complaintCase?.requested_label ? ` • Gui luc ${escapeHtml(complaintCase.requested_label)}` : ''}
+        </div>
+        <label style="display:grid;gap:6px;">
+          <span style="font-size:13px;font-weight:700;color:#0f172a;">Ghi chu hoan tat</span>
+          <textarea id="warrantyCompletionNote" class="swal2-textarea" style="margin:0;width:100%;min-height:110px;" placeholder="Mo ta da bao hanh gi, da thay gi, may dang hoat dong nhu the nao...">${escapeHtml(initialNote)}</textarea>
+        </label>
+        <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+          <label style="display:grid;gap:6px;">
+            <span style="font-size:13px;font-weight:700;color:#0f172a;">Anh minh chung</span>
+            <input id="warrantyCompletionImages" type="file" accept="image/*" multiple class="swal2-file" style="display:block;width:100%;margin:0;">
+            <span style="font-size:12px;color:#64748b;">Toi da 5 anh.</span>
+          </label>
+          <label style="display:grid;gap:6px;">
+            <span style="font-size:13px;font-weight:700;color:#0f172a;">Video minh chung</span>
+            <input id="warrantyCompletionVideo" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv" class="swal2-file" style="display:block;width:100%;margin:0;">
+            <span style="font-size:12px;color:#64748b;">Tuy chon, nen quay thao tac test may.</span>
+          </label>
+        </div>
+        <div style="display:grid;gap:8px;">
+          <div id="warrantyCompletionSummary" style="font-size:12px;font-weight:700;color:#475569;">0/5 anh • 0/1 video</div>
+          <div id="warrantyCompletionPreview" style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));"></div>
+        </div>
+      </div>
+    `,
+    width: 760,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Hoan tat bao hanh',
+    cancelButtonText: 'Dong',
+    didOpen: () => {
+      const popup = Swal.getPopup();
+      popup?.querySelector('#warrantyCompletionImages')?.addEventListener('change', () => renderPreview(popup));
+      popup?.querySelector('#warrantyCompletionVideo')?.addEventListener('change', () => renderPreview(popup));
+      renderPreview(popup);
+    },
+    preConfirm: () => {
+      const popup = Swal.getPopup();
+      const imageInput = popup?.querySelector('#warrantyCompletionImages');
+      const videoInput = popup?.querySelector('#warrantyCompletionVideo');
+      const noteInput = popup?.querySelector('#warrantyCompletionNote');
+      const imageFiles = Array.from(imageInput?.files || []);
+
+      if (imageFiles.length > 5) {
+        Swal.showValidationMessage('Ban chi duoc tai toi da 5 anh minh chung.');
+        return false;
+      }
+
+      return {
+        note: String(noteInput?.value || '').trim(),
+        imageFiles,
+        videoFile: videoInput?.files?.[0] || null,
+      };
+    },
+    willClose: () => {
+      revokePreviewUrls();
+    },
+  });
+};
+
 window.updateComplaintStatus = async function(id, status, options = {}) {
   const booking = window.allBookings.find((item) => item.id === id);
   const complaintCase = getBookingComplaintCase(booking);
@@ -1281,6 +1437,21 @@ window.updateComplaintStatus = async function(id, status, options = {}) {
   }
 
   let note = String(options.note || '').trim();
+  let completionPayload = null;
+  if (status === 'completed') {
+    const completionResult = await promptWarrantyCompletionEvidence(booking, complaintCase, note);
+    if (!completionResult?.isConfirmed) {
+      return;
+    }
+
+    completionPayload = completionResult.value || {
+      note: '',
+      imageFiles: [],
+      videoFile: null,
+    };
+    note = String(completionPayload.note || '').trim();
+  }
+
   if (status === 'rejected' && !note) {
     if (typeof Swal !== 'undefined') {
       const result = await Swal.fire({
@@ -1312,10 +1483,27 @@ window.updateComplaintStatus = async function(id, status, options = {}) {
   }
 
   try {
-    const response = await callApi(`/don-dat-lich/${id}/complaint/status`, 'PUT', {
-      status,
-      note,
-    });
+    let response;
+
+    if (status === 'completed') {
+      const formData = new FormData();
+      formData.append('_method', 'PUT');
+      formData.append('status', status);
+      formData.append('note', note);
+      (completionPayload?.imageFiles || []).forEach((file) => {
+        formData.append('hinh_anh_ket_qua[]', file);
+      });
+      if (completionPayload?.videoFile) {
+        formData.append('video_ket_qua', completionPayload.videoFile);
+      }
+
+      response = await submitComplaintStatusFormData(id, formData);
+    } else {
+      response = await callApi(`/don-dat-lich/${id}/complaint/status`, 'PUT', {
+        status,
+        note,
+      });
+    }
 
     if (!response.ok) {
       showToast(response.data?.message || 'Khong the cap nhat case bao hanh.', 'error');

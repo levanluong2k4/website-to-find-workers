@@ -291,7 +291,7 @@ export function createBookingDetailModalController({
     `;
   };
 
-  const renderMediaGrid = (images = [], video = '') => {
+  const renderMediaGrid = (images = [], video = '', emptyText = 'KhÃ¡ch hÃ ng chÆ°a gá»­i áº£nh mÃ´ táº£.') => {
     const imageCards = images.length
       ? `<div class="dispatch-media-grid">${images.map((img) => `
           <a class="dispatch-media-card" href="${escapeHtml(img)}" target="_blank" rel="noopener">
@@ -393,6 +393,18 @@ export function createBookingDetailModalController({
             </div>
             ${complaintCase?.note ? `<div class="dispatch-inline-note mt-3">${nl2brSafe(complaintCase.note)}</div>` : ''}
             ${complaintCase?.worker_response_note ? `<div class="dispatch-inline-note mt-3">${nl2brSafe(complaintCase.worker_response_note)}</div>` : ''}
+            <h3 class="dispatch-panel__title mt-4">Khach gui kem yeu cau bao hanh</h3>
+            ${renderMediaGrid(
+              Array.isArray(complaintCase?.images) ? complaintCase.images : [],
+              complaintCase?.video || ''
+            )}
+            <h3 class="dispatch-panel__title mt-4">Minh chung tho hoan tat bao hanh</h3>
+            ${((Array.isArray(complaintCase?.worker_result_images) && complaintCase.worker_result_images.length > 0) || complaintCase?.worker_result_video)
+              ? renderMediaGrid(
+                Array.isArray(complaintCase?.worker_result_images) ? complaintCase.worker_result_images : [],
+                complaintCase?.worker_result_video || ''
+              )
+              : '<div class="dispatch-inline-note">Tho chua tai len minh chung sau khi hoan tat bao hanh.</div>'}
             ${renderComplaintCaseActionButtons(booking, complaintCase)}
           </div>
         `

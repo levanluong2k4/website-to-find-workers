@@ -219,6 +219,14 @@
     background: #dc2626;
 }
 
+.admin-orders-sla-dropdown__badge.is-success {
+    background: #16a34a;
+}
+
+.admin-orders-sla-dropdown__badge.is-muted {
+    background: #94a3b8;
+}
+
 .admin-orders-sla-dropdown__native {
     display: none !important;
 }
@@ -378,6 +386,64 @@
 .admin-orders-pagination-meta {
     color: #475569;
     font-size: 0.84rem;
+}
+
+#lateWorkerSummary .rounded-2xl {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+#lateWorkerSummary .rounded-2xl > .flex {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#lateWorkerSummary .rounded-2xl > .flex > div:first-child > .inline-flex,
+#lateWorkerSummary .rounded-2xl > .flex > div:first-child > h3,
+#lateWorkerSummary .rounded-2xl > .flex > div:last-child {
+    display: none;
+}
+
+#lateWorkerSummary #lateWorkerSummaryMeta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #b91c1c;
+}
+
+#lateWorkerSummary #lateWorkerSummaryList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0;
+}
+
+.admin-orders-late-worker-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #fecaca;
+    color: #7f1d1d;
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.admin-orders-late-worker-chip strong {
+    font-size: 0.72rem;
+}
+
+.admin-orders-late-worker-chip span {
+    color: #b91c1c;
+    font-weight: 700;
 }
 
 /* Drawer: managed by Tailwind utility classes in bookings.blade.php */

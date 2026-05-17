@@ -105,7 +105,7 @@ export function createWorkerBoardRenderer({
           </div>
           <div class="dispatch-workflow__item ${pricingReady ? 'is-current' : 'is-locked'}">
             <span class="dispatch-workflow__icon material-symbols-outlined">${pricingReady ? 'arrow_forward' : 'lock'}</span>
-            <span>${pricingReady ? 'San sang bao hoan thanh' : 'Khoa cho den khi cap nhat gia'}</span>
+            <span>${pricingReady ? 'Sẵn sàng báo hoàn thành' : 'Khóa cho đến khi cập nhật giá'}</span>
           </div>
         </div>
       </div>
@@ -114,9 +114,9 @@ export function createWorkerBoardRenderer({
 
   const renderSummaryBox = (booking) => `
     <div class="dispatch-summary-box">
-      <span class="dispatch-summary-box__label">Tong chi phi</span>
+      <span class="dispatch-summary-box__label">Tổng chi phí</span>
       <span class="dispatch-summary-box__value">${formatMoney(getBookingTotal(booking))}</span>
-      <span class="dispatch-summary-box__hint">Da san sang de khach thanh toan.</span>
+      <span class="dispatch-summary-box__hint">Đã sẵn sàng để khách thanh toán</span>
     </div>
   `;
 
@@ -326,8 +326,8 @@ export function createWorkerBoardRenderer({
         icon: 'verified_user',
         title: getComplaintCaseStatusLabel(complaintCase),
         body: complaintCase?.worker_response_note
-          || complaintCase?.note
-          || 'Don nay dang co case bao hanh can duoc theo doi va cap nhat.',
+          || complaintCase?.note,
+          
       };
     }
 
@@ -542,9 +542,9 @@ export function createWorkerBoardRenderer({
       actions.push(renderBoardButton({
         variant: pricingReady ? 'main-warm' : 'main',
         icon: pricingReady ? 'task_alt' : 'price_change',
-        label: pricingReady ? 'Bao hoan thanh' : 'Cap nhat gia',
+        label: pricingReady ? 'Báo hoàn thành' : 'Cập nhật giá',
         onclick: pricingReady ? `openCompleteModal(${booking.id})` : `openCostModal(${booking.id})`,
-        title: pricingReady ? 'San sang bao hoan thanh' : 'Cap nhat bang gia sua chua',
+        title: pricingReady ? 'Sẵn sàng báo bảo hành' : 'Cập nhật bảng giá sửa chữa',
       }));
       actions.push(renderBoardButton({
         variant: 'secondary',

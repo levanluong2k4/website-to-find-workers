@@ -56,6 +56,7 @@ class DonDatLich extends Model
         'loai_dat_lich',
         'thoi_gian_hen',
         'worker_reminder_sent_at',
+        'thoi_gian_bat_dau_sua',
         'worker_contact_issue_reported_at',
         'worker_contact_issue_resolved_at',
         'worker_contact_issue_reported_by',
@@ -94,6 +95,7 @@ class DonDatLich extends Model
     protected $casts = [
         'thoi_gian_hen' => 'datetime',
         'worker_reminder_sent_at' => 'datetime',
+        'thoi_gian_bat_dau_sua' => 'datetime',
         'worker_contact_issue_reported_at' => 'datetime',
         'worker_contact_issue_resolved_at' => 'datetime',
         'thoi_gian_hoan_thanh' => 'datetime',
@@ -321,6 +323,7 @@ class DonDatLich extends Model
         $now = now();
         $isExpired = $expiresAt ? $now->gt($expiresAt) : true;
         $openCaseExists = (bool) ($warrantyCase['is_open'] ?? false);
+        $hasUsedWarranty = (string) ($warrantyCase['status'] ?? '') === 'completed';
         $reason = 'not_completed';
         $canRequest = false;
 
@@ -330,6 +333,8 @@ class DonDatLich extends Model
             $reason = 'no_worker';
         } elseif ($openCaseExists) {
             $reason = 'case_open';
+        } elseif ($hasUsedWarranty) {
+            $reason = 'used';
         } elseif (!$isExpired) {
             $canRequest = true;
             $reason = '';
@@ -349,6 +354,7 @@ class DonDatLich extends Model
             'is_active' => !$isExpired && $this->isCompleted(),
             'is_expired' => $isExpired,
             'open_case_exists' => $openCaseExists,
+            'has_used_warranty' => $hasUsedWarranty,
             'warranty_case' => $warrantyCase,
             'complaint_case' => $warrantyCase,
         ];
@@ -376,6 +382,7 @@ class DonDatLich extends Model
         $workerRespondedAt = $this->parseWarrantyCaseTimestamp($snapshot['worker_response_at'] ?? null);
         $closedAt = $case->resolved_at instanceof Carbon ? $case->resolved_at->copy() : $case->resolved_at;
         $video = trim((string) ($snapshot['video'] ?? ''));
+        $workerResultVideo = trim((string) ($snapshot['worker_result_video'] ?? ''));
 
         return [
             'id' => (int) $case->id,
@@ -386,8 +393,10 @@ class DonDatLich extends Model
             'reason_code' => trim((string) ($snapshot['reason_code'] ?? '')),
             'reason_label' => trim((string) ($snapshot['reason_label'] ?? '')),
             'note' => trim((string) ($snapshot['note'] ?? '')),
-            'images' => array_values(array_filter((array) ($snapshot['images'] ?? []))),
+            'images' => $this->normalizeWarrantyCaseMedia($snapshot['images'] ?? []),
             'video' => $video !== '' ? $video : null,
+            'worker_result_images' => $this->normalizeWarrantyCaseMedia($snapshot['worker_result_images'] ?? []),
+            'worker_result_video' => $workerResultVideo !== '' ? $workerResultVideo : null,
             'requested_at' => $requestedAt?->toIso8601String(),
             'requested_label' => $requestedAt?->format('d/m/Y H:i'),
             'warranty_expires_at' => $warrantyExpiresAt?->toIso8601String(),
@@ -398,6 +407,15 @@ class DonDatLich extends Model
             'closed_at' => $closedAt?->toIso8601String(),
             'closed_label' => $closedAt?->format('d/m/Y H:i'),
         ];
+    }
+
+    private function normalizeWarrantyCaseMedia(mixed $value): array
+    {
+        return collect((array) $value)
+            ->map(static fn ($item) => trim((string) $item))
+            ->filter(static fn (string $item) => $item !== '')
+            ->values()
+            ->all();
     }
 
     private function resolveWarrantyStatusTone(string $status): string

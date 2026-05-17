@@ -169,6 +169,39 @@ class WorkerContactIssueFlowTest extends TestCase
             ->assertJsonPath('data.status_key', 'da_xac_nhan');
     }
 
+    public function test_admin_booking_detail_exposes_reschedule_policy_with_customer_window_rules(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-16 08:30:00'));
+
+        try {
+            $admin = $this->createUser('contact-admin-3@example.com', 'admin');
+            $worker = $this->createUser('contact-worker-3@example.com', 'worker');
+            $customer = $this->createUser('contact-customer-3@example.com', 'customer');
+            $serviceId = $this->createService('Sua dieu hoa');
+            $this->attachWorkerService($worker->id, $serviceId);
+            $bookingId = $this->createAssignedUpcomingBooking($customer->id, $worker->id, $serviceId);
+
+            Sanctum::actingAs($admin);
+
+            $response = $this->getJson('/api/admin/bookings/' . $bookingId);
+
+            $response->assertOk()
+                ->assertJsonPath('data.reschedule_policy.can_reschedule', true)
+                ->assertJsonPath('data.reschedule_policy.status_allows_reschedule', true)
+                ->assertJsonPath('data.reschedule_policy.window_days', 7)
+                ->assertJsonPath('data.reschedule_policy.minimum_allowed_date', '2026-05-16')
+                ->assertJsonPath('data.reschedule_policy.minimum_allowed_slot', '12:00-14:00')
+                ->assertJsonPath('data.reschedule_policy.maximum_allowed_date', '2026-05-22');
+
+            $this->assertSame(
+                ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-17:00'],
+                $response->json('data.reschedule_policy.time_slots')
+            );
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
     private function createUser(string $email, string $role): User
     {
         $user = User::query()->create([

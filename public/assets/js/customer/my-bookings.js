@@ -256,6 +256,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const policy = getComplaintPolicy(booking);
+        if (!policy.canComplain) {
+            let message = 'Đơn này hiện chưa thể gửi bảo hành.';
+            if (policy.reason === 'expired') {
+                message = policy.expiresLabel
+                    ? `Đơn này đã hết bảo hành từ ${policy.expiresLabel}.`
+                    : 'Đơn này đã hết thời hạn bảo hành.';
+            } else if (policy.reason === 'used') {
+                message = 'Đơn này đã sử dụng xong 1 lần bảo hành nên không thể gửi thêm yêu cầu mới.';
+            }
+
+            showToast(message, 'error');
+            return;
+        }
+
         resetComplaintFormState();
         syncComplaintReasonOptions(booking);
         complaintBookingId.value = booking.id || '';
@@ -391,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tone: 'success',
                 icon: 'task_alt',
                 title: 'Bảo hành đã hoàn tất',
-                hint: 'Ca bảo hành này đã được xử lý xong.',
+                hint: 'Ca bảo hành này đã được xử lý xong và đơn hàng đã dùng hết lượt bảo hành.',
             };
         }
 
@@ -400,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tone: 'danger',
                 icon: 'cancel',
                 title: 'Yêu cầu này chưa được tiếp nhận',
-                hint: String(caseInfo?.worker_response_note || '').trim() || 'Thợ đã từ chối yêu cầu bảo hành này.',
+                hint: String(caseInfo?.worker_response_note || '').trim() || 'Thợ đã từ chối yêu cầu bảo hành này. Bạn vẫn có thể gửi lại nếu còn trong thời hạn bảo hành.',
             };
         }
 
@@ -489,6 +504,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return `
                 <button class="booking-action-button booking-action-button--danger btn-complaint is-disabled" type="button" data-id="${booking.id}" disabled style="opacity: 0.5; cursor: not-allowed;" title="${escapeHtml(expiredLabel)}">
                     <span class="material-symbols-outlined">verified_user</span>${escapeHtml(expiredLabel)}
+                </button>
+            `;
+        }
+
+        if (policy.reason === 'used') {
+            const usedLabel = 'Đã bảo hành';
+            return `
+                <button class="booking-action-button booking-action-button--danger btn-complaint is-disabled" type="button" data-id="${booking.id}" disabled style="opacity: 0.5; cursor: not-allowed;" title="${escapeHtml(usedLabel)}">
+                    <span class="material-symbols-outlined">verified_user</span>${escapeHtml(usedLabel)}
                 </button>
             `;
         }

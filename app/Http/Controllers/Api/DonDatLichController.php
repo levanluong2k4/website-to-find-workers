@@ -771,6 +771,7 @@ class DonDatLichController extends Controller
                 $booking->trang_thai = $newStatus;
             } elseif ($newStatus === 'dang_lam' && $booking->trang_thai === 'da_xac_nhan') {
                 $booking->trang_thai = $newStatus;
+                $booking->thoi_gian_bat_dau_sua = $booking->thoi_gian_bat_dau_sua ?? now();
             } elseif ($newStatus === 'cho_hoan_thanh' && $booking->trang_thai === 'dang_lam') {
                 $booking->trang_thai = $newStatus;
             } elseif (
@@ -1137,7 +1138,7 @@ class DonDatLichController extends Controller
         ]);
     }
 
-    public function updateComplaintStatus(Request $request, string $id)
+    public function updateComplaintStatus(Request $request, string $id, CloudinaryUploadService $cloudinaryUploadService)
     {
         $user = $request->user();
         if (!$this->canActAsWorker($user)) {
@@ -1167,6 +1168,9 @@ class DonDatLichController extends Controller
         $validated = $request->validate([
             'status' => 'required|in:accepted,in_progress,completed,rejected',
             'note' => 'nullable|string|max:2000',
+            'hinh_anh_ket_qua' => 'nullable|array|max:5',
+            'hinh_anh_ket_qua.*' => 'nullable|image|max:5120',
+            'video_ket_qua' => 'nullable|mimes:mp4,mov,avi,wmv,webm|max:30720',
         ]);
 
         $nextStatus = (string) $validated['status'];
@@ -1197,6 +1201,29 @@ class DonDatLichController extends Controller
         $snapshot['worker_response_note'] = $note;
         $snapshot['worker_response_by_id'] = (int) $user->id;
         $snapshot['worker_response_by_name'] = (string) ($user->name ?? 'Tho ky thuat');
+
+        if ($nextStatus === 'completed') {
+            $workerResultMedia = $this->uploadWarrantyCaseMedia(
+                $request,
+                $cloudinaryUploadService,
+                'hinh_anh_ket_qua',
+                'video_ket_qua',
+                'complaints/worker-results/images',
+                'complaints/worker-results/videos'
+            );
+
+            if ($workerResultMedia['images'] !== []) {
+                $snapshot['worker_result_images'] = $workerResultMedia['images'];
+            } elseif (!array_key_exists('worker_result_images', $snapshot)) {
+                $snapshot['worker_result_images'] = [];
+            }
+
+            if ($workerResultMedia['video'] !== null) {
+                $snapshot['worker_result_video'] = $workerResultMedia['video'];
+            } elseif (!array_key_exists('worker_result_video', $snapshot)) {
+                $snapshot['worker_result_video'] = null;
+            }
+        }
 
         $case->status = $nextStatus;
         $case->resolved_at = in_array($nextStatus, ['completed', 'rejected'], true) ? $now : null;
@@ -1943,7 +1970,7 @@ class DonDatLichController extends Controller
     private function warrantyReasonLabels(): array
     {
         return [
-            'loi_tai_phat' => 'Loi tai phat sau khi sua',
+            'loi_tai_phat' => 'Lỗi tái phát khi sửa',
             'linh_kien_kem_chat_luong' => 'Linh kien thay the bi loi / kem chat luong',
             'sua_chua_khong_triet_de' => 'Sua chua khong triet de',
             'khac' => 'Ly do khac',
@@ -1954,6 +1981,7 @@ class DonDatLichController extends Controller
     {
         return match ($reason) {
             'case_open' => 'Don nay dang co 1 case bao hanh mo, vui long cho xu ly xong.',
+            'used' => 'Don nay da su dung quyen bao hanh, khong the gui them yeu cau moi.',
             'not_completed' => 'Chi don da hoan thanh moi duoc gui bao hanh.',
             'no_worker' => 'Don nay chua co tho phu trach hop le de bao hanh.',
             'expired' => !empty($policy['expires_label'])
@@ -2024,15 +2052,34 @@ class DonDatLichController extends Controller
 
     private function uploadComplaintMedia(Request $request, CloudinaryUploadService $cloudinaryUploadService): array
     {
+        return $this->uploadWarrantyCaseMedia(
+            $request,
+            $cloudinaryUploadService,
+            'hinh_anh_khieu_nai',
+            'video_khieu_nai',
+            'complaints/images',
+            'complaints/videos'
+        );
+    }
+
+    private function uploadWarrantyCaseMedia(
+        Request $request,
+        CloudinaryUploadService $cloudinaryUploadService,
+        string $imageInputKey,
+        string $videoInputKey,
+        string $imageFolder,
+        string $videoFolder
+    ): array
+    {
         $imageUrls = [];
 
-        foreach ($request->file('hinh_anh_khieu_nai', []) as $file) {
+        foreach ($request->file($imageInputKey, []) as $file) {
             if (!$file instanceof UploadedFile) {
                 continue;
             }
 
             $uploadResult = $cloudinaryUploadService->uploadUploadedFile($file, [
-                'folder' => 'complaints/images',
+                'folder' => $imageFolder,
             ]);
 
             $secureUrl = $this->normalizeComplaintMediaUrl($uploadResult['secure_url'] ?? null);
@@ -2043,9 +2090,9 @@ class DonDatLichController extends Controller
 
         $videoUrl = null;
 
-        if ($request->hasFile('video_khieu_nai')) {
-            $uploadResult = $cloudinaryUploadService->uploadUploadedFile($request->file('video_khieu_nai'), [
-                'folder' => 'complaints/videos',
+        if ($request->hasFile($videoInputKey)) {
+            $uploadResult = $cloudinaryUploadService->uploadUploadedFile($request->file($videoInputKey), [
+                'folder' => $videoFolder,
                 'resource_type' => 'video',
             ]);
 

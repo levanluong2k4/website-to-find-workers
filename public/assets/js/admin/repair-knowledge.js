@@ -1,4 +1,4 @@
-﻿import { callApi, requireRole, showToast } from '../api.js';
+import { callApi, requireRole, showToast } from '../api.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     requireRole('admin');
@@ -1590,10 +1590,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     let resizeTimer = null;
-    window.addEventListener('resize', () => {
+    const handleKnowledgeResize = () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => render(), 120);
-    });
+    };
+    window.addEventListener('resize', handleKnowledgeResize);
+
+    // Cleanup when page is hidden/unloaded to prevent listener accumulation
+    window.addEventListener('pagehide', () => {
+        window.removeEventListener('resize', handleKnowledgeResize);
+        clearTimeout(resizeTimer);
+    }, { once: true });
 
     applyFriendlyCopy();
     syncFiltersFromUrl();

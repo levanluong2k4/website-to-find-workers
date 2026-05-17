@@ -34,6 +34,10 @@ use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
+    private const ADMIN_MIN_FUTURE_RESCHEDULE_SLOTS = 2;
+
+    private const ADMIN_RESCHEDULE_WINDOW_DAYS = 7;
+
     public function getDashboardStats(Request $request)
     {
         $range = $this->resolveDashboardRange($request->query('period'));
@@ -2766,8 +2770,10 @@ class AdminController extends Controller
             default => 'bảo hành khác',
         });
         $note = trim((string) ($snapshot['note'] ?? ''));
-        $complaintImages = array_values(array_filter((array) ($snapshot['images'] ?? [])));
+        $complaintImages = $this->normalizeMediaList($snapshot['images'] ?? []);
         $complaintVideo = trim((string) ($snapshot['video'] ?? ''));
+        $warrantyResultImages = $this->normalizeMediaList($snapshot['worker_result_images'] ?? []);
+        $warrantyResultVideo = trim((string) ($snapshot['worker_result_video'] ?? ''));
         $bookingBeforeImages = $booking ? $this->normalizeMediaList($booking->hinh_anh_mo_ta) : [];
         $bookingBeforeVideos = $booking ? $this->normalizeMediaList($booking->video_mo_ta) : [];
         $bookingAfterImages = $booking ? $this->normalizeMediaList($booking->hinh_anh_ket_qua) : [];
@@ -2822,6 +2828,8 @@ class AdminController extends Controller
             'booking_before_videos' => $bookingBeforeVideos,
             'booking_after_images' => $bookingAfterImages,
             'booking_after_videos' => $bookingAfterVideos,
+            'warranty_result_images' => $warrantyResultImages,
+            'warranty_result_video' => $warrantyResultVideo !== '' ? $warrantyResultVideo : null,
         ];
 
         $case['created_label'] = optional($requestedAt)->format('d/m/Y H:i') ?: ($case['created_label'] ?? 'Khong ro thoi diem');
@@ -3572,9 +3580,11 @@ class AdminController extends Controller
         $filters = $this->resolveAdminBookingFilters($request);
         $now = Carbon::now();
         $rows = $this->buildAdminBookingRows($filters, $now);
+        $slaSummaryRows = $this->applyAdminBookingComputedFilters($rows, array_merge($filters, ['sla' => '']));
         $rows = $this->applyAdminBookingComputedFilters($rows, $filters);
         $rows = $this->sortAdminBookingRows($rows, $filters['sort_by'], $filters['sort_dir']);
         $summary = $this->buildAdminBookingSummary($rows);
+        $slaSummary = $this->buildAdminBookingSummary($slaSummaryRows);
         [$items, $pagination] = $this->paginateAdminBookingRows($rows, $filters['page'], $filters['per_page']);
 
         return response()->json([
@@ -3582,6 +3592,7 @@ class AdminController extends Controller
             'data' => [
                 'items' => $items,
                 'summary' => $summary,
+                'sla_summary' => $slaSummary,
                 'pagination' => $pagination,
                 'filters' => [
                     'search' => $filters['search'],
@@ -3620,6 +3631,7 @@ class AdminController extends Controller
                     'sla_options' => [
                         ['value' => '', 'label' => 'Tất cả SLA'],
                         ['value' => 'overdue', 'label' => 'Quá hạn'],
+                        ['value' => 'late', 'label' => 'Trễ hẹn'],
                         ['value' => 'due_soon', 'label' => 'Sắp quá hạn'],
                         ['value' => 'on_track', 'label' => 'Đúng hạn'],
                         ['value' => 'closed', 'label' => 'Đã đóng'],
@@ -3786,7 +3798,6 @@ class AdminController extends Controller
         $validator = Validator::make($request->all(), [
             'tien_cong' => 'nullable|numeric|min:0',
             'phi_linh_kien' => 'nullable|numeric|min:0',
-            'phi_di_lai' => 'nullable|numeric|min:0',
             'tien_thue_xe' => 'nullable|numeric|min:0',
             'ghi_chu_linh_kien' => 'nullable|string|max:1000',
             'chi_tiet_tien_cong' => 'nullable|array',
@@ -3837,7 +3848,7 @@ class AdminController extends Controller
 
         $labor = max(0, (float) $request->input('tien_cong', $booking->tien_cong ?? 0));
         $parts = max(0, (float) $request->input('phi_linh_kien', $booking->phi_linh_kien ?? 0));
-        $travel = max(0, (float) $request->input('phi_di_lai', $booking->phi_di_lai ?? 0));
+        $travel = max(0, (float) ($booking->phi_di_lai ?? 0));
         $transport = max(0, (float) $request->input('tien_thue_xe', $booking->tien_thue_xe ?? 0));
 
         $laborItemsInput = $request->input('chi_tiet_tien_cong');
@@ -4163,7 +4174,9 @@ class AdminController extends Controller
             $filtered = $filtered->where('priority_key', $filters['priority'])->values();
         }
 
-        if ($filters['sla'] !== '') {
+        if ($filters['sla'] === 'late') {
+            $filtered = $filtered->filter(fn(array $row): bool => (bool) ($row['flags']['is_late_start'] ?? false))->values();
+        } elseif ($filters['sla'] !== '') {
             $filtered = $filtered->where('sla_state', $filters['sla'])->values();
         }
 
@@ -4223,12 +4236,40 @@ class AdminController extends Controller
     private function buildAdminBookingSummary(Collection $rows): array
     {
         $total = $rows->count();
+        $lateRows = $rows->filter(fn(array $row): bool => (bool) ($row['flags']['is_late_start'] ?? false))->values();
+        $lateWorkers = $lateRows
+            ->groupBy(function (array $row): string {
+                $workerId = $row['worker']['id'] ?? null;
+                if ($workerId !== null && $workerId !== '') {
+                    return 'worker:' . $workerId;
+                }
+
+                $workerName = trim((string) ($row['worker']['name'] ?? ''));
+                return $workerName !== '' ? 'worker_name:' . mb_strtolower($workerName) : 'worker:unknown';
+            })
+            ->map(function (Collection $group): array {
+                $first = $group->first() ?? [];
+
+                return [
+                    'worker_id' => $first['worker']['id'] ?? null,
+                    'worker_name' => (string) ($first['worker']['name'] ?? 'Chưa xác định thợ'),
+                    'worker_phone' => (string) ($first['worker']['phone'] ?? ''),
+                    'late_count' => $group->count(),
+                    'booking_codes' => $group->pluck('code')->filter()->values()->take(5)->all(),
+                ];
+            })
+            ->sortByDesc('late_count')
+            ->values();
 
         return [
             'total_orders' => $total,
             'overdue_count' => $rows->where('sla_state', 'overdue')->count(),
+            'late_count' => $rows->where('sla_state', 'late')->count(),
+            'late_worker_count' => $lateWorkers->count(),
+            'late_workers' => $lateWorkers->all(),
             'due_soon_count' => $rows->where('sla_state', 'due_soon')->count(),
             'on_track_count' => $rows->where('sla_state', 'on_track')->count(),
+            'closed_count' => $rows->where('sla_state', 'closed')->count(),
             'unpaid_count' => $rows->filter(fn(array $row): bool => !(bool) ($row['payment']['is_paid'] ?? false))->count(),
             'payment_issue_count' => $rows->filter(fn(array $row): bool => (bool) ($row['flags']['payment_issue'] ?? false))->count(),
             'complaint_count' => $rows->filter(fn(array $row): bool => (bool) ($row['flags']['has_complaint'] ?? false))->count(),
@@ -4261,9 +4302,7 @@ class AdminController extends Controller
 
     private function resolveAdminBookingScheduleAt(DonDatLich $booking): ?Carbon
     {
-        if ($booking->thoi_gian_hen) {
-            return $booking->thoi_gian_hen->copy();
-        }
+        $timezone = $this->adminBookingTimezone();
 
         if ($booking->ngay_hen && $booking->khung_gio_hen) {
             $slotStart = trim(explode('-', (string) $booking->khung_gio_hen)[0] ?? '');
@@ -4272,25 +4311,118 @@ class AdminController extends Controller
                     return Carbon::createFromFormat(
                         'Y-m-d H:i',
                         $booking->ngay_hen->toDateString() . ' ' . $slotStart,
-                        config('app.timezone') ?: 'Asia/Ho_Chi_Minh'
+                        $timezone
                     );
                 } catch (\Throwable) {
-                    return $booking->ngay_hen->copy()->startOfDay();
+                    return Carbon::createFromFormat(
+                        'Y-m-d H:i',
+                        $booking->ngay_hen->toDateString() . ' 00:00',
+                        $timezone
+                    );
                 }
             }
 
-            return $booking->ngay_hen->copy()->startOfDay();
+            return Carbon::createFromFormat(
+                'Y-m-d H:i',
+                $booking->ngay_hen->toDateString() . ' 00:00',
+                $timezone
+            );
+        }
+
+        if ($booking->thoi_gian_hen) {
+            return $this->parseAdminBookingUtcTimestamp($booking->getRawOriginal('thoi_gian_hen'))
+                ?? $booking->thoi_gian_hen->copy()->setTimezone($timezone);
         }
 
         if ($booking->ngay_hen) {
-            return $booking->ngay_hen->copy()->startOfDay();
+            return Carbon::createFromFormat(
+                'Y-m-d H:i',
+                $booking->ngay_hen->toDateString() . ' 00:00',
+                $timezone
+            );
         }
 
-        return $booking->created_at?->copy();
+        return $this->parseAdminBookingUtcTimestamp($booking->getRawOriginal('created_at'))
+            ?? $booking->created_at?->copy()?->setTimezone($timezone);
+    }
+
+    private function resolveAdminBookingStartedAt(DonDatLich $booking): ?Carbon
+    {
+        $timezone = $this->adminBookingTimezone();
+        $startedStatuses = ['dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong', 'hoan_thanh'];
+
+        if ($booking->thoi_gian_bat_dau_sua) {
+            return $this->parseAdminBookingUtcTimestamp($booking->getRawOriginal('thoi_gian_bat_dau_sua'))
+                ?? $booking->thoi_gian_bat_dau_sua->copy()->setTimezone($timezone);
+        }
+
+        if (in_array((string) $booking->trang_thai, $startedStatuses, true) && $booking->updated_at) {
+            return $this->parseAdminBookingUtcTimestamp($booking->getRawOriginal('updated_at'))
+                ?? $booking->updated_at->copy()->setTimezone($timezone);
+        }
+
+        return null;
+    }
+
+    private function resolveAdminBookingSlotEndsAt(DonDatLich $booking, ?Carbon $scheduleAt): ?Carbon
+    {
+        if ($scheduleAt === null) {
+            return null;
+        }
+
+        $slotEnd = trim(explode('-', DonDatLich::normalizeTimeSlot((string) $booking->khung_gio_hen), 2)[1] ?? '');
+        if ($slotEnd === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat(
+                'Y-m-d H:i',
+                $scheduleAt->toDateString() . ' ' . $slotEnd,
+                $this->adminBookingTimezone()
+            );
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function resolveAdminBookingLateStart(DonDatLich $booking, ?Carbon $scheduleAt): bool
+    {
+        $startedAt = $this->resolveAdminBookingStartedAt($booking);
+        $slotEndsAt = $this->resolveAdminBookingSlotEndsAt($booking, $scheduleAt);
+
+        if ($startedAt === null || $slotEndsAt === null) {
+            return false;
+        }
+
+        return $startedAt->gt($slotEndsAt);
+    }
+
+    private function parseAdminBookingUtcTimestamp(mixed $value): ?Carbon
+    {
+        $timestamp = trim((string) $value);
+        if ($timestamp === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($timestamp, 'UTC')->setTimezone($this->adminBookingTimezone());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function adminBookingTimezone(): string
+    {
+        return 'Asia/Ho_Chi_Minh';
     }
 
     private function resolveAdminBookingSlaState(DonDatLich $booking, ?Carbon $scheduleAt, Carbon $now): string
     {
+        if ($this->resolveAdminBookingLateStart($booking, $scheduleAt)) {
+            return 'late';
+        }
+
         if (in_array((string) $booking->trang_thai, ['da_huy', 'da_xong', 'hoan_thanh'], true)) {
             return 'closed';
         }
@@ -4314,6 +4446,7 @@ class AdminController extends Controller
     {
         return match ($slaState) {
             'overdue' => 'Quá hạn',
+            'late' => 'Trễ hẹn',
             'due_soon' => 'Sắp quá hạn',
             'closed' => 'Đã đóng',
             default => 'Đúng hạn',
@@ -4324,6 +4457,7 @@ class AdminController extends Controller
     {
         return match ($slaState) {
             'overdue' => 'danger',
+            'late' => 'danger',
             'due_soon' => 'warning',
             'closed' => 'muted',
             default => 'success',
@@ -4333,6 +4467,7 @@ class AdminController extends Controller
     private function resolveAdminBookingSlaRank(string $slaState): int
     {
         return match ($slaState) {
+            'late' => 5,
             'overdue' => 4,
             'due_soon' => 3,
             'on_track' => 2,
@@ -4348,7 +4483,7 @@ class AdminController extends Controller
         bool $isUnassigned,
         bool $isPaid
     ): string {
-        if ($hasComplaint || $hasWorkerContactIssue || $slaState === 'overdue') {
+        if ($hasComplaint || $hasWorkerContactIssue || in_array($slaState, ['late', 'overdue'], true)) {
             return 'high';
         }
 
@@ -4571,6 +4706,7 @@ class AdminController extends Controller
         $scheduleAt = $this->resolveAdminBookingScheduleAt($booking);
         $scheduleDate = $scheduleAt?->toDateString();
         $scheduleLabel = $this->formatCustomerScheduleLabel($booking);
+        $startedAt = $this->resolveAdminBookingStartedAt($booking);
         $slaState = $this->resolveAdminBookingSlaState($booking, $scheduleAt, $now);
         $slaLabel = $this->resolveAdminBookingSlaLabel($slaState);
         $slaTone = $this->resolveAdminBookingSlaTone($slaState);
@@ -4615,6 +4751,7 @@ class AdminController extends Controller
         $complaintReasonLabel = (string) ($complaintSnapshot['reason_label'] ?? $this->resolveAdminComplaintReasonLabel($complaintReasonCode));
 
         $isOverdue = $slaState === 'overdue';
+        $isLateStart = $slaState === 'late';
         $mode = (string) ($booking->loai_dat_lich ?: 'at_home');
         $modeLabel = $mode === 'at_store' ? 'Tại cửa hàng' : 'Tại nhà';
         $address = $mode === 'at_home'
@@ -4686,6 +4823,7 @@ class AdminController extends Controller
             ],
             'flags' => [
                 'is_overdue' => $isOverdue,
+                'is_late_start' => $isLateStart,
                 'payment_issue' => $paymentIssue,
                 'has_complaint' => $hasComplaint,
                 'has_worker_contact_issue' => $hasWorkerContactIssue,
@@ -4706,6 +4844,8 @@ class AdminController extends Controller
                 'created_label' => optional($booking->created_at)->format('d/m/Y H:i'),
                 'updated_at' => optional($booking->updated_at)->toIso8601String(),
                 'updated_label' => optional($booking->updated_at)->format('d/m/Y H:i'),
+                'started_at' => optional($startedAt)->toIso8601String(),
+                'started_label' => optional($startedAt)->format('d/m/Y H:i'),
                 'completed_at' => optional($booking->thoi_gian_hoan_thanh)->toIso8601String(),
                 'completed_label' => optional($booking->thoi_gian_hoan_thanh)->format('d/m/Y H:i'),
                 'cancelled_at' => $booking->trang_thai === 'da_huy'
@@ -4760,6 +4900,7 @@ class AdminController extends Controller
             'cancel_reason_code' => (string) ($booking->ma_ly_do_huy ?? ''),
             'cancel_reason_label' => DonDatLich::cancelReasonLabel($booking->ma_ly_do_huy),
             'cancel_note' => (string) ($booking->ly_do_huy ?? ''),
+            'reschedule_policy' => $this->buildAdminBookingReschedulePolicy($booking),
             'cost_details' => [
                 'labor_items' => is_array($booking->chi_tiet_tien_cong) ? $booking->chi_tiet_tien_cong : [],
                 'part_items' => is_array($booking->chi_tiet_linh_kien) ? $booking->chi_tiet_linh_kien : [],
@@ -4781,8 +4922,10 @@ class AdminController extends Controller
                 'reason_code' => (string) ($complaintSnapshot['reason_code'] ?? ''),
                 'reason_label' => (string) ($complaintSnapshot['reason_label'] ?? $this->resolveAdminComplaintReasonLabel((string) ($complaintSnapshot['reason_code'] ?? ''))),
                 'note' => (string) ($complaintSnapshot['note'] ?? ''),
-                'images' => array_values(array_filter((array) ($complaintSnapshot['images'] ?? []))),
+                'images' => $this->normalizeMediaList($complaintSnapshot['images'] ?? []),
                 'video' => (string) ($complaintSnapshot['video'] ?? ''),
+                'worker_result_images' => $this->normalizeMediaList($complaintSnapshot['worker_result_images'] ?? []),
+                'worker_result_video' => (string) ($complaintSnapshot['worker_result_video'] ?? ''),
                 'assigned_admin' => (string) ($complaintCase->assignedAdmin?->name ?? ''),
                 'assigned_at' => optional($complaintCase->assigned_at)->toIso8601String(),
                 'assigned_label' => optional($complaintCase->assigned_at)->format('d/m/Y H:i'),
@@ -4804,11 +4947,129 @@ class AdminController extends Controller
         ]);
     }
 
+    private function buildAdminBookingReschedulePolicy(DonDatLich $booking): array
+    {
+        $statusAllowsReschedule = in_array(
+            (string) $booking->trang_thai,
+            ['da_xac_nhan', DonDatLich::STATUS_CUSTOMER_UNREACHABLE],
+            true
+        );
+        $minimumSchedule = $this->resolveAdminMinimumRescheduleSlotStart();
+        $maximumScheduleDate = $this->resolveAdminMaximumRescheduleDate();
+        $hasFutureSlotInWindow = $minimumSchedule !== null
+            && $minimumSchedule->lte($maximumScheduleDate->copy()->endOfDay());
+        $currentSchedule = $booking->ngay_hen && $booking->khung_gio_hen
+            ? $this->resolveAdminScheduledAt($booking->ngay_hen->toDateString(), (string) $booking->khung_gio_hen)
+            : null;
+
+        $reason = null;
+        if (!$statusAllowsReschedule) {
+            $reason = 'status_not_allowed';
+        } elseif (!$hasFutureSlotInWindow) {
+            $reason = 'no_future_slot';
+        }
+
+        return [
+            'can_reschedule' => $statusAllowsReschedule && $hasFutureSlotInWindow,
+            'status_allows_reschedule' => $statusAllowsReschedule,
+            'window_days' => self::ADMIN_RESCHEDULE_WINDOW_DAYS,
+            'time_slots' => $this->adminBookingTimeSlots(),
+            'minimum_allowed_at' => $minimumSchedule?->toIso8601String(),
+            'minimum_allowed_date' => $minimumSchedule?->toDateString(),
+            'minimum_allowed_slot' => $minimumSchedule ? $this->resolveAdminSlotValueFromStart($minimumSchedule) : null,
+            'minimum_allowed_label' => $minimumSchedule ? $this->formatAdminBookingScheduleForDisplay($minimumSchedule) : null,
+            'maximum_allowed_date' => $maximumScheduleDate->toDateString(),
+            'maximum_allowed_label' => $maximumScheduleDate->format('d/m/Y'),
+            'current_schedule_label' => $currentSchedule ? $this->formatAdminBookingScheduleForDisplay($currentSchedule) : null,
+            'reason' => $reason,
+        ];
+    }
+
+    private function resolveAdminMinimumRescheduleSlotStart(?Carbon $now = null): ?Carbon
+    {
+        $current = ($now ?? now())->copy()->seconds(0);
+
+        return $this->buildAdminFutureSlotStarts($current)
+            ->values()
+            ->get(self::ADMIN_MIN_FUTURE_RESCHEDULE_SLOTS - 1);
+    }
+
+    private function buildAdminFutureSlotStarts(Carbon $from): Collection
+    {
+        $candidates = collect();
+        $baseDate = $from->copy()->startOfDay();
+
+        for ($dayOffset = 0; $dayOffset < 30; $dayOffset += 1) {
+            $dateValue = $baseDate->copy()->addDays($dayOffset)->toDateString();
+
+            foreach ($this->adminBookingTimeSlots() as $slot) {
+                $scheduledAt = $this->resolveAdminScheduledAt($dateValue, $slot);
+
+                if ($scheduledAt !== null && $scheduledAt->gt($from)) {
+                    $candidates->push($scheduledAt);
+                }
+            }
+        }
+
+        return $candidates;
+    }
+
+    private function resolveAdminMaximumRescheduleDate(?Carbon $now = null): Carbon
+    {
+        return ($now ?? now())
+            ->copy()
+            ->startOfDay()
+            ->addDays(self::ADMIN_RESCHEDULE_WINDOW_DAYS - 1);
+    }
+
+    private function resolveAdminScheduledAt(string $date, string $slot): ?Carbon
+    {
+        $startTime = trim(explode('-', $slot, 2)[0] ?? '');
+        if ($startTime === '') {
+            return null;
+        }
+
+        $timezone = config('app.timezone') ?: 'Asia/Ho_Chi_Minh';
+
+        try {
+            return Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}", $timezone);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function resolveAdminSlotValueFromStart(Carbon $scheduledAt): ?string
+    {
+        $startTime = $scheduledAt->format('H:i');
+
+        foreach ($this->adminBookingTimeSlots() as $slot) {
+            $slotStart = trim(explode('-', $slot, 2)[0] ?? '');
+
+            if ($slotStart === $startTime) {
+                return $slot;
+            }
+        }
+
+        return null;
+    }
+
+    private function formatAdminBookingScheduleForDisplay(Carbon $scheduledAt): string
+    {
+        $slot = $this->resolveAdminSlotValueFromStart($scheduledAt);
+
+        return trim(
+            ($slot ? $this->formatAdminWorkerScheduleSlotLabel($slot) : $scheduledAt->format('H:i'))
+            . ' ngày '
+            . $scheduledAt->format('d/m/Y')
+        );
+    }
+
     private function buildAdminBookingTimeline(DonDatLich $booking, array $base): array
     {
         $status = (string) ($booking->trang_thai ?? '');
         $createdAt = $base['milestones']['created_at'] ?? null;
         $updatedAt = $base['milestones']['updated_at'] ?? null;
+        $startedAt = $base['milestones']['started_at'] ?? null;
         $completedAt = $base['milestones']['completed_at'] ?? null;
         $cancelledAt = $base['milestones']['cancelled_at'] ?? null;
         $isAccepted = in_array($status, ['da_xac_nhan', 'dang_lam', 'cho_hoan_thanh', 'cho_thanh_toan', 'da_xong', 'hoan_thanh'], true);
@@ -4838,8 +5099,8 @@ class AdminController extends Controller
             [
                 'key' => 'in_progress',
                 'title' => 'Đang xử lý',
-                'time' => $isStarted ? $updatedAt : null,
-                'time_label' => $isStarted ? ($base['milestones']['updated_label'] ?? '') : '',
+                'time' => $isStarted ? ($startedAt ?: $updatedAt) : null,
+                'time_label' => $isStarted ? (($base['milestones']['started_label'] ?? '') ?: ($base['milestones']['updated_label'] ?? '')) : '',
                 'state' => $isStarted ? 'done' : 'pending',
                 'note' => $isStarted ? 'Đơn đã vào luồng xử lý kỹ thuật' : 'Chưa bắt đầu xử lý',
                 'estimated' => $isStarted && !$booking->thoi_gian_hoan_thanh && $status !== 'da_huy',

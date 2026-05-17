@@ -621,6 +621,40 @@ class PaymentWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_admin_financial_update_keeps_existing_travel_fee(): void
+    {
+        $admin = $this->createUser('admin', 'locked-travel-fee-admin@example.com');
+        $token = $admin->createToken('locked-travel-fee-admin')->plainTextToken;
+
+        $bookingId = $this->createBooking([
+            'trang_thai' => 'dang_lam',
+            'phi_di_lai' => 17000,
+            'tien_cong' => 150000,
+            'tong_tien' => 167000,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson("/api/admin/bookings/{$bookingId}/financials", [
+                'tien_cong' => 280000,
+                'phi_di_lai' => 0,
+                'tien_thue_xe' => 12000,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.phi_di_lai', 17000)
+            ->assertJsonPath('data.tien_cong', 280000)
+            ->assertJsonPath('data.tien_thue_xe', 12000)
+            ->assertJsonPath('data.tong_tien', 309000);
+
+        $this->assertDatabaseHas('don_dat_lich', [
+            'id' => $bookingId,
+            'phi_di_lai' => 17000,
+            'tien_cong' => 280000,
+            'tien_thue_xe' => 12000,
+            'tong_tien' => 309000,
+        ]);
+    }
+
     private function createUser(string $role, string $email): \App\Models\User
     {
         return \App\Models\User::query()->create([
@@ -708,6 +742,18 @@ class PaymentWorkflowTest extends TestCase
         Schema::table('don_dat_lich', function (Blueprint $table) {
             if (!Schema::hasColumn('don_dat_lich', 'gia_da_cap_nhat')) {
                 $table->boolean('gia_da_cap_nhat')->default(false)->after('phuong_thuc_thanh_toan');
+            }
+
+            if (!Schema::hasColumn('don_dat_lich', 'chi_tiet_tien_cong')) {
+                $table->json('chi_tiet_tien_cong')->nullable()->after('tien_cong');
+            }
+
+            if (!Schema::hasColumn('don_dat_lich', 'chi_tiet_linh_kien')) {
+                $table->json('chi_tiet_linh_kien')->nullable()->after('phi_linh_kien');
+            }
+
+            if (!Schema::hasColumn('don_dat_lich', 'ghi_chu_linh_kien')) {
+                $table->text('ghi_chu_linh_kien')->nullable()->after('chi_tiet_linh_kien');
             }
         });
 

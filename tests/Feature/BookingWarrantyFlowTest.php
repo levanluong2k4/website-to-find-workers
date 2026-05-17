@@ -6,12 +6,16 @@ use App\Models\CustomerFeedbackCase;
 use App\Models\User;
 use App\Notifications\BookingStatusNotification;
 use App\Notifications\BookingWarrantyRequestedNotification;
+use App\Services\Media\CloudinaryUploadService;
+use Cloudinary\Api\ApiResponse;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
+use Mockery;
 use Tests\TestCase;
 
 class BookingWarrantyFlowTest extends TestCase
@@ -22,6 +26,13 @@ class BookingWarrantyFlowTest extends TestCase
 
         $this->prepareSchema();
         $this->truncateTables();
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+
+        parent::tearDown();
     }
 
     public function test_customer_can_submit_warranty_request_and_worker_receives_notification(): void
@@ -62,6 +73,61 @@ class BookingWarrantyFlowTest extends TestCase
                     && $payload['booking_id'] === $bookingId
                     && $payload['type'] === 'booking_warranty_requested';
             }
+        );
+    }
+
+    public function test_customer_can_submit_warranty_request_with_media_evidence(): void
+    {
+        Notification::fake();
+
+        $customer = $this->createUser('warranty-customer-media@example.com', 'customer');
+        $worker = $this->createUser('warranty-worker-media@example.com', 'worker');
+        $serviceId = $this->createService('Sua lo nuong');
+        $bookingId = $this->createCompletedBooking($customer->id, $worker->id, $serviceId, Carbon::now()->subDays(3));
+
+        $uploadService = Mockery::mock(CloudinaryUploadService::class);
+        $uploadService->shouldReceive('uploadUploadedFile')
+            ->once()
+            ->with(
+                Mockery::type(UploadedFile::class),
+                Mockery::on(static fn (array $options): bool => ($options['folder'] ?? null) === 'complaints/images')
+            )
+            ->andReturn(new ApiResponse([
+                'secure_url' => 'https://example.com/complaints/images/customer-proof.jpg',
+            ], []));
+        $uploadService->shouldReceive('uploadUploadedFile')
+            ->once()
+            ->with(
+                Mockery::type(UploadedFile::class),
+                Mockery::on(static fn (array $options): bool => ($options['folder'] ?? null) === 'complaints/videos'
+                    && ($options['resource_type'] ?? null) === 'video')
+            )
+            ->andReturn(new ApiResponse([
+                'secure_url' => 'https://example.com/complaints/videos/customer-proof.mp4',
+            ], []));
+        $this->app->instance(CloudinaryUploadService::class, $uploadService);
+
+        Sanctum::actingAs($customer);
+
+        $response = $this->post("/api/don-dat-lich/{$bookingId}/complaint", [
+            'ly_do_khieu_nai' => 'loi_tai_phat',
+            'ghi_chu' => 'Khach gui them anh va video minh chung.',
+            'hinh_anh_khieu_nai' => [UploadedFile::fake()->image('customer-proof.jpg')],
+            'video_khieu_nai' => UploadedFile::fake()->create('customer-proof.mp4', 1024, 'video/mp4'),
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.warranty_case.images.0', 'https://example.com/complaints/images/customer-proof.jpg')
+            ->assertJsonPath('data.warranty_case.video', 'https://example.com/complaints/videos/customer-proof.mp4');
+
+        $case = CustomerFeedbackCase::query()->where('booking_id', $bookingId)->first();
+        $this->assertSame(
+            ['https://example.com/complaints/images/customer-proof.jpg'],
+            $case?->last_snapshot['images'] ?? []
+        );
+        $this->assertSame(
+            'https://example.com/complaints/videos/customer-proof.mp4',
+            $case?->last_snapshot['video'] ?? null
         );
     }
 
@@ -184,6 +250,110 @@ class BookingWarrantyFlowTest extends TestCase
             ->assertJsonPath('message', 'Tho phai nhap ly do khi tu choi bao hanh.');
     }
 
+    public function test_worker_can_complete_warranty_case_with_media_evidence(): void
+    {
+        Notification::fake();
+
+        $customer = $this->createUser('warranty-customer-7@example.com', 'customer');
+        $worker = $this->createUser('warranty-worker-7@example.com', 'worker');
+        $serviceId = $this->createService('Sua may loc nuoc');
+        $bookingId = $this->createCompletedBooking($customer->id, $worker->id, $serviceId, Carbon::now()->subDays(2));
+        $this->createWarrantyCase($bookingId, $customer->id, $worker->id, 'in_progress');
+
+        $uploadService = Mockery::mock(CloudinaryUploadService::class);
+        $uploadService->shouldReceive('uploadUploadedFile')
+            ->once()
+            ->with(
+                Mockery::type(UploadedFile::class),
+                Mockery::on(static fn (array $options): bool => ($options['folder'] ?? null) === 'complaints/worker-results/images')
+            )
+            ->andReturn(new ApiResponse([
+                'secure_url' => 'https://example.com/complaints/worker-results/images/warranty-completed.jpg',
+            ], []));
+        $uploadService->shouldReceive('uploadUploadedFile')
+            ->once()
+            ->with(
+                Mockery::type(UploadedFile::class),
+                Mockery::on(static fn (array $options): bool => ($options['folder'] ?? null) === 'complaints/worker-results/videos'
+                    && ($options['resource_type'] ?? null) === 'video')
+            )
+            ->andReturn(new ApiResponse([
+                'secure_url' => 'https://example.com/complaints/worker-results/videos/warranty-completed.mp4',
+            ], []));
+        $this->app->instance(CloudinaryUploadService::class, $uploadService);
+
+        Sanctum::actingAs($worker);
+
+        $response = $this->post("/api/don-dat-lich/{$bookingId}/complaint/status", [
+            '_method' => 'PUT',
+            'status' => 'completed',
+            'note' => 'Da thay linh kien va test lai may on dinh.',
+            'hinh_anh_ket_qua' => [UploadedFile::fake()->image('warranty-completed.jpg')],
+            'video_ket_qua' => UploadedFile::fake()->create('warranty-completed.mp4', 1024, 'video/mp4'),
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.booking.warranty_case.status', 'completed')
+            ->assertJsonPath('data.booking.warranty_case.worker_result_images.0', 'https://example.com/complaints/worker-results/images/warranty-completed.jpg')
+            ->assertJsonPath('data.booking.warranty_case.worker_result_video', 'https://example.com/complaints/worker-results/videos/warranty-completed.mp4');
+
+        $case = CustomerFeedbackCase::query()->where('booking_id', $bookingId)->first();
+        $this->assertSame('completed', $case?->status);
+        $this->assertSame(
+            ['https://example.com/complaints/worker-results/images/warranty-completed.jpg'],
+            $case?->last_snapshot['worker_result_images'] ?? []
+        );
+        $this->assertSame(
+            'https://example.com/complaints/worker-results/videos/warranty-completed.mp4',
+            $case?->last_snapshot['worker_result_video'] ?? null
+        );
+    }
+
+    public function test_customer_cannot_submit_new_warranty_request_after_completed_warranty_case(): void
+    {
+        Notification::fake();
+
+        $customer = $this->createUser('warranty-customer-used@example.com', 'customer');
+        $worker = $this->createUser('warranty-worker-used@example.com', 'worker');
+        $serviceId = $this->createService('Sua may rua chen');
+        $bookingId = $this->createCompletedBooking($customer->id, $worker->id, $serviceId, Carbon::now()->subDays(2));
+        $this->createWarrantyCase($bookingId, $customer->id, $worker->id, 'completed');
+
+        Sanctum::actingAs($customer);
+
+        $this->postJson("/api/don-dat-lich/{$bookingId}/complaint", [
+            'ly_do_khieu_nai' => 'loi_tai_phat',
+            'ghi_chu' => 'Muon gui lai sau khi da hoan tat bao hanh.',
+        ])->assertStatus(422)
+            ->assertJsonPath('message', 'Don nay da su dung quyen bao hanh, khong the gui them yeu cau moi.');
+    }
+
+    public function test_customer_can_submit_new_warranty_request_after_rejected_case_when_still_in_warranty(): void
+    {
+        Notification::fake();
+
+        $customer = $this->createUser('warranty-customer-retry@example.com', 'customer');
+        $worker = $this->createUser('warranty-worker-retry@example.com', 'worker');
+        $serviceId = $this->createService('Sua binh nong lanh');
+        $bookingId = $this->createCompletedBooking($customer->id, $worker->id, $serviceId, Carbon::now()->subDays(2));
+        $this->createWarrantyCase($bookingId, $customer->id, $worker->id, 'rejected');
+
+        Sanctum::actingAs($customer);
+
+        $response = $this->postJson("/api/don-dat-lich/{$bookingId}/complaint", [
+            'ly_do_khieu_nai' => 'loi_tai_phat',
+            'ghi_chu' => 'Gui lai vi yeu cau truoc bi tu choi nhung don van con han.',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.warranty_case.status', 'worker_notified')
+            ->assertJsonPath('data.warranty_case.note', 'Gui lai vi yeu cau truoc bi tu choi nhung don van con han.');
+
+        $case = CustomerFeedbackCase::query()->where('booking_id', $bookingId)->first();
+        $this->assertSame('worker_notified', $case?->status);
+        $this->assertSame('Gui lai vi yeu cau truoc bi tu choi nhung don van con han.', $case?->last_snapshot['note'] ?? null);
+    }
+
     private function createUser(string $email, string $role): User
     {
         return User::query()->create([
@@ -266,7 +436,7 @@ class BookingWarrantyFlowTest extends TestCase
             'resolution_note' => null,
             'last_snapshot' => [
                 'reason_code' => 'loi_tai_phat',
-                'reason_label' => 'Loi tai phat sau khi sua',
+                'reason_label' => 'Lỗi tái phát khi sửa',
                 'note' => 'Can quay lai bao hanh.',
                 'images' => [],
                 'video' => null,

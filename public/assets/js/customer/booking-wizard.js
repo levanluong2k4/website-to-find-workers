@@ -1589,6 +1589,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = 'hidden';
         document.body.classList.add('booking-wizard-open');
         state.isOpen = true;
+        window.addEventListener('resize', queueViewportFit);
         queueViewportFit();
         await loadAddressData();
         await loadWorkerAndServices();
@@ -1606,6 +1607,7 @@ document.addEventListener('DOMContentLoaded', () => {
         root.classList.remove('is-fit-compact');
         root.setAttribute('aria-hidden', 'true');
         state.isOpen = false;
+        window.removeEventListener('resize', queueViewportFit);
         window.setTimeout(() => {
             root.classList.add('d-none');
             document.body.style.overflow = '';
@@ -2664,6 +2666,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSummary();
     loadTravelFeeConfig();
     loadSavedAddresses();
-    window.addEventListener('resize', queueViewportFit);
+    // resize listener is added on openModal and removed on closeModal to prevent accumulation
     if (isStandalone) openModal();
 });

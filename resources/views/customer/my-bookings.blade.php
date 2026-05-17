@@ -2059,5 +2059,5 @@
 @endsection
 
 @push('scripts')
-<script type="module" src="{{ asset('assets/js/customer/my-bookings.js') }}"></script>
+<script type="module" src="{{ asset('assets/js/customer/my-bookings.js') }}?v={{ filemtime(public_path('assets/js/customer/my-bookings.js')) }}"></script>
 @endpush

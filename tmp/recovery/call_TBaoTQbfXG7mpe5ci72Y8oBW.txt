@@ -98,8 +98,8 @@
         return response()->json([
             'success' => true,
             'message' => $paymentMethod === 'transfer'
-                ? 'Da gui yeu cau thanh toan truc tuyen cho khach hang.'
-                : 'Da xac nhan hoan thanh va chot don tien mat.',
+                ? 'Đã gửi yêu cầu thanh toán trực tuyến cho khách hàng.'
+                : 'Đã xác nhận hoàn thành thanh toán bằng tiền mặt.',
             'booking' => $booking,
         ]);
     }

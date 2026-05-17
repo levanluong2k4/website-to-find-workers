@@ -382,10 +382,22 @@ document.addEventListener('DOMContentLoaded', () => {
             'Khách hàng chưa gửi ảnh hoặc video kèm theo.'
         )}
                         ${buildMediaSection(
+            'Khach da gui luc tao booking',
+            item.booking_before_images || [],
+            item.booking_before_videos || [],
+            'Booking nay khong co anh hoac video khach tai len ban dau.'
+        )}
+                        ${buildMediaSection(
             'Kết quả thợ bàn giao',
             item.booking_after_images || [],
             item.booking_after_videos || [],
             'Chưa có ảnh hoặc video kết quả sau sửa chữa.'
+        )}
+                        ${buildMediaSection(
+            'Minh chung tho hoan tat bao hanh',
+            item.warranty_result_images || [],
+            item.warranty_result_video ? [item.warranty_result_video] : [],
+            'Tho chua tai len anh hoac video sau khi hoan tat bao hanh.'
         )}
                     </div>
                 </section>

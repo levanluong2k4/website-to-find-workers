@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const refs = {
         stats: document.getElementById('bookingStatsCards'),
+        lateWorkerSummary: document.getElementById('lateWorkerSummary'),
+        lateWorkerSummaryMeta: document.getElementById('lateWorkerSummaryMeta'),
+        lateWorkerSummaryList: document.getElementById('lateWorkerSummaryList'),
         slaFilterBadge: document.getElementById('orderSlaAlertBadge'),
         tableBody: document.getElementById('bookingTableBody'),
         pagination: document.getElementById('orderPagination'),
@@ -54,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         detailWorkerSelect: document.getElementById('detailWorkerSelect'),
         detailRescheduleDate: document.getElementById('detailRescheduleDate'),
         detailRescheduleSlot: document.getElementById('detailRescheduleSlot'),
+        detailRescheduleHint: document.getElementById('detailRescheduleHint'),
         detailLaborCost: document.getElementById('detailLaborCost'),
         detailPartCost: document.getElementById('detailPartCost'),
         detailTravelCost: document.getElementById('detailTravelCost'),
@@ -137,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         items: [],
         summary: {},
+        slaSummary: {},
         pagination: {
             total: 0,
             per_page: 20,
@@ -242,6 +247,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return Math.max(minimum, Math.round(normalized));
+    };
+
+    const formatSlotLabel = (slot = '') => String(slot || '').replace('-', ' - ');
+    const compareIsoDateStrings = (left = '', right = '') => String(left || '').localeCompare(String(right || ''));
+    const getAdminReschedulePolicy = (detail = state.detail) => detail?.reschedule_policy || {};
+    const getAdminRescheduleSlots = (detail = state.detail) => {
+        const policySlots = getAdminReschedulePolicy(detail)?.time_slots;
+        if (Array.isArray(policySlots) && policySlots.length) {
+            return policySlots.map((slot) => String(slot || ''));
+        }
+
+        const actionSlots = detail?.action_options?.time_slots;
+        if (Array.isArray(actionSlots) && actionSlots.length) {
+            return actionSlots.map((slot) => String(slot || ''));
+        }
+
+        return Array.isArray(state.options.time_slots)
+            ? state.options.time_slots.map((slot) => String(slot || ''))
+            : [];
     };
 
     const completedBookingStatuses = new Set(['da_xong', 'hoan_thanh']);
@@ -1646,6 +1670,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 value: String(item.value ?? ''),
                 label: String(item.label ?? ''),
+                disabled: Boolean(item.disabled),
             };
         }
 
@@ -1653,12 +1678,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 value: String(item.id ?? ''),
                 label: String(item.name ?? item.label ?? ''),
+                disabled: Boolean(item.disabled),
             };
         }
 
         return {
             value: String(item.value ?? ''),
             label: String(item.label ?? ''),
+            disabled: Boolean(item.disabled),
         };
     };
 
@@ -1673,7 +1700,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : normalizedOptions;
 
         select.innerHTML = finalOptions
-            .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`)
+            .map((option) => `<option value="${escapeHtml(option.value)}"${option.disabled ? ' disabled' : ''}>${escapeHtml(option.label)}</option>`)
             .join('');
 
         const nextValue = selectedValue === null || selectedValue === undefined ? '' : String(selectedValue);
@@ -1708,21 +1735,57 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getSlaOptionBadge = (value) => {
-        const summary = state.summary || {};
-        if (value === 'overdue') {
+        const summary = state.slaSummary || state.summary || {};
+        const resolveTone = (count, preferredTone) => (count > 0 ? preferredTone : 'muted');
+
+        if (value === '') {
+            const total = Math.max(0, Number(summary.total_orders || 0));
+
             return {
-                count: Math.max(0, Number(summary.overdue_count || 0)),
-                tone: 'danger',
-            };
-        }
-        if (value === 'due_soon') {
-            return {
-                count: Math.max(0, Number(summary.due_soon_count || 0)),
-                tone: 'warning',
+                count: total,
+                tone: resolveTone(total, ''),
             };
         }
 
-        return { count: 0, tone: '' };
+        if (value === 'overdue') {
+            const count = Math.max(0, Number(summary.overdue_count || 0));
+            return {
+                count,
+                tone: resolveTone(count, 'danger'),
+            };
+        }
+        if (value === 'late') {
+            const count = Math.max(0, Number(summary.late_count || 0));
+            return {
+                count,
+                tone: resolveTone(count, 'danger'),
+            };
+        }
+        if (value === 'due_soon') {
+            const count = Math.max(0, Number(summary.due_soon_count || 0));
+            return {
+                count,
+                tone: resolveTone(count, 'warning'),
+            };
+        }
+        if (value === 'on_track') {
+            const count = Math.max(0, Number(summary.on_track_count || 0));
+
+            return {
+                count,
+                tone: resolveTone(count, 'success'),
+            };
+        }
+        if (value === 'closed') {
+            const count = Math.max(0, Number(summary.closed_count || 0));
+
+            return {
+                count,
+                tone: resolveTone(count, 'muted'),
+            };
+        }
+
+        return { count: 0, tone: 'muted' };
     };
 
     const renderSlaDropdown = () => {
@@ -1742,9 +1805,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.slaDropdownMenu.innerHTML = options.map((option) => {
             const isActive = option.value === selectedValue;
             const badge = getSlaOptionBadge(option.value);
-            const badgeHtml = badge.count > 0
-                ? `<span class="admin-orders-sla-dropdown__badge ${badge.tone ? `is-${badge.tone}` : ''}">${escapeHtml(formatNumber(badge.count))}</span>`
-                : '';
+            const badgeHtml = `<span class="admin-orders-sla-dropdown__badge ${badge.tone ? `is-${badge.tone}` : ''}">${escapeHtml(formatNumber(badge.count))}</span>`;
 
             return `
                 <button type="button" class="admin-orders-sla-dropdown__item ${isActive ? 'is-active' : ''}" data-value="${escapeHtml(option.value)}" role="option" aria-selected="${isActive ? 'true' : 'false'}">
@@ -1757,6 +1818,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (refs.slaDropdownToggle) {
             refs.slaDropdownToggle.disabled = options.length <= 0;
         }
+
+        if (refs.slaDropdown) {
+            refs.slaDropdown.classList.remove('hidden');
+        }
+        refs.sla?.classList.add('admin-orders-sla-dropdown__native');
     };
 
     const renderFilters = () => {
@@ -1795,7 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 label: 'Quá hạn SLA',
                 value: formatNumber(summary.overdue_count || 0),
-                note: `${formatNumber(summary.due_soon_count || 0)} đơn sắp quá hạn`,
+                note: `${formatNumber(summary.due_soon_count || 0)} đơn sắp quá hạn, ${formatNumber(summary.late_count || 0)} đơn trễ hẹn`,
             },
             {
                 label: 'Đúng hạn SLA',
@@ -1833,18 +1899,56 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     };
 
-    const renderSlaAlert = () => {
+    const renderLateWorkerSummary = () => {
+        if (!refs.lateWorkerSummary || !refs.lateWorkerSummaryMeta || !refs.lateWorkerSummaryList) {
+            return;
+        }
+
         const summary = state.summary || {};
+        const lateCount = Math.max(0, Number(summary.late_count || 0));
+        const lateWorkers = Array.isArray(summary.late_workers) ? summary.late_workers : [];
+        const lateWorkerCount = Math.max(0, Number(summary.late_worker_count || lateWorkers.length || 0));
+        const shouldShow = state.filters.sla === 'late';
+
+        refs.lateWorkerSummary.classList.toggle('hidden', !shouldShow);
+        if (!shouldShow) {
+            return;
+        }
+
+        if (!lateWorkers.length) {
+            refs.lateWorkerSummaryMeta.textContent = 'Không có thợ nào trễ hẹn trong bộ lọc hiện tại.';
+            refs.lateWorkerSummaryList.innerHTML = '';
+            return;
+        }
+
+        refs.lateWorkerSummaryMeta.textContent = `${formatNumber(lateWorkerCount)} thợ trễ hẹn / ${formatNumber(lateCount)} đơn`;
+        refs.lateWorkerSummaryList.innerHTML = lateWorkers.map((worker, index) => {
+            const bookingCodes = Array.isArray(worker?.booking_codes) ? worker.booking_codes : [];
+            const bookingCodeLabel = bookingCodes.length ? ` · ${bookingCodes.join(', ')}` : '';
+            const orderLabel = Number(worker?.late_count || 0) === 1 ? 'đơn' : 'đơn';
+
+            return `
+                <div class="admin-orders-late-worker-chip" title="${escapeHtml(`${worker?.worker_name || 'Chưa xác định thợ'}${worker?.worker_phone ? ` • ${worker.worker_phone}` : ''}${bookingCodeLabel}`)}">
+                    <strong>${escapeHtml(worker?.worker_name || `Thợ ${String(index + 1).padStart(2, '0')}`)}</strong>
+                    <span>${escapeHtml(formatNumber(worker?.late_count || 0))} ${escapeHtml(orderLabel)}</span>
+                </div>
+            `;
+        }).join('');
+    };
+
+    const renderSlaAlert = () => {
+        const summary = state.slaSummary || state.summary || {};
         const overdueCount = Math.max(0, Number(summary.overdue_count || 0));
+        const lateCount = Math.max(0, Number(summary.late_count || 0));
         const dueSoonCount = Math.max(0, Number(summary.due_soon_count || 0));
-        const slaRiskCount = overdueCount + dueSoonCount;
-        const hasOverdue = overdueCount > 0;
+        const slaRiskCount = overdueCount + lateCount + dueSoonCount;
+        const hasCriticalRisk = overdueCount > 0 || lateCount > 0;
         const hasDueSoon = dueSoonCount > 0;
         if (refs.slaFilterBadge) {
             refs.slaFilterBadge.textContent = formatNumber(slaRiskCount);
             refs.slaFilterBadge.hidden = slaRiskCount <= 0;
             refs.slaFilterBadge.classList.remove('is-warning', 'is-danger');
-            if (hasOverdue) {
+            if (hasCriticalRisk) {
                 refs.slaFilterBadge.classList.add('is-danger');
             } else if (hasDueSoon) {
                 refs.slaFilterBadge.classList.add('is-warning');
@@ -1856,7 +1960,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderFlags = (booking) => {
         const flags = [];
 
-        if (booking?.flags?.is_overdue) {
+        if (booking?.flags?.is_late_start || booking?.sla_state === 'late') {
+            flags.push(buildPill('Trễ hẹn', 'danger'));
+        } else if (booking?.flags?.is_overdue) {
             flags.push(buildPill('Quá hạn SLA', 'danger'));
         } else if (booking?.sla_state === 'due_soon') {
             flags.push(buildPill('Sắp quá hạn', 'warning'));
@@ -2096,6 +2202,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             state.items = Array.isArray(payload.items) ? payload.items : [];
             state.summary = payload.summary || {};
+            state.slaSummary = payload.sla_summary || payload.summary || {};
             state.pagination = payload.pagination || {
                 total: 0,
                 per_page: state.filters.per_page,
@@ -2112,6 +2219,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderFilters();
             renderStats();
+            renderLateWorkerSummary();
             renderSlaAlert();
             renderTable();
             renderPagination();
@@ -2350,6 +2458,136 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     };
 
+    const buildAdminRescheduleHintText = (detail = state.detail) => {
+        const policy = getAdminReschedulePolicy(detail);
+        if (!policy || typeof policy !== 'object') {
+            return 'Chỉ được đổi trong khung ngày/giờ hợp lệ như phía khách đặt lịch.';
+        }
+
+        if (!policy.status_allows_reschedule) {
+            return 'Chỉ đơn đã được thợ xác nhận mới được đổi lịch hẹn.';
+        }
+
+        if (policy.reason === 'no_future_slot') {
+            return `Hiện không còn khung giờ hợp lệ trong ${Number(policy.window_days || 7)} ngày tới.`;
+        }
+
+        if (policy.minimum_allowed_label && policy.maximum_allowed_label) {
+            return `Được đổi từ ${policy.minimum_allowed_label} đến hết ngày ${policy.maximum_allowed_label}.`;
+        }
+
+        if (policy.minimum_allowed_label) {
+            return `Được đổi từ ${policy.minimum_allowed_label} trở đi.`;
+        }
+
+        if (policy.maximum_allowed_label) {
+            return `Được đổi đến hết ngày ${policy.maximum_allowed_label}.`;
+        }
+
+        return 'Chỉ được đổi trong khung ngày/giờ hợp lệ như phía khách đặt lịch.';
+    };
+
+    const getAdminRescheduleSlotOptions = (detail = state.detail, selectedDate = '') => {
+        const policy = getAdminReschedulePolicy(detail);
+        const minDate = String(policy.minimum_allowed_date || '');
+        const maxDate = String(policy.maximum_allowed_date || '');
+        const minSlot = String(policy.minimum_allowed_slot || '');
+        const slots = getAdminRescheduleSlots(detail);
+        const minSlotIndex = slots.indexOf(minSlot);
+
+        return slots.map((slot, index) => ({
+            value: slot,
+            label: formatSlotLabel(slot),
+            disabled: !selectedDate
+                || (minDate !== '' && compareIsoDateStrings(selectedDate, minDate) < 0)
+                || (maxDate !== '' && compareIsoDateStrings(selectedDate, maxDate) > 0)
+                || (selectedDate === minDate && minSlotIndex >= 0 && index < minSlotIndex),
+        }));
+    };
+
+    const syncAdminTravelCostReadonlyState = () => {
+        if (!refs.detailTravelCost) {
+            return;
+        }
+
+        refs.detailTravelCost.readOnly = true;
+        refs.detailTravelCost.setAttribute('aria-readonly', 'true');
+        refs.detailTravelCost.title = 'Phí đi lại được tính tự động theo quãng đường đặt lịch.';
+    };
+
+    const syncAdminRescheduleControls = (detail = state.detail) => {
+        if (!refs.detailRescheduleDate || !refs.detailRescheduleSlot) {
+            return;
+        }
+
+        const policy = getAdminReschedulePolicy(detail);
+        const minDate = String(policy.minimum_allowed_date || '');
+        const maxDate = String(policy.maximum_allowed_date || '');
+        const currentScheduleDate = String(detail?.schedule?.date || '');
+        const currentScheduleSlot = String(detail?.schedule?.time_slot || '');
+        let nextDate = String(refs.detailRescheduleDate.value || currentScheduleDate || '');
+
+        if (minDate !== '') {
+            refs.detailRescheduleDate.min = minDate;
+        } else {
+            refs.detailRescheduleDate.removeAttribute('min');
+        }
+
+        if (maxDate !== '') {
+            refs.detailRescheduleDate.max = maxDate;
+        } else {
+            refs.detailRescheduleDate.removeAttribute('max');
+        }
+
+        if (nextDate === '' && minDate !== '') {
+            nextDate = minDate;
+        }
+
+        if (nextDate !== '' && minDate !== '' && compareIsoDateStrings(nextDate, minDate) < 0) {
+            nextDate = minDate;
+        }
+
+        if (nextDate !== '' && maxDate !== '' && compareIsoDateStrings(nextDate, maxDate) > 0) {
+            nextDate = maxDate;
+        }
+
+        refs.detailRescheduleDate.value = nextDate;
+
+        const slotOptions = getAdminRescheduleSlotOptions(detail, nextDate);
+        const hasEnabledSlot = slotOptions.some((option) => !option.disabled);
+        let nextSlot = String(refs.detailRescheduleSlot.value || currentScheduleSlot || '');
+
+        if (!slotOptions.some((option) => option.value === nextSlot && !option.disabled)) {
+            nextSlot = slotOptions.find((option) => !option.disabled)?.value || '';
+        }
+
+        populateSelect(
+            refs.detailRescheduleSlot,
+            slotOptions,
+            nextSlot,
+            {
+                value: '',
+                label: hasEnabledSlot ? 'Chọn khung giờ' : 'Không có khung giờ phù hợp',
+                disabled: true,
+            }
+        );
+
+        const mutationLocked = refs.detailRescheduleDate.dataset.mutationLocked === '1';
+        const canReschedule = Boolean(policy.can_reschedule);
+        refs.detailRescheduleDate.disabled = mutationLocked || !canReschedule;
+        refs.detailRescheduleSlot.disabled = mutationLocked || !canReschedule || nextDate === '' || !hasEnabledSlot;
+
+        if (refs.btnReschedule) {
+            refs.btnReschedule.dataset.policyLocked = !canReschedule ? '1' : '0';
+            refs.btnReschedule.disabled = refs.btnReschedule.dataset.mutationLocked === '1'
+                || refs.btnReschedule.dataset.policyLocked === '1';
+        }
+
+        if (refs.detailRescheduleHint) {
+            refs.detailRescheduleHint.textContent = buildAdminRescheduleHintText(detail);
+        }
+    };
+
     const syncDetailActionOptions = (detail) => {
         const actionOptions = detail.action_options || {};
         const statusFlow = Array.isArray(actionOptions.status_flow) && actionOptions.status_flow.length
@@ -2361,20 +2599,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const workers = Array.isArray(actionOptions.worker_options) && actionOptions.worker_options.length
             ? actionOptions.worker_options
             : (state.options.worker_options || []);
-        const timeSlots = Array.isArray(actionOptions.time_slots) && actionOptions.time_slots.length
-            ? actionOptions.time_slots
-            : (state.options.time_slots || []);
-
         populateSelect(refs.detailStatusSelect, statusFlow, detail.status_key);
         populateSelect(refs.detailCancelReason, cancelReasons, detail.cancel_reason_code, { value: '', label: 'Lý do hủy (bắt buộc khi hủy)' });
         populateSelect(refs.detailWorkerSelect, workers, detail?.worker?.id ?? '', { value: '', label: 'Chọn thợ' });
-        populateSelect(
-            refs.detailRescheduleSlot,
-            timeSlots.map((slot) => ({ value: slot, label: slot })),
-            detail?.schedule?.time_slot || '',
-            { value: '', label: 'Chọn khung giờ' }
-        );
-
         if (refs.detailRescheduleDate) refs.detailRescheduleDate.value = detail?.schedule?.date || '';
         if (refs.detailCancelNote) refs.detailCancelNote.value = detail.cancel_note || '';
         if (refs.detailLaborCost) refs.detailLaborCost.value = String(Math.round(detail?.costs?.labor || 0));
@@ -2407,6 +2634,8 @@ document.addEventListener('DOMContentLoaded', () => {
             : [];
         renderAdminPartItems(detailPartItems.length ? detailPartItems : fallbackPartItems);
         syncDetailMutationLock(detail);
+        syncAdminTravelCostReadonlyState();
+        syncAdminRescheduleControls(detail);
     };
 
     const renderBookingDetail = (detail) => {
@@ -2485,6 +2714,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadAdminLaborCatalogForBooking(detail),
             ]);
             syncDetailMutationLock(detail);
+            syncAdminTravelCostReadonlyState();
+            syncAdminRescheduleControls(detail);
         } catch (error) {
             console.error('Load booking detail error:', error);
             showToast(error.message || 'Không thể tải chi tiết đơn', 'error');
@@ -2526,7 +2757,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await handler();
         } finally {
             button.dataset.loading = '0';
-            button.disabled = button.dataset.mutationLocked === '1';
+            button.disabled = button.dataset.mutationLocked === '1' || button.dataset.policyLocked === '1';
         }
     };
 
@@ -2606,11 +2837,46 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const policy = getAdminReschedulePolicy(state.detail);
         const date = refs.detailRescheduleDate?.value || '';
         const slot = refs.detailRescheduleSlot?.value || '';
 
         if (!date || !slot) {
             showToast('Vui lòng chọn ngày và khung giờ cần đổi', 'error');
+            return;
+        }
+
+        if (!policy.status_allows_reschedule) {
+            showToast('Chỉ đơn đã được thợ xác nhận mới được đổi lịch hẹn.', 'error');
+            return;
+        }
+
+        if (!policy.can_reschedule) {
+            showToast(buildAdminRescheduleHintText(state.detail), 'error');
+            return;
+        }
+
+        const minDate = String(policy.minimum_allowed_date || '');
+        const maxDate = String(policy.maximum_allowed_date || '');
+
+        if (minDate !== '' && compareIsoDateStrings(date, minDate) < 0) {
+            showToast(`Lịch mới phải từ ${policy.minimum_allowed_label || minDate} trở đi.`, 'error');
+            return;
+        }
+
+        if (maxDate !== '' && compareIsoDateStrings(date, maxDate) > 0) {
+            showToast(`Lịch mới chỉ được đổi đến hết ngày ${policy.maximum_allowed_label || maxDate}.`, 'error');
+            return;
+        }
+
+        const slotOption = getAdminRescheduleSlotOptions(state.detail, date).find((option) => option.value === slot);
+        if (!slotOption || slotOption.disabled) {
+            if (date === minDate && policy.minimum_allowed_slot) {
+                showToast(`Khung giờ sớm nhất có thể chọn là ${formatSlotLabel(policy.minimum_allowed_slot)}.`, 'error');
+                return;
+            }
+
+            showToast('Khung giờ đã chọn không hợp lệ cho ngày này.', 'error');
             return;
         }
 
@@ -2641,14 +2907,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const labor = laborItems.reduce((sum, item) => sum + Number(item.so_tien || 0), 0);
         const partItems = collectAdminPartItems();
         const part = partItems.reduce((sum, item) => sum + Number(item.so_tien || 0), 0);
-        const travel = parseAmount(refs.detailTravelCost?.value);
         const transport = parseAmount(refs.detailTransportCost?.value);
         const partNote = refs.detailPartNote?.value?.trim() || '';
 
         const payload = {
             tien_cong: labor,
             phi_linh_kien: part,
-            phi_di_lai: travel,
             tien_thue_xe: transport,
             ghi_chu_linh_kien: partNote,
             chi_tiet_tien_cong: laborItems,
@@ -3118,6 +3382,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     refs.btnReschedule?.addEventListener('click', async () => {
         await runButtonAction(refs.btnReschedule, rescheduleBooking);
+    });
+
+    refs.detailRescheduleDate?.addEventListener('change', () => {
+        syncAdminRescheduleControls(state.detail);
     });
 
     refs.btnAddBookingPartRow?.addEventListener('click', () => {

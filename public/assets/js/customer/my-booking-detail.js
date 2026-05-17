@@ -442,6 +442,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<div class="detail-summary-note"><strong>Bảo hành</strong>${escapeHtml(expiredLabel)}</div>`;
         }
 
+        if (policy.reason === 'used') {
+            const previousCaseNote = caseInfo
+                ? `<div class="detail-summary-note"><strong>Bảo hành trước</strong>${escapeHtml(getComplaintCaseBadgeText(caseInfo))}</div>`
+                : '';
+            return `${previousCaseNote}<div class="detail-summary-note"><strong>Bảo hành</strong>${escapeHtml('Đơn này đã dùng xong 1 lần bảo hành.')}</div>`;
+        }
+
         if (caseInfo) {
             return `<div class="detail-summary-note"><strong>Bao hanh</strong>${escapeHtml(getComplaintCaseBadgeText(caseInfo))}</div>`;
         }
@@ -1054,9 +1061,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const policy = getComplaintPolicy(currentBooking);
         if (!policy.canRequest) {
-            showToast(policy.reason === 'expired'
-                ? (policy.expiresLabel ? `Đơn này đã hết bảo hành từ ${policy.expiresLabel}.` : 'Đơn này đã hết thời hạn bảo hành.')
-                : 'Đơn này hiện chưa thể gửi bảo hành.', 'error');
+            let message = 'Đơn này hiện chưa thể gửi bảo hành.';
+            if (policy.reason === 'expired') {
+                message = policy.expiresLabel
+                    ? `Đơn này đã hết bảo hành từ ${policy.expiresLabel}.`
+                    : 'Đơn này đã hết thời hạn bảo hành.';
+            } else if (policy.reason === 'used') {
+                message = 'Đơn này đã sử dụng xong 1 lần bảo hành nên không thể gửi thêm yêu cầu mới.';
+            }
+            showToast(message, 'error');
             return;
         }
 
