@@ -31,7 +31,6 @@
         "APP_DEBUG": "false",
         "APP_URL": "https://your-project.vercel.app",
         "ASSET_URL": "https://your-project.vercel.app",
-        "VERCEL_ANALYZE_BUILD_OUTPUT": "1",
-        "COMPOSER_NO_DEV": "1"
+        "VERCEL_ANALYZE_BUILD_OUTPUT": "1"
     }
 }
