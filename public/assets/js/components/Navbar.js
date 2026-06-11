@@ -985,6 +985,7 @@ class AppNavbar extends HTMLElement {
                 <li><a class="dropdown-item py-2${isCurrentPath('/admin/users') ? ' active' : ''}" href="/admin/users"><i class="fas fa-users-cog me-2 text-muted"></i>Thành viên</a></li>
                 <li><a class="dropdown-item py-2${isCurrentPath('/admin/worker-schedules') ? ' active' : ''}" href="/admin/worker-schedules"><i class="fas fa-calendar-days me-2 text-muted"></i>Lịch thợ</a></li>
                 <li><a class="dropdown-item py-2${isCurrentPath('/admin/services') ? ' active' : ''}" href="/admin/services"><i class="fas fa-layer-group me-2 text-muted"></i>Dịch vụ</a></li>
+                <li><a class="dropdown-item py-2${isCurrentPath('/admin/profile') ? ' active' : ''}" href="/admin/profile"><i class="fas fa-user-circle me-2 text-muted"></i>Tài khoản của tôi</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item py-2 text-danger fw-bold cursor-pointer" data-navbar-logout="1">Đăng xuất</a></li>
             </ul>
@@ -1599,6 +1600,7 @@ class AppNavbar extends HTMLElement {
                     </div>
 
                     <div class="app-admin-sidebar__utility">
+                        <a href="/admin/profile"><i class="fas fa-user-circle"></i><span>Tài khoản</span></a>
                         <a href="/admin/assistant-soul"><i class="fas fa-circle-question"></i><span>Trợ giúp</span></a>
                         <button type="button" data-navbar-logout="1"><i class="fas fa-right-from-bracket"></i><span>Đăng xuất</span></button>
                     </div>
@@ -1664,6 +1666,7 @@ class AppNavbar extends HTMLElement {
             { href: '/admin/tri-thuc-sua-chua', label: 'Tri thức sửa chữa', icon: 'fas fa-diagram-project', active: isCurrentPath('/admin/tri-thuc-sua-chua', '/admin/trieu-chung', '/admin/nguyen-nhan', '/admin/huong-xu-ly', '/admin/gia') },
             { href: '/admin/customer-feedback', label: 'Báo cáo', icon: 'fas fa-chart-simple', active: isCurrentPath('/admin/customer-feedback', '/admin/bookings') },
             { href: '/admin/revenue', label: 'Doanh thu', icon: 'fas fa-chart-line', active: isCurrentPath('/admin/revenue') },
+            { href: '/admin/profile', label: 'Tài khoản của tôi', icon: 'fas fa-user-circle', active: isCurrentPath('/admin/profile') },
             { href: '/admin/travel-fee-config', label: 'Cài đặt', icon: 'fas fa-gear', active: isCurrentPath('/admin/travel-fee-config', '/admin/assistant-soul') },
         ];
 
@@ -1686,6 +1689,10 @@ class AppNavbar extends HTMLElement {
 
         if (isCurrentPath('/admin/users')) {
             return { href: '/admin/users', label: 'Thành viên' };
+        }
+
+        if (isCurrentPath('/admin/profile')) {
+            return { href: '/admin/profile', label: 'Tài khoản' };
         }
 
         if (isCurrentPath('/admin/services', '/admin/linh-kien')) {

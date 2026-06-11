@@ -724,6 +724,13 @@
         }
     }
 
+    #dispatchAutoAssignToggle:checked + .dispatch-toggle-slider {
+        background-color: var(--dispatch-success);
+    }
+    #dispatchAutoAssignToggle:checked + .dispatch-toggle-slider .dispatch-toggle-knob {
+        transform: translateX(1.1rem);
+    }
+
     /* ── Worker Timeline Modal ── */
     .dtm-overlay {
         display: none;
@@ -1035,8 +1042,22 @@
     <div class="admin-dispatch-shell">
         <aside class="admin-dispatch-queue">
             <div class="admin-dispatch-queue__head">
-                <h1 class="admin-dispatch-queue__title">Danh sách chờ</h1>
-                <div class="admin-dispatch-queue__meta" id="dispatchQueueMeta">Đang tải hàng chờ điều phối...</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h1 class="admin-dispatch-queue__title">Danh sách chờ</h1>
+                        <div class="admin-dispatch-queue__meta" id="dispatchQueueMeta">Đang tải hàng chờ điều phối...</div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                        <span style="font-size: 0.75rem; font-weight: 600; color: var(--dispatch-muted);">Tự động</span>
+                        <label style="position: relative; display: inline-block; width: 2.5rem; height: 1.4rem;">
+                            <input type="checkbox" id="dispatchAutoAssignToggle" style="opacity: 0; width: 0; height: 0; position: absolute;">
+                            <span class="dispatch-toggle-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #c2c6d6; transition: .3s; border-radius: 1.5rem;">
+                                <span class="dispatch-toggle-knob" style="position: absolute; content: ''; height: 1rem; width: 1rem; left: 0.2rem; bottom: 0.2rem; background-color: white; transition: .3s; border-radius: 50%;"></span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
 
                 <div class="admin-dispatch-filters">
                     <div class="admin-dispatch-segmented">

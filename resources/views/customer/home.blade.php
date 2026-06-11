@@ -603,40 +603,51 @@
       <div class="lg:col-span-5 relative hidden lg:flex flex-col items-center">
         @php
         $heroSlides = [
-        ['/assets/images/carousel/Gemini_Generated_Image_7a95157a95157a95.png', 'Tiếp nhận yêu cầu nhanh', 'Thợ trực hệ thống, xác nhận thông tin và điều phối lịch hẹn ngay cho khách.'],
-        ['/assets/images/suamaylanh.png', 'Chuyên sửa máy lạnh', 'Xử lý chảy nước, kém lạnh, vệ sinh dàn lạnh và nạp gas tại nhà.'],
-        ['/assets/images/carousel/noichien.jpg', 'Sửa đồ gia dụng nhỏ', 'Nhận sửa nồi chiên, nồi cơm, bếp điện và các thiết bị gia dụng nhỏ tại cửa hàng.'],
-        ['/assets/images/carousel/suatulanhj.jpg', 'Kiểm tra tủ lạnh tại xưởng', 'Tập kết, phân loại và xử lý các lỗi tủ lạnh, tủ mát và thiết bị lạnh kích thước lớn.'],
-        ['/assets/images/carousel/suamaygiat.jpg', 'Hỗ trợ nhận vận chuyển thiết bị', 'Nhận máy giặt, tủ lạnh và thiết bị lớn về xưởng khi khách cần hỗ trợ vận chuyển.'],
+        ['type' => 'video', 'src' => '/assets/images/trailer.mp4', 'title' => 'Giới thiệu Thợ Tốt NTU', 'desc' => 'Dịch vụ sửa chữa uy tín chuyên nghiệp tại Nha Trang.'],
+        ['type' => 'image', 'src' => '/assets/images/carousel/Gemini_Generated_Image_7a95157a95157a95.png', 'title' => 'Tiếp nhận yêu cầu nhanh', 'desc' => 'Thợ trực hệ thống, xác nhận thông tin và điều phối lịch hẹn ngay cho khách.'],
+        ['type' => 'image', 'src' => '/assets/images/carousel/noichien.jpg', 'title' => 'Sửa đồ gia dụng nhỏ', 'desc' => 'Nhận sửa nồi chiên, nồi cơm, bếp điện và các thiết bị gia dụng nhỏ tại cửa hàng.'],
+        ['type' => 'image', 'src' => '/assets/images/carousel/suatulanhj.jpg', 'title' => 'Kiểm tra tủ lạnh tại xưởng', 'desc' => 'Tập kết, phân loại và xử lý các lỗi tủ lạnh, tủ mát và thiết bị lạnh kích thước lớn.'],
+        ['type' => 'image', 'src' => '/assets/images/carousel/suamaygiat.jpg', 'title' => 'Hỗ trợ nhận vận chuyển thiết bị', 'desc' => 'Nhận máy giặt, tủ lạnh và thiết bị lớn về xưởng khi khách cần hỗ trợ vận chuyển.'],
         ];
         @endphp
         <div class="absolute -inset-4 bg-primary/25 blur-3xl rounded-full -z-10"></div>
         <div id="heroCarousel" class="relative rounded-[2rem] overflow-hidden border-8 border-white shadow-2xl w-full">
           <div class="relative aspect-[4/5] overflow-hidden bg-slate-100">
-            @foreach($heroSlides as [$img, $title, $desc])
-            <img
-              class="hero-carousel-slide absolute inset-0 h-full w-full object-cover transition-opacity duration-700 {{ $loop->first ? 'opacity-100' : 'opacity-0' }}"
-              src="{{ $img }}"
-              alt="{{ $title }}"
-              data-title="{{ $title }}"
-              data-desc="{{ $desc }}" />
+            @foreach($heroSlides as $slide)
+              @if($slide['type'] === 'video')
+              <div class="hero-carousel-slide absolute inset-0 h-full w-full transition-opacity duration-700 {{ $loop->first ? 'opacity-100 z-10' : 'opacity-0 z-0' }}" data-title="{{ $slide['title'] }}" data-desc="{{ $slide['desc'] }}">
+                <video id="heroVideo" autoplay loop muted playsinline class="h-full w-full object-cover">
+                  <source src="{{ $slide['src'] }}" type="video/mp4">
+                </video>
+                <button id="toggleMuteBtn" class="absolute top-5 right-5 z-[60] bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors flex items-center justify-center cursor-pointer pointer-events-auto">
+                  <span class="material-symbols-outlined" id="muteIcon">volume_off</span>
+                </button>
+              </div>
+              @else
+              <img
+                class="hero-carousel-slide absolute inset-0 h-full w-full object-cover transition-opacity duration-700 {{ $loop->first ? 'opacity-100 z-10' : 'opacity-0 z-0' }}"
+                src="{{ $slide['src'] }}"
+                alt="{{ $slide['title'] }}"
+                data-title="{{ $slide['title'] }}"
+                data-desc="{{ $slide['desc'] }}" />
+              @endif
             @endforeach
 
-            <div class="absolute inset-x-0 top-0 p-5 bg-gradient-to-b from-slate-950/45 to-transparent">
+            <div class="absolute inset-x-0 top-0 p-5 bg-gradient-to-b from-slate-950/45 to-transparent pointer-events-none z-20">
               <div class="inline-flex items-center gap-2 rounded-full bg-white/85 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-slate-700 shadow">
                 <span class="material-symbols-outlined text-base text-primary-dark">home_repair_service</span>
                 Dịch vụ nổi bật
               </div>
             </div>
 
-            <div class="absolute inset-x-0 bottom-24 p-6 bg-gradient-to-t from-slate-950/75 to-transparent text-white">
-              <p id="heroCarouselTitle" class="text-2xl font-black leading-tight">{{ $heroSlides[0][1] }}</p>
-              <p id="heroCarouselDesc" class="mt-2 max-w-sm text-sm text-white/85">{{ $heroSlides[0][2] }}</p>
+            <div class="absolute inset-x-0 bottom-24 p-6 bg-gradient-to-t from-slate-950/75 to-transparent text-white pointer-events-none z-20">
+              <p id="heroCarouselTitle" class="text-2xl font-black leading-tight">{{ $heroSlides[0]['title'] }}</p>
+              <p id="heroCarouselDesc" class="mt-2 max-w-sm text-sm text-white/85">{{ $heroSlides[0]['desc'] }}</p>
             </div>
           </div>
 
-          <div class="absolute left-1/2 top-5 z-10 flex -translate-x-1/2 gap-2">
-            @foreach($heroSlides as [$img, $title, $desc])
+          <div class="absolute left-1/2 top-5 z-20 flex -translate-x-1/2 gap-2">
+            @foreach($heroSlides as $slide)
             <button
               type="button"
               class="hero-carousel-dot h-2.5 rounded-full bg-white/60 transition-all {{ $loop->first ? 'w-8 bg-white' : 'w-2.5' }}"
@@ -1143,32 +1154,26 @@
       desc.textContent = slides[index].dataset.desc || '';
     };
 
-    const startAutoPlay = () => {
-      intervalId = window.setInterval(() => {
-        renderSlide((activeIndex + 1) % slides.length);
-      }, 3500);
-    };
-
-    const stopAutoPlay = () => {
-      if (intervalId) {
-        window.clearInterval(intervalId);
-        intervalId = null;
-      }
-    };
-
     dots.forEach((dot, index) => {
       dot.addEventListener('click', () => {
         renderSlide(index);
-        stopAutoPlay();
-        startAutoPlay();
       });
     });
 
-    carousel.addEventListener('mouseenter', stopAutoPlay);
-    carousel.addEventListener('mouseleave', startAutoPlay);
-
     renderSlide(0);
-    startAutoPlay();
+
+    // Video mute toggle
+    const heroVideo = document.getElementById('heroVideo');
+    const toggleMuteBtn = document.getElementById('toggleMuteBtn');
+    const muteIcon = document.getElementById('muteIcon');
+    
+    if (heroVideo && toggleMuteBtn && muteIcon) {
+      toggleMuteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        heroVideo.muted = !heroVideo.muted;
+        muteIcon.textContent = heroVideo.muted ? 'volume_off' : 'volume_up';
+      });
+    }
   })();
 
   // AI Analysis button (mock)

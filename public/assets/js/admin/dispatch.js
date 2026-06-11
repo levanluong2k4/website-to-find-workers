@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         candidateList: document.getElementById('dispatchCandidatesList'),
         unavailableCount: document.getElementById('dispatchUnavailableCount'),
         unavailableList: document.getElementById('dispatchUnavailableList'),
+        autoAssignToggle: document.getElementById('dispatchAutoAssignToggle'),
     };
 
     const state = {
@@ -612,6 +613,52 @@ document.addEventListener('DOMContentLoaded', () => {
         const workerName = card.getAttribute('data-worker-name') || 'Kỹ thuật viên';
         openTimelineModal(workerId, workerName);
     });
+
+    let autoAssignInterval = null;
+    const triggerAutoAssign = async () => {
+        if (!refs.autoAssignToggle || !refs.autoAssignToggle.checked || state.isAssigning) return;
+        state.isAssigning = true;
+        try {
+            const response = await callApi(`/admin/dispatch/auto-assign`, 'POST');
+            if (response.ok && response.data?.data?.assigned_count > 0) {
+                showToast(`Đã tự động phân công ${response.data.data.assigned_count} đơn`);
+                await fetchBoard({ preserveSelection: false });
+            }
+        } catch (error) {
+            console.error('Auto assign error', error);
+        } finally {
+            state.isAssigning = false;
+        }
+    };
+
+    const startAutoAssignPolling = () => {
+        if (autoAssignInterval) clearInterval(autoAssignInterval);
+        autoAssignInterval = setInterval(async () => {
+            if (refs.autoAssignToggle && refs.autoAssignToggle.checked) {
+                await triggerAutoAssign();
+            }
+        }, 5000);
+    };
+
+    if (refs.autoAssignToggle) {
+        const autoAssignState = localStorage.getItem('dispatchAutoAssign') === 'true';
+        refs.autoAssignToggle.checked = autoAssignState;
+
+        refs.autoAssignToggle.addEventListener('change', async (e) => {
+            localStorage.setItem('dispatchAutoAssign', e.target.checked);
+            if (e.target.checked) {
+                await triggerAutoAssign();
+                startAutoAssignPolling();
+            } else {
+                if (autoAssignInterval) clearInterval(autoAssignInterval);
+            }
+        });
+
+        if (autoAssignState) {
+            triggerAutoAssign();
+            startAutoAssignPolling();
+        }
+    }
 
     syncFilterUi();
     fetchBoard({ preserveSelection: false });

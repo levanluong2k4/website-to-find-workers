@@ -193,13 +193,13 @@
           <!-- Services -->
           <label style="font-size:.78rem; font-weight:600; color:#64748b; display:block; margin-bottom:.75rem;">Dịch vụ cung cấp</label>
           <div class="worker-service-toolbar">
-            <span id="serviceSelectionCount" class="worker-service-counter">0 dich vu da chon</span>
+            <span id="serviceSelectionCount" class="worker-service-counter">0 dịch vụ đã chọn</span>
             <button type="button" id="serviceModalTrigger" class="worker-service-manage-button">
               <span class="material-symbols-outlined" style="font-size:1rem;">add_circle</span>
-              Them dich vu
+              Thêm dịch vụ
             </button>
           </div>
-          <p class="worker-service-hint">Chon cac huong chuyen mon ban nhan lam. Khach hang se thay cac dich vu nay tren ho so cua ban.</p>
+          <p class="worker-service-hint">Chọn các hướng chuyên môn bạn nhận làm. Khách hàng sẽ thấy các dịch vụ này trên hồ sơ của bạn.</p>
           <div id="serviceCheckboxContainer" class="worker-service-grid">
             <div style="font-size:.8rem; color:#94a3b8;">Đang tải dịch vụ...</div>
           </div>

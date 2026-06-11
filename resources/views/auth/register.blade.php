@@ -286,6 +286,18 @@
       box-shadow: 0 0 0 3px rgba(14,165,233,.1);
     }
     .field-wrap input::placeholder { color: #cbd5e1; }
+    .field-wrap input.is-invalid { border-color: #ef4444; background: #fff5f5; }
+    .field-wrap input.is-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,.1); }
+    .field-wrap input.is-valid { border-color: #22c55e; }
+    .field-error {
+      font-size: .7rem;
+      color: #ef4444;
+      margin-top: .25rem;
+      display: none;
+      align-items: center;
+      gap: .2rem;
+    }
+    .field-error.show { display: flex; }
 
     /* Terms */
     .terms {
@@ -447,6 +459,7 @@
             <div class="field-icon"><span class="material-symbols-outlined">mail</span></div>
             <input type="email" id="email" placeholder="example@gmail.com" required/>
           </div>
+          <div class="field-error" id="err-email"><span class="material-symbols-outlined" style="font-size:.75rem">error</span><span id="err-email-msg"></span></div>
         </div>
         <div class="field-group">
           <label class="field-label">Mật khẩu</label>
@@ -454,6 +467,15 @@
             <div class="field-icon"><span class="material-symbols-outlined">lock</span></div>
             <input type="password" id="matKhau" placeholder="Tối thiểu 6 ký tự" required minlength="6"/>
           </div>
+          <div class="field-error" id="err-matKhau"><span class="material-symbols-outlined" style="font-size:.75rem">error</span><span id="err-matKhau-msg"></span></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Xác nhận mật khẩu</label>
+          <div class="field-wrap">
+            <div class="field-icon"><span class="material-symbols-outlined">lock_reset</span></div>
+            <input type="password" id="xacNhanMatKhau" placeholder="Nhập lại mật khẩu" required/>
+          </div>
+          <div class="field-error" id="err-xacNhan"><span class="material-symbols-outlined" style="font-size:.75rem">error</span><span id="err-xacNhan-msg"></span></div>
         </div>
 
         <label class="terms">
@@ -493,8 +515,73 @@ window.switchRole = function(role) {
 const params = new URLSearchParams(window.location.search);
 if (params.get('role') === 'worker') switchRole('worker');
 
+function showFieldError(fieldId, errId, msg) {
+  const input = document.getElementById(fieldId);
+  const errEl = document.getElementById(errId);
+  const msgEl = document.getElementById(errId + '-msg');
+  if (input) input.classList.add('is-invalid');
+  if (errEl) errEl.classList.add('show');
+  if (msgEl) msgEl.textContent = msg;
+}
+function clearFieldError(fieldId, errId) {
+  const input = document.getElementById(fieldId);
+  const errEl = document.getElementById(errId);
+  if (input) { input.classList.remove('is-invalid'); input.classList.remove('is-valid'); }
+  if (errEl) errEl.classList.remove('show');
+}
+function clearAllErrors() {
+  ['email','matKhau','xacNhanMatKhau'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) { input.classList.remove('is-invalid','is-valid'); }
+  });
+  ['err-email','err-matKhau','err-xacNhan'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+}
+
+// Live validation
+document.getElementById('xacNhanMatKhau').addEventListener('input', () => {
+  const pw = document.getElementById('matKhau').value;
+  const cf = document.getElementById('xacNhanMatKhau').value;
+  if (cf && pw !== cf) {
+    showFieldError('xacNhanMatKhau','err-xacNhan','Mật khẩu không khớp');
+  } else {
+    clearFieldError('xacNhanMatKhau','err-xacNhan');
+    if (cf) document.getElementById('xacNhanMatKhau').classList.add('is-valid');
+  }
+});
+document.getElementById('email').addEventListener('blur', () => {
+  const emailVal = document.getElementById('email').value;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (emailVal && !re.test(emailVal)) {
+    showFieldError('email','err-email','Email không đúng định dạng');
+  } else {
+    clearFieldError('email','err-email');
+    if (emailVal) document.getElementById('email').classList.add('is-valid');
+  }
+});
+
 document.getElementById('registerForm').addEventListener('submit', async e => {
   e.preventDefault();
+  clearAllErrors();
+
+  const emailVal = document.getElementById('email').value;
+  const pw = document.getElementById('matKhau').value;
+  const cf = document.getElementById('xacNhanMatKhau').value;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  let hasError = false;
+
+  if (!re.test(emailVal)) {
+    showFieldError('email','err-email','Email không đúng định dạng');
+    hasError = true;
+  }
+  if (pw !== cf) {
+    showFieldError('xacNhanMatKhau','err-xacNhan','Mật khẩu không khớp');
+    hasError = true;
+  }
+  if (hasError) return;
+
   const btn = document.getElementById('btnSubmit');
   btn.disabled = true;
   btn.innerHTML = '<span style="width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;"></span> Đang xử lý...';
@@ -502,22 +589,35 @@ document.getElementById('registerForm').addEventListener('submit', async e => {
   const body = {
     name: document.getElementById('hoTen').value,
     phone: document.getElementById('soDienThoai').value,
-    email: document.getElementById('email').value,
-    password: document.getElementById('matKhau').value,
+    email: emailVal,
+    password: pw,
     role: document.getElementById('selectedRole').value
   };
 
   try {
     const res = await callApi('/register', 'POST', body);
     if (res.ok) {
+      if (res.data.requires_admin_approval) {
+        showToast(res.data.message || 'Đăng ký tài khoản thợ thành công. Vui lòng chờ admin duyệt.');
+        setTimeout(() => { window.location.href = baseUrl + `/login?role=${encodeURIComponent(body.role)}`; }, 1600);
+        return;
+      }
+
       if (res.data.debug_otp) sessionStorage.setItem('debug_otp', res.data.debug_otp);
       showToast('Đăng ký thành công! Kiểm tra mã OTP trong email của bạn.');
       setTimeout(() => { window.location.href = baseUrl + `/otp?email=${encodeURIComponent(res.data.email)}&is_new=1&role=${encodeURIComponent(body.role)}`; }, 1200);
     } else {
-      let msg = res.data.message || 'Đăng ký thất bại.';
-      if (res.data.errors?.email) msg = 'Email đã tồn tại!';
-      else if (res.data.errors?.phone) msg = 'Số điện thoại đã được đăng ký!';
-      showToast(msg, 'error');
+      const errs = res.data.errors || {};
+      if (errs.email) {
+        showFieldError('email','err-email', Array.isArray(errs.email) ? errs.email[0] : (errs.email === true ? 'Email đã tồn tại!' : errs.email));
+      } else if (res.data.message?.toLowerCase().includes('email')) {
+        showFieldError('email','err-email','Email đã tồn tại!');
+      }
+      // Clear password fields only, retain other values
+      document.getElementById('matKhau').value = '';
+      document.getElementById('xacNhanMatKhau').value = '';
+      const msg = res.data.message || 'Đăng ký thất bại.';
+      showToast(errs.phone ? 'Số điện thoại đã được đăng ký!' : msg, 'error');
       btn.disabled = false;
       btn.innerHTML = 'Tạo tài khoản <span class="material-symbols-outlined" style="font-size:1rem;">arrow_forward</span>';
     }

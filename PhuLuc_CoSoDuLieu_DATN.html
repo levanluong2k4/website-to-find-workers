@@ -1,0 +1,260 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: "Times New Roman", Times, serif; font-size: 13pt; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+        th, td { border: 1px solid black; padding: 8px; text-align: left; }
+        th { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h3>1. Bảng users (Người dùng)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>role_id</td><td>Khóa ngoại (Phân quyền)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>ten</td><td>Tên người dùng</td><td>Varchar(255)</td></tr>
+        <tr><td>4</td><td>email</td><td>Email đăng nhập</td><td>Varchar(255)</td></tr>
+        <tr><td>5</td><td>password</td><td>Mật khẩu</td><td>Varchar(255)</td></tr>
+        <tr><td>6</td><td>sdt</td><td>Số điện thoại</td><td>Varchar(20)</td></tr>
+        <tr><td>7</td><td>is_active</td><td>Trạng thái hoạt động</td><td>Boolean</td></tr>
+        <tr><td>8</td><td>avatar</td><td>Ảnh đại diện</td><td>Varchar(255)</td></tr>
+        <tr><td>9</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>10</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>2. Bảng roles (Phân quyền)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>ten_quyen</td><td>Tên quyền (admin, customer, worker)</td><td>Varchar(50)</td></tr>
+        <tr><td>3</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>4</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>3. Bảng user_addresses (Địa chỉ khách hàng)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>user_id</td><td>Khóa ngoại (Người dùng)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>dia_chi</td><td>Địa chỉ chi tiết</td><td>Varchar(255)</td></tr>
+        <tr><td>4</td><td>tinh</td><td>Tỉnh/Thành phố</td><td>Varchar(255)</td></tr>
+        <tr><td>5</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>6</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>4. Bảng ho_so_tho (Hồ sơ thợ)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>user_id</td><td>Khóa ngoại (Người dùng)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>cccd</td><td>Số Căn cước công dân</td><td>Varchar(20)</td></tr>
+        <tr><td>4</td><td>kinh_nghiem</td><td>Giới thiệu kinh nghiệm</td><td>Text</td></tr>
+        <tr><td>5</td><td>danh_gia_tb</td><td>Điểm đánh giá trung bình</td><td>Decimal(3,2)</td></tr>
+        <tr><td>6</td><td>trang_thai_hoat_dong</td><td>Trạng thái sẵn sàng nhận việc</td><td>Boolean</td></tr>
+        <tr><td>7</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>8</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>5. Bảng vi_dien_tus (Ví điện tử thợ)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>ma_tho</td><td>Khóa ngoại (Mã thợ)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>so_du</td><td>Số dư khả dụng trong ví</td><td>Decimal(15,2)</td></tr>
+        <tr><td>4</td><td>trang_thai</td><td>Trạng thái ví</td><td>Varchar(50)</td></tr>
+        <tr><td>5</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>6</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>6. Bảng lich_su_giao_dichs (Lịch sử giao dịch ví)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>vi_id</td><td>Khóa ngoại (Ví điện tử)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>ma_don_hang</td><td>Khóa ngoại (Đơn đặt lịch)</td><td>BigInt</td></tr>
+        <tr><td>4</td><td>so_tien</td><td>Số tiền giao dịch</td><td>Decimal(15,2)</td></tr>
+        <tr><td>5</td><td>loai_gd</td><td>Loại giao dịch (nạp, rút, trừ tiền)</td><td>Varchar(50)</td></tr>
+        <tr><td>6</td><td>trang_thai</td><td>Trạng thái giao dịch</td><td>Varchar(50)</td></tr>
+        <tr><td>7</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>8</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>7. Bảng don_dat_lich (Đơn đặt lịch sửa chữa)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>user_id</td><td>Khóa ngoại (Khách hàng)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>tho_id</td><td>Khóa ngoại (Thợ)</td><td>BigInt</td></tr>
+        <tr><td>4</td><td>tong_tien</td><td>Tổng tiền thanh toán</td><td>Decimal(15,2)</td></tr>
+        <tr><td>5</td><td>trang_thai</td><td>Trạng thái đơn (chờ, đang làm...)</td><td>Varchar(50)</td></tr>
+        <tr><td>6</td><td>khung_gio_hen</td><td>Khung giờ hẹn sửa chữa</td><td>Varchar(20)</td></tr>
+        <tr><td>7</td><td>phi_di_lai</td><td>Phí di chuyển của thợ</td><td>Decimal(15,2)</td></tr>
+        <tr><td>8</td><td>chi_tiet_tien_cong</td><td>Thông tin tiền công (Snapshot JSON)</td><td>JSON</td></tr>
+        <tr><td>9</td><td>chi_tiet_linh_kien</td><td>Thông tin linh kiện (Snapshot JSON)</td><td>JSON</td></tr>
+        <tr><td>10</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>11</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>8. Bảng thanh_toan (Giao dịch thanh toán cổng)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>don_dat_lich_id</td><td>Khóa ngoại (Đơn đặt lịch)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>phuong_thuc</td><td>Phương thức (cash, momo, vnpay)</td><td>Varchar(50)</td></tr>
+        <tr><td>4</td><td>so_tien</td><td>Số tiền thực tế thanh toán</td><td>Decimal(12,2)</td></tr>
+        <tr><td>5</td><td>ma_giao_dich</td><td>Mã giao dịch trả về từ cổng</td><td>Varchar(255)</td></tr>
+        <tr><td>6</td><td>trang_thai</td><td>Trạng thái thanh toán</td><td>Varchar(50)</td></tr>
+        <tr><td>7</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>8</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>9. Bảng danh_gia (Đánh giá thợ)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>don_id</td><td>Khóa ngoại (Đơn đặt lịch)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>tho_id</td><td>Khóa ngoại (Thợ)</td><td>BigInt</td></tr>
+        <tr><td>4</td><td>sao</td><td>Số sao đánh giá (1-5)</td><td>Int</td></tr>
+        <tr><td>5</td><td>noi_dung</td><td>Nội dung đánh giá</td><td>Text</td></tr>
+        <tr><td>6</td><td>hinh_anh</td><td>Hình ảnh đính kèm</td><td>JSON</td></tr>
+        <tr><td>7</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>8</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>10. Bảng danh_muc_dich_vu (Danh mục dịch vụ)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>ten_dich_vu</td><td>Tên dịch vụ</td><td>Varchar(255)</td></tr>
+        <tr><td>3</td><td>mo_ta</td><td>Mô tả chi tiết dịch vụ</td><td>Text</td></tr>
+        <tr><td>4</td><td>hinh_anh</td><td>Ảnh minh họa</td><td>Varchar(255)</td></tr>
+        <tr><td>5</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>6</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>11. Bảng tho_dich_vu (Thợ - Dịch vụ trung gian)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>ho_so_tho_id</td><td>Khóa ngoại (Hồ sơ thợ)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>dich_vu_id</td><td>Khóa ngoại (Dịch vụ)</td><td>BigInt</td></tr>
+        <tr><td>4</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>5</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>12. Bảng don_dat_lich_dich_vu (Đơn - Dịch vụ trung gian)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>don_dat_lich_id</td><td>Khóa ngoại (Đơn đặt lịch)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>dich_vu_id</td><td>Khóa ngoại (Dịch vụ)</td><td>BigInt</td></tr>
+        <tr><td>4</td><td>gia_tien</td><td>Giá dịch vụ lúc đặt đơn</td><td>Decimal(15,2)</td></tr>
+        <tr><td>5</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>6</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>13. Bảng trieu_chung (Triệu chứng lỗi)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>dich_vu_id</td><td>Khóa ngoại (Dịch vụ)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>ten_trieu_chung</td><td>Tên triệu chứng (VD: Máy kêu to)</td><td>Varchar(255)</td></tr>
+        <tr><td>4</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>5</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>14. Bảng trieu_chung_nguyen_nhan (Triệu chứng - Nguyên nhân)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>trieu_chung_id</td><td>Khóa ngoại (Triệu chứng)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>nguyen_nhan_id</td><td>Khóa ngoại (Nguyên nhân)</td><td>BigInt</td></tr>
+        <tr><td>4</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>5</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>15. Bảng nguyen_nhan (Nguyên nhân lỗi)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>ten_nguyen_nhan</td><td>Tên nguyên nhân (VD: Hết gas)</td><td>Varchar(255)</td></tr>
+        <tr><td>3</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>4</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>16. Bảng huong_xu_ly (Hướng xử lý)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>nguyen_nhan_id</td><td>Khóa ngoại (Nguyên nhân)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>ten_huong_xu_ly</td><td>Cách khắc phục</td><td>Varchar(255)</td></tr>
+        <tr><td>4</td><td>gia_tham_khao</td><td>Giá tiền khắc phục dự kiến</td><td>Decimal(15,2)</td></tr>
+        <tr><td>5</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>6</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>17. Bảng linh_kien (Linh kiện thay thế)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>dich_vu_id</td><td>Khóa ngoại (Dịch vụ)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>ten_linh_kien</td><td>Tên linh kiện (VD: Tụ đề)</td><td>Varchar(255)</td></tr>
+        <tr><td>4</td><td>gia_tien</td><td>Giá linh kiện</td><td>Decimal(15,2)</td></tr>
+        <tr><td>5</td><td>ton_kho</td><td>Số lượng tồn kho</td><td>Int</td></tr>
+        <tr><td>6</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>7</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>18. Bảng chat_magic (Lịch sử Chatbot)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>user_id</td><td>Khóa ngoại (Người dùng)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>guest_token</td><td>Token ẩn danh của khách vãng lai</td><td>Varchar(100)</td></tr>
+        <tr><td>4</td><td>sender</td><td>Người gửi (user, bot, system)</td><td>Varchar(20)</td></tr>
+        <tr><td>5</td><td>text</td><td>Nội dung tin nhắn</td><td>LongText</td></tr>
+        <tr><td>6</td><td>meta</td><td>Dữ liệu đính kèm thêm</td><td>JSON</td></tr>
+        <tr><td>7</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>8</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>19. Bảng chat_memories (Trí nhớ AI)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>user_id</td><td>Khóa ngoại (Người dùng)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>memory_type</td><td>Loại trí nhớ (Sở thích, Vấn đề)</td><td>Varchar(50)</td></tr>
+        <tr><td>4</td><td>label</td><td>Nhãn dữ liệu nhớ</td><td>Varchar(255)</td></tr>
+        <tr><td>5</td><td>value</td><td>Nội dung trí nhớ</td><td>Text</td></tr>
+        <tr><td>6</td><td>confidence</td><td>Độ tin cậy trích xuất của AI</td><td>Decimal(4,3)</td></tr>
+        <tr><td>7</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>8</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>20. Bảng ai_knowledge_items (Tài liệu huấn luyện RAG)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>primary_service_id</td><td>Khóa ngoại (Dịch vụ liên quan)</td><td>BigInt</td></tr>
+        <tr><td>3</td><td>source_type</td><td>Nguồn gốc tài liệu</td><td>Varchar(50)</td></tr>
+        <tr><td>4</td><td>title</td><td>Tiêu đề tài liệu</td><td>Varchar(255)</td></tr>
+        <tr><td>5</td><td>content</td><td>Nội dung kiến thức AI</td><td>LongText</td></tr>
+        <tr><td>6</td><td>quality_score</td><td>Điểm chất lượng của tài liệu</td><td>Decimal(5,4)</td></tr>
+        <tr><td>7</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>8</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+    <h3>21. Bảng qdrant_pending_deletions (Hàng đợi xóa Vector DB)</h3>
+    <table>
+        <tr><th>STT</th><th>Tên trường</th><th>Ý nghĩa</th><th>Kiểu dữ liệu</th></tr>
+        <tr><td>1</td><td>id</td><td>Khóa chính</td><td>BigInt</td></tr>
+        <tr><td>2</td><td>collection_name</td><td>Tên collection trong Qdrant</td><td>Varchar(255)</td></tr>
+        <tr><td>3</td><td>qdrant_id</td><td>Mã ID Document của Qdrant</td><td>Varchar(255)</td></tr>
+        <tr><td>4</td><td>created_at</td><td>Thời gian tạo</td><td>Timestamp</td></tr>
+        <tr><td>5</td><td>updated_at</td><td>Thời gian cập nhật</td><td>Timestamp</td></tr>
+    </table>
+
+</body>
+</html>

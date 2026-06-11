@@ -73,7 +73,7 @@
                             <div class="booking-choice-grid">
                                 <button type="button" class="booking-choice-card" data-repair-mode="at_home">
                                     <div class="booking-choice-visual booking-choice-home">
-                                        <span>GPS</span>
+                                        <img src="/assets/images/shipper.png" alt="Sửa tại nhà" style="width: 220px; height: 220px; object-fit: contain;">
                                     </div>
                                     <div class="booking-choice-body">
                                         <div class="booking-choice-title">Sửa tại nhà</div>
@@ -84,7 +84,7 @@
 
                                 <button type="button" class="booking-choice-card" data-repair-mode="at_store">
                                     <div class="booking-choice-visual booking-choice-store">
-                                        <span>SHOP</span>
+                                        <img src="/assets/images/cuahang.png" alt="Mang đến cửa hàng" style="width: 220px; height: 220px; object-fit: contain;">
                                     </div>
                                     <div class="booking-choice-body">
                                         <div class="booking-choice-title">Mang đến cửa hàng</div>

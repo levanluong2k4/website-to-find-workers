@@ -3,6 +3,28 @@
 use App\Http\Controllers\CustomerHomeController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
+
+Route::get('/assets/images/{path}', function (string $path) {
+    $path = trim($path, '/');
+
+    abort_if($path === '' || Str::contains($path, ['..', '\\']), 404);
+
+    $videoExtensions = ['mp4', 'webm', 'mov', 'm4v', 'avi'];
+    $extension = Str::lower(pathinfo($path, PATHINFO_EXTENSION));
+    $baseUrl = in_array($extension, $videoExtensions, true)
+        ? config('static_assets.cloudinary.video_base_url')
+        : config('static_assets.cloudinary.image_base_url');
+
+    if (! is_string($baseUrl) || trim($baseUrl) === '') {
+        abort(404, 'Cloudinary static asset base URL is not configured.');
+    }
+
+    $segments = array_map('rawurlencode', explode('/', $path));
+    $cloudinaryUrl = rtrim($baseUrl, '/') . '/assets/images/' . implode('/', $segments);
+
+    return redirect()->away($cloudinaryUrl, 302);
+})->where('path', '.*');
 
 // Trang chủ (Landing Page)
 Route::get('/', CustomerHomeController::class)->name('home');
@@ -175,6 +197,10 @@ Route::prefix('admin')->group(function () {
     Route::get('/users', function () {
         return view('admin.users');
     })->name('admin.users');
+
+    Route::get('/profile', function () {
+        return view('admin.profile');
+    })->name('admin.profile');
 
     Route::get('/workers', function () {
         return view('admin.workers');

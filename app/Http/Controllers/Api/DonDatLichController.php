@@ -189,12 +189,19 @@ class DonDatLichController extends Controller
                 $booking->phuong_thuc_thanh_toan = 'cod';
                 $booking->thoi_gian_het_han_nhan = null;
 
-                if (($validated['loai_dat_lich'] ?? '') === 'at_home') {
+                $thueXeCho = $validated['thue_xe_cho'] ?? false;
+                
+                if (($validated['loai_dat_lich'] ?? '') === 'at_home' || (($validated['loai_dat_lich'] ?? '') === 'at_store' && $thueXeCho)) {
                     $booking->dia_chi = $validated['dia_chi'] ?? '';
                     $booking->vi_do = $validated['vi_do'] ?? 0;
                     $booking->kinh_do = $validated['kinh_do'] ?? 0;
-                    $booking->khoang_cach = round((float) $khoangCach, 2);
-                    $booking->phi_di_lai = $phiDiLai;
+                    
+                    if (($validated['loai_dat_lich'] ?? '') === 'at_home') {
+                        $booking->khoang_cach = round((float) $khoangCach, 2);
+                        $booking->phi_di_lai = $phiDiLai;
+                    } else {
+                        $booking->phi_di_lai = 0;
+                    }
                 } else {
                     $booking->dia_chi = $travelFeeConfigService->resolveStoreAddress();
                     $booking->phi_di_lai = 0;

@@ -408,7 +408,7 @@
 }
 
 .booking-choice-visual {
-    min-height: 240px;
+    min-height: 300px;
     border-radius: 24px;
     display: grid;
     place-items: center;
@@ -420,11 +420,11 @@
 }
 
 .booking-choice-home {
-    background: linear-gradient(135deg, #114e60, #183c4a);
+    background: #ffffff;
 }
 
 .booking-choice-store {
-    background: linear-gradient(135deg, #e5e7eb, #d4d4d8);
+    background: #f1f5f9;
     color: #334155;
 }
 

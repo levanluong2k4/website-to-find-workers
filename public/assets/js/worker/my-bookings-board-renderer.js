@@ -56,8 +56,8 @@ export function createWorkerBoardRenderer({
       <div class="dispatch-board-empty">
         <div>
           <span class="material-symbols-outlined">hourglass_top</span>
-          <h3>Dang tai lich lam viec</h3>
-          <p>He thong dang dong bo cac don sua chua cua ban.</p>
+          <h3>Đang tải lịch làm việc</h3>
+          <p>Hệ thống đang đồng bộ các đơn sửa chữa của bạn.</p>
         </div>
       </div>
     `;
@@ -71,13 +71,13 @@ export function createWorkerBoardRenderer({
         <div>
           <span class="material-symbols-outlined">${isWarrantyBoard ? 'verified_user' : 'inventory_2'}</span>
           <h3>${isWarrantyBoard
-            ? 'Chua co yeu cau bao hanh nao'
-            : (scope === 'today' ? 'Khong co lich trong hom nay' : 'Khong co lich lam viec phu hop')}</h3>
+            ? 'Chưa có yêu cầu bảo hành nào'
+            : (scope === 'today' ? 'Không có lịch trong hôm nay' : 'Không có lịch làm việc phù hợp')}</h3>
           <p>${isWarrantyBoard
-            ? 'Khi khach gui bao hanh, case se hien thi tai tab nay de ban nhan xu ly va cap nhat tien do.'
+            ? 'Khi khách gửi bảo hành, case sẽ hiển thị tại tab này để bạn nhận xử lý và cập nhật tiến độ.'
             : (scope === 'today'
-              ? 'He thong chua ghi nhan don nao dien ra trong hom nay cho tai khoan nay.'
-              : 'Khi co lich sua chua moi, he thong se hien thi truc tiep tai day.')}</p>
+              ? 'Hệ thống chưa ghi nhận đơn nào diễn ra trong hôm nay cho tài khoản này.'
+              : 'Khi có lịch sửa chữa mới, hệ thống sẽ hiển thị trực tiếp tại đây.')}</p>
         </div>
       </div>
     `;
@@ -93,15 +93,15 @@ export function createWorkerBoardRenderer({
 
     return `
       <div class="dispatch-workflow">
-        <p class="dispatch-workflow__title">Quy trinh hien tai</p>
+        <p class="dispatch-workflow__title">Quy trình hiện tại</p>
         <div class="dispatch-workflow__list">
           <div class="dispatch-workflow__item is-done">
             <span class="dispatch-workflow__icon material-symbols-outlined">check</span>
-            <span>Da bat dau sua</span>
+            <span>Đã bắt đầu sửa</span>
           </div>
           <div class="dispatch-workflow__item ${pricingReady ? 'is-done' : 'is-current'}">
             <span class="dispatch-workflow__icon material-symbols-outlined">${pricingReady ? 'check' : 'priority_high'}</span>
-            <span>${pricingReady ? 'Da cap nhat chi phi' : 'Can cap nhat chi phi'}</span>
+            <span>${pricingReady ? 'Đã cập nhật chi phí' : 'Cần cập nhật chi phí'}</span>
           </div>
           <div class="dispatch-workflow__item ${pricingReady ? 'is-current' : 'is-locked'}">
             <span class="dispatch-workflow__icon material-symbols-outlined">${pricingReady ? 'arrow_forward' : 'lock'}</span>
@@ -131,19 +131,19 @@ export function createWorkerBoardRenderer({
   const getPaymentStageMeta = (booking) => {
     if (isCashPaymentBooking(booking)) {
       return {
-        eyebrow: 'Chua thanh toan COD',
-        method: 'Tien mat',
+        eyebrow: 'Chưa thanh toán COD',
+        method: 'Tiền mặt',
         hint: booking.trang_thai === 'cho_hoan_thanh'
-          ? 'Ban da bao hoan thanh. Chi con buoc thu du tien mat roi xac nhan de chot don.'
-          : 'Don dang giu phuong thuc tien mat. Kiem tra da nhan du tien truoc khi xac nhan hoan tat.',
+          ? 'Bạn đã báo hoàn thành. Chỉ còn bước thu đủ tiền mặt rồi xác nhận để chốt đơn.'
+          : 'Đơn đang giữ phương thức tiền mặt. Kiểm tra đã nhận đủ tiền trước khi xác nhận hoàn tất.',
         tone: 'cash',
       };
     }
 
     return {
-      eyebrow: 'Cho thanh toan online',
-      method: 'Chuyen khoan',
-      hint: 'He thong dang cho khach hoan tat giao dich truc tuyen. Khi thanh toan thanh cong, don se tu chuyen hoan thanh.',
+      eyebrow: 'Chờ thanh toán online',
+      method: 'Chuyển khoản',
+      hint: 'Hệ thống đang chờ khách hoàn tất giao dịch trực tuyến. Khi thanh toán thành công, đơn sẽ tự chuyển hoàn thành.',
       tone: 'transfer',
     };
   };
@@ -167,15 +167,15 @@ export function createWorkerBoardRenderer({
 
         <div class="dispatch-board-payment__stats">
           <div class="dispatch-board-payment__stat">
-            <span class="dispatch-board-payment__stat-label">Tien cong</span>
+            <span class="dispatch-board-payment__stat-label">Tiền công</span>
             <span class="dispatch-board-payment__stat-value">${formatMoney(getBookingLaborTotal(booking))}</span>
           </div>
           <div class="dispatch-board-payment__stat">
-            <span class="dispatch-board-payment__stat-label">Linh kien</span>
+            <span class="dispatch-board-payment__stat-label">Linh kiện</span>
             <span class="dispatch-board-payment__stat-value">${formatMoney(getBookingPartsTotal(booking))}</span>
           </div>
           <div class="dispatch-board-payment__stat">
-            <span class="dispatch-board-payment__stat-label">Phu phi</span>
+            <span class="dispatch-board-payment__stat-label">Phụ phí</span>
             <span class="dispatch-board-payment__stat-value">${formatMoney(getBookingSurchargeTotal(booking))}</span>
           </div>
         </div>
@@ -186,14 +186,14 @@ export function createWorkerBoardRenderer({
   };
 
   const getComplaintCaseStatusLabel = (complaintCase) => complaintCase?.status_label || ({
-    new: 'Khach vua tao case',
-    worker_notified: 'Da gui cho tho',
-    accepted: 'Tho da nhan',
-    in_progress: 'Dang xu ly',
-    completed: 'Da hoan tat',
-    rejected: 'Da tu choi',
-    expired: 'Het han',
-  }[String(complaintCase?.status || '')] || 'Bao hanh');
+    new: 'Khách vừa tạo case',
+    worker_notified: 'Đã gửi cho thợ',
+    accepted: 'Thợ đã nhận',
+    in_progress: 'Đang xử lý',
+    completed: 'Đã hoàn tất',
+    rejected: 'Đã từ chối',
+    expired: 'Hết hạn',
+  }[String(complaintCase?.status || '')] || 'Bảo hành');
 
   const getComplaintCaseTone = (complaintCase) => {
     const status = String(complaintCase?.status || '');
@@ -212,7 +212,7 @@ export function createWorkerBoardRenderer({
       renderBoardButton({
         variant: 'secondary',
         icon: 'visibility',
-        label: 'Chi tiet',
+        label: 'Chi tiết',
         onclick: `openViewDetailsModal(${booking.id})`,
       }),
     ];
@@ -221,13 +221,13 @@ export function createWorkerBoardRenderer({
       actions.unshift(renderBoardButton({
         variant: 'main-success',
         icon: 'task_alt',
-        label: 'Nhan bao hanh',
+        label: 'Nhận bảo hành',
         onclick: `updateComplaintStatus(${booking.id}, 'accepted')`,
       }));
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: 'close',
-        label: 'Tu choi',
+        label: 'Từ chối',
         onclick: `updateComplaintStatus(${booking.id}, 'rejected')`,
       }));
       return actions.join('');
@@ -237,13 +237,13 @@ export function createWorkerBoardRenderer({
       actions.unshift(renderBoardButton({
         variant: 'main',
         icon: 'play_arrow',
-        label: 'Bat dau xu ly',
+        label: 'Bắt đầu xử lý',
         onclick: `updateComplaintStatus(${booking.id}, 'in_progress')`,
       }));
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: 'close',
-        label: 'Tu choi',
+        label: 'Từ chối',
         onclick: `updateComplaintStatus(${booking.id}, 'rejected')`,
       }));
       return actions.join('');
@@ -253,13 +253,13 @@ export function createWorkerBoardRenderer({
       actions.unshift(renderBoardButton({
         variant: 'main-warm',
         icon: 'task_alt',
-        label: 'Hoan tat bao hanh',
+        label: 'Hoàn tất bảo hành',
         onclick: `updateComplaintStatus(${booking.id}, 'completed')`,
       }));
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: 'close',
-        label: 'Tu choi',
+        label: 'Từ chối',
         onclick: `updateComplaintStatus(${booking.id}, 'rejected')`,
       }));
       return actions.join('');
@@ -270,25 +270,25 @@ export function createWorkerBoardRenderer({
 
   const renderInlineNote = (booking) => {
     if (booking.trang_thai === 'dang_lam' && !hasUpdatedPricing(booking)) {
-      return '<div class="dispatch-inline-note dispatch-inline-note--danger">Ban can cap nhat gia truoc khi su dung nut bao hoan thanh.</div>';
+      return '<div class="dispatch-inline-note dispatch-inline-note--danger">Bạn cần cập nhật giá trước khi sử dụng nút báo hoàn thành.</div>';
     }
 
     if (booking.trang_thai === 'da_xac_nhan') {
-      return '<div class="dispatch-inline-note">Uu tien bat dau dung khung gio de giu trai nghiem dung hen cho khach.</div>';
+      return '<div class="dispatch-inline-note">Ưu tiên bắt đầu đúng khung giờ để giữ trải nghiệm đúng hẹn cho khách.</div>';
     }
 
     if (booking.trang_thai === 'cho_thanh_toan') {
       return isCashPaymentBooking(booking)
-        ? '<div class="dispatch-inline-note">Khach se thanh toan tien mat truc tiep. Chi xac nhan hoan tat sau khi ban da thu du tien mat.</div>'
-        : '<div class="dispatch-inline-note">Don da duoc bao hoan thanh va dang cho khach thanh toan truc tuyen. He thong se tu chot don khi giao dich thanh cong.</div>';
+        ? '<div class="dispatch-inline-note">Khách sẽ thanh toán tiền mặt trực tiếp. Chỉ xác nhận hoàn tất sau khi bạn đã thu đủ tiền mặt.</div>'
+        : '<div class="dispatch-inline-note">Đơn đã được báo hoàn thành và đang chờ khách thanh toán trực tuyến. Hệ thống sẽ tự chốt đơn khi giao dịch thành công.</div>';
     }
 
     if (booking.trang_thai === 'cho_hoan_thanh') {
-      return '<div class="dispatch-inline-note">Khach thanh toan tien mat truc tiep. Sau khi thu du tien, ban can xac nhan de chot hoan tat don.</div>';
+      return '<div class="dispatch-inline-note">Khách thanh toán tiền mặt trực tiếp. Sau khi thu đủ tiền, bạn cần xác nhận để chốt hoàn tất đơn.</div>';
     }
 
     if (booking.trang_thai === 'da_xong') {
-      return '<div class="dispatch-inline-note">Cong viec da hoan tat va duoc luu vao lich su xu ly.</div>';
+      return '<div class="dispatch-inline-note">Công việc đã hoàn tất và được lưu vào lịch sử xử lý.</div>';
     }
 
     return '';
@@ -352,8 +352,8 @@ export function createWorkerBoardRenderer({
       return {
         tone: 'default',
         icon: 'info',
-        title: 'Ghi chu nhac bat dau dung gio',
-        body: booking.mo_ta_van_de || 'Khach da chot lich. Vui long den dung khung gio de tranh tre hen.',
+        title: 'Ghi chú nhắc bắt đầu đúng giờ',
+        body: booking.mo_ta_van_de || 'Khách đã chốt lịch. Vui lòng đến đúng khung giờ để tránh trễ hẹn.',
       };
     }
 
@@ -362,16 +362,16 @@ export function createWorkerBoardRenderer({
         return {
           tone: 'info',
           icon: 'price_check',
-          title: 'Dich vu dang sua va da co bao gia',
-          body: `Tong chi phi tam tinh hien tai la ${formatMoney(getBookingTotal(booking))}. Khi thiet bi da on dinh, ban co the bao hoan thanh ngay tren the nay.`,
+          title: 'Dịch vụ đang sửa và đã có báo giá',
+          body: `Tổng chi phí tạm tính hiện tại là ${formatMoney(getBookingTotal(booking))}. Khi thiết bị đã ổn định, bạn có thể báo hoàn thành ngay trên thẻ này.`,
         };
       }
 
       return {
         tone: 'danger',
         icon: 'warning',
-        title: 'Dich vu dang sua, cho cap nhat chi phi',
-        body: 'Hay dien tien cong, linh kien va phu phi truoc khi chuyen sang buoc bao hoan thanh cho khach.',
+        title: 'Dịch vụ đang sửa, chờ cập nhật chi phí',
+        body: 'Hãy điền tiền công, linh kiện và phụ phí trước khi chuyển sang bước báo hoàn thành cho khách.',
       };
     }
 
@@ -380,14 +380,14 @@ export function createWorkerBoardRenderer({
         ? {
             tone: 'info',
             icon: 'payments',
-            title: 'Don dang cho xac nhan COD',
-            body: 'Chi xac nhan hoan tat sau khi ban da thu du tien truc tiep tu khach hang.',
+            title: 'Đơn đang chờ xác nhận COD',
+            body: 'Chỉ xác nhận hoàn tất sau khi bạn đã thu đủ tiền trực tiếp từ khách hàng.',
           }
         : {
             tone: 'info',
             icon: 'credit_card',
-            title: 'Don dang cho thanh toan online',
-            body: 'He thong se tu chot don khi giao dich truc tuyen cua khach thanh cong.',
+            title: 'Đơn đang chờ thanh toán online',
+            body: 'Hệ thống sẽ tự chốt đơn khi giao dịch trực tuyến của khách thành công.',
           };
     }
 
@@ -395,8 +395,8 @@ export function createWorkerBoardRenderer({
       return {
         tone: 'success',
         icon: 'task_alt',
-        title: 'Cong viec da hoan tat',
-        body: `Tong chi phi da chot la ${formatMoney(getBookingTotal(booking))}. Don nay hien nam trong lich su xu ly.`,
+        title: 'Công việc đã hoàn tất',
+        body: `Tổng chi phí đã chốt là ${formatMoney(getBookingTotal(booking))}. Đơn này hiện nằm trong lịch sử xử lý.`,
       };
     }
 
@@ -404,16 +404,16 @@ export function createWorkerBoardRenderer({
       return {
         tone: 'danger',
         icon: 'cancel',
-        title: 'Don da bi huy',
-        body: 'Giu lai chi tiet de doi chieu neu can kiem tra nguyen nhan huy hoac lich su lam viec.',
+        title: 'Đơn đã bị hủy',
+        body: 'Giữ lại chi tiết để đối chiếu nếu cần kiểm tra nguyên nhân hủy hoặc lịch sử làm việc.',
       };
     }
 
     return {
       tone: 'info',
       icon: 'schedule',
-      title: 'Don dang cho xac nhan',
-      body: 'Kiem tra ky mo ta va thong tin lien he truoc khi thuc hien cac buoc tiep theo.',
+      title: 'Đơn đang chờ xác nhận',
+      body: 'Kiểm tra kỹ mô tả và thông tin liên hệ trước khi thực hiện các bước tiếp theo.',
     };
   };
 
@@ -488,26 +488,26 @@ export function createWorkerBoardRenderer({
       actions.push(renderBoardButton({
         variant: 'main-success',
         icon: 'assignment_turned_in',
-        label: 'Nhan don',
+        label: 'Nhận đơn',
         onclick: `claimJob(${booking.id})`,
       }));
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: 'visibility',
-        label: 'Chi tiet',
+        label: 'Chi tiết',
         onclick: `openViewDetailsModal(${booking.id})`,
       }));
     } else if (isAssignedPendingBooking(booking)) {
       actions.push(renderBoardButton({
         variant: 'main-success',
         icon: 'task_alt',
-        label: 'Xac nhan don',
+        label: 'Xác nhận đơn',
         onclick: `updateStatus(${booking.id}, 'da_xac_nhan')`,
       }));
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: 'visibility',
-        label: 'Chi tiet',
+        label: 'Chi tiết',
         onclick: `openViewDetailsModal(${booking.id})`,
       }));
     } else if (booking.trang_thai === 'da_xac_nhan' || booking.trang_thai === 'khong_lien_lac_duoc_voi_khach_hang') {
@@ -516,17 +516,17 @@ export function createWorkerBoardRenderer({
       actions.push(renderBoardButton({
         variant: contactIssueOpen ? 'main-disabled' : 'main',
         icon: contactIssueOpen ? 'hourglass_top' : 'play_arrow',
-        label: contactIssueOpen ? 'Cho admin xu ly' : 'Bat dau sua',
+        label: contactIssueOpen ? 'Chờ admin xử lý' : 'Bắt đầu sửa',
         onclick: `updateStatus(${booking.id}, 'dang_lam')`,
         disabled: contactIssueOpen,
         title: contactIssueOpen
-          ? 'Don dang duoc admin ho tro lien he khach hang'
-          : 'Bat dau xu ly don sap toi',
+          ? 'Đơn đang được admin hỗ trợ liên hệ khách hàng'
+          : 'Bắt đầu xử lý đơn sắp tới',
       }));
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: 'visibility',
-        label: 'Chi tiet',
+        label: 'Chi tiết',
         onclick: `openViewDetailsModal(${booking.id})`,
       }));
 
@@ -549,7 +549,7 @@ export function createWorkerBoardRenderer({
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: pricingReady ? 'price_change' : 'visibility',
-        label: pricingReady ? 'Cap nhat gia' : 'Chi tiet',
+        label: pricingReady ? 'Cập nhật giá' : 'Chi tiết',
         onclick: pricingReady ? `openCostModal(${booking.id})` : `openViewDetailsModal(${booking.id})`,
       }));
       if (pricingReady) {
@@ -557,27 +557,27 @@ export function createWorkerBoardRenderer({
           variant: 'icon',
           icon: 'visibility',
           onclick: `openViewDetailsModal(${booking.id})`,
-          title: 'Xem chi tiet dich vu dang sua',
+          title: 'Xem chi tiết dịch vụ đang sửa',
         }));
       }
     } else if (booking.trang_thai === 'cho_thanh_toan' || booking.trang_thai === 'cho_hoan_thanh') {
       actions.push(renderBoardButton({
         variant: 'main-warm',
         icon: 'payments',
-        label: isCashPaymentBooking(booking) ? 'Xac nhan da thu' : 'Theo doi TT',
+        label: isCashPaymentBooking(booking) ? 'Xác nhận đã thu' : 'Theo dõi TT',
         onclick: isCashPaymentBooking(booking) ? `confirmCashPayment(${booking.id})` : `openViewDetailsModal(${booking.id})`,
       }));
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: 'receipt_long',
-        label: 'Chi tiet',
+        label: 'Chi tiết',
         onclick: `openViewDetailsModal(${booking.id})`,
       }));
     } else {
       actions.push(renderBoardButton({
         variant: 'secondary',
         icon: 'visibility',
-        label: 'Chi tiet',
+        label: 'Chi tiết',
         onclick: `openViewDetailsModal(${booking.id})`,
       }));
     }
@@ -589,7 +589,7 @@ export function createWorkerBoardRenderer({
         variant: 'icon',
         icon: 'near_me',
         onclick: `openRouteGuide(${booking.id})`,
-        title: 'Mo chi duong',
+        title: 'Mở chỉ đường',
       }));
     }
 
@@ -598,7 +598,7 @@ export function createWorkerBoardRenderer({
         variant: 'icon',
         icon: 'call',
         href: getPhoneHref(booking),
-        title: `Goi ${getCustomerName(booking)}`,
+        title: `Gọi ${getCustomerName(booking)}`,
       }));
     }
 
@@ -610,7 +610,7 @@ export function createWorkerBoardRenderer({
     const title = getBookingServiceNames(booking);
     const serviceBadge = getServiceBadge(booking);
     const customerName = getCustomerName(booking);
-    const customerPhone = getPhoneNumber(booking) || 'Chua co so lien he';
+    const customerPhone = getPhoneNumber(booking) || 'Chưa có số liên hệ';
     const noteMarkup = renderBoardNote(booking);
     const paymentMarkup = renderBoardPaymentPanel(booking);
     const scheduleDateText = getBookingCardDateLabel(booking);
@@ -636,7 +636,7 @@ export function createWorkerBoardRenderer({
                 <div class="dispatch-board-card__support">
                   <span class="dispatch-board-card__support-item">
                     <span class="material-symbols-outlined">tag</span>
-                    <span>Ma don ${escapeHtml(bookingCode)}</span>
+                    <span>Mã đơn ${escapeHtml(bookingCode)}</span>
                   </span>
                   <span class="dispatch-board-card__support-item">
                     <span class="material-symbols-outlined">person</span>
@@ -663,7 +663,7 @@ export function createWorkerBoardRenderer({
                   <span class="material-symbols-outlined">location_on</span>
                 </span>
                 <span class="dispatch-board-card__info-copy">
-                  <span class="dispatch-board-card__info-label">Dia diem</span>
+                  <span class="dispatch-board-card__info-label">Địa điểm</span>
                   <span class="dispatch-board-card__info-value">${escapeHtml(location)}</span>
                 </span>
               </div>
@@ -673,7 +673,7 @@ export function createWorkerBoardRenderer({
                   <span class="material-symbols-outlined">${escapeHtml(locationIcon)}</span>
                 </span>
                 <span class="dispatch-board-card__info-copy">
-                  <span class="dispatch-board-card__info-label">Hinh thuc</span>
+                  <span class="dispatch-board-card__info-label">Hình thức</span>
                   <span class="dispatch-board-card__info-value">${escapeHtml(locationLabel)}</span>
                 </span>
               </div>
@@ -683,8 +683,8 @@ export function createWorkerBoardRenderer({
                   <span class="material-symbols-outlined">event_note</span>
                 </span>
                 <span class="dispatch-board-card__info-copy">
-                  <span class="dispatch-board-card__info-label">Lich hen</span>
-                  <span class="dispatch-board-card__info-value">${escapeHtml(booking?.khung_gio_hen || 'Chua chon gio')}</span>
+                  <span class="dispatch-board-card__info-label">Lịch hẹn</span>
+                  <span class="dispatch-board-card__info-value">${escapeHtml(booking?.khung_gio_hen || 'Chưa chọn giờ')}</span>
                 </span>
               </div>
             </div>

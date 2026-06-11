@@ -1146,7 +1146,7 @@
                             <th>Tên linh kiện</th>
                             <th>Tồn kho</th>
                             <th>Giá trị</th>
-                            <th>Hạn sử dụng</th>
+                            <th>Ngày sản xuất</th>
                             <th style="text-align:right;padding-right:1.5rem">Thao tác</th>
                         </tr>
                     </thead>
@@ -1270,9 +1270,9 @@
                             <div class="invalid-feedback" id="partStockError"></div>
                         </div>
                         <div>
-                            <label class="field-label" for="partExpiry">Hạn sử dụng</label>
-                            <input type="date" class="field-input" id="partExpiry">
-                            <div class="invalid-feedback" id="partExpiryError"></div>
+                            <label class="field-label" for="partMfgDate">Ngày sản xuất</label>
+                            <input type="date" class="field-input" id="partMfgDate">
+                            <div class="invalid-feedback" id="partMfgDateError"></div>
                         </div>
                     </div>
                     <div>

@@ -60,14 +60,14 @@ class AdminRevenueController extends Controller
 
         // ------- Top workers -------
         $topWorkers = DonDatLich::query()
-            ->whereIn('don_dat_lichs.trang_thai', ['da_xong', 'hoan_thanh'])
-            ->join('users', 'users.id', '=', 'don_dat_lichs.tho_id')
-            ->selectRaw('users.id, users.name, users.avatar, SUM(don_dat_lichs.tong_tien) as tong_gop, COUNT(don_dat_lichs.id) as so_don')
+            ->whereIn('don_dat_lich.trang_thai', ['da_xong', 'hoan_thanh'])
+            ->join('users', 'users.id', '=', 'don_dat_lich.tho_id')
+            ->selectRaw('users.id, users.name, users.avatar, SUM(don_dat_lich.tong_tien) as tong_gop, COUNT(don_dat_lich.id) as so_don')
             ->groupBy('users.id', 'users.name', 'users.avatar')
             ->orderByDesc('tong_gop')
             ->limit(10)
-            ->when($from, fn($q) => $q->where('don_dat_lichs.updated_at', '>=', $from))
-            ->when($to,   fn($q) => $q->where('don_dat_lichs.updated_at', '<=', $to))
+            ->when($from, fn($q) => $q->where('don_dat_lich.updated_at', '>=', $from))
+            ->when($to,   fn($q) => $q->where('don_dat_lich.updated_at', '<=', $to))
             ->get()
             ->map(fn($w) => [
                 'id'         => $w->id,
@@ -80,21 +80,21 @@ class AdminRevenueController extends Controller
 
         // ------- Worker salary table -------
         $salaryTable = DonDatLich::query()
-            ->whereIn('don_dat_lichs.trang_thai', ['da_xong', 'hoan_thanh'])
-            ->join('users', 'users.id', '=', 'don_dat_lichs.tho_id')
+            ->whereIn('don_dat_lich.trang_thai', ['da_xong', 'hoan_thanh'])
+            ->join('users', 'users.id', '=', 'don_dat_lich.tho_id')
             ->leftJoin('vi_dien_tu', 'vi_dien_tu.ma_tho', '=', 'users.id')
             ->selectRaw('
                 users.id,
                 users.name,
                 users.phone,
                 MAX(vi_dien_tu.so_du) as so_du,
-                COUNT(don_dat_lichs.id) as so_don,
-                SUM(don_dat_lichs.tong_tien) as tong_gop
+                COUNT(don_dat_lich.id) as so_don,
+                SUM(don_dat_lich.tong_tien) as tong_gop
             ')
             ->groupBy('users.id', 'users.name', 'users.phone')
             ->orderByDesc('tong_gop')
-            ->when($from, fn($q) => $q->where('don_dat_lichs.updated_at', '>=', $from))
-            ->when($to,   fn($q) => $q->where('don_dat_lichs.updated_at', '<=', $to))
+            ->when($from, fn($q) => $q->where('don_dat_lich.updated_at', '>=', $from))
+            ->when($to,   fn($q) => $q->where('don_dat_lich.updated_at', '<=', $to))
             ->get()
             ->map(function ($w) use ($taxRate, $feeRate, $netRate) {
                 $gop   = (float) $w->tong_gop;
@@ -132,6 +132,41 @@ class AdminRevenueController extends Controller
                 ];
             });
 
+        // ------- Orders History (Paginated) -------
+        $ordersPage = (int) $request->input('order_page', 1);
+        $ordersQuery = DonDatLich::query()
+            ->whereIn('don_dat_lich.trang_thai', ['da_xong', 'hoan_thanh'])
+            ->join('users as tho', 'tho.id', '=', 'don_dat_lich.tho_id')
+            ->join('users as kh', 'kh.id', '=', 'don_dat_lich.khach_hang_id')
+            ->select(
+                'don_dat_lich.id',
+                'don_dat_lich.tong_tien',
+                'don_dat_lich.updated_at',
+                'tho.name as tho_name',
+                'tho.id as tho_id',
+                'kh.name as khach_hang'
+            )
+            ->orderByDesc('don_dat_lich.updated_at')
+            ->when($from, fn($q) => $q->where('don_dat_lich.updated_at', '>=', $from))
+            ->when($to,   fn($q) => $q->where('don_dat_lich.updated_at', '<=', $to));
+            
+        $paginatedOrders = $ordersQuery->paginate(10, ['*'], 'order_page', $ordersPage);
+        
+        $ordersList = collect($paginatedOrders->items())->map(function($o) use ($taxRate, $feeRate, $netRate) {
+            $gop = (float) $o->tong_tien;
+            return [
+                'id' => $o->id,
+                'khach_hang' => $o->khach_hang,
+                'tho_id' => $o->tho_id,
+                'tho_name' => $o->tho_name,
+                'ngay' => Carbon::parse($o->updated_at)->format('d/m/Y H:i'),
+                'tong_gop' => $gop,
+                'thue' => round($gop * $taxRate / 100),
+                'phi' => round($gop * $feeRate / 100),
+                'luong' => round($gop * $netRate / 100)
+            ];
+        });
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -148,8 +183,129 @@ class AdminRevenueController extends Controller
                 'chart'          => $chartData,
                 'top_workers'    => $topWorkers,
                 'salary_table'   => $salaryTable,
+                'orders'         => [
+                    'data' => $ordersList,
+                    'current_page' => $paginatedOrders->currentPage(),
+                    'last_page' => $paginatedOrders->lastPage(),
+                    'total' => $paginatedOrders->total()
+                ]
             ],
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $period  = $request->input('period', '30d');
+        [$from, $to] = $this->resolvePeriod($period, $request);
+
+        $taxRate = (float) (AppSetting::where('key', 'ty_le_thue_nha_nuoc')->value('value') ?? 10);
+        $feeRate = (float) (AppSetting::where('key', 'ty_le_phi_nen_tang')->value('value') ?? 20);
+        $netRate = max(0, 100 - $taxRate - $feeRate);
+
+        $orders = DonDatLich::query()
+            ->whereIn('don_dat_lich.trang_thai', ['da_xong', 'hoan_thanh'])
+            ->join('users as tho', 'tho.id', '=', 'don_dat_lich.tho_id')
+            ->join('users as kh', 'kh.id', '=', 'don_dat_lich.khach_hang_id')
+            ->select(
+                'don_dat_lich.id',
+                'don_dat_lich.tong_tien',
+                'don_dat_lich.updated_at',
+                'tho.name as tho_name',
+                'tho.id as tho_id',
+                'kh.name as khach_hang'
+            )
+            ->orderByDesc('don_dat_lich.updated_at')
+            ->when($from, fn($q) => $q->where('don_dat_lich.updated_at', '>=', $from))
+            ->when($to,   fn($q) => $q->where('don_dat_lich.updated_at', '<=', $to))
+            ->get();
+
+        $filename = 'chi_tiet_doanh_thu_' . Carbon::now()->format('Ymd_His') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
+        ];
+        
+        $callback = function () use ($orders, $taxRate, $feeRate, $netRate, $period, $from, $to) {
+            $file = fopen('php://output', 'w');
+            fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF)));
+            
+            // Metadata
+            fputcsv($file, ['THỐNG KÊ DOANH THU ĐƠN ĐẶT LỊCH']);
+            fputcsv($file, ['Thời gian xuất báo cáo:', Carbon::now()->format('d/m/Y H:i:s')]);
+            
+            $kyBaoCao = $period;
+            if ($period === 'custom' || ($from && $to)) {
+                $fDate = $from ? Carbon::parse($from)->format('d/m/Y') : '...';
+                $tDate = $to ? Carbon::parse($to)->format('d/m/Y') : '...';
+                $kyBaoCao = "Từ ngày $fDate đến ngày $tDate";
+            }
+            fputcsv($file, ['Kỳ báo cáo:', $kyBaoCao]);
+            fputcsv($file, []); // empty line
+
+            fputcsv($file, [
+                'Mã Đơn',
+                'Thời Gian Hoàn Thành',
+                'Khách Hàng',
+                'ID Thợ',
+                'Tên Thợ',
+                'Doanh Thu Gộp',
+                'Thuế Nhà Nước (' . $taxRate . '%)',
+                'Phí Nền Tảng (' . $feeRate . '%)',
+                'Thợ Thực Nhận (' . $netRate . '%)'
+            ]);
+
+            $tongGop = 0;
+            $tongThue = 0;
+            $tongPhi = 0;
+            $tongThucNhan = 0;
+            
+            $fmt = fn($n) => number_format(round($n), 0, ',', '.') . 'đ';
+
+            foreach ($orders as $o) {
+                $gop   = (float) $o->tong_tien;
+                $thue  = round($gop * $taxRate / 100);
+                $phi   = round($gop * $feeRate / 100);
+                $luong = round($gop * $netRate / 100);
+
+                $tongGop += $gop;
+                $tongThue += $thue;
+                $tongPhi += $phi;
+                $tongThucNhan += $luong;
+
+                fputcsv($file, [
+                    $o->id,
+                    Carbon::parse($o->updated_at)->format('d/m/Y H:i'),
+                    $o->khach_hang,
+                    $o->tho_id,
+                    $o->tho_name,
+                    $fmt($gop),
+                    $fmt($thue),
+                    $fmt($phi),
+                    $fmt($luong)
+                ]);
+            }
+            
+            fputcsv($file, []);
+            fputcsv($file, [
+                'TỔNG CỘNG',
+                '',
+                '',
+                '',
+                '',
+                $fmt($tongGop),
+                $fmt($tongThue),
+                $fmt($tongPhi),
+                $fmt($tongThucNhan)
+            ]);
+
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
     }
 
     public function withdrawals(Request $request)

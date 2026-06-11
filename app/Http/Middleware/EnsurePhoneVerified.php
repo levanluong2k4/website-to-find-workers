@@ -12,6 +12,20 @@ class EnsurePhoneVerified
     {
         $user = $request->user();
 
+        if ($user && $user->role === 'worker') {
+            $user->loadMissing('hoSoTho');
+            $approvalStatus = (string) ($user->hoSoTho?->trang_thai_duyet ?? 'cho_duyet');
+
+            if ($approvalStatus !== 'da_duyet') {
+                return response()->json([
+                    'message' => $approvalStatus === 'tu_choi'
+                        ? 'Tai khoan tho cua ban da bi tu choi. Vui long lien he admin de duoc ho tro.'
+                        : 'Tai khoan tho cua ban dang cho admin duyet. Ban chi co the su dung he thong sau khi duoc duyet.',
+                    'approval_status' => $approvalStatus,
+                ], 403);
+            }
+        }
+
         if (
             !(bool) config('phone_verification.required', false)
             || !$user

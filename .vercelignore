@@ -1,0 +1,16 @@
+.agent
+.codex
+.grapuco
+.vscode
+*.log
+.phpunit.result.cache
+node_modules
+output
+playwright-report
+public/assets/images
+public/storage
+storage
+test-results
+tests
+tmp
+vendor

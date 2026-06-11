@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         name: document.getElementById('partName'),
         price: document.getElementById('partPrice'),
         stock: document.getElementById('partStock'),
-        expiry: document.getElementById('partExpiry'),
+        mfgDate: document.getElementById('partMfgDate'),
         image: document.getElementById('partImage'),
         preview: document.getElementById('partImagePreview'),
         removeImage: document.getElementById('btnRemovePartImage'),
@@ -60,9 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
             input: fields.stock,
             error: document.getElementById('partStockError'),
         },
-        han_su_dung: {
-            input: fields.expiry,
-            error: document.getElementById('partExpiryError'),
+        ngay_san_xuat: {
+            input: fields.mfgDate,
+            error: document.getElementById('partMfgDateError'),
         },
         hinh_anh: {
             input: fields.image,
@@ -381,16 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 : stockValue <= 5
                     ? 'stock-pill stock-pill--low'
                     : 'stock-pill';
-            const expiryClass = item.han_su_dung_state === 'expired'
-                ? 'expiry-label expiry-label--expired'
-                : item.han_su_dung_state === 'expiring_soon'
-                    ? 'expiry-label expiry-label--soon'
-                    : 'expiry-label';
-            const expiryBadge = item.han_su_dung_state === 'expired'
-                ? '<span class="expiry-warning-badge expiry-warning-badge--expired">Quá hạn</span>'
-                : item.han_su_dung_state === 'expiring_soon'
-                    ? '<span class="expiry-warning-badge">Cận date</span>'
-                    : '';
             const hasPrice = item.gia !== null && item.gia !== undefined && item.gia !== '';
             const partCode = `LK-${String(item.id).padStart(4, '0')}`;
 
@@ -406,10 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><span class="${stockClass}">${escapeHtml(item.so_luong_ton_kho_label || formatCount(stockValue))}</span></td>
                     <td><span class="${hasPrice ? 'catalog-money' : 'catalog-money catalog-money--empty'}">${escapeHtml(item.gia_label || formatMoney(item.gia))}</span></td>
                     <td>
-                        <div class="expiry-cell">
-                            <span class="${expiryClass} ${!item.han_su_dung ? 'expiry-label--none' : ''}">${escapeHtml(item.han_su_dung_label || 'Không có')}</span>
-                            ${expiryBadge}
-                        </div>
+                        <span class="expiry-label ${!item.ngay_san_xuat ? 'expiry-label--none' : ''}">${escapeHtml(item.ngay_san_xuat_label || 'Không có')}</span>
                     </td>
                     <td class="text-end pe-4">
                         <div class="catalog-actions">
@@ -442,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fields.id.value = '';
         fields.image.value = '';
         fields.stock.value = '0';
-        fields.expiry.value = '';
+        fields.mfgDate.value = '';
         fields.service.dataset.selected = '';
         fields.label.textContent = 'Thêm linh kiện';
         state.currentImageUrl = '';
@@ -466,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fields.name.value = item.ten_linh_kien || '';
         fields.price.value = item.gia ?? '';
         fields.stock.value = item.so_luong_ton_kho ?? 0;
-        fields.expiry.value = item.han_su_dung || '';
+        fields.mfgDate.value = item.ngay_san_xuat || '';
         fields.label.textContent = 'Sửa linh kiện';
         state.currentImageUrl = item.hinh_anh || '';
         state.removeCurrentImage = false;
@@ -627,7 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fields.name.addEventListener('input', () => clearFieldValidation('ten_linh_kien'));
     fields.price.addEventListener('input', () => clearFieldValidation('gia'));
     fields.stock.addEventListener('input', () => clearFieldValidation('so_luong_ton_kho'));
-    fields.expiry.addEventListener('change', () => clearFieldValidation('han_su_dung'));
+    fields.mfgDate.addEventListener('change', () => clearFieldValidation('ngay_san_xuat'));
 
     fields.image.addEventListener('change', () => {
         clearFieldValidation('hinh_anh');
@@ -670,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('ten_linh_kien', fields.name.value.trim());
         formData.append('gia', fields.price.value.trim());
         formData.append('so_luong_ton_kho', fields.stock.value.trim() || '0');
-        formData.append('han_su_dung', fields.expiry.value || '');
+        formData.append('ngay_san_xuat', fields.mfgDate.value || '');
 
         const [imageFile] = fields.image.files || [];
         if (imageFile) {

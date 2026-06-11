@@ -91,6 +91,20 @@ export async function callApi(endpoint, method = 'GET', bodyData = null) {
             }
         }
 
+        if (
+            response.status === 403
+            && data?.approval_status
+            && token
+            && !endpoint.includes('/login')
+            && !endpoint.includes('/verify-otp')
+            && !endpoint.includes('/resend-otp')
+        ) {
+            clearStoredSession();
+            if (!window.location.pathname.includes('/login')) {
+                window.location.replace('/login?role=worker');
+            }
+        }
+
         return {
             status: response.status,
             ok: response.ok,
@@ -186,6 +200,10 @@ export function redirectAuthenticatedUser() {
     const user = getCurrentUser();
 
     if (!token || !user?.role) {
+        return null;
+    }
+
+    if (user.role === 'worker') {
         return null;
     }
 

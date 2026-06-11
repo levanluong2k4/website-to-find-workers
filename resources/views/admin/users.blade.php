@@ -1,6 +1,6 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
-@section('title', 'Quản lý thợ - Thợ Tốt')
+@section('title', 'Quản lý tài khoản - Thợ Tốt')
 
 @push('styles')
 <style>
@@ -261,6 +261,88 @@
     .action-btn.lock:hover { background-color: #fef2f2; color: #dc2626; }
     .action-btn.unlock:hover { background-color: #f0fdf4; color: #16a34a; }
     .action-btn.delete:hover { background-color: #fee2e2; color: #ef4444; }
+
+    .section-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin: 2rem 0 1rem;
+    }
+
+    .section-heading h2 {
+        font-size: 1.125rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    .account-switcher {
+        display: inline-flex;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        background: #e2e8f0;
+        border-radius: 0.875rem;
+        border: 1px solid #cbd5e1;
+    }
+
+    .account-switcher__item {
+        border: 0;
+        background: transparent;
+        color: #475569;
+        border-radius: 0.625rem;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .account-switcher__item:hover {
+        color: #0f172a;
+        background: rgba(255, 255, 255, 0.55);
+    }
+
+    .account-switcher__item.active {
+        color: #0f172a;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
+    .account-panel {
+        display: none;
+    }
+
+    .account-panel.active {
+        display: block;
+    }
+
+    .account-panel-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 576px) {
+        .account-switcher,
+        .account-switcher__item {
+            width: 100%;
+        }
+
+        .account-switcher__item {
+            justify-content: center;
+        }
+
+        .account-panel-top {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
 </style>
 @endpush
 
@@ -271,12 +353,15 @@
     <!-- Header -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div>
-            <h1 class="admin-page-title mb-0">Quản lý thợ</h1>
-            <p class="admin-page-subtitle mb-0">Quản lý tài khoản, xét duyệt hồ sơ và theo dõi trạng thái đối tác.</p>
+            <h1 class="admin-page-title mb-0">Quản lý tài khoản</h1>
+            <p class="admin-page-subtitle mb-0">Quản lý tài khoản admin, thợ, xét duyệt hồ sơ và theo dõi trạng thái đối tác.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
             <button class="btn-lumina-secondary" id="btnRefresh" title="Làm mới">
                 <i class="fas fa-sync-alt"></i> Làm mới
+            </button>
+            <button class="btn-lumina-secondary" data-bs-toggle="modal" data-bs-target="#adminModal" id="btnAddAdmin">
+                <i class="fas fa-user-shield"></i> Thêm admin
             </button>
             <button class="btn-lumina-primary" data-bs-toggle="modal" data-bs-target="#workerModal" id="btnAddWorker">
                 <i class="fas fa-plus"></i> Thêm thợ
@@ -284,6 +369,19 @@
         </div>
     </div>
 
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
+        <div class="account-switcher" role="tablist" aria-label="Chuyển loại tài khoản">
+            <button type="button" class="account-switcher__item active" data-account-tab="workers" role="tab" aria-selected="true">
+                <i class="fas fa-user-cog"></i> Thợ
+            </button>
+            <button type="button" class="account-switcher__item" data-account-tab="admins" role="tab" aria-selected="false">
+                <i class="fas fa-user-shield"></i> Admin
+            </button>
+        </div>
+        <p class="admin-page-subtitle mb-0">Chọn nhóm tài khoản để thao tác nhanh, không cần kéo xuống cuối trang.</p>
+    </div>
+
+    <section class="account-panel active" id="workersPanel">
     <!-- Bento Grid Stats & Filters -->
     <div class="row g-3 mb-4">
         <!-- Filters -->
@@ -322,6 +420,16 @@
         </div>
     </div>
 
+    <div class="account-panel-top">
+        <div>
+            <h2 class="mb-1" style="font-size: 1.125rem; font-weight: 800; color: #0f172a;">Danh sách thợ</h2>
+            <p class="admin-page-subtitle mb-0">Theo dõi hồ sơ, trạng thái hoạt động và kỹ năng của thợ.</p>
+        </div>
+        <button class="btn-lumina-secondary" data-bs-toggle="modal" data-bs-target="#interviewEmailModal" id="btnOpenInterviewEmail">
+            <i class="fas fa-envelope"></i> Gửi mail phỏng vấn
+        </button>
+    </div>
+
     <!-- Main Table Container -->
     <div class="table-responsive table-container">
         <table class="table table-borderless table-lumina">
@@ -344,6 +452,143 @@
                 </tr>
             </tbody>
         </table>
+    </div>
+    </section>
+
+    <section class="account-panel" id="adminsPanel">
+    <div class="account-panel-top">
+        <div>
+            <h2 class="mb-1" style="font-size: 1.125rem; font-weight: 800; color: #0f172a;">Tài khoản admin</h2>
+            <p class="admin-page-subtitle mb-0">Tạo admin mới và khóa hoặc mở khóa tài khoản quản trị.</p>
+        </div>
+        <button class="btn-lumina-primary" data-bs-toggle="modal" data-bs-target="#adminModal">
+            <i class="fas fa-user-shield"></i> Tạo admin
+        </button>
+    </div>
+
+    <div class="table-responsive table-container">
+        <table class="table table-borderless table-lumina">
+            <thead>
+                <tr>
+                    <th class="ps-4">UID</th>
+                    <th>Admin</th>
+                    <th>Liên hệ</th>
+                    <th>Ngày tạo</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end pe-4">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="adminsTableBody">
+                <tr>
+                    <td colspan="6" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted mt-2 mb-0">Đang tải danh sách admin...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    </section>
+</div>
+
+<!-- Interview Email Modal -->
+<div class="modal fade" id="interviewEmailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold">Gửi email phỏng vấn thợ</h5>
+                    <p class="admin-page-subtitle mb-0">Chọn thợ theo trạng thái duyệt, chỉnh tiêu đề và nội dung trước khi gửi.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="interviewEmailForm">
+                    <div class="row g-4">
+                        <div class="col-lg-5">
+                            <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+                                <div class="flex-grow-1">
+                                    <label class="form-label small fw-semibold">Lọc theo trạng thái</label>
+                                    <select class="form-select" id="interviewStatusFilter">
+                                        <option value="cho_duyet">Chưa duyệt</option>
+                                        <option value="da_duyet">Đã duyệt</option>
+                                        <option value="">Tất cả</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-light border" id="btnSelectAllInterviewWorkers">Chọn tất cả</button>
+                            </div>
+                            <div class="border rounded bg-light p-3" style="max-height: 420px; overflow: auto;" id="interviewWorkerList">
+                                <p class="text-muted small mb-0">Đang tải danh sách thợ...</p>
+                            </div>
+                        </div>
+                        <div class="col-lg-7">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Tiêu đề</label>
+                                <input type="text" class="form-control" id="interviewEmailSubject" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Nội dung</label>
+                                <textarea class="form-control" id="interviewEmailBody" rows="12" required></textarea>
+                                <small class="text-muted">Có thể dùng biến: {name}, {email}, {phone}, {approval_status}. Nội dung bạn sửa sẽ được lưu làm mặc định trên trình duyệt này.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                        <span class="text-muted small" id="interviewSelectedCount">Chưa chọn thợ nào</span>
+                        <div>
+                            <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-primary px-4" id="btnSendInterviewEmail">
+                                <i class="fas fa-paper-plane"></i> Gửi email
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Modal -->
+<div class="modal fade" id="adminModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold">Tạo tài khoản admin</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="adminForm">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Họ và tên</label>
+                        <input type="text" class="form-control" id="adminName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Email</label>
+                        <input type="email" class="form-control" id="adminEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Số điện thoại</label>
+                        <input type="text" class="form-control" id="adminPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Mật khẩu</label>
+                        <input type="password" class="form-control" id="adminPassword" minlength="6" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Xác nhận mật khẩu</label>
+                        <input type="password" class="form-control" id="adminPasswordConfirmation" minlength="6" required>
+                    </div>
+                    <div class="form-check form-switch border p-3 rounded bg-light">
+                        <input class="form-check-input ms-0 me-3" type="checkbox" role="switch" id="adminActive" checked style="width: 2.5em;">
+                        <label class="form-check-label fw-bold">Tài khoản hoạt động</label>
+                    </div>
+                    <div class="mt-4 pt-3 border-top text-end">
+                        <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary px-4" id="btnSaveAdmin">Tạo admin</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -377,6 +622,11 @@
                                 <label class="form-label small fw-semibold">Mật khẩu</label>
                                 <input type="password" class="form-control" id="workerPassword">
                                 <small class="text-muted" id="passwordHelp">Để trống nếu không đổi (khi sửa).</small>
+                            </div>
+                            <div class="mb-3" id="passwordConfirmGroup">
+                                <label class="form-label small fw-semibold">Xác nhận mật khẩu</label>
+                                <input type="password" class="form-control" id="workerPasswordConfirmation">
+                                <small class="text-muted" id="passwordConfirmHelp">Nhập lại mật khẩu để tránh sai sót.</small>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Ảnh đại diện</label>
@@ -434,3 +684,4 @@
 @push('scripts')
 <script type="module" src="{{ asset('assets/js/admin/users.js') }}?v={{ filemtime(public_path('assets/js/admin/users.js')) }}"></script>
 @endpush
+

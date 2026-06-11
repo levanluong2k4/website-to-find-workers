@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ho so khach hang - Admin')
+@section('title', 'Hồ sơ khách hàng - Admin')
 
 @push('styles')
 <style>
@@ -849,12 +849,12 @@
                 <div>
                     <a href="{{ route('admin.customers') }}" class="customer-360-back">
                         <span>&larr;</span>
-                        <span>Danh sach khach hang</span>
+                        <span>Danh sách khách hàng</span>
                     </a>
-                    <p class="customer-360-kicker">Khach hang / Ho so chi tiet</p>
-                    <h1 class="customer-360-title" id="customer360Title">Dang tai ho so khach hang...</h1>
+                    <p class="customer-360-kicker">Khách hàng / Hồ sơ chi tiết</p>
+                    <h1 class="customer-360-title" id="customer360Title">Đang tải hồ sơ khách hàng...</h1>
                     <p class="customer-360-subtitle" id="customer360Subtitle">
-                        Xem thong tin co ban, lich su dat dich vu va ghi chu noi bo cua khach hang.
+                        Xem thông tin cơ bản, lịch sử đặt dịch vụ và ghi chú nội bộ của khách hàng.
                     </p>
                 </div>
                 <div class="customer-360-actions" id="customer360HeaderActions"></div>

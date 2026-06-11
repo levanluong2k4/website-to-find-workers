@@ -196,14 +196,14 @@ export function createBookingDetailModalController({
   );
 
   const getComplaintCaseStatusLabel = (complaintCase) => complaintCase?.status_label || ({
-    new: 'Khach vua tao case',
-    worker_notified: 'Da gui cho tho',
-    accepted: 'Tho da nhan',
-    in_progress: 'Dang xu ly',
-    completed: 'Da hoan tat',
-    rejected: 'Da tu choi',
-    expired: 'Het han',
-  }[String(complaintCase?.status || '')] || 'Bao hanh');
+    new: 'Khách vừa tạo case',
+    worker_notified: 'Đã gửi cho thợ',
+    accepted: 'Thợ đã nhận',
+    in_progress: 'Đang xử lý',
+    completed: 'Đã hoàn tất',
+    rejected: 'Đã từ chối',
+    expired: 'Hết hạn',
+  }[String(complaintCase?.status || '')] || 'Bảo hành');
 
   const renderComplaintCaseActionButtons = (booking, complaintCase) => {
     const status = String(complaintCase?.status || '');
@@ -213,11 +213,11 @@ export function createBookingDetailModalController({
         <div class="d-flex flex-wrap gap-2 mt-3">
           <button type="button" class="dispatch-btn dispatch-btn--primary" onclick="updateComplaintStatus(${booking.id}, 'accepted')">
             <span class="material-symbols-outlined">task_alt</span>
-            Nhan bao hanh
+            Nhận bảo hành
           </button>
           <button type="button" class="dispatch-btn dispatch-btn--ghost" onclick="updateComplaintStatus(${booking.id}, 'rejected')">
             <span class="material-symbols-outlined">close</span>
-            Tu choi
+            Từ chối
           </button>
         </div>
       `;
@@ -228,11 +228,11 @@ export function createBookingDetailModalController({
         <div class="d-flex flex-wrap gap-2 mt-3">
           <button type="button" class="dispatch-btn dispatch-btn--primary" onclick="updateComplaintStatus(${booking.id}, 'in_progress')">
             <span class="material-symbols-outlined">play_arrow</span>
-            Bat dau xu ly
+            Bắt đầu xử lý
           </button>
           <button type="button" class="dispatch-btn dispatch-btn--ghost" onclick="updateComplaintStatus(${booking.id}, 'rejected')">
             <span class="material-symbols-outlined">close</span>
-            Tu choi
+            Từ chối
           </button>
         </div>
       `;
@@ -243,11 +243,11 @@ export function createBookingDetailModalController({
         <div class="d-flex flex-wrap gap-2 mt-3">
           <button type="button" class="dispatch-btn dispatch-btn--primary" onclick="updateComplaintStatus(${booking.id}, 'completed')">
             <span class="material-symbols-outlined">task_alt</span>
-            Hoan tat bao hanh
+            Hoàn tất bảo hành
           </button>
           <button type="button" class="dispatch-btn dispatch-btn--ghost" onclick="updateComplaintStatus(${booking.id}, 'rejected')">
             <span class="material-symbols-outlined">close</span>
-            Tu choi
+            Từ chối
           </button>
         </div>
       `;
@@ -291,14 +291,14 @@ export function createBookingDetailModalController({
     `;
   };
 
-  const renderMediaGrid = (images = [], video = '', emptyText = 'KhÃ¡ch hÃ ng chÆ°a gá»­i áº£nh mÃ´ táº£.') => {
+  const renderMediaGrid = (images = [], video = '', emptyText = 'Khách hàng chưa gửi ảnh mô tả.') => {
     const imageCards = images.length
       ? `<div class="dispatch-media-grid">${images.map((img) => `
           <a class="dispatch-media-card" href="${escapeHtml(img)}" target="_blank" rel="noopener">
             <img src="${escapeHtml(img)}" alt="Ảnh mô tả">
           </a>
         `).join('')}</div>`
-      : '<div class="dispatch-inline-note">Khách hàng chưa gửi ảnh mô tả.</div>';
+      : `<div class="dispatch-inline-note">${escapeHtml(emptyText)}</div>`;
 
     const videoCard = video
       ? `
@@ -375,36 +375,36 @@ export function createBookingDetailModalController({
     const complaintCaseMarkup = complaintCase
       ? `
           <div class="dispatch-note-card mt-4">
-            <div class="dispatch-note-card__label">Case bao hanh</div>
+            <div class="dispatch-note-card__label">Case bảo hành</div>
             <div class="dispatch-note-card__hint">${escapeHtml(getComplaintCaseStatusLabel(complaintCase))}</div>
             <div class="dispatch-detail-list mt-3">
               <div class="dispatch-detail-item">
-                <span class="dispatch-detail-item__label">Ly do</span>
-                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.reason_label || 'Khach hang gui bao hanh')}</div>
+                <span class="dispatch-detail-item__label">Lý do</span>
+                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.reason_label || 'Khách hàng gửi bảo hành')}</div>
               </div>
               <div class="dispatch-detail-item">
-                <span class="dispatch-detail-item__label">Thoi diem gui</span>
-                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.requested_label || 'Chua cap nhat')}</div>
+                <span class="dispatch-detail-item__label">Thời điểm gửi</span>
+                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.requested_label || 'Chưa cập nhật')}</div>
               </div>
               <div class="dispatch-detail-item">
-                <span class="dispatch-detail-item__label">Han bao hanh</span>
-                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.warranty_expires_label || 'Chua cap nhat')}</div>
+                <span class="dispatch-detail-item__label">Hạn bảo hành</span>
+                <div class="dispatch-detail-item__value">${escapeHtml(complaintCase?.warranty_expires_label || 'Chưa cập nhật')}</div>
               </div>
             </div>
             ${complaintCase?.note ? `<div class="dispatch-inline-note mt-3">${nl2brSafe(complaintCase.note)}</div>` : ''}
             ${complaintCase?.worker_response_note ? `<div class="dispatch-inline-note mt-3">${nl2brSafe(complaintCase.worker_response_note)}</div>` : ''}
-            <h3 class="dispatch-panel__title mt-4">Khach gui kem yeu cau bao hanh</h3>
+            <h3 class="dispatch-panel__title mt-4">Khách gửi kèm yêu cầu bảo hành</h3>
             ${renderMediaGrid(
               Array.isArray(complaintCase?.images) ? complaintCase.images : [],
               complaintCase?.video || ''
             )}
-            <h3 class="dispatch-panel__title mt-4">Minh chung tho hoan tat bao hanh</h3>
+            <h3 class="dispatch-panel__title mt-4">Minh chứng thợ hoàn tất bảo hành</h3>
             ${((Array.isArray(complaintCase?.worker_result_images) && complaintCase.worker_result_images.length > 0) || complaintCase?.worker_result_video)
               ? renderMediaGrid(
                 Array.isArray(complaintCase?.worker_result_images) ? complaintCase.worker_result_images : [],
                 complaintCase?.worker_result_video || ''
               )
-              : '<div class="dispatch-inline-note">Tho chua tai len minh chung sau khi hoan tat bao hanh.</div>'}
+              : '<div class="dispatch-inline-note">Thợ chưa tải lên minh chứng sau khi hoàn tất bảo hành.</div>'}
             ${renderComplaintCaseActionButtons(booking, complaintCase)}
           </div>
         `

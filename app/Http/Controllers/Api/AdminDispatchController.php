@@ -739,4 +739,104 @@ class AdminDispatchController extends Controller
 
         return response()->json($payload, $status);
     }
+
+    public function autoAssignAll(Request $request): JsonResponse
+    {
+        $queue = DonDatLich::query()
+            ->with([
+                'khachHang:id,name,email,phone,avatar',
+                'dichVus:id,ten_dich_vu',
+            ])
+            ->whereNull('tho_id')
+            ->where('trang_thai', 'cho_xac_nhan')
+            ->get();
+
+        if ($queue->isEmpty()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Không có đơn nào cần phân công.',
+                'data' => ['assigned_count' => 0],
+            ]);
+        }
+
+        $assignedCount = 0;
+        
+        foreach ($queue as $booking) {
+            $candidateBundle = $this->buildCandidateBundle($booking);
+            $candidates = collect($candidateBundle['candidates']);
+            
+            if ($candidates->isEmpty()) {
+                continue;
+            }
+
+            $bestCandidate = $candidates->sort(function ($a, $b) {
+                if ($a['same_day_booking_count'] !== $b['same_day_booking_count']) {
+                    return $a['same_day_booking_count'] <=> $b['same_day_booking_count'];
+                }
+
+                $distA = $a['distance_km'] ?? PHP_INT_MAX;
+                $distB = $b['distance_km'] ?? PHP_INT_MAX;
+                if ($distA !== $distB) {
+                    return $distA <=> $distB;
+                }
+
+                $ratingA = $a['rating_avg'] ?? 0;
+                $ratingB = $b['rating_avg'] ?? 0;
+                return $ratingB <=> $ratingA;
+            })->first();
+
+            if (!$bestCandidate) continue;
+
+            $worker = User::find($bestCandidate['id']);
+            if (!$worker) continue;
+
+            $bookingDate = $booking->ngay_hen?->toDateString() ?? $booking->thoi_gian_hen?->toDateString();
+            $timeSlot = DonDatLich::normalizeTimeSlot((string) $booking->khung_gio_hen);
+            
+            if ($bookingDate === null || $timeSlot === '') {
+                continue;
+            }
+
+            $result = DB::transaction(function () use ($booking, $worker, $bookingDate, $timeSlot) {
+                $lockedBooking = DonDatLich::query()
+                    ->whereKey($booking->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$lockedBooking || $lockedBooking->tho_id !== null || $lockedBooking->trang_thai !== 'cho_xac_nhan') {
+                    return false;
+                }
+
+                User::query()->whereKey($worker->id)->lockForUpdate()->first();
+
+                if (DonDatLich::query()->conflictsWithWorkerSchedule($worker->id, $bookingDate, $timeSlot)->exists()) {
+                    return false;
+                }
+
+                $lockedBooking->tho_id = $worker->id;
+                $lockedBooking->trang_thai = 'da_xac_nhan';
+                $lockedBooking->save();
+
+                return $lockedBooking;
+            });
+
+            if ($result instanceof DonDatLich) {
+                $assignedCount++;
+                $result->load([
+                    'khachHang:id,name,email,phone,avatar',
+                    'tho:id,name,email,phone,avatar',
+                    'dichVus:id,ten_dich_vu',
+                ]);
+                $this->notifyWorkerAboutAssignment($worker, $result);
+                $this->notifyCustomerAboutAssignment($result, $worker);
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Đã tự động phân công ' . $assignedCount . ' đơn thành công.',
+            'data' => ['assigned_count' => $assignedCount],
+        ]);
+    }
 }
+

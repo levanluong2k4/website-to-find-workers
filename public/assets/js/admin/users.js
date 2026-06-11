@@ -1,14 +1,22 @@
-import { callApi, requireRole, showToast } from '../api.js';
+import { callApi, getCurrentUser, requireRole, showToast } from '../api.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     requireRole('admin');
 
     const tbody = document.getElementById('usersTableBody');
+    const adminsTbody = document.getElementById('adminsTableBody');
     const roleFilter = document.getElementById('roleFilter');
     const btnRefresh = document.getElementById('btnRefresh');
     const url = new URL(window.location.href);
+    const currentUser = getCurrentUser();
+    const accountTabs = document.querySelectorAll('[data-account-tab]');
+    const accountPanels = {
+        workers: document.getElementById('workersPanel'),
+        admins: document.getElementById('adminsPanel'),
+    };
 
     let currentApprovalFilter = url.searchParams.get('approval_status') || '';
+    let currentAccountTab = url.searchParams.get('account') === 'admins' ? 'admins' : 'workers';
     
     // Khởi tạo trạng thái filter pills
     const filterPills = document.querySelectorAll('.filter-pill');
@@ -31,6 +39,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const workerModal = workerModalEl ? new bootstrap.Modal(workerModalEl) : null;
     const workerForm = document.getElementById('workerForm');
     const skillsSelection = document.getElementById('skillsSelection');
+    const interviewEmailModalEl = document.getElementById('interviewEmailModal');
+    const interviewEmailModal = interviewEmailModalEl ? new bootstrap.Modal(interviewEmailModalEl) : null;
+    const interviewEmailForm = document.getElementById('interviewEmailForm');
+    const interviewStatusFilter = document.getElementById('interviewStatusFilter');
+    const interviewWorkerList = document.getElementById('interviewWorkerList');
+    const interviewEmailSubject = document.getElementById('interviewEmailSubject');
+    const interviewEmailBody = document.getElementById('interviewEmailBody');
+    const btnSelectAllInterviewWorkers = document.getElementById('btnSelectAllInterviewWorkers');
+    const btnSendInterviewEmail = document.getElementById('btnSendInterviewEmail');
+    const interviewSelectedCount = document.getElementById('interviewSelectedCount');
+
+    const btnAddAdmin = document.getElementById('btnAddAdmin');
+    const adminOpenButtons = document.querySelectorAll('[data-bs-target="#adminModal"]');
+    const adminModalEl = document.getElementById('adminModal');
+    const adminModal = adminModalEl ? new bootstrap.Modal(adminModalEl) : null;
+    const adminForm = document.getElementById('adminForm');
+    const adminFields = {
+        name: document.getElementById('adminName'),
+        email: document.getElementById('adminEmail'),
+        phone: document.getElementById('adminPhone'),
+        password: document.getElementById('adminPassword'),
+        passwordConfirmation: document.getElementById('adminPasswordConfirmation'),
+        active: document.getElementById('adminActive'),
+        save: document.getElementById('btnSaveAdmin'),
+    };
     
     const wFields = {
         id: document.getElementById('workerId'),
@@ -38,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         email: document.getElementById('workerEmail'),
         phone: document.getElementById('workerPhone'),
         password: document.getElementById('workerPassword'),
+        passwordConfirmation: document.getElementById('workerPasswordConfirmation'),
         cccd: document.getElementById('workerCCCD'),
         address: document.getElementById('workerAddress'),
         exp: document.getElementById('workerExp'),
@@ -50,14 +84,161 @@ document.addEventListener('DOMContentLoaded', () => {
         label: document.getElementById('workerModalLabel'),
         save: document.getElementById('btnSaveWorker'),
         statusGroup: document.getElementById('statusGroup'),
+        passwordGroup: document.getElementById('passwordGroup'),
+        passwordConfirmGroup: document.getElementById('passwordConfirmGroup'),
         passwordHelp: document.getElementById('passwordHelp'),
+        passwordConfirmHelp: document.getElementById('passwordConfirmHelp'),
     };
 
     let allServices = [];
+    let allWorkerUsers = [];
 
-    if (wFields.avatarPreviewHint) {
-        wFields.avatarPreviewHint.textContent = 'Anh hien tai hoac anh vua chon se hien o day.';
-    }
+    const interviewTemplateStorageKeys = {
+        subject: 'admin_interview_email_subject',
+        body: 'admin_interview_email_body',
+    };
+
+    const defaultInterviewSubject = 'Mời phỏng vấn vị trí thợ kỹ thuật';
+    const defaultInterviewBody = `Xin chào {name},
+
+Cửa hàng Thợ Tốt mời bạn tham gia buổi phỏng vấn dành cho vị trí thợ kỹ thuật.
+
+Thông tin tài khoản:
+- Email: {email}
+- Số điện thoại: {phone}
+
+Vui lòng phản hồi email này để xác nhận thời gian phỏng vấn phù hợp.
+
+Trân trọng,
+Đội ngũ quản trị Thợ Tốt`;
+
+    // Map API error keys → input element ids
+    const errorFieldMap = {
+        name: 'workerName',
+        email: 'workerEmail',
+        phone: 'workerPhone',
+        password: 'workerPassword',
+        password_confirmation: 'workerPasswordConfirmation',
+        cccd: 'workerCCCD',
+        address: 'workerAddress',
+        kinh_nghiem: 'workerExp',
+        avatar: 'workerAvatar',
+        is_active: 'workerActive',
+    };
+
+    const adminErrorFieldMap = {
+        name: 'adminName',
+        email: 'adminEmail',
+        phone: 'adminPhone',
+        password: 'adminPassword',
+        password_confirmation: 'adminPasswordConfirmation',
+        is_active: 'adminActive',
+    };
+
+    const fieldLabels = {
+        name: 'Họ và tên',
+        email: 'Email',
+        phone: 'Số điện thoại',
+        password: 'Mật khẩu',
+        cccd: 'Số CCCD',
+        address: 'Địa chỉ',
+        kinh_nghiem: 'Kinh nghiệm',
+        avatar: 'Ảnh đại diện',
+        is_active: 'Trạng thái',
+    };
+
+    const viMessages = (key, msgs) => {
+        const raw = Array.isArray(msgs) ? msgs[0] : msgs;
+        const label = fieldLabels[key] || key;
+        return raw
+            .replace(/has already been taken/i, 'đã được sử dụng')
+            .replace(/is required/i, 'không được để trống')
+            .replace(/must be a valid email/i, 'không hợp lệ')
+            .replace(/must be at least (\d+) characters/i, (_, n) => `phải có ít nhất ${n} ký tự`)
+            .replace(/may not be greater than (\d+) characters/i, (_, n) => `không được vượt quá ${n} ký tự`)
+            .replace(/must be an image/i, 'phải là ảnh')
+            .replace(/must not be greater than (\d+) kilobytes/i, (_, n) => `kích thước tối đa ${Math.round(n/1024)}MB`)
+            .replace(/The (\w+) field/i, `${label}`);
+    };
+
+    const clearFormErrors = () => {
+        workerForm.querySelectorAll('.invalid-feedback.api-error').forEach(el => el.remove());
+        workerForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    };
+
+    const showFormErrors = (errors) => {
+        clearFormErrors();
+        let firstInvalid = null;
+        Object.entries(errors).forEach(([key, messages]) => {
+            const fieldId = errorFieldMap[key];
+            const input = fieldId ? document.getElementById(fieldId) : null;
+            const msg = viMessages(key, messages);
+            if (input) {
+                input.classList.add('is-invalid');
+                const feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback api-error d-block';
+                feedback.textContent = msg;
+                input.parentNode.appendChild(feedback);
+                if (!firstInvalid) firstInvalid = input;
+            }
+        });
+        if (firstInvalid) firstInvalid.focus();
+    };
+
+    const clearAdminFormErrors = () => {
+        adminForm?.querySelectorAll('.invalid-feedback.api-error').forEach(el => el.remove());
+        adminForm?.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    };
+
+    const showAdminFormErrors = (errors) => {
+        clearAdminFormErrors();
+        let firstInvalid = null;
+        Object.entries(errors).forEach(([key, messages]) => {
+            const fieldId = adminErrorFieldMap[key];
+            const input = fieldId ? document.getElementById(fieldId) : null;
+            const msg = viMessages(key, messages);
+            if (input) {
+                input.classList.add('is-invalid');
+                const feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback api-error d-block';
+                feedback.textContent = msg;
+                input.parentNode.appendChild(feedback);
+                if (!firstInvalid) firstInvalid = input;
+            }
+        });
+        if (firstInvalid) firstInvalid.focus();
+    };
+
+    const markFieldInvalid = (input, message) => {
+        if (!input) return;
+        input.classList.add('is-invalid');
+        input.parentNode.querySelectorAll('.invalid-feedback.api-error').forEach(el => el.remove());
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback api-error d-block';
+        feedback.textContent = message;
+        input.parentNode.appendChild(feedback);
+        input.focus();
+    };
+
+    const setAccountTab = (tab) => {
+        currentAccountTab = tab === 'admins' ? 'admins' : 'workers';
+
+        accountTabs.forEach((button) => {
+            const isActive = button.dataset.accountTab === currentAccountTab;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        Object.entries(accountPanels).forEach(([key, panel]) => {
+            panel?.classList.toggle('active', key === currentAccountTab);
+        });
+
+        if (btnAddWorker) btnAddWorker.classList.toggle('d-none', currentAccountTab !== 'workers');
+        if (btnAddAdmin) btnAddAdmin.classList.toggle('d-none', currentAccountTab !== 'admins');
+
+        syncFilterUrl();
+    };
+
 
     const escapeHtml = (value) => (value ?? '')
         .toString()
@@ -125,10 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resolveAvatarUrl = (avatar) => {
         if (!avatar) return '';
-        if (/^https?:\/\//i.test(avatar) || avatar.startsWith('/')) {
+        if (/^(https?|blob):\/\//i.test(avatar) || avatar.startsWith('/')) {
             return avatar;
         }
-
         return `/storage/${avatar}`;
     };
 
@@ -248,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </td>
                     <td style="max-width: 250px;">${workerInfo}</td>
                     <td>${approvalLabel(workerProfile?.trang_thai_duyet)}</td>
-                    <td>${accountLabel(user.is_active)}</td>
+                    <td>${accountLabel(user)}</td>
                     <td class="text-end pe-4">
                         <div class="action-container">
                             <button class="action-btn ${toggleClass} btn-toggle-status" data-id="${user.id}" data-name="${escapeHtml(user.name)}" data-isactive="${isActiveStr}" title="${toggleTitle}">${toggleIcon}</button>
@@ -290,6 +470,127 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const renderAdmins = (admins) => {
+        if (!adminsTbody) return;
+
+        if (!admins.length) {
+            adminsTbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        Chưa có tài khoản admin nào.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        adminsTbody.innerHTML = admins.map((admin) => {
+            const toggleIcon = admin.is_active ? '<i class="fas fa-lock"></i>' : '<i class="fas fa-lock-open"></i>';
+            const toggleClass = admin.is_active ? 'lock' : 'unlock';
+            const toggleTitle = admin.is_active ? 'Khóa admin' : 'Mở khóa admin';
+            const isCurrentAdmin = currentUser && Number(currentUser.id) === Number(admin.id);
+            const actionHtml = isCurrentAdmin
+                ? '<span class="text-muted small">Tài khoản hiện tại</span>'
+                : `
+                    <button class="action-btn ${toggleClass} btn-toggle-admin-status" data-id="${admin.id}" data-name="${escapeHtml(admin.name)}" data-isactive="${admin.is_active ? 'true' : 'false'}" title="${toggleTitle}">${toggleIcon}</button>
+                    <button class="action-btn delete btn-delete-admin" data-id="${admin.id}" data-name="${escapeHtml(admin.name)}" title="Xóa admin"><i class="fas fa-trash"></i></button>
+                `;
+
+            return `
+                <tr>
+                    <td class="ps-4 fw-semibold text-muted">#${admin.id}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            ${buildAvatarMarkup(admin)}
+                            <div>
+                                <p class="worker-name">${escapeHtml(admin.name)}</p>
+                                <p class="worker-contact">Quản trị viên${isCurrentAdmin ? ' / Đang đăng nhập' : ''}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <p class="worker-contact mb-1">${escapeHtml(admin.email)}</p>
+                        <p class="worker-contact">${escapeHtml(admin.phone || '--')}</p>
+                    </td>
+                    <td>${new Date(admin.created_at).toLocaleDateString('vi-VN')}</td>
+                    <td>${accountLabel(admin)}</td>
+                    <td class="text-end pe-4">
+                        <div class="action-container">${actionHtml}</div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        document.querySelectorAll('.btn-toggle-admin-status').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const userId = button.dataset.id;
+                const userName = button.dataset.name;
+                const isActive = button.dataset.isactive === 'true';
+
+                if (isActive) {
+                    await handleLockUser(userId, userName);
+                } else {
+                    await handleUnlockUser(userId);
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-delete-admin').forEach((button) => {
+            button.addEventListener('click', () => deleteAdmin(button.dataset.id, button.dataset.name));
+        });
+    };
+
+    const getWorkerApprovalStatus = (worker) => worker.ho_so_tho?.trang_thai_duyet || 'cho_duyet';
+
+    const updateInterviewSelectedCount = () => {
+        if (!interviewSelectedCount) return;
+        const count = document.querySelectorAll('.interview-worker-checkbox:checked').length;
+        interviewSelectedCount.textContent = count
+            ? `Đã chọn ${count} thợ`
+            : 'Chưa chọn thợ nào';
+    };
+
+    const renderInterviewWorkerList = () => {
+        if (!interviewWorkerList) return;
+
+        const status = interviewStatusFilter?.value ?? 'cho_duyet';
+        const workers = allWorkerUsers.filter((worker) => {
+            if (!status) return true;
+            return getWorkerApprovalStatus(worker) === status;
+        });
+
+        if (!workers.length) {
+            interviewWorkerList.innerHTML = '<p class="text-muted small mb-0">Không có thợ phù hợp với trạng thái đã chọn.</p>';
+            updateInterviewSelectedCount();
+            return;
+        }
+
+        interviewWorkerList.innerHTML = workers.map((worker) => `
+            <label class="d-flex align-items-start gap-3 p-3 bg-white border rounded mb-2" for="interview_worker_${worker.id}">
+                <input class="form-check-input mt-1 interview-worker-checkbox" type="checkbox" value="${worker.id}" id="interview_worker_${worker.id}">
+                <span class="d-block">
+                    <span class="fw-bold text-dark">${escapeHtml(worker.name)}</span>
+                    <span class="d-block small text-muted">${escapeHtml(worker.email)} / ${escapeHtml(worker.phone || '--')}</span>
+                    <span class="chip-lumina bg-primary-subtle text-primary mt-1">${escapeHtml(getWorkerApprovalStatus(worker))}</span>
+                </span>
+            </label>
+        `).join('');
+
+        document.querySelectorAll('.interview-worker-checkbox').forEach((checkbox) => {
+            checkbox.addEventListener('change', updateInterviewSelectedCount);
+        });
+        updateInterviewSelectedCount();
+    };
+
+    const hydrateInterviewTemplate = () => {
+        if (interviewEmailSubject) {
+            interviewEmailSubject.value = localStorage.getItem(interviewTemplateStorageKeys.subject) || defaultInterviewSubject;
+        }
+        if (interviewEmailBody) {
+            interviewEmailBody.value = localStorage.getItem(interviewTemplateStorageKeys.body) || defaultInterviewBody;
+        }
+    };
+
     const handleUnlockUser = async (userId) => {
         const confirm = await Swal.fire({
             title: 'Mở khóa tài khoản?',
@@ -307,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         showToast(res.data?.message || 'Đã mở khóa tài khoản');
-        await fetchUsers();
+        await Promise.all([fetchUsers(), fetchAdmins()]);
     };
 
     const handleLockUser = async (userId, userName) => {
@@ -435,7 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         showToast(res.data?.message || 'Đã khóa tài khoản');
-        await fetchUsers();
+        await Promise.all([fetchUsers(), fetchAdmins()]);
     };
 
     const updateApproval = async (userId, status) => {
@@ -491,6 +792,30 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetchUsers();
     };
 
+    const deleteAdmin = async (userId, userName) => {
+        const confirm = await Swal.fire({
+            title: 'Xóa tài khoản admin?',
+            text: `Tài khoản ${userName || 'admin này'} sẽ bị xóa khỏi hệ thống.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Có, xóa admin',
+            cancelButtonText: 'Hủy'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        const res = await callApi(`/admin/admins/${userId}`, 'DELETE');
+        if (!res.ok) {
+            showToast(res.data?.message || 'Không thể xóa tài khoản admin', 'error');
+            return;
+        }
+
+        showToast(res.data?.message || 'Đã xóa tài khoản admin');
+        await fetchAdmins();
+    };
+
     const fetchUsers = async () => {
         syncFilterUrl();
 
@@ -517,7 +842,37 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        renderUsers(Array.isArray(res.data?.data) ? res.data.data : []);
+        allWorkerUsers = Array.isArray(res.data?.data) ? res.data.data : [];
+        renderUsers(allWorkerUsers);
+        renderInterviewWorkerList();
+    };
+
+    const fetchAdmins = async () => {
+        if (!adminsTbody) return;
+
+        adminsTbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2 mb-0">Đang tải danh sách admin...</p>
+                </td>
+            </tr>
+        `;
+
+        const res = await callApi('/admin/users?role=admin');
+
+        if (!res.ok) {
+            adminsTbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-danger">
+                        Không tải được danh sách admin.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        renderAdmins(Array.isArray(res.data?.data) ? res.data.data : []);
     };
 
     const syncFilterUrl = () => {
@@ -529,12 +884,150 @@ document.addEventListener('DOMContentLoaded', () => {
             nextUrl.searchParams.delete('approval_status');
         }
 
+        if (currentAccountTab === 'admins') {
+            nextUrl.searchParams.set('account', 'admins');
+        } else {
+            nextUrl.searchParams.delete('account');
+        }
+
         window.history.replaceState({}, '', nextUrl);
     };
 
-    btnRefresh.addEventListener('click', fetchUsers);
+    accountTabs.forEach((button) => {
+        button.addEventListener('click', () => setAccountTab(button.dataset.accountTab));
+    });
+    setAccountTab(currentAccountTab);
+
+    btnRefresh.addEventListener('click', async () => {
+        await Promise.all([fetchUsers(), fetchAdmins()]);
+    });
+
+    if (adminForm) {
+        adminOpenButtons.forEach((button) => button.addEventListener('click', () => {
+            adminForm.reset();
+            clearAdminFormErrors();
+            if (adminFields.active) adminFields.active.checked = true;
+        }));
+    }
+
+    if (adminForm) {
+        adminForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            clearAdminFormErrors();
+
+            if (adminFields.password.value !== adminFields.passwordConfirmation.value) {
+                markFieldInvalid(adminFields.passwordConfirmation, 'Xác nhận mật khẩu không khớp');
+                return;
+            }
+
+            adminFields.save.disabled = true;
+            adminFields.save.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo...';
+
+            try {
+                const res = await callApi('/admin/admins', 'POST', {
+                    name: adminFields.name.value,
+                    email: adminFields.email.value,
+                    phone: adminFields.phone.value,
+                    password: adminFields.password.value,
+                    password_confirmation: adminFields.passwordConfirmation.value,
+                    is_active: adminFields.active.checked,
+                });
+
+                if (res?.ok) {
+                    showToast(res.data?.message || 'Đã tạo tài khoản admin');
+                    adminModal?.hide();
+                    await fetchAdmins();
+                } else {
+                    const errors = res.data?.errors;
+                    if (errors && typeof errors === 'object' && Object.keys(errors).length) {
+                        showAdminFormErrors(errors);
+                    } else {
+                        showToast(res.data?.message || 'Không tạo được tài khoản admin', 'error');
+                    }
+                }
+            } catch (error) {
+                showToast('Lỗi máy chủ', 'error');
+            } finally {
+                adminFields.save.disabled = false;
+                adminFields.save.innerHTML = 'Tạo admin';
+            }
+        });
+    }
 
     // Xử lý Services và Modal Thợ
+    if (interviewEmailModalEl) {
+        interviewEmailModalEl.addEventListener('show.bs.modal', () => {
+            hydrateInterviewTemplate();
+            renderInterviewWorkerList();
+        });
+    }
+
+    if (interviewStatusFilter) {
+        interviewStatusFilter.addEventListener('change', renderInterviewWorkerList);
+    }
+
+    if (btnSelectAllInterviewWorkers) {
+        btnSelectAllInterviewWorkers.addEventListener('click', () => {
+            const checkboxes = Array.from(document.querySelectorAll('.interview-worker-checkbox'));
+            const shouldCheck = checkboxes.some((checkbox) => !checkbox.checked);
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = shouldCheck;
+            });
+            updateInterviewSelectedCount();
+        });
+    }
+
+    if (interviewEmailForm) {
+        interviewEmailForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const workerIds = Array.from(document.querySelectorAll('.interview-worker-checkbox:checked'))
+                .map((checkbox) => Number(checkbox.value))
+                .filter(Boolean);
+
+            if (!workerIds.length) {
+                showToast('Vui lòng chọn ít nhất một thợ để gửi email', 'error');
+                return;
+            }
+
+            const subject = interviewEmailSubject.value.trim();
+            const body = interviewEmailBody.value.trim();
+
+            if (!subject || !body) {
+                showToast('Vui lòng nhập tiêu đề và nội dung email', 'error');
+                return;
+            }
+
+            localStorage.setItem(interviewTemplateStorageKeys.subject, subject);
+            localStorage.setItem(interviewTemplateStorageKeys.body, body);
+
+            btnSendInterviewEmail.disabled = true;
+            btnSendInterviewEmail.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+
+            try {
+                const res = await callApi('/admin/users/interview-email', 'POST', {
+                    worker_ids: workerIds,
+                    subject,
+                    body,
+                });
+
+                if (!res.ok) {
+                    showToast(res.data?.message || 'Không gửi được email phỏng vấn', 'error');
+                    return;
+                }
+
+                showToast(res.data?.message || 'Đã gửi email phỏng vấn');
+                interviewEmailModal?.hide();
+            } catch (error) {
+                showToast('Lỗi máy chủ khi gửi email', 'error');
+            } finally {
+                btnSendInterviewEmail.disabled = false;
+                btnSendInterviewEmail.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi email';
+            }
+        });
+    }
+
     const fetchAllServices = async () => {
         try {
             const res = await callApi('/admin/services');
@@ -563,14 +1056,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAddWorker) {
         btnAddWorker.addEventListener('click', () => {
             workerForm.reset();
+            clearFormErrors();
             revokeAvatarPreviewObjectUrl();
             currentModalAvatarUrl = '';
             wFields.id.value = '';
             wFields.label.textContent = 'Thêm thợ kỹ thuật mới';
             wFields.statusGroup.style.display = 'none';
             wFields.passwordGroup.style.display = 'block';
+            wFields.passwordConfirmGroup.style.display = 'block';
             wFields.passwordHelp.style.display = 'none';
+            wFields.passwordConfirmHelp.style.display = 'block';
             wFields.password.required = true;
+            wFields.passwordConfirmation.required = true;
+            wFields.passwordConfirmation.value = '';
             if (wFields.avatar) wFields.avatar.value = '';
             renderWorkerAvatarPreview(currentModalAvatarUrl, wFields.name.value);
             document.querySelectorAll('input[name="dich_vu_ids"]').forEach(cb => cb.checked = false);
@@ -582,6 +1080,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await callApi(`/admin/workers/${userId}`);
             if (!res?.ok) return showToast('Lỗi khi lấy thông tin thợ', 'error');
 
+            clearFormErrors();
+
             const worker = res.data?.data;
             const profile = worker.ho_so_tho || {};
             const serviceIds = (worker.dich_vus || []).map(s => s.id);
@@ -592,6 +1092,8 @@ document.addEventListener('DOMContentLoaded', () => {
             wFields.phone.value = worker.phone;
             wFields.password.value = '';
             wFields.password.required = false;
+            wFields.passwordConfirmation.value = '';
+            wFields.passwordConfirmation.required = false;
             wFields.cccd.value = profile.cccd || '';
             wFields.address.value = worker.address || '';
             wFields.exp.value = profile.kinh_nghiem || '';
@@ -604,6 +1106,8 @@ document.addEventListener('DOMContentLoaded', () => {
             wFields.label.textContent = 'Cập nhật thợ';
             wFields.statusGroup.style.display = 'block';
             wFields.passwordHelp.style.display = 'block';
+            wFields.passwordConfirmGroup.style.display = 'block';
+            wFields.passwordConfirmHelp.style.display = 'block';
 
             document.querySelectorAll('input[name="dich_vu_ids"]').forEach(cb => {
                 cb.checked = serviceIds.includes(parseInt(cb.value));
@@ -649,6 +1153,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const selectedSkills = Array.from(document.querySelectorAll('input[name="dich_vu_ids"]:checked')).map(cb => parseInt(cb.value));
 
+            if (wFields.password.value !== wFields.passwordConfirmation.value) {
+                clearFormErrors();
+                markFieldInvalid(wFields.passwordConfirmation, 'Xác nhận mật khẩu không khớp');
+                return;
+            }
+
             const formData = new FormData();
             if (isEdit) formData.append('_method', 'PUT');
             
@@ -660,7 +1170,10 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('kinh_nghiem', wFields.exp.value);
             formData.append('is_active', wFields.active.checked ? 1 : 0);
 
-            if (wFields.password.value) formData.append('password', wFields.password.value);
+            if (wFields.password.value) {
+                formData.append('password', wFields.password.value);
+                formData.append('password_confirmation', wFields.passwordConfirmation.value);
+            }
             
             selectedSkills.forEach(skillId => {
                 formData.append('dich_vu_ids[]', skillId);
@@ -670,6 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('avatar', wFields.avatar.files[0]);
             }
 
+            clearFormErrors();
             wFields.save.disabled = true;
             wFields.save.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
 
@@ -683,7 +1197,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderWorkerAvatarPreview('', '');
                     await fetchUsers();
                 } else {
-                    showToast(res.data?.message || 'Lỗi', 'error');
+                    const errors = res.data?.errors;
+                    if (errors && typeof errors === 'object' && Object.keys(errors).length) {
+                        showFormErrors(errors);
+                    } else {
+                        showToast(res.data?.message || 'Lỗi', 'error');
+                    }
                 }
             } catch (error) {
                 showToast('Lỗi máy chủ', 'error');
@@ -696,4 +1215,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchAllServices();
     fetchUsers();
+    fetchAdmins();
 });

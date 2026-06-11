@@ -128,6 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/customers', [\App\Http\Controllers\Api\AdminController::class, 'getCustomers']);
             Route::get('/customers/{id}', [\App\Http\Controllers\Api\AdminController::class, 'getCustomerDetail']);
             Route::get('/customers/{id}/bookings', [\App\Http\Controllers\Api\AdminController::class, 'getCustomerBookings']);
+            Route::post('/dispatch/auto-assign', [\App\Http\Controllers\Api\AdminDispatchController::class, 'autoAssignAll']);
             Route::get('/dispatch', [\App\Http\Controllers\Api\AdminDispatchController::class, 'index']);
             Route::get('/dispatch/{bookingId}', [\App\Http\Controllers\Api\AdminDispatchController::class, 'show']);
             Route::post('/dispatch/{bookingId}/assign', [\App\Http\Controllers\Api\AdminDispatchController::class, 'assign']);
@@ -136,6 +137,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/customer-feedback/{caseKey}/claim', [\App\Http\Controllers\Api\AdminController::class, 'claimCustomerFeedbackCase']);
             Route::post('/customer-feedback/{caseKey}/resolve', [\App\Http\Controllers\Api\AdminController::class, 'resolveCustomerFeedbackCase']);
             Route::get('/users', [\App\Http\Controllers\Api\AdminController::class, 'getUsers']);
+            Route::post('/users/interview-email', [\App\Http\Controllers\Api\AdminController::class, 'sendWorkerInterviewEmail']);
+            Route::post('/admins', [\App\Http\Controllers\Api\AdminController::class, 'storeAdmin']);
+            Route::delete('/admins/{id}', [\App\Http\Controllers\Api\AdminController::class, 'destroyAdmin']);
             Route::patch('/users/{id}/toggle-status', [\App\Http\Controllers\Api\AdminController::class, 'toggleUserStatus']);
             Route::get('/worker-profiles', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerProfiles']);
             Route::get('/worker-schedules/overview', [\App\Http\Controllers\Api\AdminController::class, 'getWorkerSchedulesOverview']);
@@ -180,6 +184,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/travel-fee-config', [TravelFeeConfigController::class, 'update']);
             Route::get('/wage-config', [TravelFeeConfigController::class, 'getWageConfig']);
             Route::put('/wage-config', [TravelFeeConfigController::class, 'updateWageConfig']);
+            Route::get('/revenue/export', [\App\Http\Controllers\Api\AdminRevenueController::class, 'export']);
             Route::get('/revenue', [\App\Http\Controllers\Api\AdminRevenueController::class, 'index']);
             Route::get('/revenue/withdrawals', [\App\Http\Controllers\Api\AdminRevenueController::class, 'withdrawals']);
         });

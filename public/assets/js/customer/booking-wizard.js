@@ -972,12 +972,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateAddressPanels() {
         const atHome = state.repairMode === 'at_home';
         const atStore = state.repairMode === 'at_store';
-        refs.atHome.classList.toggle('d-none', !atHome);
-        refs.atStore.classList.toggle('d-none', !atStore);
         const showTransport = atStore && heavyService();
         refs.transportWrap.classList.toggle('d-none', !showTransport);
         if (!showTransport) state.transportRequested = false;
         if (refs.transportToggle) refs.transportToggle.checked = state.transportRequested;
+        
+        const needsAddress = atHome || (atStore && state.transportRequested);
+        refs.atHome.classList.toggle('d-none', !needsAddress);
+        refs.atStore.classList.toggle('d-none', !atStore);
+        
         applyStoreConfigToView();
         queueViewportFit();
     }
@@ -1535,8 +1538,11 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.set('khung_gio_hen', normalizeTimeSlotValue(state.timeSlot));
         formData.set('mo_ta_van_de', getCombinedProblemDescription());
         formData.set('thue_xe_cho', state.transportRequested ? '1' : '0');
-        if (state.repairMode === 'at_home') formData.set('dia_chi', `${state.soNha}, ${refs.hiddenDiaChi.value}`);
-        else {
+        if (state.repairMode === 'at_home' || (state.repairMode === 'at_store' && state.transportRequested)) {
+            formData.set('dia_chi', `${state.soNha}, ${refs.hiddenDiaChi.value}`);
+            formData.set('vi_do', state.lat);
+            formData.set('kinh_do', state.lng);
+        } else {
             formData.set('dia_chi', storeAddress);
             formData.set('vi_do', '');
             formData.set('kinh_do', '');
@@ -1667,7 +1673,13 @@ document.addEventListener('DOMContentLoaded', () => {
     refs.close.addEventListener('click', closeModal);
     root.addEventListener('click', (event) => { if (event.target === root) closeModal(); });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && state.isOpen) closeModal(); });
-    refs.transportToggle.addEventListener('change', () => { state.transportRequested = refs.transportToggle.checked; updateTravelEstimate(); });
+    if (refs.transportToggle) {
+        refs.transportToggle.addEventListener('change', () => { 
+            state.transportRequested = refs.transportToggle.checked; 
+            updateTravelEstimate(); 
+            updateAddressPanels();
+        });
+    }
     refs.tinh.addEventListener('change', () => {
         state.tinh = refs.tinh.value;
         state.huyen = '';
@@ -2122,9 +2134,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function validateStep(step) {
         if (step === 1 && !state.serviceIds.length) return { valid: false, message: 'Vui lòng chọn ít nhất một dịch vụ để tiếp tục.' };
         if (step === 2 && !state.repairMode) return { valid: false, message: 'Vui lòng chọn hình thức sửa chữa.' };
-        if (step === 3 && state.repairMode === 'at_home') {
+        if (step === 3 && (state.repairMode === 'at_home' || (state.repairMode === 'at_store' && state.transportRequested))) {
             if (!state.lat || !state.lng) return { valid: false, message: 'Vui lòng lấy vị trí hiện tại hoặc nhập đủ địa chỉ để hệ thống tính phí di chuyển.' };
-            if (state.isOutOfRange) return { valid: false, message: buildOutOfRangeValidationMessage() };
+            if (state.repairMode === 'at_home' && state.isOutOfRange) return { valid: false, message: buildOutOfRangeValidationMessage() };
             if (!state.tinh || !state.huyen || !state.xa) return { valid: false, message: 'Vui lòng chọn đầy đủ Tỉnh / Huyện / Xã.' };
             if (!state.soNha.trim()) return { valid: false, message: 'Vui lòng nhập địa chỉ chi tiết.' };
         }

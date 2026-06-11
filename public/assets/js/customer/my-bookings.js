@@ -689,6 +689,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
+    const resolveAvatarUrl = (avatar) => {
+        if (!avatar) return '/assets/images/user-default.png';
+        if (/^(https?|blob):\/\//i.test(avatar) || avatar.startsWith('/')) {
+            return avatar;
+        }
+        return `/storage/${avatar}`;
+    };
+
     const buildWorkerHtml = (booking) => {
         const worker = booking.tho || null;
         if (!worker || !worker.name) {
@@ -705,7 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return `
             <div class="booking-assignee-info">
-                <img src="${escapeHtml(worker.avatar || '/assets/images/user-default.png')}" alt="${escapeHtml(worker.name)}" class="booking-assignee-avatar">
+                <img src="${escapeHtml(resolveAvatarUrl(worker.avatar))}" alt="${escapeHtml(worker.name)}" class="booking-assignee-avatar" onerror="this.src='/assets/images/user-default.png'">
                 <div>
                     <p class="booking-assignee-name">${escapeHtml(worker.name)}</p>
                     <p class="booking-assignee-phone">${escapeHtml(worker.phone || '')}</p>

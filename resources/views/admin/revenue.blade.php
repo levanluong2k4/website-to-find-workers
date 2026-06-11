@@ -34,41 +34,84 @@
       <h1 class="tw-text-2xl tw-font-extrabold" style="font-family:Manrope">📊 Doanh thu & Lương thợ</h1>
       <p class="tw-text-sm tw-text-slate-500 tw-mt-1">Tổng quan tài chính hệ thống theo từng kỳ</p>
     </div>
-    <div class="tw-flex tw-flex-wrap tw-gap-2" id="periodBar">
+    <div class="tw-flex tw-flex-wrap tw-gap-2 tw-items-center" id="periodBar">
       <button class="period-btn active" data-period="today">Hôm nay</button>
       <button class="period-btn" data-period="7d">7 ngày</button>
       <button class="period-btn" data-period="30d">30 ngày</button>
       <button class="period-btn" data-period="month">Tháng này</button>
-      <button class="period-btn" data-period="prev-month">Tháng trước</button>
-      <button class="period-btn" data-period="all">Toàn bộ</button>
+      <div class="tw-relative" id="datePickerContainer">
+        <button id="customDateBtn" class="period-btn tw-flex tw-items-center tw-gap-1.5">
+            <span class="material-symbols-outlined" style="font-size: 1.1rem;">calendar_month</span>
+            <span id="customDateLabel">Tùy chọn...</span>
+        </button>
+        
+        <div id="datePickerPopover" class="tw-absolute tw-top-full tw-right-0 tw-mt-2 tw-bg-white tw-rounded-2xl tw-shadow-xl tw-border tw-border-slate-200 tw-p-4 tw-w-72 tw-hidden tw-z-50">
+            <h3 class="tw-text-sm tw-font-bold tw-text-slate-800 tw-mb-3">Chọn khoảng thời gian</h3>
+            <div class="tw-space-y-3">
+                <div>
+                    <label class="tw-block tw-text-[11px] tw-uppercase tw-font-bold tw-text-slate-500 tw-mb-1">Từ ngày</label>
+                    <input type="date" id="customStartDate" class="tw-w-full tw-bg-slate-50 tw-border tw-border-slate-200 tw-rounded-xl tw-px-3 tw-py-2 tw-text-sm focus:tw-ring-2 focus:tw-ring-blue-500 tw-outline-none tw-text-slate-700">
+                </div>
+                <div>
+                    <label class="tw-block tw-text-[11px] tw-uppercase tw-font-bold tw-text-slate-500 tw-mb-1">Đến ngày</label>
+                    <input type="date" id="customEndDate" class="tw-w-full tw-bg-slate-50 tw-border tw-border-slate-200 tw-rounded-xl tw-px-3 tw-py-2 tw-text-sm focus:tw-ring-2 focus:tw-ring-blue-500 tw-outline-none tw-text-slate-700">
+                </div>
+                <button id="applyCustomDate" class="tw-w-full tw-bg-blue-600 hover:tw-bg-blue-700 tw-text-white tw-font-semibold tw-py-2 tw-rounded-xl tw-text-sm tw-transition-colors tw-mt-2">
+                    Áp dụng
+                </button>
+            </div>
+        </div>
+      </div>
+
+      <button id="exportExcelBtn" class="tw-flex tw-items-center tw-gap-2 tw-bg-green-600 hover:tw-bg-green-700 tw-text-white tw-px-4 tw-py-1.5 tw-rounded-full tw-font-semibold tw-text-sm tw-transition-colors tw-ml-1">
+        <span class="material-symbols-outlined" style="font-size: 1.1rem;">download</span> Xuất Excel
+      </button>
     </div>
   </div>
 
   {{-- KPI Cards --}}
-  <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-6 tw-gap-4 tw-mb-8" id="kpiRow">
-    <div class="rev-kpi tw-col-span-1">
-      <p class="tw-text-xs tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-widest tw-mb-1">Doanh thu gộp</p>
-      <p class="tw-text-2xl tw-font-extrabold tw-text-blue-600" id="kpiGop">—</p>
+  <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-3 tw-gap-5 tw-mb-8" id="kpiRow">
+    <div class="rev-kpi tw-flex tw-flex-col tw-justify-between">
+      <p class="tw-text-[11px] tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-wider tw-mb-2">Doanh thu gộp</p>
+      <div>
+        <p class="tw-text-2xl tw-font-extrabold tw-text-blue-600 tw-break-words" id="kpiGop">—</p>
+        <p class="tw-text-[13px] tw-font-medium tw-text-slate-500 tw-mt-1" id="kpiGopText"></p>
+      </div>
     </div>
-    <div class="rev-kpi">
-      <p class="tw-text-xs tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-widest tw-mb-1">Thuế nhà nước</p>
-      <p class="tw-text-2xl tw-font-extrabold tw-text-red-500" id="kpiThue">—</p>
+    <div class="rev-kpi tw-flex tw-flex-col tw-justify-between">
+      <p class="tw-text-[11px] tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-wider tw-mb-2">Thuế nhà nước</p>
+      <div>
+        <p class="tw-text-2xl tw-font-extrabold tw-text-red-500 tw-break-words" id="kpiThue">—</p>
+        <p class="tw-text-[13px] tw-font-medium tw-text-slate-500 tw-mt-1" id="kpiThueText"></p>
+      </div>
     </div>
-    <div class="rev-kpi">
-      <p class="tw-text-xs tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-widest tw-mb-1">Phí nền tảng</p>
-      <p class="tw-text-2xl tw-font-extrabold tw-text-orange-500" id="kpiPhi">—</p>
+    <div class="rev-kpi tw-flex tw-flex-col tw-justify-between">
+      <p class="tw-text-[11px] tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-wider tw-mb-2">Phí nền tảng</p>
+      <div>
+        <p class="tw-text-2xl tw-font-extrabold tw-text-orange-500 tw-break-words" id="kpiPhi">—</p>
+        <p class="tw-text-[13px] tw-font-medium tw-text-slate-500 tw-mt-1" id="kpiPhiText"></p>
+      </div>
     </div>
-    <div class="rev-kpi">
-      <p class="tw-text-xs tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-widest tw-mb-1">Lương thợ</p>
-      <p class="tw-text-2xl tw-font-extrabold tw-text-green-600" id="kpiLuong">—</p>
+    <div class="rev-kpi tw-flex tw-flex-col tw-justify-between">
+      <p class="tw-text-[11px] tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-wider tw-mb-2">Lương thợ</p>
+      <div>
+        <p class="tw-text-2xl tw-font-extrabold tw-text-green-600 tw-break-words" id="kpiLuong">—</p>
+        <p class="tw-text-[13px] tw-font-medium tw-text-slate-500 tw-mt-1" id="kpiLuongText"></p>
+      </div>
     </div>
-    <div class="rev-kpi">
-      <p class="tw-text-xs tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-widest tw-mb-1">Đã rút</p>
-      <p class="tw-text-2xl tw-font-extrabold tw-text-slate-700" id="kpiRut">—</p>
+    <div class="rev-kpi tw-flex tw-flex-col tw-justify-between">
+      <p class="tw-text-[11px] tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-wider tw-mb-2">Đã rút</p>
+      <div>
+        <p class="tw-text-2xl tw-font-extrabold tw-text-slate-700 tw-break-words" id="kpiRut">—</p>
+        <p class="tw-text-[13px] tw-font-medium tw-text-slate-500 tw-mt-1" id="kpiRutText"></p>
+      </div>
     </div>
-    <div class="rev-kpi">
-      <p class="tw-text-xs tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-widest tw-mb-1">Thợ hoạt động</p>
-      <p class="tw-text-2xl tw-font-extrabold tw-text-slate-700" id="kpiTho">—</p>
+    <div class="rev-kpi tw-flex tw-flex-col tw-justify-between">
+      <p class="tw-text-[11px] tw-text-slate-400 tw-font-bold tw-uppercase tw-tracking-wider tw-mb-2">Thợ hoạt động</p>
+      <div>
+        <p class="tw-text-2xl tw-font-extrabold tw-text-slate-700 tw-break-words" id="kpiTho">—</p>
+        <p class="tw-text-[13px] tw-font-medium tw-text-slate-500 tw-mt-1">&nbsp;</p>
+      </div>
     </div>
   </div>
 
@@ -85,6 +128,32 @@
   <div class="rev-kpi tw-mb-8">
     <h2 class="tw-font-bold tw-text-base tw-mb-4" style="font-family:Manrope">📈 Doanh thu theo ngày</h2>
     <canvas id="revenueChart" height="90"></canvas>
+  </div>
+
+  {{-- Orders History Table --}}
+  <div class="rev-kpi tw-mb-8 tw-overflow-auto">
+    <h2 class="tw-font-bold tw-text-base tw-mb-4" style="font-family:Manrope">🧾 Lịch sử doanh thu đơn đặt lịch</h2>
+    <table class="tw-w-full">
+      <thead>
+        <tr>
+          <th>Mã đơn</th>
+          <th>Thời gian</th>
+          <th>Thợ (ID)</th>
+          <th>Khách hàng</th>
+          <th class="tw-text-right">Tiền gộp</th>
+          <th class="tw-text-right">Thuế</th>
+          <th class="tw-text-right">Phí app</th>
+          <th class="tw-text-right tw-text-green-600">Thực nhận</th>
+        </tr>
+      </thead>
+      <tbody id="ordersTable">
+        <tr><td colspan="8" class="tw-text-center tw-py-8 tw-text-slate-400">Đang tải...</td></tr>
+      </tbody>
+    </table>
+    <!-- Pagination -->
+    <div class="tw-mt-4 tw-flex tw-justify-end">
+      <div id="ordersPagination" class="tw-flex tw-gap-2"></div>
+    </div>
   </div>
 
   {{-- Two cols: top workers + salary table tabs --}}

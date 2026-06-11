@@ -1,9 +1,70 @@
-import { callApi, showToast } from '../api.js';
+import { callApi, showToast, downloadApiFile } from '../api.js';
 
 const fmt = (n) => Math.round(n || 0).toLocaleString('vi-VN') + 'đ';
 const pct = (n) => `${n}%`;
 
-let state = { period: 'today', wStatus: 'all', wPage: 1, wSearch: '', chart: null };
+const ChuSo = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+const Tien = ["", "ngàn", "triệu", "tỷ", "ngàn tỷ", "triệu tỷ"];
+
+function docSo3ChuSo(baso) {
+    let tram = Math.floor(baso / 100);
+    let chuc = Math.floor((baso % 100) / 10);
+    let donvi = baso % 10;
+    let KetQua = "";
+    
+    if (tram !== 0 || chuc !== 0 || donvi !== 0) {
+        KetQua += ChuSo[tram] + " trăm ";
+        if (chuc === 0 && donvi !== 0) KetQua += "lẻ ";
+    }
+    
+    if (chuc !== 0 && chuc !== 1) KetQua += ChuSo[chuc] + " mươi ";
+    if (chuc === 1) KetQua += "mười ";
+    
+    switch (donvi) {
+        case 1:
+            if (chuc !== 0 && chuc !== 1) KetQua += "mốt ";
+            else KetQua += ChuSo[donvi] + " ";
+            break;
+        case 5:
+            if (chuc === 0) KetQua += ChuSo[donvi] + " ";
+            else KetQua += "lăm ";
+            break;
+        default:
+            if (donvi !== 0) KetQua += ChuSo[donvi] + " ";
+            break;
+    }
+    return KetQua;
+}
+
+const formatReadableText = (amount) => {
+    if (!amount) return "Không đồng";
+    let soTienStr = Math.round(amount).toString();
+    let soLan = Math.ceil(soTienStr.length / 3);
+    let KetQua = "";
+    
+    let mangSo = [];
+    for (let i = 0; i < soLan; i++) {
+        let start = soTienStr.length - (i + 1) * 3;
+        let end = soTienStr.length - i * 3;
+        if (start < 0) start = 0;
+        mangSo.push(parseInt(soTienStr.slice(start, end), 10));
+    }
+    
+    for (let i = soLan - 1; i >= 0; i--) {
+        if (mangSo[i] > 0) {
+            let doc = docSo3ChuSo(mangSo[i]);
+            if (i === soLan - 1) doc = doc.replace(/^không trăm (lẻ )?/, "");
+            KetQua += doc + Tien[i] + " ";
+        } else if (i === 3 && soLan > 3) {
+            KetQua += Tien[i] + " ";
+        }
+    }
+    
+    KetQua = KetQua.trim().replace(/\s+/g, ' ') + " đồng";
+    return KetQua.charAt(0).toUpperCase() + KetQua.slice(1);
+};
+
+let state = { period: 'today', from: '', to: '', wStatus: 'all', wPage: 1, orderPage: 1, wSearch: '', chart: null };
 
 // ── period buttons ──────────────────────────────────────
 document.getElementById('periodBar').addEventListener('click', (e) => {
@@ -11,7 +72,65 @@ document.getElementById('periodBar').addEventListener('click', (e) => {
   if (!btn) return;
   state.period = btn.dataset.period;
   document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b === btn));
+  
+  document.getElementById('customStartDate').value = '';
+  document.getElementById('customEndDate').value = '';
+  state.from = '';
+  state.to = '';
+  document.getElementById('customDateLabel').textContent = 'Tùy chọn...';
+  
+  state.orderPage = 1;
+
   loadRevenue();
+});
+
+// Custom Date Popover logic
+const customDateBtn = document.getElementById('customDateBtn');
+const datePickerPopover = document.getElementById('datePickerPopover');
+
+customDateBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    datePickerPopover.classList.toggle('tw-hidden');
+});
+
+document.addEventListener('click', (e) => {
+    if (!document.getElementById('datePickerContainer').contains(e.target)) {
+        datePickerPopover.classList.add('tw-hidden');
+    }
+});
+
+document.getElementById('applyCustomDate').addEventListener('click', () => {
+    const start = document.getElementById('customStartDate').value;
+    const end = document.getElementById('customEndDate').value;
+    
+    if (start || end) {
+        state.period = 'custom';
+        state.from = start;
+        state.to = end;
+        state.orderPage = 1;
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        customDateBtn.classList.add('active');
+        
+        let label = '';
+        if (start && end) label = `${start} - ${end}`;
+        else if (start) label = `Từ ${start}`;
+        else label = `Đến ${end}`;
+        document.getElementById('customDateLabel').textContent = label;
+        
+        datePickerPopover.classList.add('tw-hidden');
+        loadRevenue();
+    }
+});
+
+document.getElementById('exportExcelBtn').addEventListener('click', async () => {
+    try {
+        let url = `/admin/revenue/export?period=${state.period}`;
+        if (state.from) url += `&from=${state.from}`;
+        if (state.to) url += `&to=${state.to}`;
+        await downloadApiFile(url, `bang_luong_tho_${state.period}.csv`);
+    } catch (err) {
+        showToast(err.message || 'Không thể xuất file excel', 'error');
+    }
 });
 
 // ── withdrawal tabs ──────────────────────────────────────
@@ -36,7 +155,11 @@ document.getElementById('wSearch').addEventListener('input', (e) => {
 // ── load revenue ──────────────────────────────────────
 async function loadRevenue() {
   try {
-    const res = await callApi(`/admin/revenue?period=${state.period}`);
+    let url = `/admin/revenue?period=${state.period}&order_page=${state.orderPage}`;
+    if (state.from) url += `&from=${state.from}`;
+    if (state.to) url += `&to=${state.to}`;
+
+    const res = await callApi(url);
     if (!res.ok) throw new Error();
     const d = res.data.data;
 
@@ -47,11 +170,27 @@ async function loadRevenue() {
 
     // KPIs
     document.getElementById('kpiGop').textContent   = fmt(d.kpis.tong_doanh_thu_gop);
+    document.getElementById('kpiGop').title         = fmt(d.kpis.tong_doanh_thu_gop);
+    document.getElementById('kpiGopText').textContent = formatReadableText(d.kpis.tong_doanh_thu_gop);
+
     document.getElementById('kpiThue').textContent  = fmt(d.kpis.tong_thue);
+    document.getElementById('kpiThue').title        = fmt(d.kpis.tong_thue);
+    document.getElementById('kpiThueText').textContent = formatReadableText(d.kpis.tong_thue);
+
     document.getElementById('kpiPhi').textContent   = fmt(d.kpis.tong_phi_nen_tang);
+    document.getElementById('kpiPhi').title         = fmt(d.kpis.tong_phi_nen_tang);
+    document.getElementById('kpiPhiText').textContent = formatReadableText(d.kpis.tong_phi_nen_tang);
+
     document.getElementById('kpiLuong').textContent = fmt(d.kpis.tong_luong_tho);
+    document.getElementById('kpiLuong').title       = fmt(d.kpis.tong_luong_tho);
+    document.getElementById('kpiLuongText').textContent = formatReadableText(d.kpis.tong_luong_tho);
+
     document.getElementById('kpiRut').textContent   = fmt(d.kpis.tong_da_rut);
+    document.getElementById('kpiRut').title         = fmt(d.kpis.tong_da_rut);
+    document.getElementById('kpiRutText').textContent = formatReadableText(d.kpis.tong_da_rut);
+
     document.getElementById('kpiTho').textContent   = d.kpis.so_tho_hoat_dong + ' thợ';
+    document.getElementById('kpiTho').title         = d.kpis.so_tho_hoat_dong + ' thợ';
 
     // chart
     renderChart(d.chart);
@@ -92,10 +231,67 @@ async function loadRevenue() {
         </tr>
       `).join('');
     }
-  } catch (e) {
-    showToast('Không tải được dữ liệu doanh thu', 'error');
+
+    // orders
+    renderOrders(d.orders);
+
+  } catch (err) {
+    showToast('Lỗi tải dữ liệu doanh thu', 'error');
   }
 }
+
+function renderOrders(ordersData) {
+    const tb = document.getElementById('ordersTable');
+    if (!ordersData || !ordersData.data || ordersData.data.length === 0) {
+        tb.innerHTML = `<tr><td colspan="8" class="tw-text-center tw-py-8 tw-text-slate-400">Không có đơn đặt lịch nào</td></tr>`;
+        document.getElementById('ordersPagination').innerHTML = '';
+        return;
+    }
+    
+    tb.innerHTML = ordersData.data.map(o => `
+        <tr class="hover:tw-bg-slate-50 tw-transition-colors">
+            <td class="tw-font-mono tw-text-blue-600 tw-font-semibold">#${o.id}</td>
+            <td class="tw-text-slate-500">${o.ngay}</td>
+            <td>${o.tho_name} <span class="tw-text-xs tw-text-slate-400">(${o.tho_id})</span></td>
+            <td>${o.khach_hang || '—'}</td>
+            <td class="tw-text-right tw-font-bold tw-text-slate-700">${fmt(o.tong_gop)}</td>
+            <td class="tw-text-right tw-text-red-500">${fmt(o.thue)}</td>
+            <td class="tw-text-right tw-text-orange-500">${fmt(o.phi)}</td>
+            <td class="tw-text-right tw-font-bold tw-text-green-600">${fmt(o.luong)}</td>
+        </tr>
+    `).join('');
+    
+    // pagination
+    let html = '';
+    const currentPage = ordersData.current_page;
+    const lastPage = ordersData.last_page;
+    
+    if (lastPage > 1) {
+        if (currentPage > 1) {
+            html += `<button class="tw-px-3 tw-py-1 tw-border tw-border-slate-200 tw-rounded hover:tw-bg-slate-50 tw-text-sm" onclick="changeOrderPage(${currentPage - 1})">Trước</button>`;
+        }
+        
+        let start = Math.max(1, currentPage - 2);
+        let end = Math.min(lastPage, currentPage + 2);
+        for (let i = start; i <= end; i++) {
+            if (i === currentPage) {
+                html += `<button class="tw-px-3 tw-py-1 tw-bg-blue-600 tw-text-white tw-rounded tw-font-bold tw-text-sm">${i}</button>`;
+            } else {
+                html += `<button class="tw-px-3 tw-py-1 tw-border tw-border-slate-200 tw-rounded hover:tw-bg-slate-50 tw-text-sm" onclick="changeOrderPage(${i})">${i}</button>`;
+            }
+        }
+        
+        if (currentPage < lastPage) {
+            html += `<button class="tw-px-3 tw-py-1 tw-border tw-border-slate-200 tw-rounded hover:tw-bg-slate-50 tw-text-sm" onclick="changeOrderPage(${currentPage + 1})">Sau</button>`;
+        }
+    }
+    document.getElementById('ordersPagination').innerHTML = html;
+}
+
+window.changeOrderPage = (page) => {
+    state.orderPage = page;
+    loadRevenue();
+};
 
 // ── load withdrawals ──────────────────────────────────────
 async function loadWithdrawals() {

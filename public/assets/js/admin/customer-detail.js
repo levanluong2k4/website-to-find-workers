@@ -91,17 +91,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderHeader = (profile) => {
         const subtitleParts = [
-            profile?.relationship_label || 'Khach hang',
+            profile?.relationship_label || 'Khách hàng',
             profile?.joined_label ? `Tham gia ${profile.joined_label}` : null,
-            profile?.phone || 'Chua co SDT',
+            profile?.phone || 'Chưa có SĐT',
         ].filter(Boolean);
 
-        refs.title.textContent = profile?.name || 'Khach hang';
+        refs.title.textContent = profile?.name || 'Khách hàng';
         refs.subtitle.textContent = subtitleParts.join(' - ');
         refs.actions.innerHTML = `
-            ${profile?.history_url ? `<a class="customer-360-action customer-360-action--primary" href="${escapeHtml(profile.history_url)}">Lich su don</a>` : ''}
-            ${profile?.feedback_url ? `<a class="customer-360-action" href="${escapeHtml(profile.feedback_url)}">Khieu nai / phan hoi</a>` : ''}
-            ${profile?.phone ? `<a class="customer-360-action" href="tel:${escapeHtml(profile.phone)}">Goi khach</a>` : ''}
+            ${profile?.history_url ? `<a class="customer-360-action customer-360-action--primary" href="${escapeHtml(profile.history_url)}">Lịch sử đơn</a>` : ''}
+            ${profile?.feedback_url ? `<a class="customer-360-action" href="${escapeHtml(profile.feedback_url)}">Khiếu nại / phản hồi</a>` : ''}
+            ${profile?.phone ? `<a class="customer-360-action" href="tel:${escapeHtml(profile.phone)}">Gọi khách</a>` : ''}
         `;
     };
 
@@ -109,40 +109,40 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.profile.innerHTML = `
             <div class="customer-360-panel__head">
                 <div>
-                    <h2 class="customer-360-panel__title">Thong tin khach hang</h2>
-                    <p class="customer-360-panel__copy">Thong tin lien he co ban va trang thai hien tai cua khach hang.</p>
+                    <h2 class="customer-360-panel__title">Thông tin khách hàng</h2>
+                    <p class="customer-360-panel__copy">Thông tin liên hệ cơ bản và trạng thái hiện tại của khách hàng.</p>
                 </div>
             </div>
             <div class="customer-360-profile-card">
                 ${buildAvatar(profile)}
                 <div>
-                    <h3 class="customer-360-profile-name">${escapeHtml(profile?.name || 'Khach hang')}</h3>
+                    <h3 class="customer-360-profile-name">${escapeHtml(profile?.name || 'Khách hàng')}</h3>
                     <div class="customer-360-profile-meta">
                         ${escapeHtml(profile?.code || '--')}<br>
-                        ${escapeHtml(profile?.phone || 'Chua co SDT')}<br>
-                        ${escapeHtml(profile?.email || 'Chua co email')}
+                        ${escapeHtml(profile?.phone || 'Chưa có SĐT')}<br>
+                        ${escapeHtml(profile?.email || 'Chưa có email')}
                     </div>
                     <div class="customer-360-pill-row">
-                        <span class="customer-360-pill ${toneClass(relationshipTone(profile?.relationship_status))}">${escapeHtml(profile?.relationship_label || 'Khach hang')}</span>
+                        <span class="customer-360-pill ${toneClass(relationshipTone(profile?.relationship_status))}">${escapeHtml(profile?.relationship_label || 'Khách hàng')}</span>
                     </div>
                 </div>
             </div>
             <div class="customer-360-profile-grid">
                 <div class="customer-360-profile-field">
-                    <span class="customer-360-field-label">Ngay tham gia</span>
+                    <span class="customer-360-field-label">Ngày tham gia</span>
                     <div class="customer-360-field-value">${escapeHtml(profile?.joined_label || '--')}</div>
                 </div>
                 <div class="customer-360-profile-field">
-                    <span class="customer-360-field-label">Lan dat gan nhat</span>
-                    <div class="customer-360-field-value">${escapeHtml(profile?.last_booking_service || 'Chua co lich su dat dich vu')}</div>
+                    <span class="customer-360-field-label">Lần đặt gần nhất</span>
+                    <div class="customer-360-field-value">${escapeHtml(profile?.last_booking_service || 'Chưa có lịch sử đặt dịch vụ')}</div>
                 </div>
                 <div class="customer-360-profile-field">
-                    <span class="customer-360-field-label">Dia chi tai khoan</span>
-                    <div class="customer-360-field-value">${escapeHtml(profile?.default_address || 'Chua co dia chi')}</div>
+                    <span class="customer-360-field-label">Địa chỉ tài khoản</span>
+                    <div class="customer-360-field-value">${escapeHtml(profile?.default_address || 'Chưa có địa chỉ')}</div>
                 </div>
                 <div class="customer-360-profile-field">
-                    <span class="customer-360-field-label">Dia chi gan nhat</span>
-                    <div class="customer-360-field-value">${escapeHtml(profile?.latest_address || 'Chua co dia chi')}</div>
+                    <span class="customer-360-field-label">Địa chỉ gần nhất</span>
+                    <div class="customer-360-field-value">${escapeHtml(profile?.latest_address || 'Chưa có địa chỉ')}</div>
                 </div>
             </div>
         `;
@@ -150,19 +150,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderStats = (summary) => {
         const stats = [
-            ['Tong don', formatNumber(summary?.order_count || 0), 'Tong so booking cua khach'],
-            ['Dang xu ly', formatNumber(summary?.active_booking_count || 0), 'Don dang trong qua trinh thuc hien'],
-            ['Hoan thanh', formatNumber(summary?.completed_booking_count || 0), 'Don da hoan tat'],
-            ['Da huy', formatNumber(summary?.canceled_booking_count || 0), 'So don da huy'],
-            ['Tong chi tieu', formatMoney(summary?.total_spent || 0), 'Tinh tren don hoan thanh'],
-            ['Danh gia', summary?.average_rating === null ? '--' : `${summary.average_rating}/5`, `${formatNumber(summary?.total_reviews || 0)} review`],
+            ['Tổng đơn', formatNumber(summary?.order_count || 0), 'Tổng số booking của khách'],
+            ['Đang xử lý', formatNumber(summary?.active_booking_count || 0), 'Đơn đang trong quá trình thực hiện'],
+            ['Hoàn thành', formatNumber(summary?.completed_booking_count || 0), 'Đơn đã hoàn tất'],
+            ['Đã hủy', formatNumber(summary?.canceled_booking_count || 0), 'Số đơn đã hủy'],
+            ['Tổng chi tiêu', formatMoney(summary?.total_spent || 0), 'Tính trên đơn hoàn thành'],
+            ['Đánh giá', summary?.average_rating === null ? '--' : `${summary.average_rating}/5`, `${formatNumber(summary?.total_reviews || 0)} review`],
         ];
 
         refs.stats.innerHTML = `
             <div class="customer-360-panel__head">
                 <div>
-                    <h2 class="customer-360-panel__title">Thong ke nhanh</h2>
-                    <p class="customer-360-panel__copy">Tong hop nhanh de admin nam duoc tan suat su dung dich vu cua khach.</p>
+                    <h2 class="customer-360-panel__title">Thống kê nhanh</h2>
+                    <p class="customer-360-panel__copy">Tổng hợp nhanh để admin nắm được tần suất sử dụng dịch vụ của khách.</p>
                 </div>
             </div>
             <div class="customer-360-stats-grid">
@@ -183,8 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.recentBookings.innerHTML = `
             <div class="customer-360-panel__head">
                 <div>
-                    <h2 class="customer-360-panel__title">Lich su booking</h2>
-                    <p class="customer-360-panel__copy">Cac don gan day cua khach hang de admin tra cuu nhanh.</p>
+                    <h2 class="customer-360-panel__title">Lịch sử booking</h2>
+                    <p class="customer-360-panel__copy">Các đơn gần đây của khách hàng để admin tra cứu nhanh.</p>
                 </div>
             </div>
             ${Array.isArray(bookings) && bookings.length ? `
@@ -194,23 +194,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="customer-360-booking-top">
                                 <div>
                                     <div class="customer-360-booking-code">${escapeHtml(booking.code || '--')}</div>
-                                    <div class="customer-360-booking-name">${escapeHtml(booking.service_label || 'Don dat lich')}</div>
+                                    <div class="customer-360-booking-name">${escapeHtml(booking.service_label || 'Đơn đặt lịch')}</div>
                                 </div>
                                 <span class="customer-360-pill ${toneClass(booking.status_tone || 'info')}">${escapeHtml(booking.status_label || '--')}</span>
                             </div>
                             <div class="customer-360-booking-meta">
                                 ${escapeHtml(booking.schedule_label || '--')}<br>
-                                ${escapeHtml(booking.worker_name || 'Chua gan tho')}<br>
-                                ${escapeHtml(booking.payment_label || 'Chua cap nhat thanh toan')}
+                                ${escapeHtml(booking.worker_name || 'Chưa gắn thợ')}<br>
+                                ${escapeHtml(booking.payment_label || 'Chưa cập nhật thanh toán')}
                             </div>
                             <div class="customer-360-booking-foot">
                                 <span class="customer-360-booking-amount">${formatMoney(booking.total_amount || 0)}</span>
-                                <a class="customer-360-link-inline" href="${escapeHtml(booking.detail_url || '#')}">Xem chi tiet don</a>
+                                <a class="customer-360-link-inline" href="${escapeHtml(booking.detail_url || '#')}">Xem chi tiết đơn</a>
                             </div>
                         </li>
                     `).join('')}
                 </ul>
-            ` : buildEmpty('Khach hang nay chua co booking nao.')}
+            ` : buildEmpty('Khách hàng này chưa có booking nào.')}
         `;
     };
 
@@ -220,19 +220,19 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.notes.innerHTML = `
             <div class="customer-360-panel__head">
                 <div>
-                    <h2 class="customer-360-panel__title">Ghi chu noi bo</h2>
-                    <p class="customer-360-panel__copy">Admin luu lai thong tin can nho nhu da goi, can lien he lai hoac luu y van hanh.</p>
+                    <h2 class="customer-360-panel__title">Ghi chú nội bộ</h2>
+                    <p class="customer-360-panel__copy">Admin lưu lại thông tin cần nhớ như đã gọi, cần liên hệ lại hoặc lưu ý vận hành.</p>
                 </div>
             </div>
             <form class="customer-360-inline-form" id="customer360NoteForm">
                 <select class="customer-360-select" id="customer360NoteCategory">
-                    <option value="van_hanh">Van hanh</option>
-                    <option value="cskh">Cham soc</option>
-                    <option value="ke_toan">Ke toan</option>
+                    <option value="van_hanh">Vận hành</option>
+                    <option value="cskh">Chăm sóc</option>
+                    <option value="ke_toan">Kế toán</option>
                 </select>
-                <textarea class="customer-360-textarea" id="customer360NoteContent" placeholder="Nhap ghi chu noi bo cho khach hang nay..."></textarea>
+                <textarea class="customer-360-textarea" id="customer360NoteContent" placeholder="Nhập ghi chú nội bộ cho khách hàng này..."></textarea>
                 <div class="customer-360-form-actions">
-                    <button type="submit" class="customer-360-button">Them ghi chu</button>
+                    <button type="submit" class="customer-360-button">Thêm ghi chú</button>
                 </div>
             </form>
             <div class="customer-360-note-list">
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="customer-360-note-copy">${escapeHtml(note.content || '')}</div>
                     </article>
-                `).join('') : '<div class="customer-360-empty">Chua co ghi chu noi bo nao cho khach hang nay.</div>'}
+                `).join('') : '<div class="customer-360-empty">Chưa có ghi chú nội bộ nào cho khách hàng này.</div>'}
             </div>
         `;
 
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const content = noteContent?.value?.trim();
             if (!content) {
-                showToast('Nhap noi dung ghi chu truoc khi luu', 'error');
+                showToast('Nhập nội dung ghi chú trước khi lưu', 'error');
                 return;
             }
 
@@ -270,15 +270,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response?.ok) {
-                    throw new Error(response?.data?.message || 'Khong the luu ghi chu');
+                    throw new Error(response?.data?.message || 'Không thể lưu ghi chú');
                 }
 
                 noteContent.value = '';
                 noteCategory.value = 'van_hanh';
                 await loadCustomerDetail();
-                showToast(response.data?.message || 'Da them ghi chu');
+                showToast(response.data?.message || 'Đã thêm ghi chú');
             } catch (error) {
-                showToast(error.message || 'Khong the luu ghi chu', 'error');
+                showToast(error.message || 'Không thể lưu ghi chú', 'error');
             }
         });
     };
@@ -289,8 +289,8 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.reviews.innerHTML = `
             <div class="customer-360-panel__head">
                 <div>
-                    <h2 class="customer-360-panel__title">Phan hoi gan day</h2>
-                    <p class="customer-360-panel__copy">Review va nhan xet gan day cua khach hang de admin nam tinh hinh nhanh.</p>
+                    <h2 class="customer-360-panel__title">Phản hồi gần đây</h2>
+                    <p class="customer-360-panel__copy">Review và nhận xét gần đây của khách hàng để admin nắm tình hình nhanh.</p>
                 </div>
             </div>
             ${Array.isArray(reviews) && reviews.length ? `
@@ -300,17 +300,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="customer-360-review-top">
                                 <div>
                                     <div class="customer-360-review-code">${escapeHtml(review.booking_code || '--')}</div>
-                                    <div class="customer-360-review-service">${escapeHtml(review.service_label || 'Phan hoi khach hang')}</div>
+                                    <div class="customer-360-review-service">${escapeHtml(review.service_label || 'Phản hồi khách hàng')}</div>
                                 </div>
                                 <span class="customer-360-pill ${toneClass(Number(review.rating || 0) <= 2 ? 'warning' : 'success')}">${escapeHtml(buildRatingLabel(review.rating))}</span>
                             </div>
-                            <div class="customer-360-review-meta">${escapeHtml(review.created_label || '--')} - ${escapeHtml(review.worker_name || 'Chua gan tho')}</div>
-                            <p class="customer-360-review-quote">${escapeHtml(review.comment || 'Khach khong de lai nhan xet.')}</p>
-                            <a class="customer-360-link-inline" href="${escapeHtml(review.detail_url || '#')}">Xem don lien quan</a>
+                            <div class="customer-360-review-meta">${escapeHtml(review.created_label || '--')} - ${escapeHtml(review.worker_name || 'Chưa gắn thợ')}</div>
+                            <p class="customer-360-review-quote">${escapeHtml(review.comment || 'Khách không để lại nhận xét.')}</p>
+                            <a class="customer-360-link-inline" href="${escapeHtml(review.detail_url || '#')}">Xem đơn liên quan</a>
                         </li>
                     `).join('')}
                 </ul>
-            ` : buildEmpty('Khach hang nay chua co phan hoi nao.')}
+            ` : buildEmpty('Khách hàng này chưa có phản hồi nào.')}
         `;
     };
 
@@ -337,8 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.timeline.innerHTML = `
             <div class="customer-360-panel__head">
                 <div>
-                    <h2 class="customer-360-panel__title">Timeline hoat dong</h2>
-                    <p class="customer-360-panel__copy">Tom tat nhung moc quan trong cua khach hang tren he thong.</p>
+                    <h2 class="customer-360-panel__title">Timeline hoạt động</h2>
+                    <p class="customer-360-panel__copy">Tóm tắt những mốc quan trọng của khách hàng trên hệ thống.</p>
                 </div>
             </div>
             ${Array.isArray(timeline) && timeline.length ? `
@@ -346,14 +346,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${timeline.map((item) => `
                         <li class="customer-360-timeline-item tone-${escapeHtml(item.tone || 'muted')}">
                             <span class="customer-360-timeline-dot">${escapeHtml(timelineBadge(item.kind))}</span>
-                            <div class="customer-360-timeline-title">${escapeHtml(item.title || 'Cap nhat')}</div>
+                            <div class="customer-360-timeline-title">${escapeHtml(item.title || 'Cập nhật')}</div>
                             <div class="customer-360-timeline-time">${escapeHtml(item.time_label || '--')}</div>
-                            <div class="customer-360-timeline-copy">${escapeHtml(item.detail || 'Khong co mo ta chi tiet.')}</div>
-                            ${item.booking_url ? `<a class="customer-360-link-inline" href="${escapeHtml(item.booking_url)}">Xem don lien quan</a>` : ''}
+                            <div class="customer-360-timeline-copy">${escapeHtml(item.detail || 'Không có mô tả chi tiết.')}</div>
+                            ${item.booking_url ? `<a class="customer-360-link-inline" href="${escapeHtml(item.booking_url)}">Xem đơn liên quan</a>` : ''}
                         </li>
                     `).join('')}
                 </ul>
-            ` : buildEmpty('Chua co du lieu timeline cho khach hang nay.')}
+            ` : buildEmpty('Chưa có dữ liệu timeline cho khách hàng này.')}
         `;
     };
 
@@ -368,16 +368,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderLoading = () => {
-        refs.profile.innerHTML = buildEmpty('Dang tai ho so khach hang...');
-        refs.stats.innerHTML = buildEmpty('Dang tai thong ke...');
-        refs.recentBookings.innerHTML = buildEmpty('Dang tai lich su booking...');
-        refs.notes.innerHTML = buildEmpty('Dang tai ghi chu noi bo...');
-        refs.reviews.innerHTML = buildEmpty('Dang tai phan hoi gan day...');
-        refs.timeline.innerHTML = buildEmpty('Dang tai timeline...');
+        refs.profile.innerHTML = buildEmpty('Đang tải hồ sơ khách hàng...');
+        refs.stats.innerHTML = buildEmpty('Đang tải thống kê...');
+        refs.recentBookings.innerHTML = buildEmpty('Đang tải lịch sử booking...');
+        refs.notes.innerHTML = buildEmpty('Đang tải ghi chú nội bộ...');
+        refs.reviews.innerHTML = buildEmpty('Đang tải phản hồi gần đây...');
+        refs.timeline.innerHTML = buildEmpty('Đang tải timeline...');
     };
 
     const renderError = (message) => {
-        refs.title.textContent = 'Khong tai duoc ho so';
+        refs.title.textContent = 'Không tải được hồ sơ';
         refs.subtitle.textContent = message;
         refs.actions.innerHTML = '';
         refs.profile.innerHTML = buildEmpty(message);
@@ -395,14 +395,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await callApi(`/admin/customers/${customerId}`, 'GET');
 
             if (!response?.ok) {
-                throw new Error(response?.data?.message || 'Khong the tai chi tiet khach hang');
+                throw new Error(response?.data?.message || 'Không thể tải chi tiết khách hàng');
             }
 
             renderDetail(response.data?.data || {});
         } catch (error) {
             console.error('Load customer detail failed:', error);
-            renderError(error.message || 'Khong the tai chi tiet khach hang');
-            showToast(error.message || 'Khong the tai chi tiet khach hang', 'error');
+            renderError(error.message || 'Không thể tải chi tiết khách hàng');
+            showToast(error.message || 'Không thể tải chi tiết khách hàng', 'error');
         }
     }
 

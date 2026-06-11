@@ -170,13 +170,13 @@ class DonDatLich extends Model
     public static function warrantyStatusLabels(): array
     {
         return [
-            'new' => 'Moi tao',
-            'worker_notified' => 'Da gui',
-            'accepted' => 'Tho da nhan',
-            'in_progress' => 'Dang xu ly',
-            'completed' => 'Da hoan tat',
-            'rejected' => 'Da tu choi',
-            'expired' => 'Het han',
+            'new' => 'Mới tạo',
+            'worker_notified' => 'Đã gửi',
+            'accepted' => 'Thợ đã nhận',
+            'in_progress' => 'Đang xử lý',
+            'completed' => 'Đã hoàn tất',
+            'rejected' => 'Đã từ chối',
+            'expired' => 'Hết hạn',
         ];
     }
 

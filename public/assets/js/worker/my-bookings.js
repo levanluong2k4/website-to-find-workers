@@ -60,7 +60,7 @@ const boardTabList = document.querySelector('.dispatch-board-topbar__tabs');
 if (boardTabList && !boardTabList.querySelector('[data-board-status="warranty"]')) {
   boardTabList.insertAdjacentHTML(
     'beforeend',
-    '<button type="button" class="dispatch-board-topbar__tab dispatch-board-topbar__tab--warranty" data-board-status="warranty">Bao hanh</button>',
+    '<button type="button" class="dispatch-board-topbar__tab dispatch-board-topbar__tab--warranty" data-board-status="warranty">Bảo hành</button>',
   );
 }
 const ensureBoardTabBadge = (tab, status) => {
@@ -355,10 +355,10 @@ const boardViewCopy = {
     badgeLabel: 'Chờ thanh toán',
   },
   warranty: {
-    eyebrow: 'Bao hanh',
-    title: 'Cac case bao hanh can xu ly',
-    subtitle: 'Tap trung cac don da phat sinh bao hanh de nhan xu ly, cap nhat tien do va dong case dung quy trinh.',
-    badgeLabel: 'Bao hanh',
+    eyebrow: 'Bảo hành',
+    title: 'Các case bảo hành cần xử lý',
+    subtitle: 'Tập trung các đơn đã phát sinh bảo hành để nhận xử lý, cập nhật tiến độ và đóng case đúng quy trình.',
+    badgeLabel: 'Bảo hành',
   },
   done: {
     eyebrow: 'Hoàn thành',
@@ -383,12 +383,12 @@ const boardViewCopy = {
 const getBoardViewConfig = (status = window.currentStatus) => boardViewCopy[status] || boardViewCopy.all;
 
 const serviceBadgePresets = [
-  { keywords: ['máy lạnh', 'điều hòa'], label: 'AIR CONDITIONING' },
-  { keywords: ['tủ lạnh', 'tủ đông'], label: 'COOLING SERVICE' },
-  { keywords: ['máy giặt'], label: 'LAUNDRY CARE' },
-  { keywords: ['tivi', 'tv'], label: 'ELECTRONIC REPAIR' },
-  { keywords: ['bồn cầu', 'vòi', 'ống nước'], label: 'PLUMBING' },
-  { keywords: ['điện', 'ổ cắm', 'cầu dao'], label: 'ELECTRIC SERVICE' },
+  { keywords: ['máy lạnh', 'điều hòa'], label: 'ĐIỀU HOÀ' },
+  { keywords: ['tủ lạnh', 'tủ đông'], label: 'ĐIỆN LẠNH' },
+  { keywords: ['máy giặt'], label: 'MÁY GIẶT' },
+  { keywords: ['tivi', 'tv'], label: 'ĐIỆN TỬ' },
+  { keywords: ['bồn cầu', 'vòi', 'ống nước'], label: 'ĐIỆN NƯỚC' },
+  { keywords: ['điện', 'ổ cắm', 'cầu dao'], label: 'ĐIỆN DÂN DỤNG' },
 ];
 
 const getBookingPaymentMethod = (booking) => booking?.phuong_thuc_thanh_toan === 'transfer' ? 'transfer' : 'cod';
@@ -397,7 +397,7 @@ const isCashPaymentBooking = (booking) => getBookingPaymentMethod(booking) === '
 const getServiceBadge = (booking) => {
   const haystack = getBookingServiceNames(booking).toLowerCase();
   const preset = serviceBadgePresets.find((item) => item.keywords.some((keyword) => haystack.includes(keyword)));
-  return preset ? preset.label : 'HOME SERVICE';
+  return preset ? preset.label : 'SỬA CHỮA CHUNG';
 };
 
 const getPhoneNumber = (booking) => booking?.khach_hang?.phone || '';

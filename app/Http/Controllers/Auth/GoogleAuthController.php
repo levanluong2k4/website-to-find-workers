@@ -105,6 +105,7 @@ class GoogleAuthController extends Controller
     private function fetchGoogleProfile(string $code, GoogleAuthConfigService $googleAuthConfig): array
     {
         $tokenResponse = Http::asForm()
+            ->withOptions(app()->isLocal() ? ['verify' => false] : [])
             ->acceptJson()
             ->timeout(15)
             ->post(self::GOOGLE_TOKEN_URL, [
@@ -126,6 +127,7 @@ class GoogleAuthController extends Controller
         }
 
         $profileResponse = Http::withToken($accessToken)
+            ->withOptions(app()->isLocal() ? ['verify' => false] : [])
             ->acceptJson()
             ->timeout(15)
             ->get(self::GOOGLE_USERINFO_URL);

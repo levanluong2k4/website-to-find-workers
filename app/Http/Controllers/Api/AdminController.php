@@ -26,6 +26,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -1018,6 +1019,7 @@ class AdminController extends Controller
                     'new_customer' => $customer['_created_at_sort'] >= $now->copy()->subDays(30)->timestamp,
                     'new_30d' => $customer['_created_at_sort'] >= $now->copy()->subDays(30)->timestamp,
                     'has_booking' => $customer['order_count'] > 0,
+                    'no_booking' => $customer['order_count'] === 0,
                     'active_booking' => $customer['active_booking_count'] > 0,
                     'needs_attention' => $customer['relationship_status'] === 'needs_attention',
                     'inactive_60d' => $customer['relationship_status'] === 'inactive',
@@ -1210,45 +1212,6 @@ class AdminController extends Controller
                         ])
                         ->latest('created_at');
                 },
-                'customerNotes' => function ($query) {
-                    $query
-                        ->select([
-                            'id',
-                            'customer_id',
-                            'admin_id',
-                            'category',
-                            'content',
-                            'is_pinned',
-                            'created_at',
-                        ])
-                        ->with('admin:id,name')
-                        ->latest('created_at');
-                },
-                'customerTags:id,label,slug,color',
-                'customerFollowUps' => function ($query) {
-                    $query
-                        ->select([
-                            'id',
-                            'customer_id',
-                            'booking_id',
-                            'created_by_admin_id',
-                            'assigned_admin_id',
-                            'title',
-                            'channel',
-                            'priority',
-                            'status',
-                            'scheduled_at',
-                            'completed_at',
-                            'note',
-                            'outcome_note',
-                            'created_at',
-                        ])
-                        ->with([
-                            'assignedAdmin:id,name',
-                            'createdByAdmin:id,name',
-                        ])
-                        ->latest('scheduled_at');
-                },
             ])
             ->firstOrFail();
 
@@ -1346,11 +1309,11 @@ class AdminController extends Controller
 
         $bookingModes = collect([
             [
-                'label' => 'Sua tai nha',
+                'label' => 'Sửa tại nhà',
                 'count' => $bookings->where('loai_dat_lich', 'at_home')->count(),
             ],
             [
-                'label' => 'Tai cua hang',
+                'label' => 'Tại cửa hàng',
                 'count' => $bookings->where('loai_dat_lich', 'at_store')->count(),
             ],
         ])->filter(fn(array $item) => $item['count'] > 0)->values();
@@ -1366,9 +1329,17 @@ class AdminController extends Controller
             ])
             ->values();
 
-        $tags = [];
-        $notes = [];
-        $availableTags = [];
+        $tags = collect();
+        $notes = collect();
+        $availableTags = collect();
+        $followUpSummary = [
+            'pending_count'   => 0,
+            'completed_count' => 0,
+            'due_today_count' => 0,
+            'overdue_count'   => 0,
+            'next_pending'    => null,
+            'items'           => [],
+        ];
 
         $nextOpenBooking = $openBookings
             ->sortBy(fn(DonDatLich $booking) => $this->resolveCustomerBookingSortTimestamp($booking))
@@ -1389,27 +1360,27 @@ class AdminController extends Controller
             'cancel_with_reason_count' => $cancelWithReasonCount,
         ]);
 
-        $currentStateTitle = 'Quan he on dinh';
-        $currentStateDetail = 'Khach hang khong co dau hieu can can thiep ngay.';
+        $currentStateTitle = 'Quan hệ ổn định';
+        $currentStateDetail = 'Khách hàng không có dấu hiệu cần can thiệp ngay.';
         $currentStateTone = 'success';
 
         if ($openBookings->count() > 0) {
-            $currentStateTitle = $openBookings->count() . ' don dang mo';
+            $currentStateTitle = $openBookings->count() . ' đơn đang mở';
             $currentStateDetail = $nextOpenBooking
-                ? 'Gan nhat: ' . $this->buildCustomerServiceLabel($nextOpenBooking) . ' - ' . $this->formatCustomerScheduleLabel($nextOpenBooking)
-                : 'Khach hang dang co don can theo doi.';
+                ? 'Gần nhất: ' . $this->buildCustomerServiceLabel($nextOpenBooking) . ' - ' . $this->formatCustomerScheduleLabel($nextOpenBooking)
+                : 'Khách hàng đang có đơn cần theo dõi.';
             $currentStateTone = 'info';
         } elseif ($lowFeedbackCount > 0) {
-            $currentStateTitle = $lowFeedbackCount . ' danh gia thap can xu ly';
-            $currentStateDetail = 'Can xem lai trai nghiem dich vu va thong tin don lien quan.';
+            $currentStateTitle = $lowFeedbackCount . ' đánh giá thấp cần xử lý';
+            $currentStateDetail = 'Cần xem lại trải nghiệm dịch vụ và thông tin đơn liên quan.';
             $currentStateTone = 'warning';
         } elseif ($daysSinceLastBooking !== null && $daysSinceLastBooking >= 60) {
-            $currentStateTitle = 'Khach dang ngung tuong tac';
-            $currentStateDetail = 'Lan dat gan nhat da qua ' . $daysSinceLastBooking . ' ngay.';
+            $currentStateTitle = 'Khách đang ngừng tương tác';
+            $currentStateDetail = 'Lần đặt gần nhất đã qua ' . $daysSinceLastBooking . ' ngày.';
             $currentStateTone = 'muted';
         } elseif ($bookings->isEmpty()) {
-            $currentStateTitle = 'Chua phat sinh don';
-            $currentStateDetail = 'Khach hang da co tai khoan nhung chua tao don dat lich nao.';
+            $currentStateTitle = 'Chưa phát sinh đơn';
+            $currentStateDetail = 'Khách hàng đã có tài khoản nhưng chưa tạo đơn đặt lịch nào.';
             $currentStateTone = 'muted';
         }
 
@@ -1418,48 +1389,48 @@ class AdminController extends Controller
         if ($openBookings->count() > 0) {
             $alerts->push([
                 'tone' => 'info',
-                'title' => 'Don dang mo',
-                'detail' => $openBookings->count() . ' don dang duoc he thong theo doi.',
+                'title' => 'Đơn đang mở',
+                'detail' => $openBookings->count() . ' đơn đang được hệ thống theo dõi.',
             ]);
         }
 
         if ($pendingPaymentCount > 0) {
             $alerts->push([
                 'tone' => 'warning',
-                'title' => 'Cho thanh toan',
-                'detail' => $pendingPaymentCount . ' don da xong nhung chua chot thanh toan.',
+                'title' => 'Chờ thanh toán',
+                'detail' => $pendingPaymentCount . ' đơn đã xong nhưng chưa chốt thanh toán.',
             ]);
         }
 
         if ($lowFeedbackCount > 0) {
             $alerts->push([
                 'tone' => 'danger',
-                'title' => 'Danh gia thap',
-                'detail' => $lowFeedbackCount . ' review can admin kiem tra lai.',
+                'title' => 'Đánh giá thấp',
+                'detail' => $lowFeedbackCount . ' review cần admin kiểm tra lại.',
             ]);
         }
 
         if ($cancelWithReasonCount > 0) {
             $alerts->push([
                 'tone' => 'warning',
-                'title' => 'Huy don co ly do',
-                'detail' => $cancelWithReasonCount . ' don huy co de lai ly do can ra soat.',
+                'title' => 'Hủy đơn có lý do',
+                'detail' => $cancelWithReasonCount . ' đơn hủy có để lại lý do cần rà soát.',
             ]);
         }
 
         if (($followUpSummary['overdue_count'] ?? 0) > 0) {
             $alerts->push([
                 'tone' => 'danger',
-                'title' => 'Nhac goi lai qua han',
-                'detail' => ($followUpSummary['overdue_count'] ?? 0) . ' lich cham soc da qua han can xu ly ngay.',
+                'title' => 'Nhắc gọi lại quá hạn',
+                'detail' => ($followUpSummary['overdue_count'] ?? 0) . ' lịch chăm sóc đã quá hạn cần xử lý ngay.',
             ]);
         }
 
         if (($followUpSummary['due_today_count'] ?? 0) > 0) {
             $alerts->push([
                 'tone' => 'warning',
-                'title' => 'Lich cham soc hom nay',
-                'detail' => ($followUpSummary['due_today_count'] ?? 0) . ' lich can lien he trong ngay.',
+                'title' => 'Lịch chăm sóc hôm nay',
+                'detail' => ($followUpSummary['due_today_count'] ?? 0) . ' lịch cần liên hệ trong ngày.',
             ]);
         }
 
@@ -1475,12 +1446,12 @@ class AdminController extends Controller
                     'status_tone' => $this->resolveCustomerBookingTone($booking->trang_thai),
                     'schedule_label' => $this->formatCustomerScheduleLabel($booking),
                     'location_label' => $booking->loai_dat_lich === 'at_home'
-                        ? ($booking->dia_chi ?: 'Chua cap nhat dia chi')
-                        : 'Sua tai cua hang',
-                    'worker_name' => $booking->tho?->name ?: 'Chua co tho nhan',
-                    'payment_label' => $booking->trang_thai_thanh_toan ? 'Da thanh toan' : 'Chua thanh toan',
+                        ? ($booking->dia_chi ?: 'Chưa cập nhật địa chỉ')
+                        : 'Sửa tại cửa hàng',
+                    'worker_name' => $booking->tho?->name ?: 'Chưa có thợ nhận',
+                    'payment_label' => $booking->trang_thai_thanh_toan ? 'Đã thanh toán' : 'Chưa thanh toán',
                     'total_amount' => (float) ($booking->tong_tien ?? 0),
-                    'problem_excerpt' => $this->truncateDashboardText((string) ($booking->mo_ta_van_de ?: 'Khach hang chua de mo ta chi tiet.'), 112),
+                    'problem_excerpt' => $this->truncateDashboardText((string) ($booking->mo_ta_van_de ?: 'Khách hàng chưa để mô tả chi tiết.'), 112),
                     'detail_url' => '/customer/my-bookings/' . $booking->id,
                 ];
             })
@@ -1497,10 +1468,10 @@ class AdminController extends Controller
 
                 return [
                     'rating' => (float) ($review->so_sao ?? 0),
-                    'comment' => trim((string) ($review->nhan_xet ?: 'Khach hang khong de lai nhan xet chi tiet.')),
+                    'comment' => trim((string) ($review->nhan_xet ?: 'Khách hàng không để lại nhận xét chi tiết.')),
                     'created_label' => optional($review->created_at)->format('d/m/Y'),
                     'service_label' => $this->buildCustomerServiceLabel($booking),
-                    'worker_name' => $booking->tho?->name ?: ($review->nguoiBiDanhGia?->name ?: 'Chua gan tho'),
+                    'worker_name' => $booking->tho?->name ?: ($review->nguoiBiDanhGia?->name ?: 'Chưa gắn thợ'),
                     'booking_code' => $this->formatCustomerBookingCode($booking->id),
                     'detail_url' => '/customer/my-bookings/' . $booking->id,
                 ];
@@ -1527,8 +1498,8 @@ class AdminController extends Controller
                     'current_area' => $this->extractCustomerArea($latestBooking?->dia_chi ?: $customer->address),
                     'default_address' => $customer->address,
                     'latest_address' => $latestBooking?->dia_chi ?: $customer->address,
-                    'last_booking_label' => $lastBookingAt ? $lastBookingAt->format('d/m/Y') : 'Chua dat',
-                    'last_booking_service' => $latestBooking ? $this->buildCustomerServiceLabel($latestBooking) : 'Chua co don',
+                    'last_booking_label' => $lastBookingAt ? $lastBookingAt->format('d/m/Y') : 'Chưa đặt',
+                    'last_booking_service' => $latestBooking ? $this->buildCustomerServiceLabel($latestBooking) : 'Chưa có đơn',
                     'is_active' => (bool) $customer->is_active,
                     'history_url' => '/admin/customers/' . $customer->id . '/bookings',
                     'feedback_url' => '/admin/customer-feedback?customer=' . $customer->id,
@@ -1563,18 +1534,18 @@ class AdminController extends Controller
                                 'status_label' => $this->formatCustomerBookingStatusLabel($booking->trang_thai),
                                 'status_tone' => $this->resolveCustomerBookingTone($booking->trang_thai),
                                 'schedule_label' => $this->formatCustomerScheduleLabel($booking),
-                                'worker_name' => $booking->tho?->name ?: 'Dang tim tho',
+                                'worker_name' => $booking->tho?->name ?: 'Đang tìm thợ',
                                 'detail_url' => '/customer/my-bookings/' . $booking->id,
                             ];
                         })
                         ->values(),
                     'meta' => [
                         [
-                            'label' => 'Don dang mo',
+                            'label' => 'Đơn đang mở',
                             'value' => $openBookings->count(),
                         ],
                         [
-                            'label' => 'Cho thanh toan',
+                            'label' => 'Chờ thanh toán',
                             'value' => $pendingPaymentCount,
                         ],
                         [
@@ -1582,7 +1553,7 @@ class AdminController extends Controller
                             'value' => $lowFeedbackCount + $cancelWithReasonCount,
                         ],
                         [
-                            'label' => 'Nhac goi lai',
+                            'label' => 'Nhắc gọi lại',
                             'value' => $followUpSummary['pending_count'] ?? 0,
                         ],
                     ],
@@ -1780,24 +1751,25 @@ class AdminController extends Controller
                     return [
                         'id' => $booking->id,
                         'code' => $this->formatCustomerBookingCode($booking->id),
+                        'status' => $booking->trang_thai,
                         'service_label' => $this->buildCustomerServiceLabel($booking),
                         'schedule_label' => $this->formatCustomerScheduleLabel($booking),
-                        'mode_label' => $booking->loai_dat_lich === 'at_home' ? 'Sua tai nha' : 'Tai cua hang',
-                        'worker_name' => $booking->tho?->name ?: 'Chua gan tho',
+                        'mode_label' => $booking->loai_dat_lich === 'at_home' ? 'Sửa tại nhà' : 'Tại cửa hàng',
+                        'worker_name' => $booking->tho?->name ?: 'Chưa gắn thợ',
                         'status_label' => $this->formatCustomerBookingStatusLabel($booking->trang_thai),
                         'status_tone' => $this->resolveCustomerBookingTone($booking->trang_thai),
-                        'payment_label' => $booking->trang_thai_thanh_toan ? 'Da thanh toan' : 'Chua thanh toan',
+                        'payment_label' => $booking->trang_thai_thanh_toan ? 'Đã thanh toán' : 'Chưa thanh toán',
                         'payment_tone' => $booking->trang_thai_thanh_toan ? 'success' : 'warning',
                         'total_amount' => (float) ($booking->tong_tien ?? 0),
                         'travel_fee' => (float) ($booking->phi_di_lai ?? 0),
                         'transport_fee' => (float) ($booking->tien_thue_xe ?? 0),
                         'transport_requested' => (bool) ($booking->thue_xe_cho ?? false),
                         'address' => $booking->loai_dat_lich === 'at_home'
-                            ? ($booking->dia_chi ?: 'Chua cap nhat dia chi')
-                            : 'Khach mang thiet bi den cua hang',
-                        'review_label' => $ratings->isNotEmpty() ? round($ratings->avg(), 1) . '/5' : 'Chua review',
+                            ? ($booking->dia_chi ?: 'Chưa cập nhật địa chỉ')
+                            : 'Khách mang thiết bị đến cửa hàng',
+                        'review_label' => $ratings->isNotEmpty() ? round($ratings->avg(), 1) . '/5' : 'Chưa review',
                         'review_tone' => $ratings->isNotEmpty() && $ratings->avg() <= 2 ? 'danger' : ($ratings->isNotEmpty() ? 'success' : 'muted'),
-                        'problem_excerpt' => $this->truncateDashboardText((string) ($booking->mo_ta_van_de ?: 'Khach chua de mo ta van de.'), 96),
+                        'problem_excerpt' => $this->truncateDashboardText((string) ($booking->mo_ta_van_de ?: 'Khách chưa để mô tả vấn đề.'), 96),
                         'detail_url' => '/customer/my-bookings/' . $booking->id,
                     ];
                 })->values(),
@@ -2131,6 +2103,164 @@ class AdminController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $users,
+        ]);
+    }
+
+    public function sendWorkerInterviewEmail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'worker_ids' => 'required|array|min:1',
+            'worker_ids.*' => 'integer|exists:users,id',
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string|max:5000',
+        ], [
+            'worker_ids.required' => 'Vui long chon it nhat mot tho',
+            'worker_ids.min' => 'Vui long chon it nhat mot tho',
+            'subject.required' => 'Vui long nhap tieu de email',
+            'body.required' => 'Vui long nhap noi dung email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu email khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $workers = User::query()
+            ->with('hoSoTho')
+            ->where('role', 'worker')
+            ->whereIn('id', $request->input('worker_ids', []))
+            ->whereNotNull('email')
+            ->get();
+
+        if ($workers->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay tho hop le de gui email',
+            ], 404);
+        }
+
+        $subject = trim((string) $request->input('subject'));
+        $template = trim((string) $request->input('body'));
+        $sent = 0;
+        $failed = [];
+
+        foreach ($workers as $worker) {
+            try {
+                $body = strtr($template, [
+                    '{name}' => (string) $worker->name,
+                    '{email}' => (string) $worker->email,
+                    '{phone}' => (string) ($worker->phone ?? ''),
+                    '{approval_status}' => (string) ($worker->hoSoTho?->trang_thai_duyet ?? 'cho_duyet'),
+                ]);
+
+                Mail::raw($body, function ($message) use ($worker, $subject) {
+                    $message->to($worker->email, $worker->name)->subject($subject);
+                });
+
+                $sent++;
+            } catch (\Throwable $exception) {
+                $failed[] = [
+                    'id' => $worker->id,
+                    'email' => $worker->email,
+                    'error' => $exception->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'status' => $sent > 0 ? 'success' : 'error',
+            'message' => $sent > 0
+                ? "Da gui email phong van cho {$sent} tho"
+                : 'Khong gui duoc email phong van',
+            'data' => [
+                'sent' => $sent,
+                'failed' => $failed,
+            ],
+        ], $sent > 0 ? 200 : 500);
+    }
+
+    public function storeAdmin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:15|unique:users,phone',
+            'password' => 'required|string|min:6|confirmed',
+            'is_active' => 'boolean',
+        ], [
+            'name.required' => 'Ho ten khong duoc de trong',
+            'email.required' => 'Email khong duoc de trong',
+            'email.email' => 'Email khong hop le',
+            'email.unique' => 'Email da duoc su dung',
+            'phone.unique' => 'So dien thoai da duoc su dung',
+            'phone.max' => 'So dien thoai khong vuot qua 15 ky tu',
+            'password.required' => 'Mat khau khong duoc de trong',
+            'password.min' => 'Mat khau phai co it nhat 6 ky tu',
+            'password.confirmed' => 'Xac nhan mat khau khong khop',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Du lieu khong hop le',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $admin = User::query()->create([
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'phone' => $request->input('phone'),
+            'password' => bcrypt((string) $request->input('password')),
+            'role' => 'admin',
+            'is_active' => $request->boolean('is_active', true),
+            'email_verified_at' => now(),
+            'phone_verified_at' => $request->filled('phone') ? now() : null,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da tao tai khoan admin thanh cong',
+            'data' => $admin,
+        ], 201);
+    }
+
+    public function destroyAdmin(Request $request, string $id)
+    {
+        $admin = User::query()
+            ->where('role', 'admin')
+            ->find($id);
+
+        if (!$admin) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong tim thay tai khoan admin',
+            ], 404);
+        }
+
+        if ((int) $request->user()?->id === (int) $admin->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong the xoa chinh tai khoan admin dang dang nhap',
+            ], 403);
+        }
+
+        if (User::query()->where('role', 'admin')->count() <= 1) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Khong the xoa admin cuoi cung cua he thong',
+            ], 422);
+        }
+
+        $admin->tokens()->delete();
+        $admin->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Da xoa tai khoan admin thanh cong',
         ]);
     }
 
@@ -2980,18 +3110,30 @@ class AdminController extends Controller
         };
     }
 
-    public function toggleUserStatus(string $id)
+    public function toggleUserStatus(Request $request, string $id)
     {
         $user = User::findOrFail($id);
 
-        if ($user->role === 'admin') {
+        if ($user->role === 'admin' && (int) $request->user()?->id === (int) $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Khong the thay doi trang thai cua admin.',
+                'message' => 'Khong the khoa chinh tai khoan admin dang dang nhap.',
             ], 403);
         }
 
-        $user->is_active = !$user->is_active;
+        $action = (string) $request->input('action', '');
+        $shouldLock = $action === 'lock'
+            ? true
+            : ($action === 'unlock' ? false : $user->is_active);
+
+        $user->is_active = !$shouldLock;
+        $user->locked_until = null;
+
+        if ($shouldLock && $request->filled('duration_days')) {
+            $days = max(1, (int) $request->input('duration_days'));
+            $user->locked_until = now()->addDays($days);
+        }
+
         $user->save();
 
         return response()->json([
@@ -4406,7 +4548,7 @@ class AdminController extends Controller
         }
 
         try {
-            return Carbon::parse($timestamp, 'UTC')->setTimezone($this->adminBookingTimezone());
+            return Carbon::parse($timestamp);
         } catch (\Throwable) {
             return null;
         }
@@ -4612,14 +4754,39 @@ class AdminController extends Controller
     {
         $requiredServiceIds = $booking ? $booking->resolveServiceIds() : [];
 
+        $bookingDate = $booking
+            ? ($booking->ngay_hen?->toDateString() ?? $booking->thoi_gian_hen?->toDateString())
+            : null;
+        $timeSlot = $booking
+            ? DonDatLich::normalizeTimeSlot((string) $booking->khung_gio_hen)
+            : '';
+
+        // Pre-fetch worker IDs that are busy in this exact date+slot (exclude current booking)
+        $busyWorkerIds = ($bookingDate && $timeSlot !== '')
+            ? DonDatLich::query()
+                ->select('tho_id')
+                ->whereNotNull('tho_id')
+                ->whereDate('ngay_hen', $bookingDate)
+                ->where('khung_gio_hen', $timeSlot)
+                ->whereIn('trang_thai', DonDatLich::scheduleBlockingStatuses())
+                ->when($booking, fn($q) => $q->where('id', '!=', $booking->id))
+                ->pluck('tho_id')
+                ->flip()
+                ->all()
+            : [];
+
         return User::query()
             ->with(['hoSoTho:user_id,trang_thai_duyet,dang_hoat_dong', 'dichVus:id,ten_dich_vu'])
             ->where('role', 'worker')
             ->where('is_active', true)
             ->orderBy('name')
             ->get()
-            ->filter(function (User $worker) use ($requiredServiceIds): bool {
+            ->filter(function (User $worker) use ($requiredServiceIds, $busyWorkerIds): bool {
                 if ($worker->hoSoTho?->trang_thai_duyet !== 'da_duyet' || !(bool) ($worker->hoSoTho?->dang_hoat_dong ?? false)) {
+                    return false;
+                }
+
+                if (isset($busyWorkerIds[$worker->id])) {
                     return false;
                 }
 
@@ -5484,7 +5651,7 @@ class AdminController extends Controller
             ],
             'gia' => 'nullable|numeric|min:0',
             'so_luong_ton_kho' => 'nullable|integer|min:0|max:1000000',
-            'han_su_dung' => 'nullable|date',
+            'ngay_san_xuat' => 'nullable|date',
             'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
@@ -5501,8 +5668,8 @@ class AdminController extends Controller
             'ten_linh_kien' => trim((string) $request->input('ten_linh_kien')),
             'gia' => $request->filled('gia') ? (float) $request->input('gia') : null,
             'so_luong_ton_kho' => max(0, (int) $request->input('so_luong_ton_kho', 0)),
-            'han_su_dung' => $request->filled('han_su_dung')
-                ? $request->date('han_su_dung')?->toDateString()
+            'ngay_san_xuat' => $request->filled('ngay_san_xuat')
+                ? $request->date('ngay_san_xuat')?->toDateString()
                 : null,
             'hinh_anh' => $request->hasFile('hinh_anh')
                 ? $this->storePartImage($request->file('hinh_anh'))
@@ -5543,7 +5710,7 @@ class AdminController extends Controller
             ],
             'gia' => 'nullable|numeric|min:0',
             'so_luong_ton_kho' => 'nullable|integer|min:0|max:1000000',
-            'han_su_dung' => 'nullable|date',
+            'ngay_san_xuat' => 'nullable|date',
             'hinh_anh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'remove_image' => 'nullable|boolean',
         ]);
@@ -5573,8 +5740,8 @@ class AdminController extends Controller
             'ten_linh_kien' => trim((string) $request->input('ten_linh_kien')),
             'gia' => $request->filled('gia') ? (float) $request->input('gia') : null,
             'so_luong_ton_kho' => max(0, (int) $request->input('so_luong_ton_kho', 0)),
-            'han_su_dung' => $request->filled('han_su_dung')
-                ? $request->date('han_su_dung')?->toDateString()
+            'ngay_san_xuat' => $request->filled('ngay_san_xuat')
+                ? $request->date('ngay_san_xuat')?->toDateString()
                 : null,
             'hinh_anh' => $imagePath,
         ]);
@@ -5832,13 +5999,29 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|string|max:15|unique:users,phone',
-            'password' => 'required|string|min:6',
-            'cccd' => 'required|string|max:20',
+            'password' => 'required|string|min:6|confirmed',
+            'cccd' => 'required|string|max:20|unique:ho_so_tho,cccd',
             'address' => 'nullable|string|max:255',
             'kinh_nghiem' => 'nullable|string',
             'dich_vu_ids' => 'nullable|array',
             'dich_vu_ids.*' => 'integer|exists:danh_muc_dich_vu,id',
             'avatar' => 'nullable|image|max:5120',
+        ], [
+            'name.required' => 'Họ và tên không được để trống',
+            'email.required' => 'Email không được để trống',
+            'email.email' => 'Email không hợp lệ',
+            'email.unique' => 'Email đã được sử dụng',
+            'phone.required' => 'Số điện thoại không được để trống',
+            'phone.unique' => 'Số điện thoại đã được sử dụng',
+            'phone.max' => 'Số điện thoại không vượt quá 15 ký tự',
+            'password.required' => 'Mật khẩu không được để trống',
+            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+            'password.confirmed' => 'Xác nhận mật khẩu không khớp',
+            'cccd.required' => 'Số CCCD không được để trống',
+            'cccd.unique' => 'Số CCCD đã được sử dụng',
+            'cccd.max' => 'Số CCCD không vượt quá 20 ký tự',
+            'avatar.image' => 'Ảnh đại diện phải là file ảnh',
+            'avatar.max' => 'Ảnh đại diện không vượt quá 5MB',
         ]);
 
         if ($validator->fails()) {
@@ -5900,6 +6083,7 @@ class AdminController extends Controller
     public function updateWorker(Request $request, string $userId)
     {
         $worker = User::query()
+            ->with('hoSoTho')
             ->where('role', 'worker')
             ->findOrFail($userId);
 
@@ -5907,14 +6091,29 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $worker->id,
             'phone' => 'required|string|max:15|unique:users,phone,' . $worker->id,
-            'password' => 'nullable|string|min:6',
-            'cccd' => 'required|string|max:20',
+            'password' => 'nullable|string|min:6|confirmed',
+            'cccd' => 'required|string|max:20|unique:ho_so_tho,cccd,' . ($worker->hoSoTho?->id ?? 0),
             'address' => 'nullable|string|max:255',
             'kinh_nghiem' => 'nullable|string',
             'dich_vu_ids' => 'nullable|array',
             'dich_vu_ids.*' => 'integer|exists:danh_muc_dich_vu,id',
             'is_active' => 'boolean',
             'avatar' => 'nullable|image|max:5120',
+        ], [
+            'name.required' => 'Họ và tên không được để trống',
+            'email.required' => 'Email không được để trống',
+            'email.email' => 'Email không hợp lệ',
+            'email.unique' => 'Email đã được sử dụng',
+            'phone.required' => 'Số điện thoại không được để trống',
+            'phone.unique' => 'Số điện thoại đã được sử dụng',
+            'phone.max' => 'Số điện thoại không vượt quá 15 ký tự',
+            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+            'password.confirmed' => 'Xác nhận mật khẩu không khớp',
+            'cccd.required' => 'Số CCCD không được để trống',
+            'cccd.unique' => 'Số CCCD đã được sử dụng',
+            'cccd.max' => 'Số CCCD không vượt quá 20 ký tự',
+            'avatar.image' => 'Ảnh đại diện phải là file ảnh',
+            'avatar.max' => 'Ảnh đại diện không vượt quá 5MB',
         ]);
 
         if ($validator->fails()) {
@@ -6858,22 +7057,8 @@ class AdminController extends Controller
 
     private function serializeAdminPart(LinhKien $part): array
     {
-        $expiryDate = $part->han_su_dung;
-        $expiryLabel = $expiryDate?->format('d/m/Y');
-        $expiryState = 'none';
-
-        if ($expiryDate) {
-            $today = Carbon::today();
-            $warningThreshold = $today->copy()->addMonthsNoOverflow(6);
-
-            if ($expiryDate->lt($today)) {
-                $expiryState = 'expired';
-            } elseif ($expiryDate->lte($warningThreshold)) {
-                $expiryState = 'expiring_soon';
-            } else {
-                $expiryState = 'active';
-            }
-        }
+        $mfgDate = $part->ngay_san_xuat;
+        $mfgLabel = $mfgDate?->format('d/m/Y');
 
         return [
             'id' => $part->id,
@@ -6885,9 +7070,8 @@ class AdminController extends Controller
             'gia_label' => $part->gia !== null ? number_format((float) $part->gia, 0, ',', '.') . ' đ' : 'Chua cap nhat',
             'so_luong_ton_kho' => (int) ($part->so_luong_ton_kho ?? 0),
             'so_luong_ton_kho_label' => number_format((int) ($part->so_luong_ton_kho ?? 0), 0, ',', '.'),
-            'han_su_dung' => $expiryDate?->toDateString(),
-            'han_su_dung_label' => $expiryLabel ?: 'Khong co',
-            'han_su_dung_state' => $expiryState,
+            'ngay_san_xuat' => $mfgDate?->toDateString(),
+            'ngay_san_xuat_label' => $mfgLabel ?: 'Khong co',
             'updated_at' => optional($part->updated_at)->toIso8601String(),
             'updated_label' => optional($part->updated_at)->format('d/m/Y H:i'),
         ];

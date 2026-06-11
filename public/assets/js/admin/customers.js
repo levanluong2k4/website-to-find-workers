@@ -15,12 +15,22 @@ document.addEventListener('DOMContentLoaded', () => {
         statNew: document.getElementById('customerStatNew'),
         statBooked: document.getElementById('customerStatBooked'),
         statActive: document.getElementById('customerStatActive'),
+        profileModal: document.getElementById('customerProfileModal'),
+        profileModalBody: document.getElementById('customerProfileModalBody'),
+        profileDetailLink: document.getElementById('cmpDetailLink'),
+        bookingsModal: document.getElementById('customerBookingsModal'),
+        bookingsModalBody: document.getElementById('customerBookingsModalBody'),
+        bookingsDetailLink: document.getElementById('cmbDetailLink'),
+        cmbStatus: document.getElementById('cmbStatusFilter'),
+        cmbSort: document.getElementById('cmbSortFilter'),
     };
 
     const state = {
         customers: [],
         selectedId: null,
         searchTimer: null,
+        bookingsCustomerId: null,
+        allBookings: [],
     };
 
     const number = new Intl.NumberFormat('vi-VN');
@@ -41,17 +51,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formatNumber = (value) => number.format(Number(value || 0));
 
+    const formatCurrency = (value) => number.format(Number(value || 0)) + ' đ';
+
     const relationshipMeta = (status) => {
         switch (status) {
             case 'active_booking':
-                return { label: 'Dang co don xu ly', className: 'customer-pill--active_booking' };
+                return { label: 'Đang có đơn xử lý', className: 'customer-pill--active_booking' };
             case 'new_customer':
-                return { label: 'Khach moi', className: 'customer-pill--new_customer' };
+                return { label: 'Khách mới', className: 'customer-pill--new_customer' };
             case 'inactive':
-                return { label: 'Lau chua quay lai', className: 'customer-pill--inactive' };
+                return { label: 'Lâu chưa quay lại', className: 'customer-pill--inactive' };
             default:
-                return { label: 'Da tung dat dich vu', className: 'customer-pill--loyal' };
+                return { label: 'Đã từng đặt dịch vụ', className: 'customer-pill--loyal' };
         }
+    };
+
+    const toneToPill = (tone) => {
+        const map = { info: 'cmp-pill--info', success: 'cmp-pill--success', danger: 'cmp-pill--danger', warning: 'cmp-pill--warning', muted: 'cmp-pill--muted' };
+        return map[tone] || 'cmp-pill--muted';
     };
 
     const buildAvatar = (customer, className) => {
@@ -111,17 +128,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderTable = () => {
         if (!state.customers.length) {
-            refs.caption.textContent = 'Khong tim thay khach hang phu hop voi bo loc hien tai.';
+            refs.caption.textContent = 'Không tìm thấy khách hàng phù hợp với bộ lọc hiện tại.';
             refs.tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="customer-admin-empty">Khong co du lieu khach hang phu hop.</td>
+                    <td colspan="5" class="customer-admin-empty">Không có dữ liệu khách hàng phù hợp.</td>
                 </tr>
             `;
             renderPreview(null);
             return;
         }
 
-        refs.caption.textContent = `${formatNumber(state.customers.length)} khach hang trong ket qua hien tai.`;
+        refs.caption.textContent = `${formatNumber(state.customers.length)} khách hàng trong kết quả hiện tại.`;
 
         refs.tableBody.innerHTML = state.customers.map((customer) => {
             const relationship = relationshipMeta(customer.relationship_status);
@@ -133,25 +150,25 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${buildAvatar(customer, 'customer-avatar')}
                             <div>
                                 <div class="customer-name">${escapeHtml(customer.name)}</div>
-                                <div class="customer-subcopy">${escapeHtml(customer.phone || 'Chua co SDT')}</div>
-                                <div class="customer-subcopy">${escapeHtml(customer.email || 'Chua co email')}</div>
+                                <div class="customer-subcopy">${escapeHtml(customer.phone || 'Chưa có SĐT')}</div>
+                                <div class="customer-subcopy">${escapeHtml(customer.email || 'Chưa có email')}</div>
                             </div>
                         </div>
                     </td>
                     <td>
                         <div class="customer-value-strong">${escapeHtml(customer.joined_label || '--')}</div>
-                        <div class="customer-subcopy">Ngay tham gia</div>
+                        <div class="customer-subcopy">Ngày tham gia</div>
                     </td>
                     <td>
-                        <div class="customer-value-strong">${formatNumber(customer.order_count)} don</div>
-                        <div class="customer-subcopy">${formatNumber(customer.active_booking_count)} don dang xu ly</div>
+                        <div class="customer-value-strong">${formatNumber(customer.order_count)} đơn</div>
+                        <div class="customer-subcopy">${formatNumber(customer.active_booking_count)} đơn đang xử lý</div>
                     </td>
                     <td>
                         <span class="customer-pill ${relationship.className}">${escapeHtml(relationship.label)}</span>
-                        <div class="customer-subcopy">${escapeHtml(customer.last_booking_service || 'Chua co lich su dat dich vu')}</div>
+                        <div class="customer-subcopy">${escapeHtml(customer.last_booking_service || 'Chưa có lịch sử đặt dịch vụ')}</div>
                     </td>
                     <td>
-                        <a href="/admin/customers/${customer.id}" class="customer-quick-btn">Xem chi tiet</a>
+                        <button type="button" class="customer-quick-btn" data-open-profile="${customer.id}">Xem chi tiết</button>
                     </td>
                 </tr>
             `;
@@ -160,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderPreview = (customer) => {
         if (!customer) {
-            refs.preview.innerHTML = '<div class="customer-preview-empty">Chua chon khach hang.</div>';
+            refs.preview.innerHTML = '<div class="customer-preview-empty">Chưa chọn khách hàng.</div>';
             return;
         }
 
@@ -180,40 +197,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="customer-preview-grid">
                 <div class="customer-preview-metric">
-                    <span class="customer-preview-metric__label">So don</span>
+                    <span class="customer-preview-metric__label">Số đơn</span>
                     <span class="customer-preview-metric__value">${formatNumber(customer.order_count)}</span>
                 </div>
                 <div class="customer-preview-metric">
-                    <span class="customer-preview-metric__label">Dang xu ly</span>
+                    <span class="customer-preview-metric__label">Đang xử lý</span>
                     <span class="customer-preview-metric__value">${formatNumber(customer.active_booking_count)}</span>
                 </div>
             </div>
 
             <div class="customer-preview-block">
-                <span class="customer-preview-block__label">Thong tin lien he</span>
-                <div class="customer-preview-block__value">${escapeHtml(customer.phone || 'Chua co SDT')}</div>
-                <div class="customer-subcopy">${escapeHtml(customer.email || 'Chua co email')}</div>
+                <span class="customer-preview-block__label">Thông tin liên hệ</span>
+                <div class="customer-preview-block__value">${escapeHtml(customer.phone || 'Chưa có SĐT')}</div>
+                <div class="customer-subcopy">${escapeHtml(customer.email || 'Chưa có email')}</div>
             </div>
 
             <div class="customer-preview-block">
-                <span class="customer-preview-block__label">Ngay tham gia</span>
+                <span class="customer-preview-block__label">Ngày tham gia</span>
                 <div class="customer-preview-block__value">${escapeHtml(customer.joined_label || '--')}</div>
             </div>
 
             <div class="customer-preview-block">
-                <span class="customer-preview-block__label">Lich su dat dich vu</span>
-                <div class="customer-preview-block__value">${escapeHtml(customer.last_booking_service || 'Chua co lich su dat dich vu')}</div>
-                <div class="customer-subcopy">${escapeHtml(customer.last_booking_label || 'Chua dat lich')}</div>
+                <span class="customer-preview-block__label">Lịch sử đặt dịch vụ</span>
+                <div class="customer-preview-block__value">${escapeHtml(customer.last_booking_service || 'Chưa có lịch sử đặt dịch vụ')}</div>
+                <div class="customer-subcopy">${escapeHtml(customer.last_booking_label || 'Chưa đặt lịch')}</div>
             </div>
 
             <div class="customer-preview-block">
-                <span class="customer-preview-block__label">Dia chi</span>
-                <div class="customer-preview-block__value">${escapeHtml(customer.latest_address || 'Chua co dia chi')}</div>
+                <span class="customer-preview-block__label">Địa chỉ</span>
+                <div class="customer-preview-block__value">${escapeHtml(customer.latest_address || 'Chưa có địa chỉ')}</div>
             </div>
 
             <div class="customer-preview-actions">
-                <a class="customer-preview-action customer-preview-action--primary" href="/admin/customers/${customer.id}">Xem chi tiet</a>
-                <a class="customer-preview-action" href="/admin/customers/${customer.id}/bookings">Lich su don</a>
+                <button type="button" class="customer-preview-action customer-preview-action--primary" data-open-profile="${customer.id}">Xem chi tiết hồ sơ</button>
+                <button type="button" class="customer-preview-action" data-open-bookings="${customer.id}">Lịch sử đơn</button>
             </div>
         `;
     };
@@ -226,10 +243,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadCustomers = async ({ silent = false } = {}) => {
         if (!silent) {
-            refs.caption.textContent = 'Dang tai du lieu khach hang...';
+            refs.caption.textContent = 'Đang tải dữ liệu khách hàng...';
             refs.tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="customer-admin-empty">Dang tai danh sach khach hang...</td>
+                    <td colspan="5" class="customer-admin-empty">Đang tải danh sách khách hàng...</td>
                 </tr>
             `;
         }
@@ -239,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await callApi(`/admin/customers${buildQuery()}`, 'GET');
 
             if (!response?.ok) {
-                throw new Error(response?.data?.message || 'Khong the tai du lieu khach hang');
+                throw new Error(response?.data?.message || 'Không thể tải dữ liệu khách hàng');
             }
 
             const payload = response.data?.data || {};
@@ -255,24 +272,253 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPreview(state.customers.find((item) => item.id === state.selectedId) || null);
         } catch (error) {
             console.error('Load admin customers failed:', error);
-            refs.caption.textContent = 'Khong the tai du lieu.';
+            refs.caption.textContent = 'Không thể tải dữ liệu.';
             refs.tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="customer-admin-empty">Khong the tai du lieu khach hang.</td>
+                    <td colspan="5" class="customer-admin-empty">Không thể tải dữ liệu khách hàng.</td>
                 </tr>
             `;
             renderPreview(null);
-            showToast(error.message || 'Khong the tai danh sach khach hang', 'error');
+            showToast(error.message || 'Không thể tải danh sách khách hàng', 'error');
         }
     };
 
+    // ─── Modal helpers ───────────────────────────────────────────
+
+    const openModal = (modalEl) => {
+        modalEl.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeModal = (modalEl) => {
+        modalEl.classList.remove('is-open');
+        document.body.style.overflow = '';
+    };
+
+    // Close on overlay click
+    document.querySelectorAll('.cm-modal-overlay').forEach((overlay) => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeModal(overlay);
+        });
+    });
+
+    // Close buttons
+    document.querySelectorAll('[data-modal-close]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const target = document.getElementById(btn.dataset.modalClose);
+            if (target) closeModal(target);
+        });
+    });
+
+    // ESC key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.cm-modal-overlay.is-open').forEach(closeModal);
+        }
+    });
+
+    // ─── Profile modal ────────────────────────────────────────────
+
+    const buildProfileModalContent = (data) => {
+        const { profile, summary, recent_bookings, alerts } = data;
+        const esc = escapeHtml;
+
+        const alertsHtml = (alerts || []).map((a) => `
+            <div class="alert alert-${a.tone === 'danger' ? 'danger' : a.tone === 'warning' ? 'warning' : 'info'} py-2 px-3 mb-0 rounded-3" style="font-size:.84rem;">
+                <strong>${esc(a.title)}:</strong> ${esc(a.detail)}
+            </div>
+        `).join('');
+
+        const recentHtml = (recent_bookings || []).slice(0, 5).map((b) => `
+            <div class="cmp-recent-item">
+                <div>
+                    <div class="cmp-recent-service">${esc(b.service_label)}</div>
+                    <div class="cmp-recent-meta">${esc(b.schedule_label)} · ${esc(b.worker_name)}</div>
+                </div>
+                <span class="cmp-pill cmp-pill--${b.status_tone || 'muted'}">${esc(b.status_label)}</span>
+            </div>
+        `).join('') || '<div style="color:#94a3b8;font-size:.85rem;">Chưa có đơn nào.</div>';
+
+        return `
+            <div class="cmp-top">
+                ${buildAvatar({ avatar: profile.avatar, name: profile.name }, 'cmp-avatar')}
+                <div class="cmp-identity">
+                    <h3 class="cmp-name">${esc(profile.name)}</h3>
+                    <div class="cmp-code">${esc(profile.code)} · Tham gia ${esc(profile.joined_label)}</div>
+                    <div class="mt-2">
+                        <span class="customer-pill ${relationshipMeta(profile.relationship_status).className}">${esc(profile.relationship_label || relationshipMeta(profile.relationship_status).label)}</span>
+                    </div>
+                </div>
+                ${alertsHtml ? `<div style="flex:0 0 240px;display:flex;flex-direction:column;gap:6px;">${alertsHtml}</div>` : ''}
+            </div>
+
+            <div class="cmp-grid">
+                <div class="cmp-stat">
+                    <span class="cmp-stat__label">Tổng đơn</span>
+                    <span class="cmp-stat__value">${formatNumber(summary.order_count)}</span>
+                </div>
+                <div class="cmp-stat">
+                    <span class="cmp-stat__label">Hoàn thành</span>
+                    <span class="cmp-stat__value">${formatNumber(summary.completed_booking_count)}</span>
+                </div>
+                <div class="cmp-stat">
+                    <span class="cmp-stat__label">Tổng chi tiêu</span>
+                    <span class="cmp-stat__value" style="font-size:1.1rem;">${formatCurrency(summary.total_spent)}</span>
+                </div>
+                <div class="cmp-stat">
+                    <span class="cmp-stat__label">Đánh giá TB</span>
+                    <span class="cmp-stat__value">${summary.average_rating ? summary.average_rating + ' ⭐' : '--'}</span>
+                </div>
+            </div>
+
+            <div class="cmp-sections">
+                <div class="cmp-section">
+                    <span class="cmp-section__label">Thông tin liên hệ</span>
+                    <div class="cmp-info-row">
+                        <span class="cmp-info-row__key">SĐT</span>
+                        <span class="cmp-info-row__val">${esc(profile.phone || 'Chưa có')}</span>
+                    </div>
+                    <div class="cmp-info-row">
+                        <span class="cmp-info-row__key">Email</span>
+                        <span class="cmp-info-row__val">${esc(profile.email || 'Chưa có')}</span>
+                    </div>
+                    <div class="cmp-info-row">
+                        <span class="cmp-info-row__key">Địa chỉ</span>
+                        <span class="cmp-info-row__val">${esc(profile.latest_address || 'Chưa có')}</span>
+                    </div>
+                    <div class="cmp-info-row">
+                        <span class="cmp-info-row__key">Đặt lần cuối</span>
+                        <span class="cmp-info-row__val">${esc(profile.last_booking_label || 'Chưa đặt')}</span>
+                    </div>
+                </div>
+                <div class="cmp-section">
+                    <span class="cmp-section__label">Đơn gần nhất</span>
+                    ${recentHtml}
+                </div>
+            </div>
+        `;
+    };
+
+    const openProfileModal = async (customerId) => {
+        refs.profileModalBody.innerHTML = '<div class="cm-modal__loading"><span class="spinner-border spinner-border-sm me-2"></span> Đang tải hồ sơ...</div>';
+        refs.profileDetailLink.href = `/admin/customers/${customerId}`;
+        openModal(refs.profileModal);
+
+        try {
+            const response = await callApi(`/admin/customers/${customerId}`, 'GET');
+            if (!response?.ok) throw new Error(response?.data?.message || 'Không tải được hồ sơ');
+            refs.profileModalBody.innerHTML = buildProfileModalContent(response.data?.data || {});
+        } catch (error) {
+            refs.profileModalBody.innerHTML = `<div class="cm-modal__loading" style="color:#dc2626;">Lỗi: ${escapeHtml(error.message)}</div>`;
+        }
+    };
+
+    // ─── Bookings modal ───────────────────────────────────────────
+
+    const buildBookingsTable = (bookings) => {
+        if (!bookings.length) {
+            return '<div class="cm-modal__loading">Không có đơn nào phù hợp.</div>';
+        }
+
+        const rows = bookings.map((b) => `
+            <tr>
+                <td>
+                    <div class="cmb-code">${escapeHtml(b.code)}</div>
+                    <div class="cmb-service">${escapeHtml(b.service_label)}</div>
+                    <div class="cmb-meta">${escapeHtml(b.problem_excerpt || '')}</div>
+                </td>
+                <td>${escapeHtml(b.schedule_label)}</td>
+                <td>${escapeHtml(b.worker_name)}</td>
+                <td><span class="cmp-pill cmp-pill--${b.status_tone || 'muted'}">${escapeHtml(b.status_label)}</span></td>
+                <td class="cmb-amount">${formatCurrency(b.total_amount)}</td>
+                <td>
+                    <a href="/admin/bookings/${b.id}" target="_blank" class="customer-quick-btn" style="font-size:.78rem;">Chi tiết</a>
+                </td>
+            </tr>
+        `).join('');
+
+        return `
+            <table class="cmb-table">
+                <thead>
+                    <tr>
+                        <th>Dịch vụ</th>
+                        <th>Lịch hẹn</th>
+                        <th>Thợ</th>
+                        <th>Trạng thái</th>
+                        <th>Số tiền</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    };
+
+    const renderBookingsModal = () => {
+        const statusFilter = refs.cmbStatus.value;
+        const sortFilter = refs.cmbSort.value;
+
+        let filtered = [...state.allBookings];
+
+        if (statusFilter) {
+            filtered = filtered.filter((b) => b.status === statusFilter);
+        }
+
+        if (sortFilter === 'oldest') {
+            // already sorted latest by API; reverse for oldest
+            filtered.reverse();
+        } else if (sortFilter === 'amount_desc') {
+            filtered.sort((a, b) => (b.total_amount || 0) - (a.total_amount || 0));
+        }
+
+        refs.bookingsModalBody.innerHTML = buildBookingsTable(filtered);
+    };
+
+    const openBookingsModal = async (customerId) => {
+        state.bookingsCustomerId = customerId;
+        state.allBookings = [];
+        refs.bookingsModalBody.innerHTML = '<div class="cm-modal__loading"><span class="spinner-border spinner-border-sm me-2"></span> Đang tải lịch sử đơn...</div>';
+        refs.bookingsDetailLink.href = `/admin/customers/${customerId}/bookings`;
+        refs.cmbStatus.value = '';
+        refs.cmbSort.value = 'latest';
+        openModal(refs.bookingsModal);
+
+        try {
+            const response = await callApi(`/admin/customers/${customerId}/bookings`, 'GET');
+            if (!response?.ok) throw new Error(response?.data?.message || 'Không tải được lịch sử đơn');
+            const payload = response.data?.data || {};
+            state.allBookings = Array.isArray(payload.bookings) ? payload.bookings : [];
+            renderBookingsModal();
+        } catch (error) {
+            refs.bookingsModalBody.innerHTML = `<div class="cm-modal__loading" style="color:#dc2626;">Lỗi: ${escapeHtml(error.message)}</div>`;
+        }
+    };
+
+    // ─── Event delegation for dynamic buttons ────────────────────
+
+    document.addEventListener('click', (event) => {
+        const profileBtn = event.target.closest('[data-open-profile]');
+        if (profileBtn) {
+            openProfileModal(profileBtn.dataset.openProfile);
+            return;
+        }
+
+        const bookingsBtn = event.target.closest('[data-open-bookings]');
+        if (bookingsBtn) {
+            openBookingsModal(bookingsBtn.dataset.openBookings);
+            return;
+        }
+    });
+
     refs.tableBody.addEventListener('click', (event) => {
         const row = event.target.closest('[data-customer-id]');
-
-        if (row) {
+        if (row && !event.target.closest('[data-open-profile]')) {
             selectCustomer(row.dataset.customerId);
         }
     });
+
+    refs.cmbStatus.addEventListener('change', renderBookingsModal);
+    refs.cmbSort.addEventListener('change', renderBookingsModal);
 
     refs.refresh.addEventListener('click', () => loadCustomers());
     refs.status.addEventListener('change', () => loadCustomers());

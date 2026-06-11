@@ -120,15 +120,15 @@ function prepareServiceManagerUi(el) {
             <div class="worker-service-modal-card" role="dialog" aria-modal="true" aria-labelledby="serviceManagerTitle">
                 <div class="worker-service-modal-head">
                     <div>
-                        <h3 id="serviceManagerTitle" style="margin:0; font-family:'DM Sans',sans-serif; font-size:1.05rem; font-weight:800; color:#0f172a;">Quan ly dich vu lam viec</h3>
-                        <p style="margin:.35rem 0 0; font-size:.8rem; color:#64748b;">Chon them hoac bo dich vu ma ban co the nhan sua.</p>
+                        <h3 id="serviceManagerTitle" style="margin:0; font-family:'DM Sans',sans-serif; font-size:1.05rem; font-weight:800; color:#0f172a;">Quản lý dịch vụ làm việc</h3>
+                        <p style="margin:.35rem 0 0; font-size:.8rem; color:#64748b;">Chọn thêm hoặc bỏ dịch vụ mà bạn có thể nhận sửa.</p>
                     </div>
-                    <button type="button" id="serviceModalClose" class="worker-service-modal-btn is-secondary">Dong</button>
+                    <button type="button" id="serviceModalClose" class="worker-service-modal-btn is-secondary">Đóng</button>
                 </div>
                 <div class="worker-service-modal-body"></div>
                 <div class="worker-service-modal-foot">
-                    <button type="button" id="serviceModalCancel" class="worker-service-modal-btn is-secondary">Huy</button>
-                    <button type="button" id="serviceModalApply" class="worker-service-modal-btn is-primary">Cap nhat danh sach</button>
+                    <button type="button" id="serviceModalCancel" class="worker-service-modal-btn is-secondary">Hủy</button>
+                    <button type="button" id="serviceModalApply" class="worker-service-modal-btn is-primary">Cập nhật danh sách</button>
                 </div>
             </div>
         `;
@@ -273,13 +273,13 @@ function updateLocalUser(nextUser) {
     localStorage.setItem('user', JSON.stringify(state.user));
 
     const sidebarName = document.getElementById('sidebarName');
-    if (sidebarName) sidebarName.textContent = state.user.name || 'Tho';
+    if (sidebarName) sidebarName.textContent = state.user.name || 'Thợ';
 
     const sidebarAvatar = document.getElementById('sidebarAvatar');
     setAvatarContent(sidebarAvatar, getAvatarUrl(state.user.avatar), state.user.name || 'T');
 
     const dispatchSidebarName = document.getElementById('dispatchSidebarName');
-    if (dispatchSidebarName) dispatchSidebarName.textContent = state.user.name || 'Tho ky thuat';
+    if (dispatchSidebarName) dispatchSidebarName.textContent = state.user.name || 'Thợ kỹ thuật';
 
     const dispatchSidebarAvatar = document.getElementById('dispatchSidebarAvatar');
     setAvatarContent(dispatchSidebarAvatar, getAvatarUrl(state.user.avatar), state.user.name || 'T');
@@ -291,8 +291,8 @@ function populateUserFields(el, userData, profileData = null) {
         ...(profileData?.user || {}),
     };
 
-    if (el.workerName) el.workerName.textContent = mergedUser.name || 'Tho Tot NTU';
-    if (el.workerJoinDate) el.workerJoinDate.textContent = `Tham gia tu ${formatJoinDate(mergedUser.created_at || userData?.created_at)}`;
+    if (el.workerName) el.workerName.textContent = mergedUser.name || 'Thợ Tốt NTU';
+    if (el.workerJoinDate) el.workerJoinDate.textContent = `Tham gia từ ${formatJoinDate(mergedUser.created_at || userData?.created_at)}`;
     if (el.workerAvatar) el.workerAvatar.src = getAvatarUrl(mergedUser.avatar);
 
     if (el.inputHoTen) el.inputHoTen.value = mergedUser.name || '';
@@ -312,19 +312,19 @@ function renderSelectedServices(el) {
     const selectedServices = state.services.filter((service) => state.selectedServiceIds.includes(Number(service.id)));
 
     if (el.serviceSelectionCount) {
-        el.serviceSelectionCount.textContent = `${selectedServices.length} dich vu da chon`;
+        el.serviceSelectionCount.textContent = `${selectedServices.length} dịch vụ đã chọn`;
     }
 
     if (el.workerServiceSummary) {
         el.workerServiceSummary.textContent = selectedServices.length > 0
-            ? `Chuyen mon hien tai: ${selectedServices.length} dich vu`
-            : 'Chua cap nhat danh muc lam viec';
+            ? `Chuyên môn hiện tại: ${selectedServices.length} dịch vụ`
+            : 'Chưa cập nhật danh mục làm việc';
     }
 
     if (el.workerServiceTags) {
         el.workerServiceTags.innerHTML = selectedServices.length > 0
             ? selectedServices.map((service) => `<span class="worker-service-tag">${escapeHtml(service.ten_dich_vu)}</span>`).join('')
-            : '<span class="worker-service-tag is-muted">Chua chon dich vu</span>';
+            : '<span class="worker-service-tag is-muted">Chưa chọn dịch vụ</span>';
     }
 
     document.querySelectorAll('.worker-service-option').forEach((option) => {
@@ -337,7 +337,7 @@ function renderServices(el, selectedIds = []) {
     if (!el.serviceCheckboxContainer) return;
 
     if (!Array.isArray(state.services) || state.services.length === 0) {
-        el.serviceCheckboxContainer.innerHTML = '<div style="font-size:.82rem; color:#ef4444;">Khong tai duoc danh muc dich vu.</div>';
+        el.serviceCheckboxContainer.innerHTML = '<div style="font-size:.82rem; color:#ef4444;">Không tải được danh mục dịch vụ.</div>';
         renderSelectedServices(el);
         return;
     }
@@ -345,7 +345,7 @@ function renderServices(el, selectedIds = []) {
     el.serviceCheckboxContainer.innerHTML = state.services.map((service) => {
         const serviceId = Number(service.id);
         const isChecked = selectedIds.includes(serviceId);
-        const description = service.mo_ta || 'Them dich vu nay vao ho so de khach hang co the dat dung chuyen mon.';
+        const description = service.mo_ta || 'Thêm dịch vụ này vào hồ sơ để khách hàng có thể đặt đúng chuyên môn.';
 
         return `
             <label class="worker-service-option ${isChecked ? 'is-selected' : ''}" for="srv_${serviceId}">
@@ -399,13 +399,13 @@ function setServiceModalLoading(el, isLoading) {
 
     if (isLoading) {
         el.serviceModalApply.disabled = true;
-        el.serviceModalApply.dataset.originalText = el.serviceModalApply.textContent || 'Cap nhat danh sach';
-        el.serviceModalApply.textContent = 'Dang luu...';
+        el.serviceModalApply.dataset.originalText = el.serviceModalApply.textContent || 'Cập nhật danh sách';
+        el.serviceModalApply.textContent = 'Đang lưu...';
         return;
     }
 
     el.serviceModalApply.disabled = false;
-    el.serviceModalApply.textContent = el.serviceModalApply.dataset.originalText || 'Cap nhat danh sach';
+    el.serviceModalApply.textContent = el.serviceModalApply.dataset.originalText || 'Cập nhật danh sách';
     delete el.serviceModalApply.dataset.originalText;
 }
 
@@ -413,7 +413,7 @@ async function saveWorkerServices(el) {
     const selectedServiceIds = getSelectedServiceIdsFromDom();
 
     if (selectedServiceIds.length === 0) {
-        showToast('Vui long chon it nhat mot dich vu ban nhan lam.', 'error');
+        showToast('Vui lòng chọn ít nhất một dịch vụ bạn nhận làm.', 'error');
         return;
     }
 
@@ -425,7 +425,7 @@ async function saveWorkerServices(el) {
         });
 
         if (!workerResponse.ok) {
-            throw new Error(workerResponse.data?.message || 'Khong cap nhat duoc danh sach dich vu.');
+            throw new Error(workerResponse.data?.message || 'Không cập nhật được danh sách dịch vụ.');
         }
 
         state.profile = workerResponse.data?.data || state.profile;
@@ -433,9 +433,9 @@ async function saveWorkerServices(el) {
         state.pendingServiceIds = [...selectedServiceIds];
         renderSelectedServices(el);
         closeServiceModal(el, { restore: false });
-        showToast('Da luu danh sach dich vu vao ho so.');
+        showToast('Đã lưu danh sách dịch vụ vào hồ sơ.');
     } catch (error) {
-        showToast(error.message || 'Khong luu duoc danh sach dich vu.', 'error');
+        showToast(error.message || 'Không lưu được danh sách dịch vụ.', 'error');
     } finally {
         setServiceModalLoading(el, false);
     }
@@ -448,7 +448,7 @@ async function loadServices(el, selectedIds = []) {
         renderServices(el, selectedIds);
     } catch (error) {
         if (el.serviceCheckboxContainer) {
-            el.serviceCheckboxContainer.innerHTML = '<div style="font-size:.82rem; color:#ef4444;">Loi tai danh sach dich vu.</div>';
+            el.serviceCheckboxContainer.innerHTML = '<div style="font-size:.82rem; color:#ef4444;">Lỗi tải danh sách dịch vụ.</div>';
         }
     }
 }
@@ -478,7 +478,7 @@ async function loadProfile(el) {
         await loadServices(el, selectedIds);
     } catch (error) {
         await loadServices(el, []);
-        showToast('Khong tai duoc ho so tho.', 'error');
+        showToast('Không tải được hồ sơ thợ.', 'error');
     }
 }
 
@@ -502,13 +502,13 @@ function renderReviews(el, reviews = []) {
     if (!el.reviewsList) return;
 
     if (!Array.isArray(reviews) || reviews.length === 0) {
-        el.reviewsList.innerHTML = '<div style="text-align:center; padding:1rem 0; color:#94a3b8; font-size:.8rem;">Chua co danh gia nao.</div>';
+        el.reviewsList.innerHTML = '<div style="text-align:center; padding:1rem 0; color:#94a3b8; font-size:.8rem;">Chưa có đánh giá nào.</div>';
         return;
     }
 
     el.reviewsList.innerHTML = reviews.slice(0, 3).map((review) => {
-        const reviewerName = review?.khach_hang?.name || review?.nguoi_danh_gia?.name || 'Khach hang';
-        const comment = review?.nhan_xet || 'Khong co nhan xet chi tiet.';
+        const reviewerName = review?.khach_hang?.name || review?.nguoi_danh_gia?.name || 'Khách hàng';
+        const comment = review?.nhan_xet || 'Không có nhận xét chi tiết.';
         const stars = '★'.repeat(Number(review?.so_sao || review?.rating || 0)) + '☆'.repeat(Math.max(0, 5 - Number(review?.so_sao || review?.rating || 0)));
 
         return `
@@ -530,7 +530,7 @@ async function loadReviews(el) {
         renderReviews(el, reviews);
     } catch (error) {
         if (el.reviewsList) {
-            el.reviewsList.innerHTML = '<div style="text-align:center; padding:1rem 0; color:#ef4444; font-size:.8rem;">Khong tai duoc danh gia.</div>';
+            el.reviewsList.innerHTML = '<div style="text-align:center; padding:1rem 0; color:#ef4444; font-size:.8rem;">Không tải được đánh giá.</div>';
         }
     }
 }
@@ -543,13 +543,13 @@ function bindAvatarUpload(el) {
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-            showToast('Vui long chon dung tep hinh anh.', 'error');
+            showToast('Vui lòng chọn đúng tệp hình ảnh.', 'error');
             el.uploadAvatar.value = '';
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            showToast('File anh qua lon, vui long chon file duoi 5MB.', 'error');
+            showToast('File ảnh quá lớn, vui lòng chọn file dưới 5MB.', 'error');
             el.uploadAvatar.value = '';
             return;
         }
@@ -569,18 +569,18 @@ function bindAvatarUpload(el) {
         formData.append('avatar', file);
 
         try {
-            showToast('Dang tai anh len...', 'success');
+            showToast('Đang tải ảnh lên...', 'success');
             const response = await callApi('/user/avatar', 'POST', formData);
 
             if (!response.ok) {
-                showToast(response.data?.message || 'Tai anh that bai.', 'error');
+                showToast(response.data?.message || 'Tải ảnh thất bại.', 'error');
                 return;
             }
 
             const avatarUrl = response.data?.avatar_url || '';
             if (el.workerAvatar) el.workerAvatar.src = avatarUrl || '/assets/images/user-default.png';
             updateLocalUser({ avatar: avatarUrl });
-            showToast('Cap nhat anh dai dien thanh cong.');
+            showToast('Cập nhật ảnh đại diện thành công.');
         } catch (error) {
             if (el.workerAvatar) {
                 el.workerAvatar.src = previousAvatarUrl;
@@ -588,7 +588,7 @@ function bindAvatarUpload(el) {
             setAvatarContent(document.getElementById('sidebarAvatar'), previousAvatarUrl, state.user?.name || 'T');
             setAvatarContent(document.getElementById('dispatchSidebarAvatar'), previousAvatarUrl, state.user?.name || 'T');
             setAvatarContent(document.getElementById('dispatchTopAvatar'), previousAvatarUrl, state.user?.name || 'T');
-            showToast('Loi ket noi khi tai anh.', 'error');
+            showToast('Lỗi kết nối khi tải ảnh.', 'error');
         } finally {
             URL.revokeObjectURL(previewUrl);
             el.uploadAvatar.value = '';
@@ -602,12 +602,12 @@ function setSubmitLoading(el, isLoading) {
     if (isLoading) {
         el.btnUpdateProfile.disabled = true;
         el.btnUpdateProfile.dataset.originalText = el.btnUpdateProfile.innerHTML;
-        el.btnUpdateProfile.innerHTML = '<span class="material-symbols-outlined" style="font-size:1.1rem;">progress_activity</span> Dang luu...';
+        el.btnUpdateProfile.innerHTML = '<span class="material-symbols-outlined" style="font-size:1.1rem;">progress_activity</span> Đang lưu...';
         return;
     }
 
     el.btnUpdateProfile.disabled = false;
-    el.btnUpdateProfile.innerHTML = el.btnUpdateProfile.dataset.originalText || '<span class="material-symbols-outlined" style="font-size:1.1rem;">save</span> Luu thay doi';
+    el.btnUpdateProfile.innerHTML = el.btnUpdateProfile.dataset.originalText || '<span class="material-symbols-outlined" style="font-size:1.1rem;">save</span> Lưu thay đổi';
     delete el.btnUpdateProfile.dataset.originalText;
 }
 
@@ -632,14 +632,14 @@ function bindFormSubmit(el) {
 
             const userResponse = await callApi('/user', 'PUT', userPayload);
             if (!userResponse.ok) {
-                throw new Error(userResponse.data?.message || 'Khong cap nhat duoc thong tin ca nhan.');
+                throw new Error(userResponse.data?.message || 'Không cập nhật được thông tin cá nhân.');
             }
 
             const addressValue = el.inputAddress?.value?.trim() || '';
             if (addressValue) {
                 const addressResponse = await callApi('/user/address', 'PUT', { address: addressValue });
                 if (!addressResponse.ok) {
-                    throw new Error(addressResponse.data?.message || 'Khong cap nhat duoc dia chi.');
+                    throw new Error(addressResponse.data?.message || 'Không cập nhật được địa chỉ.');
                 }
                 updateLocalUser(addressResponse.data?.user || {});
             }
@@ -653,7 +653,7 @@ function bindFormSubmit(el) {
 
             const workerResponse = await callApi('/ho-so-tho', 'PUT', workerPayload);
             if (!workerResponse.ok) {
-                throw new Error(workerResponse.data?.message || 'Khong cap nhat duoc ho so tho.');
+                throw new Error(workerResponse.data?.message || 'Không cập nhật được hồ sơ thợ.');
             }
 
             state.profile = workerResponse.data?.data || state.profile;
@@ -666,9 +666,9 @@ function bindFormSubmit(el) {
             state.selectedServiceIds = selectedServiceIds;
             state.pendingServiceIds = [...selectedServiceIds];
             renderSelectedServices(el);
-            showToast('Da cap nhat ho so thanh cong.');
+            showToast('Đã cập nhật hồ sơ thành công.');
         } catch (error) {
-            showToast(error.message || 'Co loi xay ra, vui long thu lai.', 'error');
+            showToast(error.message || 'Có lỗi xảy ra, vui lòng thử lại.', 'error');
         } finally {
             setSubmitLoading(el, false);
         }
@@ -737,21 +737,21 @@ document.addEventListener('DOMContentLoaded', () => {
         btnDeposit.addEventListener('click', async () => {
             const amount = document.getElementById('depositAmount').value;
             const method = document.getElementById('depositMethod').value;
-            if (!amount || amount < 10000) return showToast('So tien nap toi thieu la 10,000d', 'error');
+            if (!amount || amount < 10000) return showToast('Số tiền nạp tối thiểu là 10,000đ', 'error');
             
-            showToast('Dang tao giao dich nap tien...', 'success');
+            showToast('Đang tạo giao dịch nạp tiền...', 'success');
             try {
                 const response = await callApi('/payment/wallet/deposit', 'POST', { amount: amount, phuong_thuc: method });
                 if (response.ok && response.data.url) {
                     window.location.href = response.data.url;
                 } else if (response.ok && response.data.payment_status === 'success') {
-                    showToast('Nap tien test thanh cong!', 'success');
+                    showToast('Nạp tiền test thành công!', 'success');
                     document.getElementById('depositModal').classList.add('d-none');
                 } else {
-                    showToast(response.data?.message || 'Khong the khoi tao thanh toan', 'error');
+                    showToast(response.data?.message || 'Không thể khởi tạo thanh toán', 'error');
                 }
             } catch (err) {
-                showToast('Loi ket noi: ' + err.message, 'error');
+                showToast('Lỗi kết nối: ' + err.message, 'error');
             }
         });
     }

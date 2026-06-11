@@ -41,7 +41,16 @@ class AuthController extends Controller
             HoSoTho::create([
                 'user_id' => $user->id,
                 'cccd' => 'WAITING_UPDATE_' . $user->id,
+                'trang_thai_duyet' => 'cho_duyet',
+                'dang_hoat_dong' => false,
             ]);
+
+            return response()->json([
+                'message' => 'Dang ky tai khoan tho thanh cong. Vui long cho admin duyet truoc khi dang nhap.',
+                'email' => $user->email,
+                'requires_admin_approval' => true,
+                'approval_status' => 'cho_duyet',
+            ], 201);
         }
 
         $otp = sprintf('%06d', mt_rand(1, 999999));
@@ -77,6 +86,10 @@ class AuthController extends Controller
 
         if ($roleMismatch = $this->ensureRequestedRoleMatchesUser($user, $validated['role'])) {
             return $roleMismatch;
+        }
+
+        if ($workerApprovalBlock = $this->ensureWorkerIsApprovedForLogin($user, $validated['role'])) {
+            return $workerApprovalBlock;
         }
 
         if (!$user->is_active) {
@@ -124,6 +137,10 @@ class AuthController extends Controller
             return $roleMismatch;
         }
 
+        if ($workerApprovalBlock = $this->ensureWorkerIsApprovedForLogin($user, $validated['role'])) {
+            return $workerApprovalBlock;
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         $otpRecord->delete();
@@ -153,6 +170,10 @@ class AuthController extends Controller
 
         if ($roleMismatch = $this->ensureRequestedRoleMatchesUser($user, $validated['role'])) {
             return $roleMismatch;
+        }
+
+        if ($workerApprovalBlock = $this->ensureWorkerIsApprovedForLogin($user, $validated['role'])) {
+            return $workerApprovalBlock;
         }
 
         $otp = sprintf('%06d', mt_rand(1, 999999));
@@ -262,6 +283,29 @@ class AuthController extends Controller
             'message' => $this->buildRoleMismatchMessage($requestedRole),
             'actual_role' => $user->role,
             'selected_role' => $requestedRole,
+        ], 403);
+    }
+
+    private function ensureWorkerIsApprovedForLogin(User $user, string $requestedRole): ?JsonResponse
+    {
+        if ($user->role !== 'worker' || $requestedRole !== 'worker') {
+            return null;
+        }
+
+        $user->loadMissing('hoSoTho');
+        $approvalStatus = (string) ($user->hoSoTho?->trang_thai_duyet ?? 'cho_duyet');
+
+        if ($approvalStatus === 'da_duyet') {
+            return null;
+        }
+
+        $message = $approvalStatus === 'tu_choi'
+            ? 'Tài khoản thợ của bạn đã bị từ chối. Vui lòng liên hệ admin để được hỗ trợ.'
+            : 'Tài khoản thợ của bạn đang chờ admin duyệt. Bạn chỉ có thể đăng nhập sau khi được duyệt.';
+
+        return response()->json([
+            'message' => $message,
+            'approval_status' => $approvalStatus,
         ], 403);
     }
 
