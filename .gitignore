@@ -1,4 +1,5 @@
 *.log
+*.txt
 .DS_Store
 .env
 .env.backup
@@ -13,6 +14,7 @@
 /.zed
 /auth.json
 /node_modules
+/output
 /public/build
 /public/hot
 /public/assets/images
@@ -21,6 +23,7 @@
 /storage/*.key
 /storage/pail
 /test-results
+/tmp
 /vendor
 Homestead.json
 Homestead.yaml
