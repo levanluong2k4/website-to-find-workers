@@ -29,8 +29,6 @@
     "env": {
         "APP_ENV": "production",
         "APP_DEBUG": "true",
-        "APP_URL": "https://your-project.vercel.app",
-        "ASSET_URL": "https://your-project.vercel.app",
         "VERCEL_ANALYZE_BUILD_OUTPUT": "1"
     }
 }
