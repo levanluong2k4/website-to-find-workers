@@ -1,12 +1,12 @@
 {
     "version": 2,
     "framework": null,
-    "installCommand": "composer install --no-dev --optimize-autoloader --no-interaction && npm install",
-    "buildCommand": "npm run build && php artisan config:cache && php artisan route:cache && php artisan view:cache",
+    "installCommand": "composer install --no-dev --optimize-autoloader --no-interaction",
+    "buildCommand": "npm install && npm run build",
     "functions": {
         "api/index.php": {
             "runtime": "vercel-php@0.9.0",
-            "excludeFiles": "{.agent,.codex,.grapuco,.vscode,docker,docs,node_modules,output,playwright-report,public/assets,public/storage,scripts,storage,test-results,tests,tmp}/**"
+            "excludeFiles": "{.agent,.codex,.grapuco,.vscode,docker,docs,node_modules,output,playwright-report,public/assets,public/build,public/storage,scripts,storage,test-results,tests,tmp}/**"
         }
     },
     "routes": [
