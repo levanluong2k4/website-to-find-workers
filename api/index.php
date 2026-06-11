@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Http\Request;
+
 // Vercel serverless: only /tmp is writable
 $storagePath = '/tmp/laravel-storage';
 
@@ -16,14 +18,11 @@ foreach ([
     }
 }
 
+define('LARAVEL_START', microtime(true));
+
 require __DIR__ . '/../vendor/autoload.php';
 
 $app = require __DIR__ . '/../bootstrap/app.php';
 $app->useStoragePath($storagePath);
 
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-$response = $kernel->handle(
-    $request = Illuminate\Http\Request::capture()
-)->send();
-
-$kernel->terminate($request, $response);
+$app->handleRequest(Request::capture());
