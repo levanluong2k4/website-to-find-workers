@@ -21,6 +21,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setupReviewLightbox(document);
 
     const bookingsContainer = document.getElementById('myBookingsContainer');
+    bookingsContainer?.addEventListener('error', (event) => {
+        const imageNode = event.target;
+        if (!(imageNode instanceof HTMLImageElement)) return;
+        if (imageNode.classList.contains('booking-service-image') && !imageNode.src.endsWith('/assets/images/logontu.png')) {
+            imageNode.src = '/assets/images/logontu.png';
+        }
+    }, true);
     const paginationContainer = document.getElementById('bookingPagination');
     const paginationShell = paginationContainer?.parentElement || null;
     const tabs = Array.from(document.querySelectorAll('#bookingTab .booking-filter-pill'));
@@ -102,6 +109,48 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+
+    const resolvePublicImageUrl = (value, fallback = '/assets/images/logontu.png') => {
+        const rawValue = String(value || '').trim();
+        if (!rawValue) return fallback;
+        if (/^(https?|blob|data):/i.test(rawValue)) return rawValue;
+
+        const normalizedValue = rawValue.replace(/\\/g, '/').replace(/^\/+/, '');
+        if (normalizedValue.startsWith('assets/images/')) return `/${normalizedValue}`;
+        if (normalizedValue.startsWith('public/assets/images/')) return `/${normalizedValue.replace(/^public\//, '')}`;
+        if (normalizedValue.startsWith('storage/')) return `/${normalizedValue}`;
+        if (normalizedValue.startsWith('public/storage/')) return `/${normalizedValue.replace(/^public\//, '')}`;
+        if (normalizedValue.includes('/')) return `/${normalizedValue}`;
+
+        return `/assets/images/${normalizedValue}`;
+    };
+
+    const resolveServiceImageUrl = (service, fallback = '/assets/images/logontu.png') => {
+        const imageValue = String(service?.hinh_anh || '').trim();
+        const serviceName = String(service?.ten_dich_vu || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+
+        const serviceImageMap = [
+            [/may lanh|dieu hoa/, 'suamaylanh.png'],
+            [/tu lanh/, 'suatulanh.png'],
+            [/may giat/, 'suamaygiat.png'],
+            [/quat|dien/, 'suaamsieutoc.png'],
+            [/tivi|tv/, 'suativi.png'],
+            [/lo vi song/, 'sualovisong.png'],
+            [/bep tu/, 'suabeptu.png'],
+            [/noi chien/, 'suanoichien.png'],
+        ];
+        const mappedImage = serviceImageMap.find(([pattern]) => pattern.test(serviceName))?.[1] || '';
+
+        if (!imageValue) return mappedImage ? `/assets/images/${mappedImage}` : fallback;
+        if (!/[./\\]/.test(imageValue)) {
+            return mappedImage ? `/assets/images/${mappedImage}` : `/assets/images/${imageValue}.png`;
+        }
+
+        return resolvePublicImageUrl(imageValue, mappedImage ? `/assets/images/${mappedImage}` : fallback);
+    };
 
     const formatMoney = (value) => new Intl.NumberFormat('vi-VN', {
         style: 'currency',
@@ -664,7 +713,9 @@ document.addEventListener('DOMContentLoaded', () => {
             `
             : '';
 
-        if (firstService.hinh_anh) {
+        const serviceImageUrl = resolveServiceImageUrl(firstService);
+        if (serviceImageUrl) {
+            firstService.hinh_anh = serviceImageUrl;
             return {
                 theme,
                 html: `
@@ -694,7 +745,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (/^(https?|blob):\/\//i.test(avatar) || avatar.startsWith('/')) {
             return avatar;
         }
-        return `/storage/${avatar}`;
+        const normalizedAvatar = String(avatar || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
+        if (normalizedAvatar.startsWith('storage/') || normalizedAvatar.startsWith('assets/images/')) {
+            return `/${normalizedAvatar}`;
+        }
+        if (normalizedAvatar.startsWith('public/storage/') || normalizedAvatar.startsWith('public/assets/images/')) {
+            return `/${normalizedAvatar.replace(/^public\//, '')}`;
+        }
+        if (!normalizedAvatar.includes('/') && /\.(png|jpe?g|gif|webp|svg)$/i.test(normalizedAvatar)) {
+            return `/assets/images/${normalizedAvatar}`;
+        }
+        return `/storage/${normalizedAvatar}`;
     };
 
     const buildWorkerHtml = (booking) => {

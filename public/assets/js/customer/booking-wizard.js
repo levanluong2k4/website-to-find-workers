@@ -95,6 +95,17 @@ document.addEventListener('DOMContentLoaded', () => {
         sumTravelFee: $('bookingSummaryTravelFee'), sumTravelMeta: $('bookingSummaryTravelMeta'),
         sumReferencePrice: $('bookingSummaryReferencePrice'), sumReferenceMeta: $('bookingSummaryReferenceMeta'),
     };
+    [
+        [refs.workerAvatar, '/assets/images/worker2.png'],
+        [refs.sumWorkerThumb, '/assets/images/worker2.png'],
+        [refs.sumServiceThumb, '/assets/images/logontu.png'],
+    ].forEach(([imageNode, fallback]) => {
+        if (!imageNode) return;
+        imageNode.addEventListener('error', () => {
+            if (imageNode.src.endsWith(fallback)) return;
+            imageNode.src = fallback;
+        });
+    });
     const legacyDescriptionField = refs.description?.closest('.booking-field') || null;
     if (legacyDescriptionField) {
         legacyDescriptionField.hidden = true;
@@ -414,6 +425,67 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, '&#039;');
     }
 
+    function resolvePublicImageUrl(value, fallback = '/assets/images/logontu.png') {
+        const rawValue = String(value || '').trim();
+        if (!rawValue) return fallback;
+        if (/^(https?|blob|data):/i.test(rawValue)) return rawValue;
+
+        const normalizedValue = rawValue.replace(/\\/g, '/').replace(/^\/+/, '');
+        if (normalizedValue.startsWith('assets/images/')) return `/${normalizedValue}`;
+        if (normalizedValue.startsWith('public/assets/images/')) return `/${normalizedValue.replace(/^public\//, '')}`;
+        if (normalizedValue.startsWith('storage/')) return `/${normalizedValue}`;
+        if (normalizedValue.startsWith('public/storage/')) return `/${normalizedValue.replace(/^public\//, '')}`;
+        if (normalizedValue.includes('/')) return `/${normalizedValue}`;
+
+        return `/assets/images/${normalizedValue}`;
+    }
+
+    function resolveServiceImageUrl(service, fallback = '/assets/images/logontu.png') {
+        const imageValue = String(service?.hinh_anh || '').trim();
+        const serviceName = String(service?.ten_dich_vu || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+
+        const serviceImageMap = [
+            [/may lanh|dieu hoa/, 'suamaylanh.png'],
+            [/tu lanh/, 'suatulanh.png'],
+            [/may giat/, 'suamaygiat.png'],
+            [/quat|dien/, 'suaamsieutoc.png'],
+            [/tivi|tv/, 'suativi.png'],
+            [/lo vi song/, 'sualovisong.png'],
+            [/bep tu/, 'suabeptu.png'],
+            [/noi chien/, 'suanoichien.png'],
+        ];
+        const mappedImage = serviceImageMap.find(([pattern]) => pattern.test(serviceName))?.[1] || '';
+
+        if (!imageValue) return mappedImage ? `/assets/images/${mappedImage}` : fallback;
+        if (!/[./\\]/.test(imageValue)) {
+            return mappedImage ? `/assets/images/${mappedImage}` : `/assets/images/${imageValue}.png`;
+        }
+
+        return resolvePublicImageUrl(imageValue, mappedImage ? `/assets/images/${mappedImage}` : fallback);
+    }
+
+    function resolveAvatarUrl(avatar, fallback = '/assets/images/user-default.png') {
+        const rawAvatar = String(avatar || '').trim();
+        if (!rawAvatar) return fallback;
+        if (/^(https?|blob|data):/i.test(rawAvatar) || rawAvatar.startsWith('/')) return rawAvatar;
+
+        const normalizedAvatar = rawAvatar.replace(/\\/g, '/').replace(/^\/+/, '');
+        if (normalizedAvatar.startsWith('storage/') || normalizedAvatar.startsWith('assets/images/')) {
+            return `/${normalizedAvatar}`;
+        }
+        if (normalizedAvatar.startsWith('public/storage/') || normalizedAvatar.startsWith('public/assets/images/')) {
+            return `/${normalizedAvatar.replace(/^public\//, '')}`;
+        }
+        if (!normalizedAvatar.includes('/') && /\.(png|jpe?g|gif|webp|svg)$/i.test(normalizedAvatar)) {
+            return `/assets/images/${normalizedAvatar}`;
+        }
+
+        return `/storage/${normalizedAvatar}`;
+    }
+
     function getServiceProblemText(serviceId) {
         return String(state.serviceProblemInputs?.[String(serviceId)] || '');
     }
@@ -558,6 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.problemFields.classList.remove('d-none');
         refs.problemFields.innerHTML = services.map((service, index) => {
             const serviceId = Number(service.id);
+            service.hinh_anh = resolveServiceImageUrl(service);
             const isActive = Number(state.activeProblemServiceId || 0) === serviceId;
             const serviceDescription = escapeHtml(getServiceProblemText(serviceId));
             const serviceName = escapeHtml(service.ten_dich_vu || `Dịch vụ ${index + 1}`);
@@ -1014,11 +1087,11 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.sumServiceCard.classList.toggle('d-none', !hasService);
         refs.sumServiceValue.textContent = hasService ? `${names}${extra ? ` +${extra}` : ''}` : '';
         refs.sumServiceMeta.textContent = services.length > 1 ? `${services.length} dịch vụ trong cùng một lịch hẹn.` : (services[0]?.mo_ta || '');
-        refs.sumServiceThumb.src = services[0]?.hinh_anh || '/assets/images/logontu.png';
+        refs.sumServiceThumb.src = resolveServiceImageUrl(services[0]);
 
         refs.sumWorkerCard.classList.toggle('d-none', !hasWorker);
         if (hasWorker) {
-            refs.sumWorkerThumb.src = state.worker?.user?.avatar || '/assets/images/user-default.png';
+            refs.sumWorkerThumb.src = resolveAvatarUrl(state.worker?.user?.avatar);
             refs.sumWorkerValue.textContent = state.worker?.user?.name || 'Thợ sửa chữa';
             refs.sumWorkerMeta.textContent = state.worker?.user?.dich_vus?.map((service) => service.ten_dich_vu).join(', ')
                 || state.worker?.user?.dichVus?.map((service) => service.ten_dich_vu).join(', ')
@@ -1318,6 +1391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         refs.servicesWrap.innerHTML = state.services.map((service) => {
             const serviceId = Number(service.id);
+            service.hinh_anh = resolveServiceImageUrl(service);
             return `<button type="button" class="booking-service-card ${state.serviceIds.includes(serviceId) ? 'is-selected' : ''}" data-service-id="${serviceId}"><div class="booking-service-card-check">✓</div><div class="booking-service-card-media"><img src="${service.hinh_anh || '/assets/images/logontu.png'}" alt="${service.ten_dich_vu}" onerror="this.src='/assets/images/logontu.png'"></div><div class="booking-service-card-body"><div class="booking-service-card-title">${service.ten_dich_vu}</div><p class="booking-service-card-copy">${service.mo_ta || 'Dịch vụ sửa chữa chuyên sâu, kỹ thuật viên sẽ kiểm tra và xử lý theo tình trạng thực tế.'}</p></div></button>`;
         }).join('');
         refs.servicesWrap.querySelectorAll('[data-service-id]').forEach((button) => button.addEventListener('click', () => {
@@ -1453,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const serviceNames = state.services.map((service) => service.ten_dich_vu).join(', ') || 'Chưa cập nhật chuyên môn';
                 refs.workerBanner.classList.remove('d-none');
                 refs.sumWorkerCard.classList.remove('d-none');
-                refs.workerAvatar.src = userData.avatar || '/assets/images/user-default.png';
+                refs.workerAvatar.src = resolveAvatarUrl(userData.avatar);
                 refs.workerName.textContent = userData.name || 'Thợ sửa chữa';
                 refs.workerMeta.textContent = `Chuyên môn: ${serviceNames}`;
                 refs.sumWorkerValue.textContent = userData.name || 'Thợ sửa chữa';
@@ -2288,11 +2362,11 @@ document.addEventListener('DOMContentLoaded', () => {
         refs.sumServiceCard.classList.toggle('d-none', !hasService);
         refs.sumServiceValue.textContent = hasService ? `${names}${extra ? ` +${extra}` : ''}` : '';
         refs.sumServiceMeta.textContent = services.length > 1 ? `${services.length} dịch vụ trong cùng một lịch hẹn.` : (services[0]?.mo_ta || '');
-        refs.sumServiceThumb.src = services[0]?.hinh_anh || '/assets/images/logontu.png';
+        refs.sumServiceThumb.src = resolveServiceImageUrl(services[0]);
 
         refs.sumWorkerCard.classList.toggle('d-none', !hasWorker);
         if (hasWorker) {
-            refs.sumWorkerThumb.src = state.worker?.user?.avatar || '/assets/images/user-default.png';
+            refs.sumWorkerThumb.src = resolveAvatarUrl(state.worker?.user?.avatar);
             refs.sumWorkerValue.textContent = state.worker?.user?.name || 'Thợ sửa chữa';
             refs.sumWorkerMeta.textContent = state.worker?.user?.dich_vus?.map((service) => service.ten_dich_vu).join(', ')
                 || state.worker?.user?.dichVus?.map((service) => service.ten_dich_vu).join(', ')

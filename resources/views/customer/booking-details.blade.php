@@ -1245,5 +1245,5 @@
 <script>
     window.customerBookingDetailId = @json((int) $id);
 </script>
-<script type="module" src="{{ asset('assets/js/customer/my-booking-detail.js') }}?v={{ filemtime(public_path('assets/js/customer/my-booking-detail.js')) }}"></script>
+<script type="module" src="{{ asset('assets/js/customer/my-booking-detail.js') }}?v={{ file_exists(public_path('assets/js/customer/my-booking-detail.js')) ? filemtime(public_path('assets/js/customer/my-booking-detail.js')) : time() }}"></script>
 @endpush
