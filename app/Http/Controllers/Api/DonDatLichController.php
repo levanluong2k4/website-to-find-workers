@@ -43,7 +43,7 @@ class DonDatLichController extends Controller
             'khachHang:id,name,avatar,phone',
             'tho:id,name,avatar,phone',
             'dichVus:id,ten_dich_vu,hinh_anh',
-            'danhGias',
+            'danhGias:id,don_dat_lich_id,so_sao,nhan_xet,hinh_anh_danh_gia,video_danh_gia,created_at,updated_at',
             'customerComplaintCase',
         ]);
 

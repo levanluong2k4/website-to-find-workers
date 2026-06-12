@@ -1150,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const collected = [];
 
         do {
-            const res = ensureOk(await callApi(`/don-dat-lich?page=${page}`), 'Không tải được danh sách booking');
+            const res = ensureOk(await callApi(`/don-dat-lich?per_page=100&page=${page}`), 'Không tải được danh sách booking');
             const payload = res.data || {};
             const items = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
 
