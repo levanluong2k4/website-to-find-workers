@@ -17,7 +17,6 @@
 /output
 /public/build
 /public/hot
-/public/assets/images
 /public/storage
 /playwright-report
 /storage/*.key
