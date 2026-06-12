@@ -100,6 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFilter = 'all';
     let currentServiceFilter = 'all';
     let currentPage = 1;
+    let paginationMeta = { total: 0, lastPage: 1 };
+    let serviceFilterLoaded = false;
 
     const PAGE_SIZE = 9;
 
@@ -954,15 +956,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const totalPages = Math.max(1, Math.ceil(bookings.length / PAGE_SIZE));
-        if (currentPage > totalPages) {
-            currentPage = totalPages;
-        }
+        const totalPages = Math.max(1, Number(paginationMeta.lastPage || 1));
 
-        const startIndex = (currentPage - 1) * PAGE_SIZE;
-        const paginatedBookings = bookings.slice(startIndex, startIndex + PAGE_SIZE);
-
-        bookingsContainer.innerHTML = paginatedBookings.map((booking) => {
+        bookingsContainer.innerHTML = bookings.map((booking) => {
             const services = getBookingServices(booking);
             const serviceNames = getBookingServiceNames(booking);
             const serviceTitle = getBookingServiceTitle(booking);
@@ -1024,10 +1020,10 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }).join('');
 
-        upgradeReviewSummaryCards(paginatedBookings);
+        upgradeReviewSummaryCards(bookings);
         attachActionListeners();
         attachCardNavigationListeners();
-        renderPagination(bookings.length, totalPages);
+        renderPagination(Number(paginationMeta.total || bookings.length), totalPages);
     };
 
     const buildPaginationModel = (totalPages, page) => {
@@ -1088,26 +1084,38 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                currentPage = nextPage;
-                filterAndRender();
+                loadBookings(nextPage);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
     };
 
-    const populateServiceFilter = () => {
-        if (!serviceFilter) return;
+    const populateServiceFilter = async () => {
+        if (!serviceFilter || serviceFilterLoaded) return;
 
         const serviceMap = new Map();
-        allBookings.forEach((booking) => {
-            getBookingServices(booking).forEach((service) => {
+        try {
+            const response = ensureOk(await callApi('/danh-muc-dich-vu'), 'Không tải được danh mục dịch vụ');
+            const services = Array.isArray(response.data) ? response.data : [];
+            services.forEach((service) => {
                 const serviceName = String(service?.ten_dich_vu || '').trim();
-                const normalizedName = normalizeServiceName(serviceName);
-                if (serviceName && normalizedName && !serviceMap.has(normalizedName)) {
-                    serviceMap.set(normalizedName, serviceName);
+                const serviceId = Number(service?.id || 0);
+                if (serviceName && serviceId > 0) {
+                    serviceMap.set(String(serviceId), serviceName);
                 }
             });
-        });
+        } catch (error) {
+            console.warn('Không tải được danh mục dịch vụ cho bộ lọc:', error);
+            allBookings.forEach((booking) => {
+                getBookingServices(booking).forEach((service) => {
+                    const serviceName = String(service?.ten_dich_vu || '').trim();
+                    const serviceId = Number(service?.id || 0);
+                    if (serviceName && serviceId > 0) {
+                        serviceMap.set(String(serviceId), serviceName);
+                    }
+                });
+            });
+        }
 
         const optionsHtml = ['<option value="all">Tất cả dịch vụ</option>']
             .concat(
@@ -1120,59 +1128,50 @@ document.addEventListener('DOMContentLoaded', () => {
         serviceFilter.innerHTML = optionsHtml;
         serviceFilter.value = serviceMap.has(currentServiceFilter) ? currentServiceFilter : 'all';
         currentServiceFilter = serviceFilter.value;
+        serviceFilterLoaded = true;
     };
 
     const filterAndRender = () => {
-        let filtered = [...allBookings];
+        renderBookings(allBookings);
+    };
 
-        if (currentFilter === 'active') {
-            filtered = filtered.filter((booking) => ['cho_xac_nhan', 'da_xac_nhan', 'khong_lien_lac_duoc_voi_khach_hang', 'dang_lam'].includes(booking.trang_thai));
-        } else if (currentFilter === 'payment') {
-            filtered = filtered.filter((booking) => ['cho_hoan_thanh', 'cho_thanh_toan'].includes(booking.trang_thai));
-        } else if (currentFilter === 'completed') {
-            filtered = filtered.filter((booking) => booking.trang_thai === 'da_xong');
-        } else if (currentFilter === 'cancelled') {
-            filtered = filtered.filter((booking) => booking.trang_thai === 'da_huy');
+    const buildBookingQueryParams = (page = 1) => {
+        const params = new URLSearchParams({
+            per_page: String(PAGE_SIZE),
+            page: String(page),
+        });
+
+        if (currentFilter !== 'all') {
+            params.set('status_filter', currentFilter);
         }
 
         if (currentServiceFilter !== 'all') {
-            filtered = filtered.filter((booking) => getBookingServices(booking).some((service) => (
-                normalizeServiceName(service?.ten_dich_vu || '') === currentServiceFilter
-            )));
+            params.set('service_id', currentServiceFilter);
         }
 
-        renderBookings(filtered);
+        return params.toString();
     };
 
-    const fetchAllBookings = async () => {
-        let page = 1;
-        let lastPage = 1;
-        const collected = [];
+    const fetchBookingsPage = async (page = 1) => {
+        const res = ensureOk(await callApi(`/don-dat-lich?${buildBookingQueryParams(page)}`), 'Không tải được danh sách booking');
+        const payload = res.data || {};
+        const items = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
 
-        do {
-            const res = ensureOk(await callApi(`/don-dat-lich?per_page=100&page=${page}`), 'Không tải được danh sách booking');
-            const payload = res.data || {};
-            const items = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
+        paginationMeta = {
+            total: Number(payload?.total || items.length),
+            lastPage: Number(payload?.last_page || 1),
+        };
+        currentPage = Number(payload?.current_page || page || 1);
 
-            collected.push(...items);
-
-            if (!Array.isArray(payload?.data)) {
-                break;
-            }
-
-            lastPage = Number(payload?.last_page || 1);
-            page += 1;
-        } while (page <= lastPage);
-
-        return collected;
+        return items;
     };
 
-    const loadBookings = async () => {
+    const loadBookings = async (page = 1) => {
         renderLoading();
 
         try {
-            allBookings = await fetchAllBookings();
-            populateServiceFilter();
+            allBookings = await fetchBookingsPage(page);
+            await populateServiceFilter();
             filterAndRender();
         } catch (error) {
             console.error('Error fetching my bookings:', error);
@@ -1657,14 +1656,14 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.classList.add('active');
             currentFilter = tab.dataset.filter || 'all';
             currentPage = 1;
-            filterAndRender();
+            loadBookings(1);
         });
     });
 
     serviceFilter?.addEventListener('change', (event) => {
         currentServiceFilter = event.currentTarget.value || 'all';
         currentPage = 1;
-        filterAndRender();
+        loadBookings(1);
     });
 
     updateReviewRatingCaption();

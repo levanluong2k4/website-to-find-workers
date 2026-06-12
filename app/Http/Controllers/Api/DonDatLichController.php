@@ -53,7 +53,30 @@ class DonDatLichController extends Controller
             $query->where('tho_id', $user->id);
         }
 
-        $perPage = max(1, min((int) $request->query('per_page', 15), 100));
+        $statusFilter = (string) $request->query('status_filter', 'all');
+        if ($statusFilter === 'active') {
+            $query->whereIn('trang_thai', [
+                'cho_xac_nhan',
+                'da_xac_nhan',
+                DonDatLich::STATUS_CUSTOMER_UNREACHABLE,
+                'dang_lam',
+            ]);
+        } elseif ($statusFilter === 'payment') {
+            $query->whereIn('trang_thai', ['cho_hoan_thanh', 'cho_thanh_toan']);
+        } elseif ($statusFilter === 'completed') {
+            $query->where('trang_thai', 'da_xong');
+        } elseif ($statusFilter === 'cancelled') {
+            $query->where('trang_thai', 'da_huy');
+        }
+
+        $serviceId = (int) $request->query('service_id', 0);
+        if ($serviceId > 0) {
+            $query->whereHas('dichVus', static function ($serviceQuery) use ($serviceId): void {
+                $serviceQuery->where('danh_muc_dich_vu.id', $serviceId);
+            });
+        }
+
+        $perPage = max(1, min((int) $request->query('per_page', 9), 100));
 
         return response()->json($query->latest()->paginate($perPage));
     }
