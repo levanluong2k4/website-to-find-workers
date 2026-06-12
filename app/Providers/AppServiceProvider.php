@@ -107,6 +107,10 @@ class AppServiceProvider extends ServiceProvider
         $fallbackPath = CertificatePathResolver::resolveFromCandidates([
             env('CURL_CA_BUNDLE'),
             env('SSL_CERT_FILE'),
+            '/etc/ssl/certs/ca-certificates.crt',
+            '/etc/pki/tls/certs/ca-bundle.crt',
+            '/etc/ssl/ca-bundle.pem',
+            '/usr/share/ssl/certs/ca-bundle.crt',
             base_path('cacert.pem'),
             base_path('certs/cacert.pem'),
             base_path('storage/certs/cacert.pem'),
