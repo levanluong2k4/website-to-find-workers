@@ -72,7 +72,13 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": [
+                "fruitcake/laravel-debugbar",
+                "laravel/pail",
+                "laravel/sail",
+                "nunomaduro/collision",
+                "nunomaduro/termwind"
+            ]
         }
     },
     "config": {
