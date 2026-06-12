@@ -178,7 +178,7 @@ class SimilarIssueSearchService
     ): array
     {
         $dbDriver = DB::connection()->getDriverName();
-        $useMysqlFullText = $dbDriver === 'mysql' && $normalizedMessage !== '';
+        $useMysqlFullText = false; // Disabled for TiDB compatibility
         $fullTextBooleanQuery = $tokens !== []
             ? $this->toBooleanFullTextQuery($tokens)
             : $normalizedMessage;
@@ -259,7 +259,7 @@ class SimilarIssueSearchService
         $tokens = TextNormalizer::tokens($message);
         $normalizedMessage = TextNormalizer::normalize($message);
         $dbDriver = DB::connection()->getDriverName();
-        $useMysqlFullText = $dbDriver === 'mysql' && $normalizedMessage !== '';
+        $useMysqlFullText = false; // Disabled for TiDB compatibility
         $fullTextBooleanQuery = $tokens !== []
             ? $this->toBooleanFullTextQuery($tokens)
             : $normalizedMessage;
