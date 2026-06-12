@@ -3,7 +3,7 @@
     "framework": null,
     "buildCommand": "npm install && npm run build",
     "functions": {
-        "api/index.php": {
+        "vercel/index.php": {
             "runtime": "vercel-php@0.9.0",
             "excludeFiles": "{.agent,.codex,.git,.grapuco,.vscode,docker,docs,node_modules,output,playwright-report,public/assets,public/build,public/storage,scripts,storage,test-results,tests,tmp}/**"
         }
@@ -11,7 +11,7 @@
     "routes": [
         {
             "src": "/assets/images/(.*)",
-            "dest": "/api/index.php"
+            "dest": "/vercel/index.php"
         },
         {
             "src": "/build/(.*)",
@@ -23,7 +23,7 @@
         },
         {
             "src": "/(.*)",
-            "dest": "/api/index.php"
+            "dest": "/vercel/index.php"
         }
     ],
     "env": {
