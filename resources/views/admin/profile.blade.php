@@ -289,5 +289,5 @@
 @endsection
 
 @push('scripts')
-<script type="module" src="{{ asset('assets/js/admin/profile.js') }}?v={{ filemtime(public_path('assets/js/admin/profile.js')) }}"></script>
+<script type="module" src="{{ asset('assets/js/admin/profile.js') }}?v={{ file_exists(public_path('assets/js/admin/profile.js')) ? filemtime(public_path('assets/js/admin/profile.js')) : time() }}"></script>
 @endpush

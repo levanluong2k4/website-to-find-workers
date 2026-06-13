@@ -382,5 +382,5 @@
 @endsection
 
 @push('scripts')
-<script type="module" src="{{ asset('assets/js/admin/parts.js') }}?v={{ filemtime(public_path('assets/js/admin/parts.js')) }}"></script>
+<script type="module" src="{{ asset('assets/js/admin/parts.js') }}?v={{ file_exists(public_path('assets/js/admin/parts.js')) ? filemtime(public_path('assets/js/admin/parts.js')) : time() }}"></script>
 @endpush

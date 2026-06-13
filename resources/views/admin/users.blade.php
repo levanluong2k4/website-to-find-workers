@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Quản lý tài khoản - Thợ Tốt')
 
@@ -682,6 +682,6 @@
 @endsection
 
 @push('scripts')
-<script type="module" src="{{ asset('assets/js/admin/users.js') }}?v={{ filemtime(public_path('assets/js/admin/users.js')) }}"></script>
+<script type="module" src="{{ asset('assets/js/admin/users.js') }}?v={{ file_exists(public_path('assets/js/admin/users.js')) ? filemtime(public_path('assets/js/admin/users.js')) : time() }}"></script>
 @endpush
 
