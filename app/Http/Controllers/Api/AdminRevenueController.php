@@ -82,12 +82,12 @@ class AdminRevenueController extends Controller
         $salaryTable = DonDatLich::query()
             ->whereIn('don_dat_lich.trang_thai', ['da_xong', 'hoan_thanh'])
             ->join('users', 'users.id', '=', 'don_dat_lich.tho_id')
-            ->leftJoin('vi_dien_tu', 'vi_dien_tu.ma_tho', '=', 'users.id')
+            ->leftJoin('vi_dien_tus', 'vi_dien_tus.ma_tho', '=', 'users.id')
             ->selectRaw('
                 users.id,
                 users.name,
                 users.phone,
-                MAX(vi_dien_tu.so_du) as so_du,
+                MAX(vi_dien_tus.so_du) as so_du,
                 COUNT(don_dat_lich.id) as so_don,
                 SUM(don_dat_lich.tong_tien) as tong_gop
             ')
@@ -104,15 +104,15 @@ class AdminRevenueController extends Controller
 
                 // total withdrawn all time for this worker
                 $daRut = LichSuGiaoDich::query()
-                    ->join('vi_dien_tu', 'vi_dien_tu.id', '=', 'lich_su_giao_dichs.ma_vi')
-                    ->where('vi_dien_tu.ma_tho', $w->id)
+                    ->join('vi_dien_tus', 'vi_dien_tus.id', '=', 'lich_su_giao_dichs.ma_vi')
+                    ->where('vi_dien_tus.ma_tho', $w->id)
                     ->where('lich_su_giao_dichs.loai_giao_dich', 'rut_tien')
                     ->where('lich_su_giao_dichs.trang_thai', 'thanh_cong')
                     ->sum(DB::raw('ABS(lich_su_giao_dichs.so_tien)'));
 
                 $coPendingRut = LichSuGiaoDich::query()
-                    ->join('vi_dien_tu', 'vi_dien_tu.id', '=', 'lich_su_giao_dichs.ma_vi')
-                    ->where('vi_dien_tu.ma_tho', $w->id)
+                    ->join('vi_dien_tus', 'vi_dien_tus.id', '=', 'lich_su_giao_dichs.ma_vi')
+                    ->where('vi_dien_tus.ma_tho', $w->id)
                     ->where('lich_su_giao_dichs.loai_giao_dich', 'rut_tien')
                     ->where('lich_su_giao_dichs.trang_thai', 'dang_xu_ly')
                     ->exists();
@@ -317,8 +317,8 @@ class AdminRevenueController extends Controller
 
         $query = LichSuGiaoDich::query()
             ->where('lich_su_giao_dichs.loai_giao_dich', 'rut_tien')
-            ->join('vi_dien_tu', 'vi_dien_tu.id', '=', 'lich_su_giao_dichs.ma_vi')
-            ->join('users', 'users.id', '=', 'vi_dien_tu.ma_tho')
+            ->join('vi_dien_tus', 'vi_dien_tus.id', '=', 'lich_su_giao_dichs.ma_vi')
+            ->join('users', 'users.id', '=', 'vi_dien_tus.ma_tho')
             ->select(
                 'lich_su_giao_dichs.id',
                 DB::raw('ABS(lich_su_giao_dichs.so_tien) as so_tien'),
@@ -327,7 +327,7 @@ class AdminRevenueController extends Controller
                 'users.id as user_id',
                 'users.name as ten_tho',
                 'users.phone as sdt',
-                'vi_dien_tu.so_du as so_du_vi'
+                'vi_dien_tus.so_du as so_du_vi'
             )
             ->orderByDesc('lich_su_giao_dichs.created_at');
 
