@@ -71,15 +71,15 @@ class DanhMucDichVu extends Model
                 }
 
                 if (Str::startsWith($value, '/storage/')) {
-                    return asset(ltrim($value, '/'));
+                    return $value;
                 }
 
                 if (Str::startsWith($value, 'storage/')) {
-                    return asset($value);
+                    return '/' . $value;
                 }
 
                 if (Str::contains($value, '/')) {
-                    return asset(ltrim(Storage::url($value), '/'));
+                    return '/' . ltrim(Storage::url($value), '/');
                 }
 
                 return null;
