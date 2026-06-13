@@ -459,12 +459,16 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
         const mappedImage = serviceImageMap.find(([pattern]) => pattern.test(serviceName))?.[1] || '';
 
-        if (!imageValue) return mappedImage ? `/assets/images/${mappedImage}` : fallback;
-        if (!/[./\\]/.test(imageValue)) {
-            return mappedImage ? `/assets/images/${mappedImage}` : `/assets/images/${imageValue}.png`;
+        if (mappedImage) {
+            return `/assets/images/${mappedImage}`;
         }
 
-        return resolvePublicImageUrl(imageValue, mappedImage ? `/assets/images/${mappedImage}` : fallback);
+        if (!imageValue) return fallback;
+        if (!/[./\\]/.test(imageValue)) {
+            return `/assets/images/${imageValue}.png`;
+        }
+
+        return resolvePublicImageUrl(imageValue, fallback);
     }
 
     function resolveAvatarUrl(avatar, fallback = '/assets/images/user-default.png') {
