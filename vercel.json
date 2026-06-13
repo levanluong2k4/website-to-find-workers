@@ -14,8 +14,8 @@
             "dest": "/api/api.php"
         },
         {
-            "src": "/assets/images/(.*)",
-            "dest": "/api/web.php"
+            "src": "/storage/(.*)",
+            "dest": "/storage/app/public/$1"
         },
         {
             "src": "/build/(.*)",

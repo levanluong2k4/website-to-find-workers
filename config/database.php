@@ -77,7 +77,7 @@ return [
             'strict' => false,
             'engine' => null,
             'options' => array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => "D:/laragon/www/DATN/website-to-find-workers/storage/cacert.pem",
+                PDO::MYSQL_ATTR_SSL_CA => base_path('storage/cacert.pem'),
             ]),
         ],
 
