@@ -106,7 +106,8 @@ class UserController extends Controller
             // Store new avatar
             if (env('CLOUDINARY_URL')) {
                 try {
-                    $path = $request->file('avatar')->store('avatars', 'cloudinary');
+                    $cloudinaryPath = $request->file('avatar')->store('avatars', 'cloudinary');
+                    $path = Storage::disk('cloudinary')->url($cloudinaryPath);
                 } catch (\Exception $e) {
                     $disk = config('filesystems.default') === 'local' ? 'public' : config('filesystems.default');
                     $path = $request->file('avatar')->store('avatars', $disk);

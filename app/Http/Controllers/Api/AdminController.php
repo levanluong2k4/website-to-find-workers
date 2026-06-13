@@ -7307,8 +7307,7 @@ class AdminController extends Controller
         if (env('CLOUDINARY_URL')) {
             try {
                 $path = $file->store($directory, 'cloudinary');
-                // The cloudinary driver returns the Cloudinary URL or public ID.
-                return $path;
+                return Storage::disk('cloudinary')->url($path);
             } catch (\Exception $e) {
                 // Fallback if Cloudinary fails
             }
