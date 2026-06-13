@@ -98,12 +98,23 @@ class UserController extends Controller
 
         if ($request->hasFile('avatar')) {
             // Delete old avatar if exists
-            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-                Storage::disk('public')->delete($user->avatar);
+            $disk = config('filesystems.default') === 'local' ? 'public' : config('filesystems.default');
+            if ($user->avatar && Storage::disk($disk)->exists($user->avatar)) {
+                Storage::disk($disk)->delete($user->avatar);
             }
 
-            // Store new avatar in 'public/avatars'
-            $path = $request->file('avatar')->store('avatars', 'public');
+            // Store new avatar
+            if (env('CLOUDINARY_URL')) {
+                try {
+                    $path = $request->file('avatar')->store('avatars', 'cloudinary');
+                } catch (\Exception $e) {
+                    $disk = config('filesystems.default') === 'local' ? 'public' : config('filesystems.default');
+                    $path = $request->file('avatar')->store('avatars', $disk);
+                }
+            } else {
+                $disk = config('filesystems.default') === 'local' ? 'public' : config('filesystems.default');
+                $path = $request->file('avatar')->store('avatars', $disk);
+            }
 
             // Update user record
             $user->update([

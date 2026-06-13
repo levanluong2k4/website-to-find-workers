@@ -7304,7 +7304,18 @@ class AdminController extends Controller
 
     private function storeCatalogImage(UploadedFile $file, string $directory): string
     {
-        return $file->store($directory, 'public');
+        if (env('CLOUDINARY_URL')) {
+            try {
+                $path = $file->store($directory, 'cloudinary');
+                // The cloudinary driver returns the Cloudinary URL or public ID.
+                return $path;
+            } catch (\Exception $e) {
+                // Fallback if Cloudinary fails
+            }
+        }
+
+        $disk = config('filesystems.default') === 'local' ? 'public' : config('filesystems.default');
+        return $file->store($directory, $disk);
     }
 
     private function deleteStoredServiceImage(?string $imagePath): void
@@ -7389,8 +7400,9 @@ class AdminController extends Controller
             $imagePath = Str::after($imagePath, 'storage/');
         }
 
-        if ($imagePath !== '' && Storage::disk('public')->exists($imagePath)) {
-            Storage::disk('public')->delete($imagePath);
+        $disk = config('filesystems.default') === 'local' ? 'public' : config('filesystems.default');
+        if ($imagePath !== '' && Storage::disk($disk)->exists($imagePath)) {
+            Storage::disk($disk)->delete($imagePath);
         }
     }
 }
