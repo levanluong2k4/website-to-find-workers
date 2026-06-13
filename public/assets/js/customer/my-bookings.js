@@ -122,6 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (normalizedValue.startsWith('public/assets/images/')) return `/${normalizedValue.replace(/^public\//, '')}`;
         if (normalizedValue.startsWith('storage/')) return `/${normalizedValue}`;
         if (normalizedValue.startsWith('public/storage/')) return `/${normalizedValue.replace(/^public\//, '')}`;
+        // Fix: If it's a relative path from the storage disk (like 'services/xxx.png')
+        if (normalizedValue.startsWith('services/')) return `/storage/${normalizedValue}`;
         if (normalizedValue.includes('/')) return `/${normalizedValue}`;
 
         return `/assets/images/${normalizedValue}`;
@@ -146,16 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
         const mappedImage = serviceImageMap.find(([pattern]) => pattern.test(serviceName))?.[1] || '';
 
-        if (mappedImage) {
-            return `/assets/images/${mappedImage}`;
-        }
-
-        if (!imageValue) return fallback;
-        if (!/[./\\]/.test(imageValue)) {
-            return `/assets/images/${imageValue}.png`;
-        }
-
-        return resolvePublicImageUrl(imageValue, fallback);
+        if (!imageValue) return mappedImage ? `/assets/images/${mappedImage}` : fallback;
+        
+        return resolvePublicImageUrl(imageValue, mappedImage ? `/assets/images/${mappedImage}` : fallback);
     };
 
     const formatMoney = (value) => new Intl.NumberFormat('vi-VN', {

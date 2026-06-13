@@ -47,6 +47,10 @@ class DonDatLich extends Model
 
     protected $table = 'don_dat_lich';
 
+    public $incrementing = false;
+
+    protected $keyType = 'int';
+
     protected $appends = ['warranty_policy', 'warranty_case', 'complaint_policy', 'complaint_case'];
 
     protected $fillable = [
@@ -109,6 +113,22 @@ class DonDatLich extends Model
         'hinh_anh_mo_ta' => 'array',
         'hinh_anh_ket_qua' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(static function (DonDatLich $booking): void {
+            if ($booking->getKey()) {
+                return;
+            }
+
+            $booking->setAttribute($booking->getKeyName(), self::generateNextPrimaryKey());
+        });
+    }
+
+    private static function generateNextPrimaryKey(): int
+    {
+        return ((int) static::query()->max('id')) + 1;
+    }
 
     public function khachHang()
     {

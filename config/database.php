@@ -64,6 +64,23 @@ return [
             ], fn ($v) => $v !== null) : [],
         ],
 
+        'tidb' => [
+            'driver' => 'mysql',
+            'host' => 'gateway01.ap-southeast-1.prod.alicloud.tidbcloud.com',
+            'port' => '4000',
+            'database' => 'test',
+            'username' => '3LfZF2ewJhVhkKu.root',
+            'password' => 'nBwFefNPTY2gpasL',
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+            'engine' => null,
+            'options' => array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => "D:/laragon/www/DATN/website-to-find-workers/storage/cacert.pem",
+            ]),
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
