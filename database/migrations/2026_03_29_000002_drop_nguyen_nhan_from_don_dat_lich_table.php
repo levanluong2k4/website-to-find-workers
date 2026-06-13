@@ -26,7 +26,9 @@ return new class extends Migration
         });
 
         if (DB::connection()->getDriverName() === 'mysql' && Schema::hasColumn('don_dat_lich', 'giai_phap')) {
-            DB::statement('ALTER TABLE don_dat_lich ADD FULLTEXT don_dat_lich_ai_fulltext (mo_ta_van_de, giai_phap)');
+            try {
+                DB::statement('ALTER TABLE don_dat_lich ADD FULLTEXT don_dat_lich_ai_fulltext (mo_ta_van_de, giai_phap)');
+            } catch (\Exception $e) {}
         }
     }
 

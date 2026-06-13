@@ -37,7 +37,11 @@ return new class extends Migration
         });
 
         if (DB::connection()->getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE ai_knowledge_items ADD FULLTEXT ai_knowledge_items_fulltext (title, service_name, symptom_text, cause_text, solution_text, content)');
+            try {
+                DB::statement('ALTER TABLE ai_knowledge_items ADD FULLTEXT ai_knowledge_items_fulltext (title, service_name, symptom_text, cause_text, solution_text, content)');
+            } catch (\Exception $e) {
+                // Ignore FULLTEXT error for TiDB compatibility
+            }
         }
     }
 
