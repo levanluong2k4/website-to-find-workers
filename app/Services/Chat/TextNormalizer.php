@@ -13,8 +13,14 @@ class TextNormalizer
         $text = self::stripAccents($text);
         $text = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $text) ?? '';
         $text = preg_replace('/\s+/u', ' ', $text) ?? '';
+        $text = trim($text);
 
-        return trim($text);
+        $typos = [
+            '/\bgiac\b/u' => 'giat',
+            '/\bdieu hoa\b/u' => 'may lanh',
+        ];
+
+        return preg_replace(array_keys($typos), array_values($typos), $text) ?? $text;
     }
 
     /**
