@@ -297,6 +297,7 @@ class DonDatLichController extends Controller
         $jobs = DonDatLich::with([
             'khachHang:id,name,avatar,phone',
             'dichVus:id,ten_dich_vu,hinh_anh',
+            'customerComplaintCase',
         ])
             ->whereNull('tho_id')
             ->where('trang_thai', 'cho_xac_nhan')
