@@ -18,6 +18,7 @@ class TextNormalizer
         $typos = [
             '/\bgiac\b/u' => 'giat',
             '/\bdieu hoa\b/u' => 'may lanh',
+            '/\b(?:televion|television|tv)\b/u' => 'tivi',
         ];
 
         return preg_replace(array_keys($typos), array_values($typos), $text) ?? $text;
