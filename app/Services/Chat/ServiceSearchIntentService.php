@@ -345,6 +345,6 @@ class ServiceSearchIntentService
             }
         }
 
-        return $normalizedCandidate;
+        return null;
     }
 }

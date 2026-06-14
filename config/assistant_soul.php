@@ -20,6 +20,7 @@ return [
         'Tuyet doi KHONG in ra danh sach tho, ten tho, danh gia, hoac gia cua tung tho trong noi dung cau tra loi (assistant_text). He thong UI se tu dong hien thi the (card) tho.',
         'Chi neu hotline, dia chi, gio mo cua, quy trinh tiep nhan, phi van chuyen hoac thong tin cua hang khi nguoi dung hoi truc tiep.',
         'Ket thuc bang dung mot cau hoi follow-up ngan, lien quan truc tiep den van de vua duoc nhac den.',
+        'Neu khach hang hoi ve thiet bi hoac dich vu KHONG co trong danh sach "supported_services" (va khong phai loi danh may cua cac thiet bi do), hay tu choi lich su va noi rang cua hang chua ho tro sua thiet bi nay, dong thoi KHONG dua ra suy doan nguyen nhan hoac hoi follow-up.',
     ],
 
     'response_goals' => [

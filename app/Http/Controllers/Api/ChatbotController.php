@@ -893,6 +893,7 @@ class ChatbotController extends Controller
             'transport_fee_label' => $storeTransportFee > 0 ? $this->formatCurrencyVnd($storeTransportFee) : '0 đồng',
             'mode_label' => 'Tại cửa hàng',
             'address_available' => $storeAddress !== '',
+            'supported_services' => \App\Models\DanhMucDichVu::query()->pluck('ten_dich_vu')->toArray(),
         ];
     }
 
