@@ -984,6 +984,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="booking-card-body booking-card-body--compact">
                             <h3 class="booking-card-title">${escapeHtml(serviceTitle)}</h3>
                             <div class="booking-card-meta">
+                                <span class="material-symbols-outlined" style="color: ${booking.loai_dat_lich === 'at_home' ? '#0ea5e9' : '#f97316'};">${booking.loai_dat_lich === 'at_home' ? 'home' : 'storefront'}</span>
+                                <strong style="color: ${booking.loai_dat_lich === 'at_home' ? '#0ea5e9' : '#f97316'};">${booking.loai_dat_lich === 'at_home' ? 'Sửa tại nhà' : 'Sửa tại cửa hàng'}</strong>
+                            </div>
+                            <div class="booking-card-meta">
                                 <span class="material-symbols-outlined">tag</span>Mã đơn #${escapeHtml(booking.id)}
                             </div>
                             <div class="booking-card-meta">
