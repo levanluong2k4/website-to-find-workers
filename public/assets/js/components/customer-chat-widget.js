@@ -200,7 +200,10 @@ if (isCustomerScope) {
 
             const techHtml = technicians.map((item) => `
                 <div class="chat-card">
-                    <p class="chat-card-title">${escapeHtml(item.name || 'Thợ phù hợp')}</p>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <img src="${escapeHtml(item.avatar || '/assets/images/logontu.png')}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" onerror="this.onerror=null;this.src='/assets/images/logontu.png';">
+                        <p class="chat-card-title" style="margin-bottom: 0; padding-bottom: 0; border: none;">${escapeHtml(item.name || 'Thợ phù hợp')}</p>
+                    </div>
                     <p class="chat-card-line"><strong>Kỹ năng:</strong> ${escapeHtml(item.skills || 'Tổng hợp')}</p>
                     <p class="chat-card-line"><strong>Đánh giá:</strong> ${escapeHtml(item.rating ?? '--')} · Đã xong: ${escapeHtml(item.completed_jobs_count ?? 0)} việc</p>
                     ${item.reference_price ? `<p class="chat-card-line"><strong>Giá tham khảo:</strong> ${escapeHtml(item.reference_price)}</p>` : ''}
